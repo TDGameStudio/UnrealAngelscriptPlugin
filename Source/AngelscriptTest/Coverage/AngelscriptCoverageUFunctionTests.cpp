@@ -8089,6 +8089,54 @@ public:
 				TEXT("Unknown function specifier DefinitelyUnknownSpecifier on method ACoverageUFunctionUnknownSpecifierActor::UnknownSpecifier.")
 			},
 			{
+				TEXT("Haze NetFunction specifier"),
+				TEXT("ASCoverageUFunction_InvalidHazeNetFunctionSpecifier"),
+				TEXT("ASCoverageUFunctionInvalidHazeNetFunctionSpecifier.as"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class ACoverageUFunctionHazeNetFunctionActor : AActor
+				{
+					UFUNCTION(NetFunction)
+					void HazeNetFunction()
+					{
+					}
+				}
+				)AS"),
+				TEXT("Unknown function specifier NetFunction on method ACoverageUFunctionHazeNetFunctionActor::HazeNetFunction.")
+			},
+			{
+				TEXT("Haze CrumbFunction specifier"),
+				TEXT("ASCoverageUFunction_InvalidHazeCrumbFunctionSpecifier"),
+				TEXT("ASCoverageUFunctionInvalidHazeCrumbFunctionSpecifier.as"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class ACoverageUFunctionHazeCrumbFunctionActor : AActor
+				{
+					UFUNCTION(CrumbFunction)
+					void HazeCrumbFunction()
+					{
+					}
+				}
+				)AS"),
+				TEXT("Unknown function specifier CrumbFunction on method ACoverageUFunctionHazeCrumbFunctionActor::HazeCrumbFunction.")
+			},
+			{
+				TEXT("Haze DevFunction specifier"),
+				TEXT("ASCoverageUFunction_InvalidHazeDevFunctionSpecifier"),
+				TEXT("ASCoverageUFunctionInvalidHazeDevFunctionSpecifier.as"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class ACoverageUFunctionHazeDevFunctionActor : AActor
+				{
+					UFUNCTION(DevFunction)
+					void HazeDevFunction()
+					{
+					}
+				}
+				)AS"),
+				TEXT("Unknown function specifier DevFunction on method ACoverageUFunctionHazeDevFunctionActor::HazeDevFunction.")
+			},
+			{
 				TEXT("BlueprintCallable collides with native non-event"),
 				TEXT("ASCoverageUFunction_InvalidNativeCallableCollision"),
 				TEXT("ASCoverageUFunctionInvalidNativeCallableCollision.as"),

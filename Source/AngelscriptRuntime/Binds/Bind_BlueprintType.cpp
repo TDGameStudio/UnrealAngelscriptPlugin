@@ -781,10 +781,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 
 			if (Function->HasAnyFunctionFlags(FUNC_BlueprintEvent | FUNC_NetFuncFlags))
 				BindBlueprintEvent(ClassType.ToSharedRef(), Function, DBFunc);
-#if WITH_ANGELSCRIPT_HAZE
-			else if (Function->HasAnyFunctionFlags(FUNC_NetFunction))
-				BindBlueprintEvent(ClassType.ToSharedRef(), Function, DBFunc);
-#endif
 			else
 				BindBlueprintCallable(ClassType.ToSharedRef(), Function, DBFunc);
 		}
@@ -1278,12 +1274,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 				{
 					BindBlueprintEvent_Prepare(ClassType.ToSharedRef(), Function, Prep);
 				}
-#if WITH_ANGELSCRIPT_HAZE
-				else if (Function->HasAnyFunctionFlags(FUNC_NetFunction))
-				{
-					BindBlueprintEvent_Prepare(ClassType.ToSharedRef(), Function, Prep);
-				}
-#endif
 				else if (Function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintPure))
 				{
 					BindBlueprintCallable_Prepare(ClassType.ToSharedRef(), Function, Prep);

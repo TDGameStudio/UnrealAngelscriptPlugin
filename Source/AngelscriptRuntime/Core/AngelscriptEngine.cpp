@@ -5999,29 +5999,6 @@ void LogAngelscriptException(const ANSICHAR* ExceptionString)
 			FLinearColor::Red, 30.f);
 	}
 
-#if !WITH_EDITOR && WITH_ANGELSCRIPT_HAZE
-#if !DO_CHECK && UE_BUILD_TEST
-	// In test builds we still want to show an error for the first exception
-	static TSet<FString> ShownStacks;
-	if (Trace.Num() >= 2 && !ShownStacks.Contains(Trace[1]))
-	{
-		ShownStacks.Add(Trace[1]);
-
-		FText Title = FText::FromString(TEXT("Angelscript Exception"));
-		FString Message;
-		Message += FString::Printf(TEXT("Angelscript Exception: %s\n"), ANSI_TO_TCHAR(ExceptionString));
-		Message += TEXT("\n\n");
-		Message += FAngelscriptEngine::FormatAngelscriptCallstack();
-		Message += TEXT("\n\nFurther exceptions on this line will not show popups.");
-		
-		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(Message), &Title);
-	}
-#else
-	// In cooked, the first angelscript exception is a devEnsure,
-	// that way we can see them more easily.
-	devEnsure(false, TEXT("Angelscript Exception:\n\n%s"), ANSI_TO_TCHAR(ExceptionString));
-#endif
-#endif
 }
 
 void LogAngelscriptException(asIScriptContext* Context)

@@ -27,10 +27,6 @@
 #define AS_ENFORCE_SERVER_RPC_VALIDATION 0
 #endif
 
-#ifndef WITH_ANGELSCRIPT_HAZE
-#define WITH_ANGELSCRIPT_HAZE 0
-#endif
-
 ANGELSCRIPTRUNTIME_API DECLARE_LOG_CATEGORY_EXTERN(Angelscript, Log, All);
 
 class asIScriptEngine;
@@ -1180,9 +1176,6 @@ struct FAngelscriptFunctionDesc
 	/* Whether this function should be marked as pure in blueprint. */
 	bool bBlueprintPure = false;
 
-	/* Whether this function is a NetFunction. */
-	bool bNetFunction = false;
-
 	/* Whether this function is a NetMulticast. */
 	bool bNetMulticast = false;
 
@@ -1206,9 +1199,6 @@ struct FAngelscriptFunctionDesc
 
 	/* Whether the blueprint event can be overridden or not. */
 	bool bCanOverrideEvent = true;
-
-	/* Whether this function is marked as a Development Function (shows up in dev-menu) */
-	bool bDevFunction = false;
 
 	/* Whether this function is a static global function. */
 	bool bIsStatic = false;
@@ -1246,9 +1236,7 @@ struct FAngelscriptFunctionDesc
 			&& Other.bBlueprintOverride == bBlueprintOverride
 			&& Other.bBlueprintEvent == bBlueprintEvent
 			&& Other.bBlueprintPure == bBlueprintPure
-			&& Other.bNetFunction == bNetFunction
 			&& Other.bUnreliable == bUnreliable
-			&& Other.bDevFunction == bDevFunction
 			&& Other.bNetMulticast == bNetMulticast
 			&& Other.bNetClient == bNetClient
 			&& Other.bNetServer == bNetServer
@@ -1256,7 +1244,6 @@ struct FAngelscriptFunctionDesc
 			&& Other.bExec == bExec
 			&& Other.bCanOverrideEvent == bCanOverrideEvent
 			&& Other.bIsStatic == bIsStatic
-			&& Other.bDevFunction == bDevFunction
 			&& Other.bIsConstMethod == bIsConstMethod
 			&& Other.bThreadSafe == bThreadSafe
 			&& Other.bIsPrivate == bIsPrivate

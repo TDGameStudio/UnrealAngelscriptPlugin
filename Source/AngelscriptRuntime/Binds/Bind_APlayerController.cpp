@@ -8,7 +8,6 @@
 #include "Runtime/Engine/Classes/Components/InputComponent.h"
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AController(FAngelscriptBinds::EOrder::Late, [] {
-#if !WITH_ANGELSCRIPT_HAZE
 	auto AController_ = FAngelscriptBinds::ExistingClass("AController");
 
 	AController_.Method("APawn GetPawn() const",
@@ -65,11 +64,9 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AController(FAngelscriptBinds:
 		if (Controller != nullptr)
 			Controller->SetControlRotation(NewRotation);
 	});
-#endif
 });
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_APlayerController(FAngelscriptBinds::EOrder::Late, [] {
-#if !WITH_ANGELSCRIPT_HAZE
 	auto APlayerController_ = FAngelscriptBinds::ExistingClass("APlayerController");
 
 	APlayerController_.Method("void SetPlayer(UPlayer InPlayer)", METHOD_TRIVIAL(APlayerController, SetPlayer));
@@ -97,11 +94,9 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_APlayerController(FAngelscript
 		if (PC != nullptr)
 			PC->SetViewTargetWithBlend(NewViewTarget, BlendTime, BlendFunc, BlendExp, bLockOutgoing);
 	});
-#endif
 });
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_APawn(FAngelscriptBinds::EOrder::Late, [] {
-#if !WITH_ANGELSCRIPT_HAZE
 	auto APawn_ = FAngelscriptBinds::ExistingClass("APawn");
 
 	APawn_.Method("AController GetController() const",
@@ -172,5 +167,4 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_APawn(FAngelscriptBinds::EOrde
 		if (Pawn != nullptr)
 			Pawn->AddControllerPitchInput(Val);
 	});
-#endif
 });

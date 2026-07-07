@@ -462,7 +462,6 @@ void FAngelscriptPrecompiledFunction::InitFrom(FAngelscriptPrecompiledData& Cont
 		bBlueprintOverride = FunctionDesc->bBlueprintOverride;
 		bBlueprintEvent = FunctionDesc->bBlueprintEvent;
 		bBlueprintPure = FunctionDesc->bBlueprintPure;
-		bNetFunction = FunctionDesc->bNetFunction;
 		bNetMulticast = FunctionDesc->bNetMulticast;
 		bNetClient = FunctionDesc->bNetClient;
 		bNetServer = FunctionDesc->bNetServer;
@@ -471,7 +470,6 @@ void FAngelscriptPrecompiledFunction::InitFrom(FAngelscriptPrecompiledData& Cont
 		bBlueprintAuthorityOnly = FunctionDesc->bBlueprintAuthorityOnly;
 		bExec = FunctionDesc->bExec;
 		bCanOverrideEvent = FunctionDesc->bCanOverrideEvent;
-		bDevFunction = FunctionDesc->bDevFunction;
 		bIsStatic = FunctionDesc->bIsStatic;
 		bIsConstMethod = FunctionDesc->bIsConstMethod;
 		bThreadSafe = FunctionDesc->bThreadSafe;
@@ -2667,14 +2665,16 @@ FAngelscriptPrecompiledData::~FAngelscriptPrecompiledData()
 
 int32 FAngelscriptPrecompiledData::GetCurrentBuildIdentifier()
 {
+	constexpr int32 SchemaVersion = 10;
+
 #if UE_BUILD_DEBUG
-	return 1;
+	return SchemaVersion * 10 + 1;
 #elif UE_BUILD_DEVELOPMENT
-	return 2;
+	return SchemaVersion * 10 + 2;
 #elif UE_BUILD_TEST
-	return 3;
+	return SchemaVersion * 10 + 3;
 #elif UE_BUILD_SHIPPING
-	return 4;
+	return SchemaVersion * 10 + 4;
 #else
 	return -1;
 #endif
@@ -3021,7 +3021,6 @@ TSharedPtr<FAngelscriptFunctionDesc> FAngelscriptPrecompiledFunction::MakeDesc()
 	FunctionDesc->bBlueprintOverride = bBlueprintOverride;
 	FunctionDesc->bBlueprintEvent = bBlueprintEvent;
 	FunctionDesc->bBlueprintPure = bBlueprintPure;
-	FunctionDesc->bNetFunction = bNetFunction;
 	FunctionDesc->bNetMulticast = bNetMulticast;
 	FunctionDesc->bNetClient = bNetClient;
 	FunctionDesc->bNetServer = bNetServer;
@@ -3030,7 +3029,6 @@ TSharedPtr<FAngelscriptFunctionDesc> FAngelscriptPrecompiledFunction::MakeDesc()
 	FunctionDesc->bBlueprintAuthorityOnly = bBlueprintAuthorityOnly;
 	FunctionDesc->bExec = bExec;
 	FunctionDesc->bCanOverrideEvent = bCanOverrideEvent;
-	FunctionDesc->bDevFunction = bDevFunction;
 	FunctionDesc->bIsStatic = bIsStatic;
 	FunctionDesc->bIsConstMethod = bIsConstMethod;
 	FunctionDesc->bThreadSafe = bThreadSafe;

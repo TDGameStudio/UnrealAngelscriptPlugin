@@ -1506,7 +1506,6 @@ public:
 			TEXT("ENetMode should support mode comparisons in AS")));
 	}
 
-#if !WITH_ANGELSCRIPT_HAZE
 	TEST_METHOD(PawnControllerAndLocalControlQueries)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -1837,9 +1836,6 @@ public:
 				*FString::Printf(TEXT("%s lifetime list should include the RepNotify property"), TestCase.Context)));
 		}
 	}
-#endif
-
-#if !WITH_ANGELSCRIPT_HAZE
 	TEST_METHOD(WorldNetModeQueryIsVisible)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -1868,31 +1864,6 @@ public:
 		ASSERT_THAT(IsNotNull(IsNetModeFunction,
 			TEXT("UWorld.GetNetMode visibility should compile into a callable AS helper")));
 	}
-#else
-	TEST_METHOD(WorldNetModeQueryUnsupportedInHaze)
-	{
-		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
-		FAngelscriptEngineScope Scope(Engine);
-
-		const TArray<FString> ExpectedDiagnostics = {
-			TEXT("GetNetMode")
-		};
-		ASSERT_THAT(IsTrue(CompileAndExpectFailure(
-			*TestRunner,
-			Engine,
-			TEXT("ASCoverageNetworking_WorldNetModeUnsupported"),
-			ASTEST_AS(R"AS(
-				bool IsCurrentWorldClient()
-				{
-					UWorld World = GetCurrentWorld();
-					return World != null && World.GetNetMode() == ENetMode::NM_Client;
-				}
-				)AS"),
-			TEXT("UWorld.GetNetMode should remain an explicit AS binding boundary under WITH_ANGELSCRIPT_HAZE"),
-			ExpectedDiagnostics),
-			TEXT("UWorld.GetNetMode should fail to compile when the Haze build excludes the binding")));
-	}
-#endif
 
 	TEST_METHOD(ActorNetworkRoleQueriesAreVisible)
 	{
@@ -2370,7 +2341,6 @@ public:
 		}
 	}
 
-#if !WITH_ANGELSCRIPT_HAZE
 	TEST_METHOD(NetworkConsoleAndClientTravelBoundaries)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
@@ -2774,7 +2744,6 @@ public:
 		ASSERT_THAT(IsFalse(ForceNetUpdateFunction->HasAnyFunctionFlags(FUNC_Net),
 			TEXT("AActor.ForceNetUpdate should request an update locally rather than route as an RPC")));
 	}
-#endif
 };
 
 #endif // WITH_ANGELSCRIPT_UNITTESTS

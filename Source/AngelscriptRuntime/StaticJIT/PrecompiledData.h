@@ -110,7 +110,6 @@ struct FAngelscriptPrecompiledFunction
 	bool bBlueprintOverride;
 	bool bBlueprintEvent;
 	bool bBlueprintPure;
-	bool bNetFunction;
 	bool bNetMulticast;
 	bool bNetClient;
 	bool bNetServer;
@@ -119,7 +118,6 @@ struct FAngelscriptPrecompiledFunction
 	bool bBlueprintAuthorityOnly;
 	bool bExec;
 	bool bCanOverrideEvent;
-	bool bDevFunction;
 	bool bIsStatic;
 	bool bIsConstMethod;
 	bool bThreadSafe;
@@ -159,7 +157,6 @@ struct FAngelscriptPrecompiledFunction
 			Ar << Data.bBlueprintOverride;
 			Ar << Data.bBlueprintEvent;
 			Ar << Data.bBlueprintPure;
-			Ar << Data.bNetFunction;
 			Ar << Data.bNetMulticast;
 			Ar << Data.bNetClient;
 			Ar << Data.bNetServer;
@@ -168,7 +165,6 @@ struct FAngelscriptPrecompiledFunction
 			Ar << Data.bBlueprintAuthorityOnly;
 			Ar << Data.bExec;
 			Ar << Data.bCanOverrideEvent;
-			Ar << Data.bDevFunction;
 			Ar << Data.bIsStatic;
 			Ar << Data.bIsConstMethod;
 			Ar << Data.bThreadSafe;

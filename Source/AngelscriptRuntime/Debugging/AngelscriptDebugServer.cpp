@@ -1910,7 +1910,6 @@ void FAngelscriptDebugServer::SendDebugDatabase(FSocket* Client)
 	FAngelscriptDebugDatabaseSettings DebugSettings;
 	DebugSettings.bAutomaticImports = FAngelscriptEngine::Get().ShouldUseAutomaticImportMethod();
 	DebugSettings.bFloatIsFloat64 = GetDefault<UAngelscriptSettings>()->bScriptFloatIsFloat64;
-	DebugSettings.bUseAngelscriptHaze = !!WITH_ANGELSCRIPT_HAZE;
 	DebugSettings.bDeprecateStaticClass = GetDefault<UAngelscriptSettings>()->StaticClassDeprecation == EAngelscriptStaticClassMode::Deprecated;
 	DebugSettings.bDisallowStaticClass = GetDefault<UAngelscriptSettings>()->StaticClassDeprecation == EAngelscriptStaticClassMode::Disallowed;
 	SendMessageToClient(Client, EDebugMessageType::DebugDatabaseSettings, DebugSettings);

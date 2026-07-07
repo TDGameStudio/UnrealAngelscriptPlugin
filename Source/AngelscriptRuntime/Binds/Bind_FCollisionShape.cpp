@@ -31,7 +31,6 @@ struct FCollisionShapeType : TAngelscriptCppType<FCollisionShape>
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionShape_Early(FAngelscriptBinds::EOrder::Early, []
 {
-#if !WITH_ANGELSCRIPT_HAZE
 	FBindFlags Flags;
 	Flags.bPOD = true;
 
@@ -44,7 +43,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionShape_Early(FAngelsc
 	});
 	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
 	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionShape_, "FCollisionShape");
-#endif
 });
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionShape_Late(FAngelscriptBinds::EOrder::Late, []

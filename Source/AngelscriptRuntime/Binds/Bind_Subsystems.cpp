@@ -151,7 +151,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Subsystems((int32)FAngelscript
 				return World->GetSubsystemBase(SubsystemClass);
 			}, Class);
 		}
-#if !WITH_ANGELSCRIPT_HAZE
 		else if (Class->IsChildOf(ULocalPlayerSubsystem::StaticClass()))
 		{
 			FAngelscriptBinds::BindGlobalFunction(ClassName + TEXT(" Get(ULocalPlayer LocalPlayer)"),
@@ -175,6 +174,5 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Subsystems((int32)FAngelscript
 				return LocalPlayer->GetSubsystemBase(SubsystemClass);
 			}, Class);
 		}
-#endif
 	}
 });

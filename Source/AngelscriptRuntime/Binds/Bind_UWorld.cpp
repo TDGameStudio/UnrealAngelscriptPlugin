@@ -45,7 +45,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_World((int32)FAngelscriptBinds
 	UWorld_.Method("bool IsEditorWorld() const", METHOD_TRIVIAL(UWorld, IsEditorWorld));
 	UWorld_.Method("bool IsPreviewWorld() const", METHOD_TRIVIAL(UWorld, IsPreviewWorld));
 
-#if !WITH_ANGELSCRIPT_HAZE
 	UWorld_.Method("bool ServerTravel(const FString& FURL, bool bAbsolute, bool bShouldSkipGameNotify)", METHOD_TRIVIAL(UWorld, ServerTravel));
 
 	UWorld_.Method("ENetMode GetNetMode() const", METHOD_TRIVIAL(UWorld, GetNetMode));
@@ -54,7 +53,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_World((int32)FAngelscriptBinds
 	{
 		return World->GetGameState();
 	});
-#endif
 	
 	UWorld_.Method("float64 GetTimeSeconds() const", METHOD_TRIVIAL(UWorld, GetTimeSeconds));
 	UWorld_.Method("float64 GetUnpausedTimeSeconds() const", METHOD_TRIVIAL(UWorld, GetUnpausedTimeSeconds));

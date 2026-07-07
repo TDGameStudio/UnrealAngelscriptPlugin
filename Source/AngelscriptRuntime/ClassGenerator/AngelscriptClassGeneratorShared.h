@@ -27,7 +27,6 @@ inline const FName NAME_Function_DefaultToSelf(TEXT("DefaultToSelf"));
 inline const FName FUNCMETA_BlueprintThreadSafe("BlueprintThreadSafe");
 inline const FName FUNCMETA_NotBlueprintThreadSafe("NotBlueprintThreadSafe");
 inline const FName FUNCMETA_BlueprintProtected("BlueprintProtected");
-inline const FName FUNCMETA_CrumbFunction("CrumbFunction");
 inline const FName FUNCMETA_ScriptNoOp("ScriptNoOp");
 
 inline const FName CLASSMETA_NotAngelscriptSpawnable("NotAngelscriptSpawnable");

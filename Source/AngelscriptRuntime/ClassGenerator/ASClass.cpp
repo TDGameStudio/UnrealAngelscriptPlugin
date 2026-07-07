@@ -29,11 +29,7 @@
 #pragma warning(disable : 4191)
 #endif
 
-#if !WITH_ANGELSCRIPT_HAZE
 #define AS_ENSURE ensureMsgf
-#else
-#define AS_ENSURE devEnsure
-#endif
 
 UObject* UASClass::OverrideConstructingObject = nullptr;
 

@@ -160,14 +160,13 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AActor_Base((int32)FAngelscrip
 		}
 	});
 
-#if !WITH_ANGELSCRIPT_HAZE
-	AActor_.Method("APawn GetActorInstigator() const",
+	AActor_.Method("APawn GetInstigator() const",
 	[](const AActor* Actor) -> APawn*
 	{
 		return Actor->GetInstigator();
 	});
 		
-	AActor_.Method("AController GetActorInstigatorController() const",
+	AActor_.Method("AController GetInstigatorController() const",
 	[](const AActor* Actor) -> AController*
 	{
 		return Actor->GetInstigatorController();
@@ -194,7 +193,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AActor_Base((int32)FAngelscrip
 		if (Actor != nullptr)
 			Actor->DisableInput(PC);
 	});
-#endif
 });
 
 AActor* FAngelscriptActorBinds::SpawnActorFromMeta(class asCScriptFunction* Meta, const FVector& Location, const FRotator& Rotation, const FName& Name, ULevel* Level)
@@ -347,7 +345,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Actors((int32)FAngelscriptBind
 		}
 	}
 
-#if !WITH_ANGELSCRIPT_HAZE
 	FAngelscriptBinds::BindGlobalFunction("void GetAllActorsOfClass(?& OutActors)",
 	[](TArray<AActor*>& OutActors, int TypeId)
 	{
@@ -479,7 +476,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Actors((int32)FAngelscriptBind
 
 		UGameplayStatics::GetAllActorsOfClassWithTag(FAngelscriptEngine::TryGetCurrentWorldContextObject(), ActorClass, Tag, OutActors);
 	});
-#endif
 
 	FAngelscriptBinds::BindGlobalFunction(
 	  "AActor SpawnActor(const TSubclassOf<AActor>& Class, const FVector& Location = FVector::ZeroVector, const FRotator& Rotation = FRotator::ZeroRotator, const FName& Name = NAME_None, bool bDeferredSpawn = false, ULevel Level = nullptr)",

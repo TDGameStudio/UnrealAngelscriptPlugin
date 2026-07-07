@@ -549,17 +549,15 @@ struct FAngelscriptDebugDatabaseSettings : FDebugMessage
 {
 	bool bAutomaticImports = false;
 	bool bFloatIsFloat64 = false;
-	bool bUseAngelscriptHaze = false;
 	bool bDeprecateStaticClass = false;
 	bool bDisallowStaticClass = false;
 
 	FORCEINLINE friend FArchive& operator<<(FArchive& Ar, FAngelscriptDebugDatabaseSettings& Msg)
 	{
-		int32 Version = 5;
+		int32 Version = 6;
 		Ar << Version;
 		Ar << Msg.bAutomaticImports;
 		Ar << Msg.bFloatIsFloat64;
-		Ar << Msg.bUseAngelscriptHaze;
 		Ar << Msg.bDeprecateStaticClass;
 		Ar << Msg.bDisallowStaticClass;
 		return Ar;

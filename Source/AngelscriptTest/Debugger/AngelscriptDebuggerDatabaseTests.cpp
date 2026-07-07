@@ -111,7 +111,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDebuggerDatabaseTests,
 
 		ASSERT_THAT(AreEqual(Ctx.GetEngine().ShouldUseAutomaticImportMethod(), Settings->bAutomaticImports, TEXT("Debugger database protocol should mirror the automatic-import setting")));
 		ASSERT_THAT(AreEqual(RuntimeSettings->bScriptFloatIsFloat64, Settings->bFloatIsFloat64, TEXT("Debugger database protocol should mirror the script float width setting")));
-		ASSERT_THAT(AreEqual(!!WITH_ANGELSCRIPT_HAZE, Settings->bUseAngelscriptHaze, TEXT("Debugger database protocol should mirror the haze integration setting")));
 		ASSERT_THAT(AreEqual(RuntimeSettings->StaticClassDeprecation == EAngelscriptStaticClassMode::Deprecated, Settings->bDeprecateStaticClass, TEXT("Debugger database protocol should mirror the static class deprecate setting")));
 		ASSERT_THAT(AreEqual(RuntimeSettings->StaticClassDeprecation == EAngelscriptStaticClassMode::Disallowed, Settings->bDisallowStaticClass, TEXT("Debugger database protocol should mirror the static class disallow setting")));
 

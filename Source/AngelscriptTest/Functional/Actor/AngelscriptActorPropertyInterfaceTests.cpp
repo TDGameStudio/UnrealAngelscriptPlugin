@@ -14,6 +14,21 @@ using namespace AngelscriptActorTestUtils;
 
 namespace AngelscriptActorPropertyInterfaceTestHelpers
 {
+	bool CompileSummaryHasErrorContaining(
+		const FAngelscriptCompileTraceSummary& Summary,
+		const TCHAR* ExpectedFragment)
+	{
+		for (const FAngelscriptCompileTraceDiagnosticSummary& Diagnostic : Summary.Diagnostics)
+		{
+			if (Diagnostic.bIsError && Diagnostic.Message.Contains(ExpectedFragment))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	int32 CallScriptIntFunction(FAutomationTestBase& Test, AActor* Actor, FName FunctionName)
 	{
 		FFunctionInvoker Invoker(Test, Actor, FunctionName);
@@ -212,9 +227,9 @@ class ATestActorInterfaceBoundMethods : AActor
 	UFUNCTION()
 	int CheckInstigator(APawn ExpectedPawn, AController ExpectedController)
 	{
-		if (GetActorInstigator() != ExpectedPawn)
+		if (GetInstigator() != ExpectedPawn)
 			return 100;
-		if (GetActorInstigatorController() != ExpectedController)
+		if (GetInstigatorController() != ExpectedController)
 			return 110;
 
 		return 1;
@@ -271,6 +286,102 @@ class ATestActorInterfaceBoundMethods : AActor
 			1,
 			CallScriptIntFunction(*TestRunner, Actor, TEXT("CheckAfterBeginPlay")),
 			TEXT("AActor bound methods should report expected post-BeginPlay state")));
+	}
+
+	TEST_METHOD(OldInstigatorAliasNamesAreRejected)
+	{
+		using namespace AngelscriptActorPropertyInterfaceTestHelpers;
+
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		static const FName PawnAliasModuleName(TEXT("TestActorOldInstigatorPawnAliasRejected"));
+		static const FName ControllerAliasModuleName(TEXT("TestActorOldInstigatorControllerAliasRejected"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*PawnAliasModuleName.ToString());
+			Engine.DiscardModule(*ControllerAliasModuleName.ToString());
+			Engine.ResetDiagnostics();
+			Engine.LastEmittedDiagnostics.Empty();
+		};
+
+		const FString PawnAliasSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class ATestActorOldInstigatorPawnAliasRejected : AActor
+			{
+				UFUNCTION()
+				bool CheckOldPawnAlias()
+				{
+					return GetActorInstigator() == nullptr;
+				}
+			}
+			)AS");
+
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("No matching signatures to 'ATestActorOldInstigatorPawnAliasRejected::GetActorInstigator()'"),
+			EAutomationExpectedErrorFlags::Contains,
+			-1);
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("Hot reload failed due to script compile errors"),
+			EAutomationExpectedErrorFlags::Contains,
+			-1);
+
+		FAngelscriptCompileTraceSummary PawnAliasSummary;
+		const bool bPawnAliasCompiled = CompileModuleWithSummary(
+			&Engine,
+			ECompileType::FullReload,
+			PawnAliasModuleName,
+			TEXT("TestActorOldInstigatorPawnAliasRejected.as"),
+			PawnAliasSource,
+			/*bUsePreprocessor=*/ true,
+			PawnAliasSummary,
+			/*bSuppressCompileErrorLogs=*/ true);
+
+		ASSERT_THAT(IsFalse(bPawnAliasCompiled, TEXT("old APawn instigator alias name should no longer compile")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, PawnAliasSummary.CompileResult,
+			TEXT("old APawn instigator alias name should surface compile errors")));
+		ASSERT_THAT(IsTrue(CompileSummaryHasErrorContaining(PawnAliasSummary, TEXT("GetActorInstigator")),
+			TEXT("old APawn instigator alias should report a missing signature diagnostic")));
+
+		Engine.ResetDiagnostics();
+		Engine.LastEmittedDiagnostics.Empty();
+
+		const FString ControllerAliasSource = ASTEST_AS(R"AS(
+			UCLASS()
+			class ATestActorOldInstigatorControllerAliasRejected : AActor
+			{
+				UFUNCTION()
+				bool CheckOldControllerAlias()
+				{
+					return GetActorInstigatorController() == nullptr;
+				}
+			}
+			)AS");
+
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("No matching signatures to 'ATestActorOldInstigatorControllerAliasRejected::GetActorInstigatorController()'"),
+			EAutomationExpectedErrorFlags::Contains,
+			-1);
+		TestRunner->AddExpectedErrorPlain(
+			TEXT("Hot reload failed due to script compile errors"),
+			EAutomationExpectedErrorFlags::Contains,
+			-1);
+
+		FAngelscriptCompileTraceSummary ControllerAliasSummary;
+		const bool bControllerAliasCompiled = CompileModuleWithSummary(
+			&Engine,
+			ECompileType::FullReload,
+			ControllerAliasModuleName,
+			TEXT("TestActorOldInstigatorControllerAliasRejected.as"),
+			ControllerAliasSource,
+			/*bUsePreprocessor=*/ true,
+			ControllerAliasSummary,
+			/*bSuppressCompileErrorLogs=*/ true);
+
+		ASSERT_THAT(IsFalse(bControllerAliasCompiled, TEXT("old controller instigator alias name should no longer compile")));
+		ASSERT_THAT(AreEqual(ECompileResult::Error, ControllerAliasSummary.CompileResult,
+			TEXT("old controller instigator alias name should surface compile errors")));
+		ASSERT_THAT(IsTrue(CompileSummaryHasErrorContaining(ControllerAliasSummary, TEXT("GetActorInstigatorController")),
+			TEXT("old controller instigator alias should report a missing signature diagnostic")));
 	}
 
 	TEST_METHOD(InterfaceComponentAndInput)

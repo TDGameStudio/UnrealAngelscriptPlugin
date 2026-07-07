@@ -574,18 +574,6 @@ void FAngelscriptClassGenerator::DoFullReloadClass(FModuleData& ModuleData, FCla
 			if (!FunctionDesc->bUnreliable)
 				NewFunction->FunctionFlags |= FUNC_NetReliable;
 		}
-#if WITH_ANGELSCRIPT_HAZE
-		if (FunctionDesc->bNetFunction)
-		{
-			NewFunction->FunctionFlags |= FUNC_NetFunction;
-			if (!FunctionDesc->bUnreliable)
-				NewFunction->FunctionFlags |= FUNC_NetReliable;
-			if (FunctionDesc->Meta.Contains(FUNCMETA_CrumbFunction))
-				NewFunction->HazeFunctionFlags = (EHazeFunctionFlags)((uint32)NewFunction->HazeFunctionFlags | (uint32)HAZEFUNC_CrumbFunction);
-		}
-		if (FunctionDesc->bDevFunction)
-			NewFunction->FunctionFlags |= FUNC_DevFunction;
-#endif
 		if (FunctionDesc->bIsConstMethod)
 			NewFunction->FunctionFlags |= FUNC_Const;
 		if (FunctionDesc->Meta.Contains(NAME_Meta_EditorOnly))

@@ -1614,8 +1614,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageIntPropertyTest,
 	// ClassGenerator): every UPROPERTY defaults to EditAnywhere + BlueprintRead-
 	// Write, so a property only loses CPF_Edit / CPF_BlueprintVisible when an
 	// explicit specifier overrides the default. `Replicated` / `ReplicatedUsing`
-	// are intentionally excluded here -- under WITH_ANGELSCRIPT_HAZE they are not
-	// valid property specifiers and belong in the Networking PIE suite.
+	// belong in the Networking PIE suite because they need replication-facing
+	// validation beyond static CPF_* and metadata checks.
 	// -------------------------------------------------------------------------
 	TEST_METHOD(IntPropertySpecifierFlags)
 	{

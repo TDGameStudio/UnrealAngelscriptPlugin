@@ -50,9 +50,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Base((int32)FAngelscri
 			Object->ClearFlags(RF_Transactional);
 	});
 
-#if !WITH_ANGELSCRIPT_HAZE
 	UObject_.Method("bool IsSupportedForNetworking() const", METHOD_TRIVIAL(UObject, IsSupportedForNetworking));
-#endif
 
 	UObject_.Method("UClass GetClass() const", METHOD_TRIVIAL(UObject, GetClass));
 	UObject_.Method("UObject GetOuter() const", METHOD_TRIVIAL(UObject, GetOuter));
@@ -565,7 +563,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAng
 	});
 	FAngelscriptBinds::SetPreviousBindArgumentDeterminesOutputType(1);
 
-#if !WITH_ANGELSCRIPT_HAZE
 	FAngelscriptBinds::BindGlobalFunction(
   	  "UObject LoadObject(UObject Outer, const FString& Name)",
 	[](UObject* Outer, const FString& Name) -> UObject*
@@ -573,7 +570,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAng
 		FAngelscriptExcludeScopeFromLoopTimeout TimeoutExclusion;
 		return LoadObject<UObject>(Outer, *Name);
 	});
-#endif
 
 	FAngelscriptBinds::BindGlobalFunction(
   	  "UObject FindObject(const FString& Name)",

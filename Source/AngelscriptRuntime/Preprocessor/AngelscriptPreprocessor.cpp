@@ -1531,8 +1531,6 @@ static FName PP_NAME_BlueprintCallable("BlueprintCallable");
 static FName PP_NAME_NotBlueprintCallable("NotBlueprintCallable");
 static FName PP_NAME_BlueprintPure("BlueprintPure");
 static FName PP_NAME_BlueprintEvent("BlueprintEvent");
-static FName PP_NAME_NetFunction("NetFunction");
-static FName PP_NAME_CrumbFunction("CrumbFunction");
 static FName PP_NAME_NetMulticast("NetMulticast");
 static FName PP_NAME_WithValidation("WithValidation");
 static FName PP_NAME_NetClient("Client");
@@ -1544,7 +1542,6 @@ static FName PP_NAME_Meta("Meta");
 static FName PP_NAME_DisplayName("DisplayName");
 static FName PP_NAME_Keywords("Keywords");
 static FName PP_NAME_Category("Category");
-static FName PP_NAME_DevFunction("DevFunction");
 static FName PP_NAME_CallInEditor("CallInEditor");
 static FName PP_NAME_ForcedAssets("ForcedAssets");
 static FName PP_NAME_BlueprintAuthorityOnly("BlueprintAuthorityOnly");
@@ -1666,50 +1663,6 @@ void FAngelscriptPreprocessor::ProcessFunctionMacro(FFile& File, FChunk& Chunk, 
 				FunctionDesc->ScriptFunctionName += TEXT("_Implementation");
 			}
 		}
-#if WITH_ANGELSCRIPT_HAZE
-		else if (Spec.Name == PP_NAME_NetFunction || Spec.Name == PP_NAME_CrumbFunction)
-		{
-			if (FunctionDesc->bIsStatic)
-			{
-				MacroError(File, Macro, FString::Printf(TEXT("Static UFUNCTION()s cannot be NetFunction"), *FunctionDesc->FunctionName));
-				bHasError = true;
-				continue;
-			}
-
-			if (FunctionDesc->bBlueprintOverride)
-			{
-				MacroError(File, Macro, FString::Printf(TEXT("UFUNCTION() %s cannot be both NetFunction and BlueprintOverride"), *FunctionDesc->FunctionName));
-				bHasError = true;
-				continue;
-			}
-
-			bool bAlreadyHasWrapper = FunctionDesc->bBlueprintEvent;
-
-			if (!bHadNotCallable)
-				FunctionDesc->bBlueprintCallable = true;
-			if (Spec.Name == PP_NAME_CrumbFunction)
-				FunctionDesc->Meta.Add(Spec.Name, FString());
-
-			FunctionDesc->bBlueprintEvent = true;
-			FunctionDesc->bNetFunction = true;
-
-			if (!bAlreadyHasWrapper)
-			{
-				// Set it as not blueprint overridable unless we also have BlueprintEvent
-				FunctionDesc->bCanOverrideEvent = false;
-
-				// Generate the blueprint event caller wrapper function
-				GenerateBlueprintEventWrapper(File, Chunk, Macro, FunctionDesc);
-
-				// Suffix the script function name so it doesn't collide
-				FunctionDesc->ScriptFunctionName += TEXT("_Implementation");
-			}
-		}
-		else if (Spec.Name == PP_NAME_DevFunction)
-		{
-			FunctionDesc->bDevFunction = true;
-		}
-#else
 		else if (Spec.Name == PP_NAME_NetMulticast || Spec.Name == PP_NAME_NetServer || Spec.Name == PP_NAME_NetClient)
 		{
 
@@ -1780,7 +1733,6 @@ void FAngelscriptPreprocessor::ProcessFunctionMacro(FFile& File, FChunk& Chunk, 
 		{
 			FunctionDesc->bBlueprintAuthorityOnly = true;
 		}
-#endif
 		else if (Spec.Name == PP_NAME_Exec)
 		{
 			FunctionDesc->bExec = true;
@@ -2682,7 +2634,6 @@ void FAngelscriptPreprocessor::ProcessPropertyMacro(FFile& File, FChunk& Chunk, 
 			PropDesc->bBlueprintWritable = false;
 			PropDesc->bBlueprintReadable = true;
 		}
-#if !WITH_ANGELSCRIPT_HAZE
 		else if (Spec.Name == PP_NAME_Replicated)
 		{
 			PropDesc->bReplicated = true;
@@ -2751,7 +2702,6 @@ void FAngelscriptPreprocessor::ProcessPropertyMacro(FFile& File, FChunk& Chunk, 
 				PropDesc->bSkipReplication = true;
 			}
 		}
-#endif
 		else if (Spec.Name == PP_NAME_SkipSerialization)
 		{
 			PropDesc->bSkipSerialization = true;

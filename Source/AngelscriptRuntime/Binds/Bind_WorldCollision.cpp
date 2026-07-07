@@ -355,11 +355,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Traces((int32)FAngelscriptBind
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AsyncTraces((int32)FAngelscriptBinds::EOrder::Late, []
 {
-#if !WITH_ANGELSCRIPT_HAZE
 	FAngelscriptBinds::FNamespace ns("System");
-#else
-	FAngelscriptBinds::FNamespace ns("AsyncTrace");
-#endif
 
 	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncLineTraceByChannel(EAsyncTraceType InTraceType, const FVector& Start,const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)",
 		[](EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, 
