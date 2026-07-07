@@ -720,8 +720,17 @@ TUniquePtr<FAngelscriptEngine> FAngelscriptEngine::Create(const FAngelscriptEngi
 
 bool FAngelscriptEngine::IsInitialized()
 {
-	return FAngelscriptEngineContextStack::Peek() != nullptr
-		|| UAngelscriptSubsystem::GetCurrent() != nullptr;
+	if (FAngelscriptEngineContextStack::Peek() != nullptr)
+	{
+		return true;
+	}
+
+	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::Get())
+	{
+		return Subsystem->GetEngine() != nullptr;
+	}
+
+	return false;
 }
 
 UObject* FAngelscriptEngine::TryGetCurrentWorldContextObject()
@@ -767,7 +776,7 @@ FAngelscriptEngine* FAngelscriptEngine::TryGetCurrentEngine()
 		return ScopedEngine;
 	}
 
-	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::GetCurrent())
+	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::Get())
 	{
 		if (FAngelscriptEngine* AttachedEngine = Subsystem->GetEngine())
 		{

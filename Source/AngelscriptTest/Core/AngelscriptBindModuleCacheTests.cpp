@@ -1,4 +1,5 @@
 #include "AngelscriptBinds.h"
+#include "AngelscriptTestUtilities.h"
 
 #include "CQTest.h"
 #include "HAL/FileManager.h"
@@ -61,6 +62,7 @@ public:
 	TEST_METHOD(RoundTripsOrderAndClearsOnMissingFile)
 	{
 const TArray<FString> ExpectedBindModules = MakeExpectedBindModules();
+		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		const FString CacheDirectory = MakeBindModuleCacheAutomationDirectory();
 		const FString CachePath = FPaths::Combine(CacheDirectory, TEXT("BindModules.Cache"));
 		const FString MissingCachePath = FPaths::Combine(CacheDirectory, TEXT("MissingBindModules.Cache"));

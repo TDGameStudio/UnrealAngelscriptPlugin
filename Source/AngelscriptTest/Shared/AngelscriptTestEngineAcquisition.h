@@ -93,38 +93,26 @@ using FAngelscriptTestEngineScopeAccess = ::FAngelscriptTestEngineScopeAccess;
 
 inline UAngelscriptSubsystem* TryGetRunningProductionSubsystem()
 {
-	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::GetCurrent())
-	{
-		return Subsystem;
-	}
-
-	if (GEngine == nullptr)
-	{
-		return nullptr;
-	}
-
-	for (const FWorldContext& WorldContext : GEngine->GetWorldContexts())
-	{
-		UWorld* World = WorldContext.World();
-		if (World == nullptr)
-		{
-			continue;
-		}
-
-		UGameInstance* GameInstance = World->GetGameInstance();
-		if (GameInstance == nullptr)
-		{
-			continue;
-		}
-
-		if (UAngelscriptSubsystem* Subsystem = GameInstance->GetSubsystem<UAngelscriptSubsystem>())
-		{
-			return Subsystem;
-		}
-	}
-
-	return nullptr;
+	return UAngelscriptSubsystem::Get();
 }
+
+class FScopedSuppressProductionAngelscriptSubsystem
+{
+public:
+	FScopedSuppressProductionAngelscriptSubsystem()
+	{
+#if WITH_DEV_AUTOMATION_TESTS
+		UAngelscriptSubsystem::SetSubsystemOverrideForTesting(nullptr);
+#endif
+	}
+
+	~FScopedSuppressProductionAngelscriptSubsystem()
+	{
+#if WITH_DEV_AUTOMATION_TESTS
+		UAngelscriptSubsystem::ResetInitializeStateForTesting();
+#endif
+	}
+};
 
 inline TUniquePtr<FAngelscriptEngine>& GetSharedTestEngineStorage()
 {
@@ -418,15 +406,12 @@ inline void DestroySharedTestEngine()
 
 inline void DestroyStrayLegacyGlobalTestEngine()
 {
-	if (!UAngelscriptSubsystem::HasAnyTickOwner())
+	if (FAngelscriptEngine* GlobalEngine = FAngelscriptTestEngineScopeAccess::GetGlobalEngine())
 	{
-		if (FAngelscriptEngine* GlobalEngine = FAngelscriptTestEngineScopeAccess::GetGlobalEngine())
-		{
-			ResetSharedCloneEngine(*GlobalEngine);
-		}
-
-		FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		ResetSharedCloneEngine(*GlobalEngine);
 	}
+
+	FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 }
 
 inline void DestroySharedAndStrayGlobalTestEngine()

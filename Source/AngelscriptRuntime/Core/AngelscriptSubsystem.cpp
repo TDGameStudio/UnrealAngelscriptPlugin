@@ -1,61 +1,42 @@
 #include "AngelscriptSubsystem.h"
 
-#include "AngelscriptEngine.h"
-#include "AngelscriptRuntimeModule.h"
 #include "Engine/Engine.h"
-#include "Engine/GameInstance.h"
 
-int32 UAngelscriptSubsystem::ActiveTickOwners = 0;
+#if WITH_DEV_AUTOMATION_TESTS
+TOptional<bool> UAngelscriptSubsystem::StartupIsEditorOverrideForTesting;
+TOptional<bool> UAngelscriptSubsystem::StartupIsRunningCommandletOverrideForTesting;
+TFunction<FAngelscriptEngine*()> UAngelscriptSubsystem::InitializeOverrideForTesting;
+TWeakObjectPtr<UAngelscriptSubsystem> UAngelscriptSubsystem::SubsystemOverrideForTesting;
+bool UAngelscriptSubsystem::bHasSubsystemOverrideForTesting = false;
+#endif
 
 UAngelscriptSubsystem::~UAngelscriptSubsystem() = default;
+
+bool UAngelscriptSubsystem::ShouldCreateSubsystem(UObject* Outer) const
+{
+	if (IsUnreachable() || !Super::ShouldCreateSubsystem(Outer))
+	{
+		return false;
+	}
+
+	return ShouldBootstrapAngelscript();
+}
 
 void UAngelscriptSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-
-	bInitialized = true;
-	PrimaryEngine = FAngelscriptEngine::TryGetCurrentEngine();
-	if (PrimaryEngine == nullptr)
-	{
-		PrimaryEngine = &OwnedEngine;
-		FAngelscriptEngineContextStack::Push(PrimaryEngine);
-		OwnedEngine.Initialize();
-		bOwnsPrimaryEngine = true;
-	}
-
-	if (PrimaryEngine != nullptr)
-	{
-		++ActiveTickOwners;
-	}
+	EnsurePrimaryEngineInitialized();
 }
 
 void UAngelscriptSubsystem::Deinitialize()
 {
-	if (PrimaryEngine != nullptr)
-	{
-		ActiveTickOwners = FMath::Max(0, ActiveTickOwners - 1);
-	}
-
-	if (bOwnsPrimaryEngine)
-	{
-		FAngelscriptEngineContextStack::Pop(PrimaryEngine);
-		if (PrimaryEngine != nullptr)
-		{
-			PrimaryEngine->Shutdown();
-		}
-		bOwnsPrimaryEngine = false;
-	}
-
-	PrimaryEngine = nullptr;
-	bInitialized = false;
-
+	ReleasePrimaryEngine();
 	Super::Deinitialize();
 }
 
 UWorld* UAngelscriptSubsystem::GetTickableGameObjectWorld() const
 {
-	const UGameInstance* GameInstance = GetGameInstance();
-	return GameInstance != nullptr ? GameInstance->GetWorld() : nullptr;
+	return nullptr;
 }
 
 ETickableTickType UAngelscriptSubsystem::GetTickableTickType() const
@@ -65,7 +46,7 @@ ETickableTickType UAngelscriptSubsystem::GetTickableTickType() const
 
 bool UAngelscriptSubsystem::IsAllowedToTick() const
 {
-	return !IsTemplate() && bInitialized && PrimaryEngine != nullptr;
+	return !IsTemplate() && bInitializedPrimaryEngine && PrimaryEngine != nullptr;
 }
 
 bool UAngelscriptSubsystem::IsTickableInEditor() const
@@ -80,7 +61,12 @@ bool UAngelscriptSubsystem::IsTickableWhenPaused() const
 
 void UAngelscriptSubsystem::Tick(float DeltaTime)
 {
-	if (PrimaryEngine != nullptr && PrimaryEngine->ShouldTick())
+	if (PrimaryEngine == nullptr)
+	{
+		return;
+	}
+
+	if (PrimaryEngine->ShouldTick())
 	{
 		PrimaryEngine->Tick(DeltaTime);
 	}
@@ -91,29 +77,113 @@ TStatId UAngelscriptSubsystem::GetStatId() const
 	return GetStatID();
 }
 
-UAngelscriptSubsystem* UAngelscriptSubsystem::GetCurrent()
+void UAngelscriptSubsystem::EnsurePrimaryEngineInitialized()
 {
-	if (GEngine == nullptr)
+	if (bInitializedPrimaryEngine && PrimaryEngine != nullptr)
 	{
-		return nullptr;
+		return;
 	}
 
-	UWorld* World = GEngine->GetWorldFromContextObject(FAngelscriptEngine::GetAmbientWorldContext(), EGetWorldErrorMode::ReturnNull);
-	if (World == nullptr)
+#if WITH_DEV_AUTOMATION_TESTS
+	if (InitializeOverrideForTesting)
 	{
-		return nullptr;
+		if (FAngelscriptEngine* OverrideEngine = InitializeOverrideForTesting())
+		{
+			PrimaryEngine = OverrideEngine;
+			bOwnsPrimaryEngine = false;
+			bUsesOverridePrimaryEngine = true;
+			bInitializedPrimaryEngine = true;
+			UE_LOG(Angelscript, Verbose, TEXT("[EngineSubsystemStartup] Initialized with automation override engine=%p."), PrimaryEngine);
+		}
+		return;
+	}
+#endif
+
+	if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
+	{
+		PrimaryEngine = CurrentEngine;
+		bOwnsPrimaryEngine = false;
+		bUsesOverridePrimaryEngine = false;
+		bInitializedPrimaryEngine = true;
+		if (PrimaryEngine->GetScriptEngine() == nullptr)
+		{
+			UE_LOG(Angelscript, Display, TEXT("[EngineSubsystemStartup] Initializing ambient primary engine=%p."), PrimaryEngine);
+			PrimaryEngine->Initialize();
+		}
+		else
+		{
+			UE_LOG(Angelscript, Verbose, TEXT("[EngineSubsystemStartup] Adopted ambient primary engine=%p."), PrimaryEngine);
+		}
+		return;
 	}
 
-	UGameInstance* GameInstance = World->GetGameInstance();
-	if (GameInstance == nullptr)
-	{
-		return nullptr;
-	}
-
-	return GameInstance->GetSubsystem<UAngelscriptSubsystem>();
+	PrimaryEngine = &OwnedEngine;
+	bOwnsPrimaryEngine = true;
+	bUsesOverridePrimaryEngine = false;
+	bInitializedPrimaryEngine = true;
+	UE_LOG(Angelscript, Display, TEXT("[EngineSubsystemStartup] Created owned primary engine=%p."), PrimaryEngine);
+	PrimaryEngine->Initialize();
 }
 
-bool UAngelscriptSubsystem::HasAnyTickOwner()
+UAngelscriptSubsystem* UAngelscriptSubsystem::Get()
 {
-	return ActiveTickOwners > 0;
+#if WITH_DEV_AUTOMATION_TESTS
+	if (bHasSubsystemOverrideForTesting)
+	{
+		return SubsystemOverrideForTesting.Get();
+	}
+#endif
+
+	return GEngine != nullptr ? GEngine->GetEngineSubsystem<UAngelscriptSubsystem>() : nullptr;
 }
+
+void UAngelscriptSubsystem::ReleasePrimaryEngine()
+{
+	if (PrimaryEngine != nullptr && bOwnsPrimaryEngine)
+	{
+		PrimaryEngine->Shutdown();
+	}
+
+	PrimaryEngine = nullptr;
+	bOwnsPrimaryEngine = false;
+	bInitializedPrimaryEngine = false;
+	bUsesOverridePrimaryEngine = false;
+}
+
+bool UAngelscriptSubsystem::ShouldBootstrapAngelscript() const
+{
+	return true;
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+void UAngelscriptSubsystem::SetStartupEnvironmentOverrideForTesting(const TOptional<bool>& bIsEditorOverride, const TOptional<bool>& bIsRunningCommandletOverride)
+{
+	StartupIsEditorOverrideForTesting = bIsEditorOverride;
+	StartupIsRunningCommandletOverrideForTesting = bIsRunningCommandletOverride;
+}
+
+void UAngelscriptSubsystem::ClearStartupEnvironmentOverrideForTesting()
+{
+	StartupIsEditorOverrideForTesting.Reset();
+	StartupIsRunningCommandletOverrideForTesting.Reset();
+}
+
+void UAngelscriptSubsystem::SetInitializeOverrideForTesting(TFunction<FAngelscriptEngine*()> InOverride)
+{
+	InitializeOverrideForTesting = MoveTemp(InOverride);
+}
+
+void UAngelscriptSubsystem::SetSubsystemOverrideForTesting(UAngelscriptSubsystem* InSubsystem)
+{
+	SubsystemOverrideForTesting = InSubsystem;
+	bHasSubsystemOverrideForTesting = true;
+}
+
+void UAngelscriptSubsystem::ResetInitializeStateForTesting()
+{
+	ClearStartupEnvironmentOverrideForTesting();
+	InitializeOverrideForTesting = nullptr;
+	SubsystemOverrideForTesting.Reset();
+	bHasSubsystemOverrideForTesting = false;
+}
+#endif

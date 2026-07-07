@@ -165,6 +165,7 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 	TEST_METHOD(LastFullDestroyClearsTypeState)
 	{
 FCoreTestContextStackGuard ContextGuard;
+		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -201,6 +202,7 @@ FCoreTestContextStackGuard ContextGuard;
 	TEST_METHOD(FullDestroyAllowsCleanRecreate)
 	{
 FCoreTestContextStackGuard ContextGuard;
+		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -272,6 +274,7 @@ FCoreTestContextStackGuard ContextGuard;
 	TEST_METHOD(FullDestroyAllowsAnnotatedRecreate)
 	{
 FCoreTestContextStackGuard ContextGuard;
+		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -362,6 +365,7 @@ class ARecreateAnnotatedActorB : AActor
 	TEST_METHOD(FullDestroyAllowsAnnotatedSameNameRecreate)
 	{
 FCoreTestContextStackGuard ContextGuard;
+		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{

@@ -116,6 +116,7 @@ public:
 	TEST_METHOD(AliasAndTypeFindersResetCleanly)
 	{
 FCoreTestContextStackGuard ContextGuard;
+		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{

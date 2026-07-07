@@ -1,6 +1,6 @@
 #include "Core/AngelscriptTestModule.h"
 
-#include "AngelscriptEngineSubsystem.h"
+#include "AngelscriptSubsystem.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 #include "AngelscriptTestEnginePool.h"
 
@@ -41,7 +41,7 @@ void FAngelscriptTestModule::StartupModule()
 		GAngelscriptTestStartupOverrideEngine = CreateScriptScanFreeFullEngineForTesting(
 			CreateEditorScanFreeStartupConfig(),
 			FAngelscriptEngineDependencies::CreateDefault());
-		UAngelscriptEngineSubsystem::SetInitializeOverrideForTesting([]() -> FAngelscriptEngine*
+		UAngelscriptSubsystem::SetInitializeOverrideForTesting([]() -> FAngelscriptEngine*
 		{
 			return GAngelscriptTestStartupOverrideEngine.Get();
 		});
@@ -56,7 +56,7 @@ void FAngelscriptTestModule::StartupModule()
 void FAngelscriptTestModule::ShutdownModule()
 {
 #if WITH_ANGELSCRIPT_UNITTESTS
-	UAngelscriptEngineSubsystem::ResetInitializeStateForTesting();
+	UAngelscriptSubsystem::ResetInitializeStateForTesting();
 	ShutdownTestEnginePool();
 	GAngelscriptTestStartupOverrideEngine.Reset();
 #endif

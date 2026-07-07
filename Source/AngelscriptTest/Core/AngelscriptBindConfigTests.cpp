@@ -436,6 +436,7 @@ UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
 
 	TEST_METHOD(GeneratedBlueprintCallableEntriesPopulateClassMaps)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
@@ -476,6 +477,7 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(AddFunctionEntryPreservesFirstRegistration)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); };
 
@@ -515,6 +517,7 @@ UFunction* WithOverride = UAngelscriptUhtCoverageTestLibrary::StaticClass()->Fin
 
 	TEST_METHOD(FunctionLevelScriptMethodUsesFirstParameterAsMixin)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
@@ -543,6 +546,7 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
@@ -584,6 +588,7 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(ScriptAllowTemporaryThisAppendsAcceptTemporaryThis)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
@@ -609,6 +614,7 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(UnsafeDuringActorConstructionSetsUnsafeTrait)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
@@ -648,6 +654,7 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(OverloadedExportedFunctionsCanRecoverDirectBind)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
@@ -672,6 +679,7 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(InlineDefinitionFunctionsCanRecoverDirectBind)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();
@@ -694,6 +702,7 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(InlineOutRefFunctionsCanRecoverDirectBind)
 	{
+FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
 		FAngelscriptBinds::ResetBindState();

@@ -66,7 +66,7 @@ FIsolationContextStackGuard()
 
 static void ResetIsolationRuntime()
 {
-if (!UAngelscriptSubsystem::HasAnyTickOwner() && FAngelscriptEngine::IsInitialized())
+if (FAngelscriptEngine::IsInitialized() && UAngelscriptSubsystem::Get() == nullptr)
 {
 	FAngelscriptEngineIsolationTestAccess::DestroyGlobalEngine();
 }

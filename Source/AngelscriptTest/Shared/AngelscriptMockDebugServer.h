@@ -5,7 +5,7 @@
 // Scope (Phase 1 A.1 of the UE 5.7 disabled-test restart plan):
 //   * Declares IAngelscriptDebugServerTestInterface: the minimal abstraction that
 //     debugger automation tests can target instead of FAngelscriptDebugServer when
-//     running headless (no production UAngelscriptSubsystem available).
+//     running headless (no production UAngelscriptSubsystem engine owner available).
 //   * Declares FAngelscriptMockDebugServer: a scripted-response implementation of
 //     that interface with a simplified stack-frame / local-scope model, so that
 //     stepping / evaluation group tests can exercise realistic transitions without
@@ -206,4 +206,3 @@ private:
 
 // Convenience typedef used by session config below.
 using FMockDebugServerPtr = TSharedPtr<IAngelscriptDebugServerTestInterface>;
-

@@ -1,6 +1,5 @@
 #include "AngelscriptRuntimeModule.h"
 #include "AngelscriptEngine.h"
-#include "AngelscriptEngineSubsystem.h"
 #include "AngelscriptSubsystem.h"
 #include "Dump/AngelscriptCrashSnapshot.h"
 #if WITH_AS_COVERAGE
@@ -66,7 +65,7 @@ void FAngelscriptRuntimeModule::InitializeAngelscript()
 	#endif
 
 	FModuleManager::Get().LoadModuleChecked(TEXT("AngelscriptRuntime"));
-	if (UAngelscriptEngineSubsystem* EngineSubsystem = UAngelscriptEngineSubsystem::Get())
+	if (UAngelscriptSubsystem* EngineSubsystem = UAngelscriptSubsystem::Get())
 	{
 		UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] Routing InitializeAngelscript to EngineSubsystem=%p."), EngineSubsystem);
 		EngineSubsystem->EnsurePrimaryEngineInitialized();

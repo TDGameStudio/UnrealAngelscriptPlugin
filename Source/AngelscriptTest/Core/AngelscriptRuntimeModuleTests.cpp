@@ -1,12 +1,9 @@
 #include "AngelscriptEngine.h"
-#include "AngelscriptEngineSubsystem.h"
 #include "AngelscriptSubsystem.h"
 #include "AngelscriptRuntimeModule.h"
 #include "AngelscriptTestUtilities.h"
 
-#include "Components/ActorTestSpawner.h"
 #include "CQTest.h"
-#include "Engine/GameInstance.h"
 #include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
@@ -36,6 +33,26 @@ struct FAngelscriptRuntimeModuleTickTestAccess
 	static FAngelscriptEngine* GetOwnedPrimaryEngine()
 	{
 		return FAngelscriptRuntimeModule::OwnedPrimaryEngine.Get();
+	}
+
+	static void SuppressEngineSubsystemLookup()
+	{
+		UAngelscriptSubsystem::SetSubsystemOverrideForTesting(nullptr);
+	}
+
+	static void UseEngineSubsystem(UAngelscriptSubsystem* Subsystem)
+	{
+		UAngelscriptSubsystem::SetSubsystemOverrideForTesting(Subsystem);
+	}
+
+	static void ResetEngineSubsystemTestState()
+	{
+		UAngelscriptSubsystem::ResetInitializeStateForTesting();
+	}
+
+	static void SetEngineSubsystemInitializeOverride(TFunction<FAngelscriptEngine*()> InOverride)
+	{
+		UAngelscriptSubsystem::SetInitializeOverrideForTesting(MoveTemp(InOverride));
 	}
 };
 
@@ -94,6 +111,7 @@ public:
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -103,6 +121,7 @@ public:
 		};
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+		FAngelscriptRuntimeModuleTickTestAccess::SuppressEngineSubsystemLookup();
 		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule initialize-override test should start without a current engine")))
 		{
 			return;
@@ -170,7 +189,8 @@ public:
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
 		FAngelscriptRuntimeModule RuntimeModule;
-		UAngelscriptEngineSubsystem* EngineSubsystem = UAngelscriptEngineSubsystem::Get();
+		TStrongObjectPtr<UAngelscriptSubsystem> EngineSubsystem(NewObject<UAngelscriptSubsystem>(GetTransientPackage()));
+		FAngelscriptRuntimeModuleTickTestAccess::UseEngineSubsystem(EngineSubsystem.Get());
 		if (!this->Assert.IsNotNull(EngineSubsystem, TEXT("RuntimeModule subsystem-route test should have an engine subsystem in editor automation")))
 		{
 			return;
@@ -180,6 +200,11 @@ public:
 		{
 			RuntimeModule.ShutdownModule();
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+			if (EngineSubsystem.IsValid())
+			{
+				EngineSubsystem->Deinitialize();
+			}
+			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -227,21 +252,21 @@ public:
 
 		TArray<FAngelscriptEngine*> StackAfterFirstShutdown = FAngelscriptEngineContextStack::SnapshotAndClear();
 		bOk &= this->Assert.AreEqual(
-			1,
+			0,
 			StackAfterFirstShutdown.Num(),
-			TEXT("RuntimeModule subsystem-route test should leave exactly one subsystem engine on the context stack after first shutdown"));
+			TEXT("RuntimeModule subsystem-route test should not push the subsystem engine onto the explicit context stack"));
 		bOk &= this->Assert.IsTrue(
-			StackAfterFirstShutdown.Num() == 1 && StackAfterFirstShutdown[0] == SubsystemEngine,
-			TEXT("RuntimeModule subsystem-route test should keep the subsystem engine as the only stack entry"));
+			FAngelscriptEngine::TryGetCurrentEngine() == SubsystemEngine,
+			TEXT("RuntimeModule subsystem-route test should still resolve the subsystem engine after clearing an empty explicit stack"));
 
 		RuntimeModule.ShutdownModule();
 
 		bOk &= this->Assert.IsFalse(
 			FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine(),
 			TEXT("RuntimeModule subsystem-route test should keep module-owned engine absent on repeated shutdown"));
-		bOk &= this->Assert.IsNull(
-			FAngelscriptEngine::TryGetCurrentEngine(),
-			TEXT("RuntimeModule subsystem-route test should keep the current engine cleared after the test manually clears the stack"));
+		bOk &= this->Assert.IsTrue(
+			FAngelscriptEngine::TryGetCurrentEngine() == SubsystemEngine,
+			TEXT("RuntimeModule subsystem-route test should keep resolving the subsystem engine after repeated module shutdown"));
 
 		TArray<FAngelscriptEngine*> StackAfterSecondShutdown = FAngelscriptEngineContextStack::SnapshotAndClear();
 		bOk &= this->Assert.AreEqual(
@@ -264,6 +289,7 @@ public:
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -274,6 +300,7 @@ public:
 
 		int32 InitializeCalls = 0;
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+		FAngelscriptRuntimeModuleTickTestAccess::SuppressEngineSubsystemLookup();
 		FAngelscriptRuntimeModuleTickTestAccess::SetInitializeOverride([&InitializeCalls]()
 		{
 			++InitializeCalls;
@@ -323,6 +350,7 @@ public:
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -332,6 +360,7 @@ public:
 		};
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+		FAngelscriptRuntimeModuleTickTestAccess::SuppressEngineSubsystemLookup();
 		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule ambient-initialize test should start without a current engine")))
 		{
 			return;
@@ -438,7 +467,7 @@ private:
 	};
 
 public:
-	TEST_METHOD(TickRespectsGameInstanceOwnership)
+	TEST_METHOD(TickAdvancesSubsystemPrimaryEngine)
 	{
 		FRuntimeModuleContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
@@ -451,6 +480,7 @@ public:
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -465,49 +495,35 @@ public:
 			return;
 		}
 
-		FAngelscriptEngineScope EngineScope(*TestEngine);
-		if (!this->Assert.IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == TestEngine.Get(), TEXT("EngineSubsystem tick test should make the isolated engine current")))
-		{
-			return;
-		}
-
-		TStrongObjectPtr<UAngelscriptEngineSubsystem> EngineSubsystem(NewObject<UAngelscriptEngineSubsystem>(GetTransientPackage()));
+		TStrongObjectPtr<UAngelscriptSubsystem> EngineSubsystem(NewObject<UAngelscriptSubsystem>(GetTransientPackage()));
 		if (!this->Assert.IsNotNull(EngineSubsystem.Get(), TEXT("EngineSubsystem tick test should create a native subsystem object")))
 		{
 			return;
 		}
 
+		FAngelscriptRuntimeModuleTickTestAccess::UseEngineSubsystem(EngineSubsystem.Get());
+		FAngelscriptRuntimeModuleTickTestAccess::SetEngineSubsystemInitializeOverride([&TestEngine]()
+		{
+			return TestEngine.Get();
+		});
 		EngineSubsystem->EnsurePrimaryEngineInitialized();
+		if (!this->Assert.IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == TestEngine.Get(), TEXT("EngineSubsystem tick test should resolve the subsystem engine as current")))
+		{
+			return;
+		}
 
 		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*TestEngine, -1.0);
 
-		bool bOk = this->Assert.IsFalse(
-			UAngelscriptSubsystem::HasAnyTickOwner(),
-			TEXT("EngineSubsystem tick test should start without game instance tick owners"));
+		EngineSubsystem->Tick(0.016f);
+		bool bOk = this->Assert.IsTrue(
+			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*TestEngine) > 0.0,
+			TEXT("EngineSubsystem tick test should advance NextHotReloadCheck through the engine subsystem tick path"));
+
+		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*TestEngine, -1.0);
 		EngineSubsystem->Tick(0.016f);
 		bOk &= this->Assert.IsTrue(
 			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*TestEngine) > 0.0,
-			TEXT("EngineSubsystem tick test should advance NextHotReloadCheck when no game instance owner exists"));
-
-		FActorTestSpawner Spawner;
-		Spawner.InitializeGameSubsystems();
-		UGameInstance* GameInstance = Spawner.GetWorld().GetGameInstance();
-		bOk &= this->Assert.IsNotNull(GameInstance, TEXT("EngineSubsystem tick test should create a game instance"));
-		UAngelscriptSubsystem* GameInstanceSubsystem = GameInstance != nullptr ? GameInstance->GetSubsystem<UAngelscriptSubsystem>() : nullptr;
-		bOk &= this->Assert.IsNotNull(GameInstanceSubsystem, TEXT("EngineSubsystem tick test should create a game instance subsystem owner"));
-		bOk &= this->Assert.IsTrue(GameInstanceSubsystem != nullptr && GameInstanceSubsystem->GetEngine() == TestEngine.Get(), TEXT("EngineSubsystem tick test should let the game instance subsystem adopt the isolated engine"));
-
-		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*TestEngine, -1.0);
-
-		bOk &= this->Assert.IsTrue(
-			UAngelscriptSubsystem::HasAnyTickOwner(),
-			TEXT("EngineSubsystem tick test should report an active game instance tick owner after setup"));
-		EngineSubsystem->Tick(0.016f);
-		bOk &= this->Assert.IsNear(
-			-1.0,
-			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*TestEngine),
-			0.0,
-			TEXT("EngineSubsystem tick test should leave NextHotReloadCheck unchanged while a game instance owner exists"));
+			TEXT("EngineSubsystem tick test should keep ticking on repeated subsystem ticks without a game-instance suppressor"));
 
 		EngineSubsystem->Deinitialize();
 		(void)bOk;

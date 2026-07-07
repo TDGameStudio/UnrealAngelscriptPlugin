@@ -629,7 +629,6 @@ private:
 	UObject* WorldContextObject = nullptr;
 
 	friend class UAngelscriptTestCommandlet;
-	friend class UAngelscriptSubsystem;
 
 	static FAngelscriptEngine* TryGetGlobalEngine();
 	static void SetGlobalEngine(FAngelscriptEngine* InEngine);

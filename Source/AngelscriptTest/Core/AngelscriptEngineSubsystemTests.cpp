@@ -1,4 +1,4 @@
-#include "AngelscriptEngineSubsystem.h"
+#include "AngelscriptSubsystem.h"
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptTestUtilities.h"
@@ -14,50 +14,55 @@ struct FAngelscriptEngineSubsystemTestAccess
 {
 	static void SetStartupEnvironmentOverride(const TOptional<bool>& bIsEditorOverride, const TOptional<bool>& bIsRunningCommandletOverride)
 	{
-		UAngelscriptEngineSubsystem::SetStartupEnvironmentOverrideForTesting(bIsEditorOverride, bIsRunningCommandletOverride);
+		UAngelscriptSubsystem::SetStartupEnvironmentOverrideForTesting(bIsEditorOverride, bIsRunningCommandletOverride);
 	}
 
 	static void ClearStartupEnvironmentOverride()
 	{
-		UAngelscriptEngineSubsystem::ClearStartupEnvironmentOverrideForTesting();
+		UAngelscriptSubsystem::ClearStartupEnvironmentOverrideForTesting();
 	}
 
 	static void SetInitializeOverride(TFunction<FAngelscriptEngine*()> InOverride)
 	{
-		UAngelscriptEngineSubsystem::SetInitializeOverrideForTesting(MoveTemp(InOverride));
+		UAngelscriptSubsystem::SetInitializeOverrideForTesting(MoveTemp(InOverride));
+	}
+
+	static void SetSubsystemOverride(UAngelscriptSubsystem* InSubsystem)
+	{
+		UAngelscriptSubsystem::SetSubsystemOverrideForTesting(InSubsystem);
 	}
 
 	static void ResetInitializeState()
 	{
-		UAngelscriptEngineSubsystem::ResetInitializeStateForTesting();
+		UAngelscriptSubsystem::ResetInitializeStateForTesting();
 	}
 
-	static bool ShouldCreateSubsystem(const UAngelscriptEngineSubsystem& Subsystem, UObject* Outer)
+	static bool ShouldCreateSubsystem(const UAngelscriptSubsystem& Subsystem, UObject* Outer)
 	{
 		return Subsystem.ShouldCreateSubsystem(Outer);
 	}
 
-	static void EnsurePrimaryEngineInitialized(UAngelscriptEngineSubsystem& Subsystem)
+	static void EnsurePrimaryEngineInitialized(UAngelscriptSubsystem& Subsystem)
 	{
 		Subsystem.EnsurePrimaryEngineInitialized();
 	}
 
-	static void ReleasePrimaryEngine(UAngelscriptEngineSubsystem& Subsystem)
+	static void ReleasePrimaryEngine(UAngelscriptSubsystem& Subsystem)
 	{
 		Subsystem.ReleasePrimaryEngine();
 	}
 
-	static FAngelscriptEngine* GetPrimaryEngine(const UAngelscriptEngineSubsystem& Subsystem)
+	static FAngelscriptEngine* GetPrimaryEngine(const UAngelscriptSubsystem& Subsystem)
 	{
 		return Subsystem.PrimaryEngine;
 	}
 
-	static bool OwnsPrimaryEngine(const UAngelscriptEngineSubsystem& Subsystem)
+	static bool OwnsPrimaryEngine(const UAngelscriptSubsystem& Subsystem)
 	{
 		return Subsystem.bOwnsPrimaryEngine;
 	}
 
-	static bool HasInitializedPrimaryEngine(const UAngelscriptEngineSubsystem& Subsystem)
+	static bool HasInitializedPrimaryEngine(const UAngelscriptSubsystem& Subsystem)
 	{
 		return Subsystem.bInitializedPrimaryEngine;
 	}
@@ -89,14 +94,14 @@ struct FEngineSubsystemContextStackGuard
 };
 
 public:
-	TEST_METHOD(ShouldCreateHonorsEditorAndCommandletGates)
+	TEST_METHOD(ShouldCreateInEditorCommandletAndRuntime)
 	{
-ON_SCOPE_EXIT
+		ON_SCOPE_EXIT
 		{
 			FAngelscriptEngineSubsystemTestAccess::ClearStartupEnvironmentOverride();
 		};
 
-		const UAngelscriptEngineSubsystem* SubsystemCdo = GetDefault<UAngelscriptEngineSubsystem>();
+		const UAngelscriptSubsystem* SubsystemCdo = GetDefault<UAngelscriptSubsystem>();
 		if (!this->Assert.IsNotNull(SubsystemCdo, TEXT("EngineSubsystem should expose a native CDO")))
 		{
 			return;
@@ -115,7 +120,7 @@ ON_SCOPE_EXIT
 		const TArray<FStartupTestCase> TestCases = {
 			{ TEXT("EditorStartup"), true, false, true },
 			{ TEXT("CommandletStartup"), false, true, true },
-			{ TEXT("PlainRuntimeStartup"), false, false, false },
+			{ TEXT("PlainRuntimeStartup"), false, false, true },
 		};
 
 		for (const FStartupTestCase& TestCase : TestCases)
@@ -124,13 +129,13 @@ ON_SCOPE_EXIT
 			ASSERT_THAT(AreEqual(
 				TestCase.bShouldCreate,
 				FAngelscriptEngineSubsystemTestAccess::ShouldCreateSubsystem(*SubsystemCdo, Outer),
-				FString::Printf(TEXT("%s should match the expected EngineSubsystem creation gate"), TestCase.Label)));
+				FString::Printf(TEXT("%s should create the Angelscript engine subsystem"), TestCase.Label)));
 		}
 	}
 
 	TEST_METHOD(InitializeOverrideIsIdempotentAndRestorable)
 	{
-FEngineSubsystemContextStackGuard ContextGuard;
+		FEngineSubsystemContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -138,12 +143,11 @@ FEngineSubsystemContextStackGuard ContextGuard;
 		}
 		ContextGuard.DiscardSavedStack();
 
-		TStrongObjectPtr<UAngelscriptEngineSubsystem> Subsystem(NewObject<UAngelscriptEngineSubsystem>(GetTransientPackage()));
+		TStrongObjectPtr<UAngelscriptSubsystem> Subsystem(NewObject<UAngelscriptSubsystem>(GetTransientPackage()));
 		if (!this->Assert.IsNotNull(Subsystem.Get(), TEXT("EngineSubsystem initialize-override test should create a native subsystem object")))
 		{
 			return;
 		}
-
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptEngineSubsystemTestAccess::ReleasePrimaryEngine(*Subsystem);
@@ -157,6 +161,7 @@ FEngineSubsystemContextStackGuard ContextGuard;
 		};
 
 		FAngelscriptEngineSubsystemTestAccess::ResetInitializeState();
+		FAngelscriptEngineSubsystemTestAccess::SetSubsystemOverride(Subsystem.Get());
 		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("EngineSubsystem initialize-override test should start without a current engine")))
 		{
 			return;
@@ -176,7 +181,7 @@ FEngineSubsystemContextStackGuard ContextGuard;
 		FAngelscriptEngineSubsystemTestAccess::EnsurePrimaryEngineInitialized(*Subsystem);
 		ASSERT_THAT(IsTrue(
 			FAngelscriptEngine::TryGetCurrentEngine() == OverrideEngine.Get(),
-			TEXT("EngineSubsystem initialize-override test should make the override engine current after first initialize")));
+			TEXT("EngineSubsystem initialize-override test should resolve the override engine through subsystem fallback after first initialize")));
 		ASSERT_THAT(IsTrue(
 			FAngelscriptEngineSubsystemTestAccess::HasInitializedPrimaryEngine(*Subsystem),
 			TEXT("EngineSubsystem initialize-override test should mark the primary engine initialized")));
@@ -191,13 +196,12 @@ FEngineSubsystemContextStackGuard ContextGuard;
 
 		TArray<FAngelscriptEngine*> StackAfterSecondInitialize = FAngelscriptEngineContextStack::SnapshotAndClear();
 		ASSERT_THAT(AreEqual(
-			1,
+			0,
 			StackAfterSecondInitialize.Num(),
-			TEXT("EngineSubsystem initialize-override test should keep exactly one engine on the context stack after repeated initialize")));
+			TEXT("EngineSubsystem initialize-override test should not push the subsystem-owned engine onto the explicit context stack")));
 		ASSERT_THAT(IsTrue(
-			StackAfterSecondInitialize[0] == OverrideEngine.Get(),
-			TEXT("EngineSubsystem initialize-override test should keep the override engine as the only stack entry")));
-		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(StackAfterSecondInitialize));
+			FAngelscriptEngine::TryGetCurrentEngine() == OverrideEngine.Get(),
+			TEXT("EngineSubsystem initialize-override test should still resolve through the subsystem when the explicit stack is empty")));
 
 		FAngelscriptEngineSubsystemTestAccess::ReleasePrimaryEngine(*Subsystem);
 		ASSERT_THAT(IsFalse(
@@ -212,6 +216,71 @@ FEngineSubsystemContextStackGuard ContextGuard;
 			0,
 			StackAfterRelease.Num(),
 			TEXT("EngineSubsystem initialize-override test should leave the context stack empty after release")));
+	}
+
+	TEST_METHOD(SubsystemFallbackYieldsToScopedEngine)
+	{
+		FEngineSubsystemContextStackGuard ContextGuard;
+		DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		ContextGuard.DiscardSavedStack();
+
+		TStrongObjectPtr<UAngelscriptSubsystem> Subsystem(NewObject<UAngelscriptSubsystem>(GetTransientPackage()));
+		if (!this->Assert.IsNotNull(Subsystem.Get(), TEXT("EngineSubsystem fallback test should create a native subsystem object")))
+		{
+			return;
+		}
+
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptEngineSubsystemTestAccess::ReleasePrimaryEngine(*Subsystem);
+			FAngelscriptEngineSubsystemTestAccess::ResetInitializeState();
+			FAngelscriptEngineContextStack::SnapshotAndClear();
+			DestroySharedTestEngine();
+		};
+
+		FAngelscriptEngineSubsystemTestAccess::ResetInitializeState();
+		FAngelscriptEngineSubsystemTestAccess::SetSubsystemOverride(Subsystem.Get());
+		ASSERT_THAT(IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("EngineSubsystem fallback test should start without a current engine before subsystem initialization")));
+
+		TUniquePtr<FAngelscriptEngine> SubsystemEngine = CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> ScopedEngine = CreateFullTestEngine();
+		ASSERT_THAT(IsNotNull(SubsystemEngine.Get(), TEXT("EngineSubsystem fallback test should create a subsystem engine")));
+		ASSERT_THAT(IsNotNull(ScopedEngine.Get(), TEXT("EngineSubsystem fallback test should create a scoped engine")));
+
+		FAngelscriptEngineSubsystemTestAccess::SetInitializeOverride([&SubsystemEngine]()
+		{
+			return SubsystemEngine.Get();
+		});
+		FAngelscriptEngineSubsystemTestAccess::EnsurePrimaryEngineInitialized(*Subsystem);
+
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngineContextStack::IsEmpty(),
+			TEXT("EngineSubsystem fallback test should leave the explicit context stack empty after subsystem initialization")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngine::TryGetCurrentEngine() == SubsystemEngine.Get(),
+			TEXT("EngineSubsystem fallback test should resolve the subsystem engine when no scope is active")));
+
+		{
+			FAngelscriptEngineScope ScopedOverride(*ScopedEngine);
+			ASSERT_THAT(IsTrue(
+				FAngelscriptEngine::TryGetCurrentEngine() == ScopedEngine.Get(),
+				TEXT("EngineSubsystem fallback test should prefer the active explicit scope over the subsystem engine")));
+		}
+
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngine::TryGetCurrentEngine() == SubsystemEngine.Get(),
+			TEXT("EngineSubsystem fallback test should restore subsystem fallback after the explicit scope exits")));
+
+		FAngelscriptEngineSubsystemTestAccess::ReleasePrimaryEngine(*Subsystem);
+		ASSERT_THAT(IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("EngineSubsystem fallback test should stop resolving a current engine after subsystem release")));
 	}
 };
 

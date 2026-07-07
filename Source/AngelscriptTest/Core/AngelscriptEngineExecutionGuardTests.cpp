@@ -61,6 +61,7 @@ public:
 	TEST_METHOD(PrepareContextLogsCrossEngineMismatch)
 	{
 FEngineExecutionGuardContextStackGuard ContextGuard;
+		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
