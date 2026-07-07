@@ -1,7 +1,7 @@
 #include "AngelscriptRuntimeModule.h"
 #include "AngelscriptEngine.h"
 #include "AngelscriptEngineSubsystem.h"
-#include "AngelscriptGameInstanceSubsystem.h"
+#include "AngelscriptSubsystem.h"
 #include "Dump/AngelscriptCrashSnapshot.h"
 #if WITH_AS_COVERAGE
 #include "Extension/CodeCoverage/AngelscriptCodeCoverage.h"

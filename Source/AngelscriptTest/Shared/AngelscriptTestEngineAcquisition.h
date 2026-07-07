@@ -58,7 +58,7 @@
 // ============================================================================
 
 #include "AngelscriptEngine.h"
-#include "AngelscriptGameInstanceSubsystem.h"
+#include "AngelscriptSubsystem.h"
 #include "AngelscriptTestEngine.h"
 #include "ClassGenerator/ASClass.h"
 #include "Containers/UnrealString.h"
@@ -91,9 +91,9 @@ struct FAngelscriptTestEngineScopeAccess
 
 using FAngelscriptTestEngineScopeAccess = ::FAngelscriptTestEngineScopeAccess;
 
-inline UAngelscriptGameInstanceSubsystem* TryGetRunningProductionSubsystem()
+inline UAngelscriptSubsystem* TryGetRunningProductionSubsystem()
 {
-	if (UAngelscriptGameInstanceSubsystem* Subsystem = UAngelscriptGameInstanceSubsystem::GetCurrent())
+	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::GetCurrent())
 	{
 		return Subsystem;
 	}
@@ -117,7 +117,7 @@ inline UAngelscriptGameInstanceSubsystem* TryGetRunningProductionSubsystem()
 			continue;
 		}
 
-		if (UAngelscriptGameInstanceSubsystem* Subsystem = GameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>())
+		if (UAngelscriptSubsystem* Subsystem = GameInstance->GetSubsystem<UAngelscriptSubsystem>())
 		{
 			return Subsystem;
 		}
@@ -154,7 +154,7 @@ private:
 
 inline FAngelscriptEngine* TryGetRunningProductionEngine()
 {
-	if (UAngelscriptGameInstanceSubsystem* Subsystem = TryGetRunningProductionSubsystem())
+	if (UAngelscriptSubsystem* Subsystem = TryGetRunningProductionSubsystem())
 	{
 		if (FAngelscriptEngine* AttachedEngine = Subsystem->GetEngine())
 		{
@@ -247,7 +247,7 @@ inline FAngelscriptEngine& GetOrCreateSharedCloneEngine()
 
 inline FAngelscriptEngine* TryGetRunningProductionDebuggerEngine()
 {
-	if (UAngelscriptGameInstanceSubsystem* Subsystem = TryGetRunningProductionSubsystem())
+	if (UAngelscriptSubsystem* Subsystem = TryGetRunningProductionSubsystem())
 	{
 		if (FAngelscriptEngine* AttachedEngine = Subsystem->GetEngine())
 		{
@@ -418,7 +418,7 @@ inline void DestroySharedTestEngine()
 
 inline void DestroyStrayLegacyGlobalTestEngine()
 {
-	if (!UAngelscriptGameInstanceSubsystem::HasAnyTickOwner())
+	if (!UAngelscriptSubsystem::HasAnyTickOwner())
 	{
 		if (FAngelscriptEngine* GlobalEngine = FAngelscriptTestEngineScopeAccess::GetGlobalEngine())
 		{

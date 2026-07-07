@@ -1,5 +1,5 @@
 #include "AngelscriptEngine.h"
-#include "AngelscriptGameInstanceSubsystem.h"
+#include "AngelscriptSubsystem.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptBindDatabase.h"
 #include "AngelscriptType.h"
@@ -66,7 +66,7 @@ FIsolationContextStackGuard()
 
 static void ResetIsolationRuntime()
 {
-if (!UAngelscriptGameInstanceSubsystem::HasAnyTickOwner() && FAngelscriptEngine::IsInitialized())
+if (!UAngelscriptSubsystem::HasAnyTickOwner() && FAngelscriptEngine::IsInitialized())
 {
 	FAngelscriptEngineIsolationTestAccess::DestroyGlobalEngine();
 }

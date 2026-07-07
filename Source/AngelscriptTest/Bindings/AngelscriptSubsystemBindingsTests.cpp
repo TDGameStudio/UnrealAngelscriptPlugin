@@ -18,7 +18,7 @@
 #include "AngelscriptTestUtilities.h"
 
 #include "AngelscriptEngineSubsystem.h"
-#include "AngelscriptGameInstanceSubsystem.h"
+#include "AngelscriptSubsystem.h"
 #include "Components/ActorTestSpawner.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -206,7 +206,7 @@ public:
 		ASSERT_THAT(IsNotNull(GameInstance, TEXT("Subsystem namespace helper test should expose a game instance")));
 
 		UAngelscriptEngineSubsystem* ExpectedEngineSubsystem = GEngine->GetEngineSubsystem<UAngelscriptEngineSubsystem>();
-		UAngelscriptGameInstanceSubsystem* ExpectedGameInstanceSubsystem = GameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>();
+		UAngelscriptSubsystem* ExpectedGameInstanceSubsystem = GameInstance->GetSubsystem<UAngelscriptSubsystem>();
 		UNetworkSubsystem* ExpectedWorldSubsystem = TestWorld->GetSubsystem<UNetworkSubsystem>();
 		ASSERT_THAT(IsNotNull(ExpectedEngineSubsystem, TEXT("Subsystem namespace helper test should expose the Angelscript engine subsystem")));
 		ASSERT_THAT(IsNotNull(ExpectedGameInstanceSubsystem, TEXT("Subsystem namespace helper test should expose the Angelscript game-instance subsystem")));
@@ -215,7 +215,7 @@ public:
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			int VerifySubsystemNamespaceHelpers(
 			UAngelscriptEngineSubsystem ExpectedEngineSubsystem,
-			UAngelscriptGameInstanceSubsystem ExpectedGameInstanceSubsystem,
+			UAngelscriptSubsystem ExpectedGameInstanceSubsystem,
 			UNetworkSubsystem ExpectedWorldSubsystem,
 			UClass NullClass)
 			{
@@ -225,7 +225,7 @@ public:
 				{
 					MismatchMask |= 1;
 				}
-				if (Cast<UAngelscriptGameInstanceSubsystem>(USubsystemLibrary::GetGameInstanceSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass())) != ExpectedGameInstanceSubsystem)
+				if (Cast<UAngelscriptSubsystem>(USubsystemLibrary::GetGameInstanceSubsystem(UAngelscriptSubsystem::StaticClass())) != ExpectedGameInstanceSubsystem)
 				{
 					MismatchMask |= 2;
 				}
@@ -251,7 +251,7 @@ public:
 				{
 					MismatchMask |= 64;
 				}
-				if (USubsystemLibrary::GetEngineSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				if (USubsystemLibrary::GetEngineSubsystem(UAngelscriptSubsystem::StaticClass()) != null)
 				{
 					MismatchMask |= 128;
 				}
@@ -259,7 +259,7 @@ public:
 				{
 					MismatchMask |= 256;
 				}
-				if (USubsystemLibrary::GetWorldSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				if (USubsystemLibrary::GetWorldSubsystem(UAngelscriptSubsystem::StaticClass()) != null)
 				{
 					MismatchMask |= 512;
 				}
@@ -286,7 +286,7 @@ public:
 			*TestRunner,
 			Engine,
 			ModuleScope.GetModule(),
-			TEXT("int VerifySubsystemNamespaceHelpers(UAngelscriptEngineSubsystem, UAngelscriptGameInstanceSubsystem, UNetworkSubsystem, UClass)"),
+			TEXT("int VerifySubsystemNamespaceHelpers(UAngelscriptEngineSubsystem, UAngelscriptSubsystem, UNetworkSubsystem, UClass)"),
 			Args,
 			ResultMask))
 		{
@@ -314,7 +314,7 @@ public:
 		ASSERT_THAT(IsNotNull(GameInstance, TEXT("Subsystem static accessor test should expose a game instance")));
 
 		UAngelscriptEngineSubsystem* ExpectedEngineSubsystem = GEngine->GetEngineSubsystem<UAngelscriptEngineSubsystem>();
-		UAngelscriptGameInstanceSubsystem* ExpectedGameInstanceSubsystem = GameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>();
+		UAngelscriptSubsystem* ExpectedGameInstanceSubsystem = GameInstance->GetSubsystem<UAngelscriptSubsystem>();
 		UNetworkSubsystem* ExpectedWorldSubsystem = TestWorld->GetSubsystem<UNetworkSubsystem>();
 		ASSERT_THAT(IsNotNull(ExpectedEngineSubsystem, TEXT("Subsystem static accessor test should expose the Angelscript engine subsystem")));
 		ASSERT_THAT(IsNotNull(ExpectedGameInstanceSubsystem, TEXT("Subsystem static accessor test should expose the Angelscript game-instance subsystem")));
@@ -323,7 +323,7 @@ public:
 		const FString ScriptSource = ASTEST_AS(R"AS(
 			int VerifyNativeSubsystemStaticGetAccessors(
 			UAngelscriptEngineSubsystem ExpectedEngineSubsystem,
-			UAngelscriptGameInstanceSubsystem ExpectedGameInstanceSubsystem,
+			UAngelscriptSubsystem ExpectedGameInstanceSubsystem,
 			UNetworkSubsystem ExpectedWorldSubsystem)
 			{
 				int MismatchMask = 0;
@@ -332,7 +332,7 @@ public:
 				{
 					MismatchMask |= 1;
 				}
-				if (UAngelscriptGameInstanceSubsystem::Get() != ExpectedGameInstanceSubsystem)
+				if (UAngelscriptSubsystem::Get() != ExpectedGameInstanceSubsystem)
 				{
 					MismatchMask |= 2;
 				}
@@ -362,7 +362,7 @@ public:
 			*TestRunner,
 			Engine,
 			ModuleScope.GetModule(),
-			TEXT("int VerifyNativeSubsystemStaticGetAccessors(UAngelscriptEngineSubsystem, UAngelscriptGameInstanceSubsystem, UNetworkSubsystem)"),
+			TEXT("int VerifyNativeSubsystemStaticGetAccessors(UAngelscriptEngineSubsystem, UAngelscriptSubsystem, UNetworkSubsystem)"),
 			Args,
 			ResultMask))
 		{
@@ -456,11 +456,11 @@ public:
 				{
 					MismatchMask |= 32;
 				}
-				if (USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				if (USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(LocalPlayer, UAngelscriptSubsystem::StaticClass()) != null)
 				{
 					MismatchMask |= 64;
 				}
-				if (USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				if (USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(PlayerController, UAngelscriptSubsystem::StaticClass()) != null)
 				{
 					MismatchMask |= 128;
 				}
@@ -476,7 +476,7 @@ public:
 				{
 					MismatchMask |= 1;
 				}
-				if (USubsystemLibrary::GetLocalPlayerSubsystem(UAngelscriptGameInstanceSubsystem::StaticClass()) != null)
+				if (USubsystemLibrary::GetLocalPlayerSubsystem(UAngelscriptSubsystem::StaticClass()) != null)
 				{
 					MismatchMask |= 2;
 				}

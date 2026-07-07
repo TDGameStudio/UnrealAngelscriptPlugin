@@ -34,7 +34,7 @@
 #include "Interfaces/IPluginManager.h"
 
 #include "AngelscriptRuntimeModule.h"
-#include "AngelscriptGameInstanceSubsystem.h"
+#include "AngelscriptSubsystem.h"
 #include "AngelscriptInclude.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptDocs.h"
@@ -721,7 +721,7 @@ TUniquePtr<FAngelscriptEngine> FAngelscriptEngine::Create(const FAngelscriptEngi
 bool FAngelscriptEngine::IsInitialized()
 {
 	return FAngelscriptEngineContextStack::Peek() != nullptr
-		|| UAngelscriptGameInstanceSubsystem::GetCurrent() != nullptr;
+		|| UAngelscriptSubsystem::GetCurrent() != nullptr;
 }
 
 UObject* FAngelscriptEngine::TryGetCurrentWorldContextObject()
@@ -767,7 +767,7 @@ FAngelscriptEngine* FAngelscriptEngine::TryGetCurrentEngine()
 		return ScopedEngine;
 	}
 
-	if (UAngelscriptGameInstanceSubsystem* Subsystem = UAngelscriptGameInstanceSubsystem::GetCurrent())
+	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::GetCurrent())
 	{
 		if (FAngelscriptEngine* AttachedEngine = Subsystem->GetEngine())
 		{

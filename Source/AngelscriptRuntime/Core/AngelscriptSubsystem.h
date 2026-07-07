@@ -4,17 +4,16 @@
 #include "Tickable.h"
 #include "AngelscriptEngine.h"
 #include "Subsystems/GameInstanceSubsystem.h"
-#include "AngelscriptEngine.h"
 
-#include "AngelscriptGameInstanceSubsystem.generated.h"
+#include "AngelscriptSubsystem.generated.h"
 
 UCLASS()
-class ANGELSCRIPTRUNTIME_API UAngelscriptGameInstanceSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
+class ANGELSCRIPTRUNTIME_API UAngelscriptSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
 {
 	GENERATED_BODY()
 
 public:
-	virtual ~UAngelscriptGameInstanceSubsystem() override;
+	virtual ~UAngelscriptSubsystem() override;
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	virtual UWorld* GetTickableGameObjectWorld() const override;
@@ -30,11 +29,10 @@ public:
 		return PrimaryEngine;
 	}
 
-	static UAngelscriptGameInstanceSubsystem* GetCurrent();
+	static UAngelscriptSubsystem* GetCurrent();
 	static bool HasAnyTickOwner();
 
 private:
-	friend struct FAngelscriptTickBehaviorTestAccess;
 	UPROPERTY()
 	FAngelscriptEngine OwnedEngine;
 	FAngelscriptEngine* PrimaryEngine = nullptr;

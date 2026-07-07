@@ -1,15 +1,15 @@
-#include "AngelscriptGameInstanceSubsystem.h"
+#include "AngelscriptSubsystem.h"
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptRuntimeModule.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 
-int32 UAngelscriptGameInstanceSubsystem::ActiveTickOwners = 0;
+int32 UAngelscriptSubsystem::ActiveTickOwners = 0;
 
-UAngelscriptGameInstanceSubsystem::~UAngelscriptGameInstanceSubsystem() = default;
+UAngelscriptSubsystem::~UAngelscriptSubsystem() = default;
 
-void UAngelscriptGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+void UAngelscriptSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
@@ -29,7 +29,7 @@ void UAngelscriptGameInstanceSubsystem::Initialize(FSubsystemCollectionBase& Col
 	}
 }
 
-void UAngelscriptGameInstanceSubsystem::Deinitialize()
+void UAngelscriptSubsystem::Deinitialize()
 {
 	if (PrimaryEngine != nullptr)
 	{
@@ -52,33 +52,33 @@ void UAngelscriptGameInstanceSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-UWorld* UAngelscriptGameInstanceSubsystem::GetTickableGameObjectWorld() const
+UWorld* UAngelscriptSubsystem::GetTickableGameObjectWorld() const
 {
 	const UGameInstance* GameInstance = GetGameInstance();
 	return GameInstance != nullptr ? GameInstance->GetWorld() : nullptr;
 }
 
-ETickableTickType UAngelscriptGameInstanceSubsystem::GetTickableTickType() const
+ETickableTickType UAngelscriptSubsystem::GetTickableTickType() const
 {
 	return IsTemplate() ? ETickableTickType::Never : FTickableGameObject::GetTickableTickType();
 }
 
-bool UAngelscriptGameInstanceSubsystem::IsAllowedToTick() const
+bool UAngelscriptSubsystem::IsAllowedToTick() const
 {
 	return !IsTemplate() && bInitialized && PrimaryEngine != nullptr;
 }
 
-bool UAngelscriptGameInstanceSubsystem::IsTickableInEditor() const
+bool UAngelscriptSubsystem::IsTickableInEditor() const
 {
 	return true;
 }
 
-bool UAngelscriptGameInstanceSubsystem::IsTickableWhenPaused() const
+bool UAngelscriptSubsystem::IsTickableWhenPaused() const
 {
 	return true;
 }
 
-void UAngelscriptGameInstanceSubsystem::Tick(float DeltaTime)
+void UAngelscriptSubsystem::Tick(float DeltaTime)
 {
 	if (PrimaryEngine != nullptr && PrimaryEngine->ShouldTick())
 	{
@@ -86,12 +86,12 @@ void UAngelscriptGameInstanceSubsystem::Tick(float DeltaTime)
 	}
 }
 
-TStatId UAngelscriptGameInstanceSubsystem::GetStatId() const
+TStatId UAngelscriptSubsystem::GetStatId() const
 {
 	return GetStatID();
 }
 
-UAngelscriptGameInstanceSubsystem* UAngelscriptGameInstanceSubsystem::GetCurrent()
+UAngelscriptSubsystem* UAngelscriptSubsystem::GetCurrent()
 {
 	if (GEngine == nullptr)
 	{
@@ -110,10 +110,10 @@ UAngelscriptGameInstanceSubsystem* UAngelscriptGameInstanceSubsystem::GetCurrent
 		return nullptr;
 	}
 
-	return GameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>();
+	return GameInstance->GetSubsystem<UAngelscriptSubsystem>();
 }
 
-bool UAngelscriptGameInstanceSubsystem::HasAnyTickOwner()
+bool UAngelscriptSubsystem::HasAnyTickOwner()
 {
 	return ActiveTickOwners > 0;
 }

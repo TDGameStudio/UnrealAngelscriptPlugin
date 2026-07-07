@@ -548,7 +548,7 @@ event void FHelperResetGeneratedEvent(int Value);
 static bool RunProductionHelperRejectsMissingProductionEngine(FAutomationTestBase& Test)
 {
 	FAngelscriptEngine* ProductionEngine = TryGetRunningProductionEngine();
-	if (UAngelscriptGameInstanceSubsystem* Subsystem = UAngelscriptGameInstanceSubsystem::GetCurrent())
+	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::GetCurrent())
 	{
 		return TestTrue(
 			TEXT("Production-engine probe should resolve the subsystem-attached engine when one is available"),

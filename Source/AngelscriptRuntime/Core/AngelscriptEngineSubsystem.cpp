@@ -1,6 +1,6 @@
 #include "AngelscriptEngineSubsystem.h"
 
-#include "AngelscriptGameInstanceSubsystem.h"
+#include "AngelscriptSubsystem.h"
 #include "Engine/Engine.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -60,7 +60,7 @@ bool UAngelscriptEngineSubsystem::IsTickableWhenPaused() const
 
 void UAngelscriptEngineSubsystem::Tick(float DeltaTime)
 {
-	if (PrimaryEngine == nullptr || UAngelscriptGameInstanceSubsystem::HasAnyTickOwner())
+	if (PrimaryEngine == nullptr || UAngelscriptSubsystem::HasAnyTickOwner())
 	{
 		return;
 	}

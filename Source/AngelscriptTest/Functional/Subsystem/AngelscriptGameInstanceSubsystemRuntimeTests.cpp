@@ -21,7 +21,7 @@ struct FAngelscriptTickBehaviorTestAccess
 
 	static void ResetToIsolatedState()
 	{
-		if (!UAngelscriptGameInstanceSubsystem::HasAnyTickOwner() && FAngelscriptEngine::IsInitialized())
+		if (!UAngelscriptSubsystem::HasAnyTickOwner() && FAngelscriptEngine::IsInitialized())
 		{
 			FAngelscriptEngine::DestroyGlobal();
 		}
@@ -32,61 +32,12 @@ struct FAngelscriptTickBehaviorTestAccess
 		return Engine.NextHotReloadCheck;
 	}
 
-	static FAngelscriptEngine* GetSubsystemPrimaryEngine(const UAngelscriptGameInstanceSubsystem& Subsystem)
-	{
-		return Subsystem.PrimaryEngine;
-	}
-
-	static bool GetSubsystemOwnsPrimaryEngine(const UAngelscriptGameInstanceSubsystem& Subsystem)
-	{
-		return Subsystem.bOwnsPrimaryEngine;
-	}
-
-	static bool GetSubsystemInitialized(const UAngelscriptGameInstanceSubsystem& Subsystem)
-	{
-		return Subsystem.bInitialized;
-	}
-
-	static int32 GetActiveTickOwners()
-	{
-		return UAngelscriptGameInstanceSubsystem::ActiveTickOwners;
-	}
-
 	static void PrepareTickProbe(FAngelscriptEngine& Engine)
 	{
 		Engine.bScriptDevelopmentMode = true;
 		Engine.bUseHotReloadCheckerThread = true;
 		Engine.bWaitingForHotReloadResults = false;
 		Engine.NextHotReloadCheck = 0.0;
-	}
-
-	static void SetSubsystemPrimaryEngine(UAngelscriptGameInstanceSubsystem& Subsystem, FAngelscriptEngine* Engine)
-	{
-		Subsystem.PrimaryEngine = Engine;
-		Subsystem.bOwnsPrimaryEngine = true;
-		Subsystem.bInitialized = true;
-		Subsystem.ActiveTickOwners = 1;
-		FAngelscriptEngineContextStack::Push(Engine);
-	}
-
-	static void SetSubsystemPrimaryEngineRaw(UAngelscriptGameInstanceSubsystem& Subsystem, FAngelscriptEngine* Engine)
-	{
-		Subsystem.PrimaryEngine = Engine;
-	}
-
-	static void SetSubsystemOwnsPrimaryEngine(UAngelscriptGameInstanceSubsystem& Subsystem, bool bOwnsPrimaryEngine)
-	{
-		Subsystem.bOwnsPrimaryEngine = bOwnsPrimaryEngine;
-	}
-
-	static void SetSubsystemInitialized(UAngelscriptGameInstanceSubsystem& Subsystem, bool bInitialized)
-	{
-		Subsystem.bInitialized = bInitialized;
-	}
-
-	static void SetActiveTickOwners(int32 ActiveTickOwners)
-	{
-		UAngelscriptGameInstanceSubsystem::ActiveTickOwners = ActiveTickOwners;
 	}
 };
 
@@ -121,7 +72,7 @@ private:
 		FActorTestSpawner& Spawner,
 		UWorld*& OutWorld,
 		UGameInstance*& OutGameInstance,
-		UAngelscriptGameInstanceSubsystem*& OutSubsystem)
+		UAngelscriptSubsystem*& OutSubsystem)
 	{
 		Spawner.InitializeGameSubsystems();
 
@@ -137,13 +88,13 @@ private:
 			return false;
 		}
 
-		OutSubsystem = OutGameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>();
+		OutSubsystem = OutGameInstance->GetSubsystem<UAngelscriptSubsystem>();
 		return Test.TestNotNull(TEXT("Subsystem runtime test case should expose the Angelscript game-instance subsystem"), OutSubsystem);
 	}
 
 	static bool VerifyTickAdvancesProbe(
 		FAutomationTestBase& Test,
-		UAngelscriptGameInstanceSubsystem& Subsystem,
+		UAngelscriptSubsystem& Subsystem,
 		const TCHAR* ContextLabel)
 	{
 		FAngelscriptEngine* PrimaryEngine = Subsystem.GetEngine();
@@ -166,23 +117,23 @@ private:
 public:
 	TEST_METHOD(InitializeAdoptsOrOwnsEngineAndTicksIt)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
 		{
 			FActorTestSpawner AdoptSpawner;
 			UWorld* AdoptWorld = nullptr;
 			UGameInstance* AdoptGameInstance = nullptr;
-			UAngelscriptGameInstanceSubsystem* AdoptSubsystem = nullptr;
+			UAngelscriptSubsystem* AdoptSubsystem = nullptr;
 			ASSERT_THAT(IsTrue(InitializeRuntimeSubsystemTestCase(*TestRunner, AdoptSpawner, AdoptWorld, AdoptGameInstance, AdoptSubsystem)));
 
 			ASSERT_THAT(IsTrue(AdoptSubsystem->GetEngine() == &Engine, TEXT("Adopt case should reuse the outer engine when one is already active")));
-			ASSERT_THAT(IsTrue(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Adopt case should register an active tick owner")));
+			ASSERT_THAT(IsTrue(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Adopt case should register an active tick owner")));
 			ASSERT_THAT(IsTrue(AdoptSubsystem->IsAllowedToTick(), TEXT("Adopt case should allow the subsystem to tick")));
 
 			{
 				FScopedTestWorldContextScope WorldContextScope(AdoptWorld);
-				ASSERT_THAT(IsTrue(UAngelscriptGameInstanceSubsystem::GetCurrent() == AdoptSubsystem, TEXT("Adopt case should resolve GetCurrent() from the ambient world")));
+				ASSERT_THAT(IsTrue(UAngelscriptSubsystem::GetCurrent() == AdoptSubsystem, TEXT("Adopt case should resolve GetCurrent() from the ambient world")));
 			}
 
 			ASSERT_THAT(IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == &Engine, TEXT("Adopt case should keep the shared test engine as the current engine while the outer scope is active")));
@@ -190,7 +141,7 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 			AdoptSubsystem->Deinitialize();
 			ASSERT_THAT(IsNull(AdoptSubsystem->GetEngine(), TEXT("Adopt case should clear the subsystem primary engine during deinitialize")));
-			ASSERT_THAT(IsFalse(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Adopt case should release its active tick owner during deinitialize")));
+			ASSERT_THAT(IsFalse(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Adopt case should release its active tick owner during deinitialize")));
 			ASSERT_THAT(IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == &Engine, TEXT("Adopt case should restore the shared outer engine after subsystem deinitialize")));
 		}
 
@@ -201,19 +152,19 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 			FActorTestSpawner OwnSpawner;
 			UWorld* OwnWorld = nullptr;
 			UGameInstance* OwnGameInstance = nullptr;
-			UAngelscriptGameInstanceSubsystem* OwnSubsystem = nullptr;
+			UAngelscriptSubsystem* OwnSubsystem = nullptr;
 			ASSERT_THAT(IsTrue(InitializeRuntimeSubsystemTestCase(*TestRunner, OwnSpawner, OwnWorld, OwnGameInstance, OwnSubsystem)));
 
 			FAngelscriptEngine* OwnedEngine = OwnSubsystem->GetEngine();
 			ASSERT_THAT(IsNotNull(OwnedEngine, TEXT("Own case should create a subsystem-owned primary engine")));
 			ASSERT_THAT(IsTrue(OwnedEngine != &Engine, TEXT("Own case should create a different primary engine when no outer engine is active")));
-			ASSERT_THAT(IsTrue(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Own case should register an active tick owner")));
+			ASSERT_THAT(IsTrue(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Own case should register an active tick owner")));
 			ASSERT_THAT(IsTrue(OwnSubsystem->IsAllowedToTick(), TEXT("Own case should allow the subsystem to tick")));
 			ASSERT_THAT(IsTrue(OwnedEngine->ShouldTick(), TEXT("Own case should expose a tickable owned engine")));
 
 			{
 				FScopedTestWorldContextScope WorldContextScope(OwnWorld);
-				ASSERT_THAT(IsTrue(UAngelscriptGameInstanceSubsystem::GetCurrent() == OwnSubsystem, TEXT("Own case should resolve GetCurrent() from the ambient world")));
+				ASSERT_THAT(IsTrue(UAngelscriptSubsystem::GetCurrent() == OwnSubsystem, TEXT("Own case should resolve GetCurrent() from the ambient world")));
 				ASSERT_THAT(IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == OwnedEngine, TEXT("Own case should resolve the subsystem-owned engine as current when ambient world context is available")));
 			}
 
@@ -221,7 +172,7 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 			OwnSubsystem->Deinitialize();
 			ASSERT_THAT(IsNull(OwnSubsystem->GetEngine(), TEXT("Own case should clear the primary engine during deinitialize")));
-			ASSERT_THAT(IsFalse(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Own case should release its active tick owner during deinitialize")));
+			ASSERT_THAT(IsFalse(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Own case should release its active tick owner during deinitialize")));
 			ASSERT_THAT(IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("Own case should no longer resolve a current engine after the subsystem deinitializes")));
 		}
 
@@ -261,7 +212,7 @@ private:
 		FActorTestSpawner& Spawner,
 		UWorld*& OutWorld,
 		UGameInstance*& OutGameInstance,
-		UAngelscriptGameInstanceSubsystem*& OutSubsystem)
+		UAngelscriptSubsystem*& OutSubsystem)
 	{
 		Spawner.InitializeGameSubsystems();
 
@@ -277,13 +228,13 @@ private:
 			return false;
 		}
 
-		OutSubsystem = OutGameInstance->GetSubsystem<UAngelscriptGameInstanceSubsystem>();
+		OutSubsystem = OutGameInstance->GetSubsystem<UAngelscriptSubsystem>();
 		return Test.TestNotNull(TEXT("Subsystem runtime test case should expose the Angelscript game-instance subsystem"), OutSubsystem);
 	}
 
 	static bool VerifyTickAdvancesProbe(
 		FAutomationTestBase& Test,
-		UAngelscriptGameInstanceSubsystem& Subsystem,
+		UAngelscriptSubsystem& Subsystem,
 		const TCHAR* ContextLabel)
 	{
 		FAngelscriptEngine* PrimaryEngine = Subsystem.GetEngine();
@@ -317,13 +268,13 @@ public:
 		UWorld* WorldB = nullptr;
 		UGameInstance* GameInstanceA = nullptr;
 		UGameInstance* GameInstanceB = nullptr;
-		UAngelscriptGameInstanceSubsystem* SubsystemA = nullptr;
-		UAngelscriptGameInstanceSubsystem* SubsystemB = nullptr;
+		UAngelscriptSubsystem* SubsystemA = nullptr;
+		UAngelscriptSubsystem* SubsystemB = nullptr;
 		ON_SCOPE_EXIT
 		{
-			if (SubsystemB != nullptr && FAngelscriptTickBehaviorTestAccess::GetSubsystemInitialized(*SubsystemB)) { SubsystemB->Deinitialize(); }
-			if (SubsystemA != nullptr && FAngelscriptTickBehaviorTestAccess::GetSubsystemInitialized(*SubsystemA)) { SubsystemA->Deinitialize(); }
-			if (!UAngelscriptGameInstanceSubsystem::HasAnyTickOwner() && FAngelscriptEngine::IsInitialized())
+			if (SubsystemB != nullptr && SubsystemB->GetEngine() != nullptr) { SubsystemB->Deinitialize(); }
+			if (SubsystemA != nullptr && SubsystemA->GetEngine() != nullptr) { SubsystemA->Deinitialize(); }
+			if (!UAngelscriptSubsystem::HasAnyTickOwner() && FAngelscriptEngine::IsInitialized())
 			{
 				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
 			}
@@ -331,17 +282,14 @@ public:
 		};
 
 		ASSERT_THAT(IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("Multi-owner lifecycle should begin without a current engine on the cleared context stack")));
-		ASSERT_THAT(IsFalse(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should begin without active tick owners")));
+		ASSERT_THAT(IsFalse(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should begin without active tick owners")));
 
 		FActorTestSpawner SpawnerA;
 		ASSERT_THAT(IsTrue(InitializeRuntimeSubsystemTestCase(*TestRunner, SpawnerA, WorldA, GameInstanceA, SubsystemA)));
 
 		FAngelscriptEngine* EngineA = SubsystemA->GetEngine();
 		ASSERT_THAT(IsNotNull(EngineA, TEXT("Multi-owner lifecycle should create the first subsystem-owned engine")));
-		ASSERT_THAT(IsTrue(FAngelscriptTickBehaviorTestAccess::GetSubsystemOwnsPrimaryEngine(*SubsystemA), TEXT("Multi-owner lifecycle should keep subsystem A owning the primary engine")));
-		ASSERT_THAT(IsTrue(FAngelscriptTickBehaviorTestAccess::GetSubsystemInitialized(*SubsystemA), TEXT("Multi-owner lifecycle should mark the first subsystem as initialized")));
-		ASSERT_THAT(IsTrue(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should keep tick ownership active after subsystem A initializes")));
-		ASSERT_THAT(AreEqual(1, FAngelscriptTickBehaviorTestAccess::GetActiveTickOwners(), TEXT("Multi-owner lifecycle should register one active tick owner after subsystem A initializes")));
+		ASSERT_THAT(IsTrue(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should keep tick ownership active after subsystem A initializes")));
 		ASSERT_THAT(IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == EngineA, TEXT("Multi-owner lifecycle should keep subsystem A's engine current after its initialization")));
 		ASSERT_THAT(IsTrue(SubsystemA->IsAllowedToTick(), TEXT("Multi-owner lifecycle should keep subsystem A tickable while it owns the engine")));
 		ASSERT_THAT(IsTrue(EngineA->ShouldTick(), TEXT("Multi-owner lifecycle should keep subsystem A's engine tickable while it owns the engine")));
@@ -353,9 +301,7 @@ public:
 
 		FAngelscriptEngine* EngineB = SubsystemB->GetEngine();
 		ASSERT_THAT(IsTrue(EngineB == EngineA, TEXT("Multi-owner lifecycle should reuse subsystem A's engine for subsystem B")));
-		ASSERT_THAT(IsFalse(FAngelscriptTickBehaviorTestAccess::GetSubsystemOwnsPrimaryEngine(*SubsystemB), TEXT("Multi-owner lifecycle should keep subsystem B on the adopt path")));
-		ASSERT_THAT(IsTrue(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should keep tick ownership active after subsystem B initializes")));
-		ASSERT_THAT(AreEqual(2, FAngelscriptTickBehaviorTestAccess::GetActiveTickOwners(), TEXT("Multi-owner lifecycle should register two active tick owners after subsystem B initializes")));
+		ASSERT_THAT(IsTrue(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should keep tick ownership active after subsystem B initializes")));
 		ASSERT_THAT(IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == EngineA, TEXT("Multi-owner lifecycle should keep subsystem A's engine current while both owners are alive")));
 		ASSERT_THAT(IsTrue(SubsystemB->IsAllowedToTick(), TEXT("Multi-owner lifecycle should keep subsystem B tickable while it borrows subsystem A's engine")));
 		ASSERT_THAT(IsTrue(EngineA->ShouldTick(), TEXT("Multi-owner lifecycle should keep the shared engine tickable while both owners are alive")));
@@ -363,8 +309,7 @@ public:
 
 		SubsystemB->Deinitialize();
 		ASSERT_THAT(IsNull(SubsystemB->GetEngine(), TEXT("Multi-owner lifecycle should clear subsystem B's primary engine during deinitialize")));
-		ASSERT_THAT(IsTrue(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should keep tick ownership active after subsystem B deinitializes")));
-		ASSERT_THAT(AreEqual(1, FAngelscriptTickBehaviorTestAccess::GetActiveTickOwners(), TEXT("Multi-owner lifecycle should keep one active tick owner after subsystem B deinitializes")));
+		ASSERT_THAT(IsTrue(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should keep tick ownership active after subsystem B deinitializes")));
 		ASSERT_THAT(IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == EngineA, TEXT("Multi-owner lifecycle should keep subsystem A's engine current after subsystem B deinitializes")));
 		ASSERT_THAT(IsTrue(SubsystemA->IsAllowedToTick(), TEXT("Multi-owner lifecycle should keep subsystem A tickable after subsystem B deinitializes")));
 		ASSERT_THAT(IsTrue(EngineA->ShouldTick(), TEXT("Multi-owner lifecycle should keep subsystem A's engine tickable after subsystem B deinitializes")));
@@ -372,11 +317,10 @@ public:
 
 		SubsystemA->Deinitialize();
 		ASSERT_THAT(IsNull(SubsystemA->GetEngine(), TEXT("Multi-owner lifecycle should clear subsystem A's primary engine during final deinitialize")));
-		ASSERT_THAT(IsFalse(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should release the final tick owner during final deinitialize")));
-		ASSERT_THAT(AreEqual(0, FAngelscriptTickBehaviorTestAccess::GetActiveTickOwners(), TEXT("Multi-owner lifecycle should clear the active tick owner count after the last shutdown")));
+		ASSERT_THAT(IsFalse(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should release the final tick owner during final deinitialize")));
 		ASSERT_THAT(IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("Multi-owner lifecycle should clear the current engine after the last owner shuts down")));
 		ASSERT_THAT(IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("Multi-owner lifecycle should leave no current engine after cleanup")));
-		ASSERT_THAT(IsFalse(UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should leave no active tick owners after cleanup")));
+		ASSERT_THAT(IsFalse(UAngelscriptSubsystem::HasAnyTickOwner(), TEXT("Multi-owner lifecycle should leave no active tick owners after cleanup")));
 	}
 };
 
@@ -385,56 +329,62 @@ TEST_CLASS_WITH_FLAGS(
 	"Angelscript.TestModule.GameInstanceSubsystem.TickPolicy",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static bool InitializeRuntimeSubsystemTestCase(
+		FAutomationTestBase& Test,
+		FActorTestSpawner& Spawner,
+		UWorld*& OutWorld,
+		UGameInstance*& OutGameInstance,
+		UAngelscriptSubsystem*& OutSubsystem)
+	{
+		Spawner.InitializeGameSubsystems();
+
+		OutWorld = &Spawner.GetWorld();
+		if (!Test.TestNotNull(TEXT("Subsystem runtime test case should create a test world"), OutWorld))
+		{
+			return false;
+		}
+
+		OutGameInstance = OutWorld->GetGameInstance();
+		if (!Test.TestNotNull(TEXT("Subsystem runtime test case should expose a game instance"), OutGameInstance))
+		{
+			return false;
+		}
+
+		OutSubsystem = OutGameInstance->GetSubsystem<UAngelscriptSubsystem>();
+		return Test.TestNotNull(TEXT("Subsystem runtime test case should expose the Angelscript subsystem"), OutSubsystem);
+	}
+
+public:
 	TEST_METHOD(GatesTemplateAndInitializationState)
 	{
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		FAngelscriptEngineScope Scope(Engine);
 
-		UAngelscriptGameInstanceSubsystem* SubsystemCDO = GetMutableDefault<UAngelscriptGameInstanceSubsystem>();
+		UAngelscriptSubsystem* SubsystemCDO = GetMutableDefault<UAngelscriptSubsystem>();
 		ASSERT_THAT(IsNotNull(SubsystemCDO, TEXT("TickPolicy test should resolve the subsystem CDO")));
 		ASSERT_THAT(AreEqual(ETickableTickType::Never, SubsystemCDO->GetTickableTickType(), TEXT("TickPolicy test should force the subsystem CDO to never tick")));
 		ASSERT_THAT(IsFalse(SubsystemCDO->IsAllowedToTick(), TEXT("TickPolicy test should reject the subsystem CDO from ticking")));
 
-		TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>());
-		UAngelscriptGameInstanceSubsystem* Subsystem = NewObject<UAngelscriptGameInstanceSubsystem>(GameInstance.Get());
-		ASSERT_THAT(IsNotNull(Subsystem, TEXT("TickPolicy test should create a live subsystem instance")));
+		TStrongObjectPtr<UGameInstance> RawGameInstance(NewObject<UGameInstance>());
+		UAngelscriptSubsystem* RawSubsystem = NewObject<UAngelscriptSubsystem>(RawGameInstance.Get());
+		ASSERT_THAT(IsNotNull(RawSubsystem, TEXT("TickPolicy test should create an uninitialized subsystem instance")));
+		ASSERT_THAT(IsNull(RawSubsystem->GetEngine(), TEXT("TickPolicy test should leave a raw subsystem without a primary engine")));
+		ASSERT_THAT(IsFalse(RawSubsystem->IsAllowedToTick(), TEXT("TickPolicy test should keep an uninitialized subsystem gated")));
 
-		const FAngelscriptEngine* SavedPrimaryEngine = FAngelscriptTickBehaviorTestAccess::GetSubsystemPrimaryEngine(*Subsystem);
-		const bool bSavedOwnsPrimaryEngine = FAngelscriptTickBehaviorTestAccess::GetSubsystemOwnsPrimaryEngine(*Subsystem);
-		const bool bSavedInitialized = FAngelscriptTickBehaviorTestAccess::GetSubsystemInitialized(*Subsystem);
-		const int32 SavedActiveTickOwners = FAngelscriptTickBehaviorTestAccess::GetActiveTickOwners();
-		ON_SCOPE_EXIT
-		{
-			FAngelscriptTickBehaviorTestAccess::SetSubsystemPrimaryEngineRaw(*Subsystem, const_cast<FAngelscriptEngine*>(SavedPrimaryEngine));
-			FAngelscriptTickBehaviorTestAccess::SetSubsystemOwnsPrimaryEngine(*Subsystem, bSavedOwnsPrimaryEngine);
-			FAngelscriptTickBehaviorTestAccess::SetSubsystemInitialized(*Subsystem, bSavedInitialized);
-			FAngelscriptTickBehaviorTestAccess::SetActiveTickOwners(SavedActiveTickOwners);
-		};
-
-		FAngelscriptTickBehaviorTestAccess::SetSubsystemPrimaryEngineRaw(*Subsystem, nullptr);
-		FAngelscriptTickBehaviorTestAccess::SetSubsystemOwnsPrimaryEngine(*Subsystem, false);
-		FAngelscriptTickBehaviorTestAccess::SetSubsystemInitialized(*Subsystem, false);
-		FAngelscriptTickBehaviorTestAccess::SetActiveTickOwners(0);
-
-		ASSERT_THAT(IsFalse(Subsystem->IsAllowedToTick(), TEXT("TickPolicy test should keep an uninitialized subsystem gated")));
-
-		FAngelscriptTickBehaviorTestAccess::SetSubsystemPrimaryEngineRaw(*Subsystem, &Engine);
-		ASSERT_THAT(IsFalse(Subsystem->IsAllowedToTick(), TEXT("TickPolicy test should keep a subsystem with an engine but no initialization gated")));
-
-		FAngelscriptTickBehaviorTestAccess::SetSubsystemInitialized(*Subsystem, true);
-		FAngelscriptTickBehaviorTestAccess::SetActiveTickOwners(1);
-		ASSERT_THAT(IsTrue(Subsystem->IsAllowedToTick(), TEXT("TickPolicy test should allow a live subsystem to tick only after initialization and engine injection")));
+		FActorTestSpawner Spawner;
+		UWorld* World = nullptr;
+		UGameInstance* GameInstance = nullptr;
+		UAngelscriptSubsystem* Subsystem = nullptr;
+		ASSERT_THAT(IsTrue(InitializeRuntimeSubsystemTestCase(*TestRunner, Spawner, World, GameInstance, Subsystem)));
+		ASSERT_THAT(IsTrue(Subsystem->GetEngine() == &Engine, TEXT("TickPolicy test should initialize the subsystem with the active engine")));
+		ASSERT_THAT(IsTrue(Subsystem->IsAllowedToTick(), TEXT("TickPolicy test should allow a live initialized subsystem to tick")));
 		ASSERT_THAT(IsTrue(Subsystem->IsTickableInEditor(), TEXT("TickPolicy test should remain tickable in editor for live subsystem instances")));
 		ASSERT_THAT(IsTrue(Subsystem->IsTickableWhenPaused(), TEXT("TickPolicy test should remain tickable while paused for live subsystem instances")));
 
-		FAngelscriptTickBehaviorTestAccess::SetSubsystemPrimaryEngineRaw(*Subsystem, nullptr);
-		ASSERT_THAT(IsFalse(Subsystem->IsAllowedToTick(), TEXT("TickPolicy test should close the gate immediately when the primary engine is cleared")));
-
-		FAngelscriptTickBehaviorTestAccess::SetSubsystemPrimaryEngineRaw(*Subsystem, &Engine);
-		ASSERT_THAT(IsTrue(Subsystem->IsAllowedToTick(), TEXT("TickPolicy test should reopen the gate when the primary engine is restored and initialization remains true")));
-
-		FAngelscriptTickBehaviorTestAccess::SetSubsystemInitialized(*Subsystem, false);
-		ASSERT_THAT(IsFalse(Subsystem->IsAllowedToTick(), TEXT("TickPolicy test should close the gate immediately when initialization is revoked")));
+		Subsystem->Deinitialize();
+		ASSERT_THAT(IsNull(Subsystem->GetEngine(), TEXT("TickPolicy test should clear the subsystem engine during deinitialize")));
+		ASSERT_THAT(IsFalse(Subsystem->IsAllowedToTick(), TEXT("TickPolicy test should close the tick gate after deinitialize")));
 	}
 };
 

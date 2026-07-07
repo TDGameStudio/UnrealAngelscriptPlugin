@@ -1,10 +1,12 @@
 #include "AngelscriptEngine.h"
 #include "AngelscriptEngineSubsystem.h"
-#include "AngelscriptGameInstanceSubsystem.h"
+#include "AngelscriptSubsystem.h"
 #include "AngelscriptRuntimeModule.h"
 #include "AngelscriptTestUtilities.h"
 
+#include "Components/ActorTestSpawner.h"
 #include "CQTest.h"
+#include "Engine/GameInstance.h"
 #include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
@@ -39,16 +41,6 @@ struct FAngelscriptRuntimeModuleTickTestAccess
 
 struct FAngelscriptTickBehaviorTestAccess
 {
-	static int32 GetActiveTickOwners()
-	{
-		return UAngelscriptGameInstanceSubsystem::ActiveTickOwners;
-	}
-
-	static void SetActiveTickOwners(const int32 InValue)
-	{
-		UAngelscriptGameInstanceSubsystem::ActiveTickOwners = InValue;
-	}
-
 	static double GetNextHotReloadCheck(const FAngelscriptEngine& Engine)
 	{
 		return Engine.NextHotReloadCheck;
@@ -449,7 +441,6 @@ public:
 	TEST_METHOD(TickRespectsGameInstanceOwnership)
 	{
 		FRuntimeModuleContextStackGuard ContextGuard;
-		const int32 SavedActiveTickOwners = FAngelscriptTickBehaviorTestAccess::GetActiveTickOwners();
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -459,7 +450,6 @@ public:
 
 		ON_SCOPE_EXIT
 		{
-			FAngelscriptTickBehaviorTestAccess::SetActiveTickOwners(SavedActiveTickOwners);
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
@@ -489,22 +479,28 @@ public:
 
 		EngineSubsystem->EnsurePrimaryEngineInitialized();
 
-		FAngelscriptTickBehaviorTestAccess::SetActiveTickOwners(0);
 		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*TestEngine, -1.0);
 
 		bool bOk = this->Assert.IsFalse(
-			UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(),
+			UAngelscriptSubsystem::HasAnyTickOwner(),
 			TEXT("EngineSubsystem tick test should start without game instance tick owners"));
 		EngineSubsystem->Tick(0.016f);
 		bOk &= this->Assert.IsTrue(
 			FAngelscriptTickBehaviorTestAccess::GetNextHotReloadCheck(*TestEngine) > 0.0,
 			TEXT("EngineSubsystem tick test should advance NextHotReloadCheck when no game instance owner exists"));
 
-		FAngelscriptTickBehaviorTestAccess::SetActiveTickOwners(1);
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		UGameInstance* GameInstance = Spawner.GetWorld().GetGameInstance();
+		bOk &= this->Assert.IsNotNull(GameInstance, TEXT("EngineSubsystem tick test should create a game instance"));
+		UAngelscriptSubsystem* GameInstanceSubsystem = GameInstance != nullptr ? GameInstance->GetSubsystem<UAngelscriptSubsystem>() : nullptr;
+		bOk &= this->Assert.IsNotNull(GameInstanceSubsystem, TEXT("EngineSubsystem tick test should create a game instance subsystem owner"));
+		bOk &= this->Assert.IsTrue(GameInstanceSubsystem != nullptr && GameInstanceSubsystem->GetEngine() == TestEngine.Get(), TEXT("EngineSubsystem tick test should let the game instance subsystem adopt the isolated engine"));
+
 		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*TestEngine, -1.0);
 
 		bOk &= this->Assert.IsTrue(
-			UAngelscriptGameInstanceSubsystem::HasAnyTickOwner(),
+			UAngelscriptSubsystem::HasAnyTickOwner(),
 			TEXT("EngineSubsystem tick test should report an active game instance tick owner after setup"));
 		EngineSubsystem->Tick(0.016f);
 		bOk &= this->Assert.IsNear(
