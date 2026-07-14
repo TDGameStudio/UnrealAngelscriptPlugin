@@ -46,6 +46,28 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBodyInstanceBindingsTest,
 			ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), TEXT("int LatentInfo_DefaultLinkage()"), TEXT("Default FLatentActionInfo linkage"), -1),
 			TEXT("ExpectGlobalInt should pass")));
 	}
+
+	TEST_METHOD(FLatentActionInfoExplicitConstructor)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASBodyInstance_LatentExplicit"), ASTEST_AS(R"AS(
+			int LatentInfo_ExplicitConstructor()
+			{
+				UObject CallbackTarget;
+				FLatentActionInfo Info(7, 11, n"Done", CallbackTarget);
+				return Info.Linkage + Info.UUID;
+			}
+			)AS"));
+		if (!Mod.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), TEXT("int LatentInfo_ExplicitConstructor()"), TEXT("Explicit FLatentActionInfo constructor should remain callable"), 18),
+			TEXT("ExpectGlobalInt should pass")));
+	}
 };
 
 #endif

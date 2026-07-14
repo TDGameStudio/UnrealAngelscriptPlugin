@@ -25,7 +25,10 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FEnhancedInputActionEventBindi
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FEnhancedInputActionEventBinding_Late(FAngelscriptBinds::EOrder::Late, []
 {
 	auto FEnhancedInputActionEventBinding_ = FAngelscriptBinds::ExistingClass("FEnhancedInputActionEventBinding");
-	FEnhancedInputActionEventBinding_.Method("uint32 GetHandle() const", METHOD_TRIVIAL(FEnhancedInputActionEventBinding, GetHandle));
+	FEnhancedInputActionEventBinding_.Method("uint32 GetHandle() const", [](const FEnhancedInputActionEventBinding& Binding)
+	{
+		return Binding.GetHandle();
+	});
 	FEnhancedInputActionEventBinding_.Method("const UInputAction GetAction() const", METHOD_TRIVIAL(FEnhancedInputActionEventBinding, GetAction));
 	FEnhancedInputActionEventBinding_.Method("ETriggerEvent GetTriggerEvent() const", METHOD_TRIVIAL(FEnhancedInputActionEventBinding, GetTriggerEvent));
 	FEnhancedInputActionEventBinding_.Method("void Execute(const FInputActionInstance& ActionData) const", METHODPR_TRIVIAL(void, FEnhancedInputActionEventBinding, Execute, (const FInputActionInstance&) const));

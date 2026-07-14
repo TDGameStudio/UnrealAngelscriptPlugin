@@ -16,7 +16,6 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FLatentActionInfo((int32)FAnge
 		Address->CallbackTarget = InCallbackTarget;
 	});
 	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FLatentActionInfo_, "FLatentActionInfo");
 
 	FLatentActionInfo_.Property("int32 Linkage", &FLatentActionInfo::Linkage);
 	FLatentActionInfo_.Property("int32 UUID", &FLatentActionInfo::UUID);

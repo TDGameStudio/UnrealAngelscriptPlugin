@@ -594,6 +594,48 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 		}
 	}
 
+	TEST_METHOD(WidgetBlueprintCreateWidgetMetadata)
+	{
+		SubsystemGetterMetadataTest::ResetIsolatedEnvironment();
+		ON_SCOPE_EXIT
+		{
+			SubsystemGetterMetadataTest::ResetIsolatedEnvironment();
+		};
+
+		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
+		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("WidgetBlueprintCreateWidgetMetadata should create a testing engine")))
+		{
+			return;
+		}
+
+		FAngelscriptEngineScope EngineScope(*Engine);
+		UFunction* Function = UWidgetBlueprintStatics::StaticClass()->FindFunctionByName(TEXT("CreateWidget"));
+		if (!this->Assert.IsNotNull(Function, TEXT("WidgetBlueprintCreateWidgetMetadata should find CreateWidget")))
+		{
+			return;
+		}
+
+		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UWidgetBlueprintStatics::StaticClass());
+		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("WidgetBlueprintCreateWidgetMetadata should resolve the widget library type")))
+		{
+			return;
+		}
+
+		FAngelscriptFunctionSignature Signature(HostType.ToSharedRef(), Function);
+		const int FunctionId = FAngelscriptBinds::BindGlobalGenericFunction(Signature.Declaration, &SubsystemGetterMetadataTest::NoOpGeneric);
+		Signature.ModifyScriptFunction(FunctionId);
+
+		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(Engine->GetScriptEngine()->GetFunctionById(FunctionId));
+		if (!this->Assert.IsNotNull(ScriptFunction, TEXT("WidgetBlueprintCreateWidgetMetadata should create a script function")))
+		{
+			return;
+		}
+
+		(void)this->Assert.AreEqual(1, static_cast<int32>(Signature.DeterminesOutputTypeArgument), TEXT("CreateWidget should determine output type from WidgetType"));
+		(void)this->Assert.AreEqual(1, static_cast<int32>(ScriptFunction->determinesOutputTypeArgumentIndex), TEXT("CreateWidget script function should retain determined output type metadata"));
+	}
+
 	TEST_METHOD(ProductionScriptMixinSignatures)
 	{
 		SubsystemGetterMetadataTest::ResetIsolatedEnvironment();

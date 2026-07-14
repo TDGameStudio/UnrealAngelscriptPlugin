@@ -328,7 +328,10 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString(FAngelscriptBinds::EOr
 	// Whitespace handling
 	FString_.Method("FString LeftPad(int Count) const", METHOD_TRIVIAL(FString, LeftPad));
 	FString_.Method("FString RightPad(int Count) const", METHOD_TRIVIAL(FString, RightPad));
-	FString_.Method("FString TrimQuotes(bool& OutQuotesRemoved) const", METHODPR_TRIVIAL(FString, FString, TrimQuotes, (bool*) const &));
+	FString_.Method("FString TrimQuotes(bool& OutQuotesRemoved) const", [](const FString Str, bool& OutQuotesRemoved) -> FString
+	{
+		return Str.TrimQuotes(&OutQuotesRemoved);
+	});
 
 	FString_.Method("FString TrimStartAndEnd() const", [](const FString& Str) -> FString
 	{

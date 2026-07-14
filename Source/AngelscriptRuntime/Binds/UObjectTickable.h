@@ -29,6 +29,7 @@ public:
 	//UFUNCTION(ScriptCallable)
 	void DestroyObject()
 	{
+		SetTickableTickType(ETickableTickType::Never);
 		MarkAsGarbage();
 	}
 

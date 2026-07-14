@@ -360,6 +360,14 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 			FString Result = s.TrimQuotes(bQuotesRemoved);
 			return bQuotesRemoved ? Result : "failed";
 		}
+
+		FString TestTrimQuotesUnchanged()
+		{
+			FString s = "Plain";
+			bool bQuotesRemoved = false;
+			FString Result = s.TrimQuotes(bQuotesRemoved);
+			return bQuotesRemoved ? "failed" : Result;
+		}
 		)AS"));
 		ON_SCOPE_EXIT
 		{
@@ -375,6 +383,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageFStringMethodTest,
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimNone()"), FString(TEXT("Hello")), TEXT("TrimStartAndEnd() with no spaces"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimChar()"), FString(TEXT("**Hello**")), TEXT("TrimChar() should trim one matching leading and trailing character"));
 		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimQuotes()"), FString(TEXT("Quoted")), TEXT("TrimQuotes() should trim quotes and report removal"));
+		ExpectGlobalReturn<FString>(Engine, Module, TEXT("FString TestTrimQuotesUnchanged()"), FString(TEXT("Plain")), TEXT("TrimQuotes() should preserve unquoted strings and report no removal"));
 	}
 
 	// -------------------------------------------------------------------------

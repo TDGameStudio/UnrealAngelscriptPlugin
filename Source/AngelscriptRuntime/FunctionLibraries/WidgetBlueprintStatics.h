@@ -16,7 +16,7 @@ class UWidgetBlueprintStatics : public UObject
 
 public:
 
-	UFUNCTION(BlueprintCallable, Meta = (WorldContext = "WorldContextObject"))
+	UFUNCTION(BlueprintCallable, Meta = (WorldContext = "WorldContextObject", DeterminesOutputType = "WidgetType"))
 	static class UUserWidget* CreateWidget(UObject* WorldContextObject, TSubclassOf<class UUserWidget> WidgetType, APlayerController* OwningPlayer)
 	{
 		return UWidgetBlueprintLibrary::Create(WorldContextObject, WidgetType, OwningPlayer);

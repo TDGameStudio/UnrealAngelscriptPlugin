@@ -3,6 +3,7 @@
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestEngineAcquisition.h"
 
+#include "EnhancedInputComponent.h"
 #include "StaticJIT/StaticJITBinds.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -115,13 +116,71 @@ private:
 	}
 
 	static bool RunTArrayIndexCustomCall(FAutomationTestBase& Test);
+	static bool RunEnhancedInputGetHandleNoJit(FAutomationTestBase& Test);
 
 public:
 	TEST_METHOD(TArrayIndexCustomCall)
 	{
 		ASSERT_THAT(IsTrue(RunTArrayIndexCustomCall(*TestRunner)));
 	}
+
+	TEST_METHOD(EnhancedInputGetHandleNoJit)
+	{
+		ASSERT_THAT(IsTrue(RunEnhancedInputGetHandleNoJit(*TestRunner)));
+	}
 };
+
+bool FAngelscriptStaticJITNativeFormTests::RunEnhancedInputGetHandleNoJit(FAutomationTestBase& Test)
+{
+	FAngelscriptEngineConfig Config;
+	Config.bGeneratePrecompiledData = true;
+
+	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+	TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+	if (!Test.TestNotNull(TEXT("StaticJIT.NativeForms.EnhancedInputGetHandleNoJit should create a dedicated engine"), OwnedEngine.Get()))
+	{
+		return false;
+	}
+
+	FAngelscriptEngine& Engine = *OwnedEngine;
+	asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
+	if (!Test.TestNotNull(TEXT("StaticJIT.NativeForms.EnhancedInputGetHandleNoJit should expose the script engine"), ScriptEngine))
+	{
+		return false;
+	}
+
+	asITypeInfo* TypeInfo = ScriptEngine->GetTypeInfoByDecl("FEnhancedInputActionEventBinding");
+	if (!Test.TestNotNull(TEXT("StaticJIT.NativeForms.EnhancedInputGetHandleNoJit should resolve FEnhancedInputActionEventBinding"), TypeInfo))
+	{
+		return false;
+	}
+
+	bool bFoundHandle = false;
+	for (asUINT MethodIndex = 0; MethodIndex < TypeInfo->GetMethodCount(); ++MethodIndex)
+	{
+		asIScriptFunction* Candidate = TypeInfo->GetMethodByIndex(MethodIndex);
+		if (Candidate != nullptr && FCStringAnsi::Strcmp(Candidate->GetName(), "GetHandle") == 0)
+		{
+			bFoundHandle = true;
+			break;
+		}
+	}
+
+	if (!Test.TestTrue(TEXT("StaticJIT.NativeForms.EnhancedInputGetHandleNoJit should expose GetHandle"), bFoundHandle))
+	{
+		return false;
+	}
+
+	FString ResolvedDeclaration;
+	FScriptFunctionNativeForm* NativeForm = FindNativeFormForMethodName(
+		Test,
+		*TypeInfo,
+		"GetHandle",
+		&ResolvedDeclaration);
+	return Test.TestNull(
+		TEXT("StaticJIT.NativeForms.EnhancedInputGetHandleNoJit should not create a trivial native form"),
+		NativeForm);
+}
 
 bool FAngelscriptStaticJITNativeFormTests::RunTArrayIndexCustomCall(FAutomationTestBase& Test)
 {
