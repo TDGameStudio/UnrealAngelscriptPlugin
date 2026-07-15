@@ -1,6 +1,7 @@
 #include "CQTest.h"
 #include "AngelscriptTestMacros.h"
 #include "Functional/Actor/AngelscriptActorTestHelpers.h"
+#include "FunctionLibraries/AngelscriptActorLibrary.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -256,6 +257,105 @@ class ATestMixinAttachParent : AActor
 			1,
 			Invoker.CallAndReturn<int32>(INDEX_NONE),
 			TEXT("GetAttachedActors should enumerate attached child actors")));
+	}
+
+	TEST_METHOD(GetAttachedActorsOfClassNullGuards)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		static const FName ModuleName(TEXT("TestActorMixinGetAttachedOfClass"));
+		ON_SCOPE_EXIT { Engine.DiscardModule(*ModuleName.ToString()); };
+
+		UClass* ScriptClass = CompileScriptModule(*TestRunner, Engine, ModuleName,
+			TEXT("TestActorMixinGetAttachedOfClass.as"),
+			TEXT(R"AS(
+UCLASS()
+class ATestMixinAttachedFilterChild : AActor
+{
+	UPROPERTY(DefaultComponent, RootComponent)
+	USceneComponent ChildRoot;
+}
+
+UCLASS()
+class ATestMixinAttachedFilterOther : AActor
+{
+	UPROPERTY(DefaultComponent, RootComponent)
+	USceneComponent OtherRoot;
+}
+
+UCLASS()
+class ATestMixinAttachedFilterParent : AActor
+{
+	UPROPERTY(DefaultComponent, RootComponent)
+	USceneComponent ParentRoot;
+
+	UFUNCTION()
+	int RunValidClassFilter()
+	{
+		AActor MatchingChild = SpawnActor(ATestMixinAttachedFilterChild::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, n"MatchingChild");
+		if (MatchingChild == nullptr)
+			return 10;
+		MatchingChild.AttachToActor(this, n"NAME_None", EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
+
+		AActor OtherChild = SpawnActor(ATestMixinAttachedFilterOther::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, n"OtherChild");
+		if (OtherChild == nullptr)
+			return 20;
+		OtherChild.AttachToActor(this, n"NAME_None", EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
+
+		TArray<AActor> FilteredActors = GetAttachedActorsOfClass(ATestMixinAttachedFilterChild::StaticClass());
+		if (FilteredActors.Num() != 1)
+			return 30;
+		if (!FilteredActors[0].IsA(ATestMixinAttachedFilterChild::StaticClass()))
+			return 40;
+
+		return 1;
+	}
+
+	UFUNCTION()
+	int RunNullClass()
+	{
+		AActor Child = SpawnActor(ATestMixinAttachedFilterChild::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, n"NullClassChild");
+		if (Child == nullptr)
+			return 10;
+		Child.AttachToActor(this, n"NAME_None", EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
+
+		TSubclassOf<AActor> NullClass;
+		TArray<AActor> FilteredActors = GetAttachedActorsOfClass(NullClass);
+		return FilteredActors.Num() == 0 ? 1 : 20;
+	}
+
+}
+)AS"),
+			TEXT("ATestMixinAttachedFilterParent"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Attached actor class-filter regression class should compile")));
+		if (ScriptClass == nullptr) return;
+
+		FAngelscriptTestWorld W(*TestRunner, Engine);
+		if (!W.IsValid()) return;
+		AActor* Actor = W.SpawnActorOfClass(ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Attached actor class-filter regression actor should spawn")));
+		if (Actor == nullptr) return;
+		W.BeginPlay(*Actor);
+
+		FFunctionInvoker ValidFilterInvoker(*TestRunner, Actor, FName(TEXT("RunValidClassFilter")));
+		if (!ValidFilterInvoker.IsValid()) return;
+		ASSERT_THAT(AreEqual(
+			1,
+			ValidFilterInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("GetAttachedActorsOfClass should retain only actors matching the requested class")));
+
+		FFunctionInvoker NullClassInvoker(*TestRunner, Actor, FName(TEXT("RunNullClass")));
+		if (!NullClassInvoker.IsValid()) return;
+		ASSERT_THAT(AreEqual(
+			1,
+			NullClassInvoker.CallAndReturn<int32>(INDEX_NONE),
+			TEXT("GetAttachedActorsOfClass should return an empty array for a null class")));
+
+		const TArray<AActor*> NullActorResult = UAngelscriptActorLibrary::GetAttachedActorsOfClass(nullptr, AActor::StaticClass());
+		ASSERT_THAT(AreEqual(
+			0,
+			NullActorResult.Num(),
+			TEXT("GetAttachedActorsOfClass should return an empty array for a null actor")));
 	}
 };
 

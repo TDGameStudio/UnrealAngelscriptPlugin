@@ -91,6 +91,11 @@ public:
 	static TArray<AActor*> GetAttachedActorsOfClass(const AActor* Actor, const TSubclassOf<AActor> ActorClass, bool bRecursivelyIncludeAttachedActors = false)
 	{
 		TArray<AActor*> OutActors;
+		if (Actor == nullptr)
+			return OutActors;
+		if (ActorClass.Get() == nullptr)
+			return OutActors;
+
 		Actor->GetAttachedActors(OutActors, false, bRecursivelyIncludeAttachedActors);
 
 		if (ActorClass != nullptr)
