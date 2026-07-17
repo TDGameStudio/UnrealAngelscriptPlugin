@@ -16,7 +16,7 @@
 #include "Templates/Atomic.h"
 #include "Bindings/AngelscriptModuleBindingProtocol.h"
 
-#if WITH_ANGELSCRIPT_UNITTESTS && WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS
+#if WITH_ANGELSCRIPT_UNITTESTS && WITH_ANGELSCRIPT_MODULE_BINDINGS
 
 ANGELSCRIPTRUNTIME_API void GAngelscriptModuleBindingEnsureRegisteredForTesting();
 ANGELSCRIPTRUNTIME_API int32 GAngelscriptModuleBindingBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptModuleBinding* Binding);

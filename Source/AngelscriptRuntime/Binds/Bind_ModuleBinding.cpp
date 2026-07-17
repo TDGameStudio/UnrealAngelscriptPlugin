@@ -1,4 +1,4 @@
-#if WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS
+#if WITH_ANGELSCRIPT_MODULE_BINDINGS
 
 #include "Core/AngelscriptBinds.h"
 #include "Core/AngelscriptEngine.h"

@@ -101,7 +101,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 	private const string ModuleBindingGenerationModulesFileName = "module-binding-generation-modules.json";
 	private const string CompileOptionsFileName = "DefaultAngelscriptCompileOptions.ini";
 	private const string CompileOptionsSectionName = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
-	private const string ModuleLocalBindingsSettingName = "bCompileAngelscriptModuleLocalBindings";
+	private const string ModuleBindingSettingName = "bCompileAngelscriptModuleBindings";
 
 	public static int Generate(IUhtExportFactory factory)
 	{
@@ -1012,17 +1012,17 @@ internal static class AngelscriptFunctionTableCodeGenerator
 			factory.AddExternalDependency(candidate);
 			AngelscriptModuleBindingGenerationConfig config = LoadModuleBindingGenerationConfig(candidate);
 			string runtimeBuildCsPath = ResolveRuntimeBuildCsPath(factory);
-			bool moduleLocalBindingsEnabled = ReadModuleLocalBindingsSetting(factory, runtimeBuildCsPath);
+			bool moduleBindingEnabled = ReadModuleBindingSetting(factory, runtimeBuildCsPath);
 			string? engineDirectory = ResolveEngineDirectory(factory);
 			string engineDistribution = ClassifyEngineDistribution(engineDirectory);
-			if (moduleLocalBindingsEnabled && !engineDistribution.Equals("source", StringComparison.OrdinalIgnoreCase))
+			if (moduleBindingEnabled && !engineDistribution.Equals("source", StringComparison.OrdinalIgnoreCase))
 			{
 				throw new InvalidOperationException(
-					$"Angelscript ModuleLocal binding compilation requires a source engine. Engine '{engineDirectory ?? "<unknown>"}' is classified as {engineDistribution}; disable {ModuleLocalBindingsSettingName} or use a source engine.");
+					$"Angelscript ModuleBinding compilation requires a source engine. Engine '{engineDirectory ?? "<unknown>"}' is classified as {engineDistribution}; disable {ModuleBindingSettingName} or use a source engine.");
 			}
 
 			string profile = ResolveModuleBindingGenerationProfile(factory);
-			bool enabled = moduleLocalBindingsEnabled && config.Enabled;
+			bool enabled = moduleBindingEnabled && config.Enabled;
 			HashSet<string> configuredModules = new(StringComparer.OrdinalIgnoreCase);
 			AddConfiguredModules(configuredModules, config.Profiles.Common, candidate, "common");
 			AddConfiguredModules(
@@ -1211,7 +1211,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 		}
 	}
 
-	private static bool ReadModuleLocalBindingsSetting(IUhtExportFactory factory, string runtimeBuildCsPath)
+	private static bool ReadModuleBindingSetting(IUhtExportFactory factory, string runtimeBuildCsPath)
 	{
 		foreach (string candidate in EnumerateCompileOptionsCandidates(runtimeBuildCsPath))
 		{
@@ -1242,7 +1242,7 @@ internal static class AngelscriptFunctionTableCodeGenerator
 				}
 
 				int separatorIndex = line.IndexOf('=');
-				if (separatorIndex <= 0 || !string.Equals(line.Substring(0, separatorIndex).Trim(), ModuleLocalBindingsSettingName, StringComparison.OrdinalIgnoreCase))
+				if (separatorIndex <= 0 || !string.Equals(line.Substring(0, separatorIndex).Trim(), ModuleBindingSettingName, StringComparison.OrdinalIgnoreCase))
 				{
 					continue;
 				}

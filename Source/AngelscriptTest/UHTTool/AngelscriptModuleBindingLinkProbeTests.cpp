@@ -23,7 +23,7 @@ struct FAngelscriptModuleBindingResolverTests;
 struct FAngelscriptModuleBindingDirectBindProbeTests;
 struct FAngelscriptModuleBindingGenerationProfileTests;
 struct FAngelscriptModuleBindingDefaultOffTests;
-struct FAngelscriptModuleLocalCompileGateTests;
+struct FAngelscriptModuleBindingCompileGateTests;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptModuleBindingLinkProbeTests,
 	"Angelscript.CppTests.UHTToolResolver.LinkProbe",
@@ -36,7 +36,7 @@ private:
 	friend struct FAngelscriptModuleBindingDirectBindProbeTests;
 	friend struct FAngelscriptModuleBindingGenerationProfileTests;
 	friend struct FAngelscriptModuleBindingDefaultOffTests;
-	friend struct FAngelscriptModuleLocalCompileGateTests;
+	friend struct FAngelscriptModuleBindingCompileGateTests;
 
 	static constexpr uint32 ProbeLayoutVersion = 0xA5C0DE02u;
 	static FAutomationTestBase* GActiveTest;
@@ -569,7 +569,7 @@ private:
 	static bool RunGenerationProfilesEntries(FAutomationTestBase& Test);
 	static bool RunDefaultOffDiagnostics(FAutomationTestBase& Test);
 	static bool RunDefaultOffGeneratedOutput(FAutomationTestBase& Test);
-	static bool RunModuleLocalCompileGate(FAutomationTestBase& Test);
+	static bool RunModuleBindingCompileGate(FAutomationTestBase& Test);
 
 public:
 	TEST_METHOD(IModularFeaturesRoundtrip)
@@ -902,7 +902,7 @@ bool FAngelscriptModuleBindingLinkProbeTests::RunGenerationProfilesPolicy(FAutom
 
 	bool bPassed = true;
 	bPassed &= TestTrue(TEXT("Profile config should remain enabled for explicit compile-option control"), ProfileConfigContents.Contains(TEXT("\"enabled\": true")));
-	bPassed &= TestTrue(TEXT("Compile options should default ModuleLocal generation to disabled"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleLocalBindings=false")));
+	bPassed &= TestTrue(TEXT("Compile options should default ModuleBinding generation to disabled"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleBindings=false")));
 	bPassed &= TestTrue(TEXT("Profile config should declare common profile"), ProfileConfigContents.Contains(TEXT("\"common\"")));
 	bPassed &= TestTrue(TEXT("Profile config should declare source profile"), ProfileConfigContents.Contains(TEXT("\"source\"")));
 	bPassed &= TestTrue(TEXT("Profile config should declare installed profile"), ProfileConfigContents.Contains(TEXT("\"installed\"")));
@@ -1012,7 +1012,7 @@ bool FAngelscriptModuleBindingLinkProbeTests::RunDefaultOffDiagnostics(FAutomati
 
 	bool bPassed = true;
 	bPassed &= TestTrue(TEXT("Config should leave the profile available to the compile option"), ProfileConfigContents.Contains(TEXT("\"enabled\": true")));
-	bPassed &= TestTrue(TEXT("Compile options should disable ModuleLocal generation by default"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleLocalBindings=false")));
+	bPassed &= TestTrue(TEXT("Compile options should disable ModuleBinding generation by default"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleBindings=false")));
 	bPassed &= TestTrue(TEXT("Config should keep source profile modules for explicit opt-in"), ProfileConfigContents.Contains(TEXT("\"ControlRigEditor\"")));
 	bPassed &= TestTrue(TEXT("Summary should expose disabled ModuleBinding generation state"), SummaryContents.Contains(TEXT("\"moduleBindingGenerationEnabled\": false")));
 	bPassed &= TestTrue(TEXT("Summary should keep selected profile visible"), SummaryContents.Contains(TEXT("\"moduleBindingGenerationProfile\"")));
@@ -1051,7 +1051,7 @@ bool FAngelscriptModuleBindingLinkProbeTests::RunDefaultOffGeneratedOutput(FAuto
 	return bPassed;
 }
 
-bool FAngelscriptModuleBindingLinkProbeTests::RunModuleLocalCompileGate(FAutomationTestBase& Test)
+bool FAngelscriptModuleBindingLinkProbeTests::RunModuleBindingCompileGate(FAutomationTestBase& Test)
 {
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
@@ -1063,21 +1063,21 @@ bool FAngelscriptModuleBindingLinkProbeTests::RunModuleLocalCompileGate(FAutomat
 	if (!TestTrue(TEXT("Compile options should be readable"), FFileHelper::LoadFileToString(CompileOptionsContents, *GetCompileOptionsFilePath())) ||
 		!TestTrue(TEXT("Runtime Build.cs should be readable"), FFileHelper::LoadFileToString(BuildCsContents, *GetRuntimeBuildCsPath())) ||
 		!TestTrue(TEXT("UHT code generator should be readable"), FFileHelper::LoadFileToString(GeneratorContents, *GetUhtCodeGeneratorPath())) ||
-		!TestTrue(TEXT("Runtime ModuleLocal bridge should be readable"), FFileHelper::LoadFileToString(BridgeContents, *GetRuntimeModuleBindingBridgePath())) ||
+		!TestTrue(TEXT("Runtime ModuleBinding bridge should be readable"), FFileHelper::LoadFileToString(BridgeContents, *GetRuntimeModuleBindingBridgePath())) ||
 		!TestTrue(TEXT("Editor module should be readable"), FFileHelper::LoadFileToString(EditorModuleContents, *GetEditorModulePath())))
 	{
 		return false;
 	}
 
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("Compile options should default ModuleLocal bindings to disabled"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleLocalBindings=false")));
-	bPassed &= TestTrue(TEXT("Runtime Build.cs should define the ModuleLocal bindings macro"), BuildCsContents.Contains(TEXT("WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS")));
-	bPassed &= TestTrue(TEXT("Runtime Build.cs should reject ModuleLocal bindings for non-source engines"), BuildCsContents.Contains(TEXT("requires a source engine")));
-	bPassed &= TestTrue(TEXT("UHT should read the ModuleLocal compile option"), GeneratorContents.Contains(TEXT("bCompileAngelscriptModuleLocalBindings")));
-	bPassed &= TestTrue(TEXT("UHT should reject enabled ModuleLocal bindings for non-source engines"), GeneratorContents.Contains(TEXT("requires a source engine")));
-	bPassed &= TestTrue(TEXT("Runtime ModuleLocal bridge should be compile-gated"), BridgeContents.Contains(TEXT("#if WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS")));
-	bPassed &= TestTrue(TEXT("Editor settings should validate ModuleLocal bindings on modification"), EditorModuleContents.Contains(TEXT("OnModified().Bind")));
-	bPassed &= TestTrue(TEXT("Editor settings should reject ModuleLocal bindings for non-source engines"), EditorModuleContents.Contains(TEXT("requires a source engine")));
+	bPassed &= TestTrue(TEXT("Compile options should default ModuleBinding bindings to disabled"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleBindings=false")));
+	bPassed &= TestTrue(TEXT("Runtime Build.cs should define the ModuleBinding bindings macro"), BuildCsContents.Contains(TEXT("WITH_ANGELSCRIPT_MODULE_BINDINGS")));
+	bPassed &= TestTrue(TEXT("Runtime Build.cs should reject ModuleBinding bindings for non-source engines"), BuildCsContents.Contains(TEXT("requires a source engine")));
+	bPassed &= TestTrue(TEXT("UHT should read the ModuleBinding compile option"), GeneratorContents.Contains(TEXT("bCompileAngelscriptModuleBindings")));
+	bPassed &= TestTrue(TEXT("UHT should reject enabled ModuleBinding bindings for non-source engines"), GeneratorContents.Contains(TEXT("requires a source engine")));
+	bPassed &= TestTrue(TEXT("Runtime ModuleBinding bridge should be compile-gated"), BridgeContents.Contains(TEXT("#if WITH_ANGELSCRIPT_MODULE_BINDINGS")));
+	bPassed &= TestTrue(TEXT("Editor settings should validate ModuleBinding bindings on modification"), EditorModuleContents.Contains(TEXT("OnModified().Bind")));
+	bPassed &= TestTrue(TEXT("Editor settings should reject ModuleBinding bindings for non-source engines"), EditorModuleContents.Contains(TEXT("requires a source engine")));
 	return bPassed;
 }
 
@@ -1176,13 +1176,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptModuleBindingDefaultOffTests,
 	}
 };
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptModuleLocalCompileGateTests,
-	"Angelscript.CppTests.UHTToolResolver.ModuleLocalCompileGate",
+TEST_CLASS_WITH_FLAGS(FAngelscriptModuleBindingCompileGateTests,
+	"Angelscript.CppTests.UHTToolResolver.ModuleBindingCompileGate",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 	TEST_METHOD(CompileOptionControlsUhtAndRuntimeBridge)
 	{
-		ASSERT_THAT(IsTrue(FAngelscriptModuleBindingLinkProbeTests::RunModuleLocalCompileGate(*TestRunner)));
+		ASSERT_THAT(IsTrue(FAngelscriptModuleBindingLinkProbeTests::RunModuleBindingCompileGate(*TestRunner)));
 	}
 };
 

@@ -10,10 +10,10 @@ namespace UnrealBuildTool.Rules
 		{
 			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 			NumIncludedBytesPerUnityCPPOverride = 131072;
-			bool bCompileAngelscriptModuleLocalBindings = ReadModuleLocalBindingsSetting(Target);
+			bool bCompileAngelscriptModuleBindings = ReadModuleBindingSetting(Target);
 			PrivateDefinitions.Add("ANGELSCRIPT_EXPORT=1");
 			PublicDefinitions.Add("WITH_ANGELSCRIPT=1");
-			PublicDefinitions.Add("WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS=" + (bCompileAngelscriptModuleLocalBindings ? "1" : "0"));
+			PublicDefinitions.Add("WITH_ANGELSCRIPT_MODULE_BINDINGS=" + (bCompileAngelscriptModuleBindings ? "1" : "0"));
 			PublicDefinitions.Add("ANGELSCRIPT_DLL_LIBRARY_IMPORT=1");
 
 			PublicIncludePaths.Add(ModuleDirectory);
@@ -122,7 +122,7 @@ namespace UnrealBuildTool.Rules
 			}
 		}
 
-		private bool ReadModuleLocalBindingsSetting(ReadOnlyTargetRules Target)
+		private bool ReadModuleBindingSetting(ReadOnlyTargetRules Target)
 		{
 			if (Target.ProjectFile == null)
 			{
@@ -139,7 +139,7 @@ namespace UnrealBuildTool.Rules
 			ExternalDependencies.Add(ConfigPath);
 
 			const string SettingSection = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
-			const string SettingName = "bCompileAngelscriptModuleLocalBindings";
+			const string SettingName = "bCompileAngelscriptModuleBindings";
 			if (!File.Exists(ConfigPath))
 			{
 				return false;
@@ -178,7 +178,7 @@ namespace UnrealBuildTool.Rules
 				if (bEnabled && !IsSourceEngine())
 				{
 					throw new BuildException(
-						"Angelscript ModuleLocal binding compilation requires a source engine. Engine '{0}' is installed, binary, or unknown; disable bCompileAngelscriptModuleLocalBindings or use a source engine.",
+						"Angelscript ModuleBinding compilation requires a source engine. Engine '{0}' is installed, binary, or unknown; disable bCompileAngelscriptModuleBindings or use a source engine.",
 						EngineDirectory);
 				}
 

@@ -14,5 +14,5 @@ public:
 	bool bCompileAngelscriptUnitTests = false;
 
 	UPROPERTY(Config, EditAnywhere, Category = "Bindings", Meta = (ConfigRestartRequired = true))
-	bool bCompileAngelscriptModuleLocalBindings = false;
+	bool bCompileAngelscriptModuleBindings = false;
 };

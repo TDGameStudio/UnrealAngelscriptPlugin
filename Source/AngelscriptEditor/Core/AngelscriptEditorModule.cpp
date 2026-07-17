@@ -98,22 +98,22 @@ namespace
 		return IFileManager::Get().DirectoryExists(*FPaths::Combine(EngineParentDirectory, TEXT(".git")));
 	}
 
-	bool ValidateModuleLocalBindingsCompileOption()
+	bool ValidateModuleBindingCompileOption()
 	{
 		UAngelscriptCompileOptions* CompileOptions = GetMutableDefault<UAngelscriptCompileOptions>();
-		if (!CompileOptions->bCompileAngelscriptModuleLocalBindings || IsSourceEngineDistribution())
+		if (!CompileOptions->bCompileAngelscriptModuleBindings || IsSourceEngineDistribution())
 		{
 			return true;
 		}
 
-		CompileOptions->bCompileAngelscriptModuleLocalBindings = false;
+		CompileOptions->bCompileAngelscriptModuleBindings = false;
 		FMessageDialog::Open(
 			EAppMsgType::Ok,
 			FText::Format(
 				NSLOCTEXT(
 					"Angelscript",
-					"AngelscriptModuleLocalBindingsRequiresSourceEngine",
-					"ModuleLocal binding compilation requires a source engine. The current engine cannot compile Engine module-local binding shards:\n{0}\n\nThe option has been disabled and your change was not saved."),
+					"AngelscriptModuleBindingsRequiresSourceEngine",
+					"ModuleBinding compilation requires a source engine. The current engine cannot compile Engine ModuleBinding shards:\n{0}\n\nThe option has been disabled and your change was not saved."),
 				FText::FromString(FPaths::EngineDir())));
 		return false;
 	}
@@ -943,7 +943,7 @@ void FAngelscriptEditorModule::StartupModule()
 		);
 		if (CompileOptionsSection.IsValid())
 		{
-			CompileOptionsSection->OnModified().BindStatic(&ValidateModuleLocalBindingsCompileOption);
+			CompileOptionsSection->OnModified().BindStatic(&ValidateModuleBindingCompileOption);
 		}
 	}
 
