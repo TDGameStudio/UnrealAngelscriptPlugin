@@ -35,25 +35,6 @@ struct FAngelscriptRuntimeModuleTickTestAccess
 		return FAngelscriptRuntimeModule::OwnedPrimaryEngine.Get();
 	}
 
-	static void SuppressEngineSubsystemLookup()
-	{
-		UAngelscriptSubsystem::SetSubsystemOverrideForTesting(nullptr);
-	}
-
-	static void UseEngineSubsystem(UAngelscriptSubsystem* Subsystem)
-	{
-		UAngelscriptSubsystem::SetSubsystemOverrideForTesting(Subsystem);
-	}
-
-	static void ResetEngineSubsystemTestState()
-	{
-		UAngelscriptSubsystem::ResetInitializeStateForTesting();
-	}
-
-	static void SetEngineSubsystemInitializeOverride(TFunction<FAngelscriptEngine*()> InOverride)
-	{
-		UAngelscriptSubsystem::SetInitializeOverrideForTesting(MoveTemp(InOverride));
-	}
 };
 
 struct FAngelscriptTickBehaviorTestAccess
@@ -111,7 +92,6 @@ public:
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -121,11 +101,6 @@ public:
 		};
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-		FAngelscriptRuntimeModuleTickTestAccess::SuppressEngineSubsystemLookup();
-		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule initialize-override test should start without a current engine")))
-		{
-			return;
-		}
 
 		TUniquePtr<FAngelscriptEngine> OverrideEngine = CreateFullTestEngine();
 		if (!this->Assert.IsNotNull(OverrideEngine.Get(), TEXT("RuntimeModule initialize-override test should create an isolated override engine")))
@@ -163,12 +138,11 @@ public:
 		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(StackAfterSecondInitialize));
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
 
-		if (!this->Assert.IsNull(
-				FAngelscriptEngine::TryGetCurrentEngine(),
-				TEXT("RuntimeModule initialize-override test should clear the current engine after reset")))
-		{
-			return;
-		}
+		UAngelscriptSubsystem* ProductionSubsystem = UAngelscriptSubsystem::Get();
+		ASSERT_THAT(IsNotNull(ProductionSubsystem, TEXT("RuntimeModule initialize-override test should resolve the production subsystem after reset")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngine::TryGetCurrentEngine() == ProductionSubsystem->GetEngine(),
+			TEXT("RuntimeModule initialize-override test should restore the production subsystem engine after reset")));
 
 		const TArray<FAngelscriptEngine*> StackAfterReset = FAngelscriptEngineContextStack::SnapshotAndClear();
 		(void)this->Assert.AreEqual(
@@ -189,22 +163,14 @@ public:
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
 		FAngelscriptRuntimeModule RuntimeModule;
-		TStrongObjectPtr<UAngelscriptSubsystem> EngineSubsystem(NewObject<UAngelscriptSubsystem>(GetTransientPackage()));
-		FAngelscriptRuntimeModuleTickTestAccess::UseEngineSubsystem(EngineSubsystem.Get());
-		if (!this->Assert.IsNotNull(EngineSubsystem, TEXT("RuntimeModule subsystem-route test should have an engine subsystem in editor automation")))
-		{
-			return;
-		}
+		UAngelscriptSubsystem* EngineSubsystem = UAngelscriptSubsystem::Get();
+		ASSERT_THAT(IsNotNull(EngineSubsystem, TEXT("RuntimeModule subsystem-route test should resolve the production engine subsystem")));
+		EngineSubsystem->EnsurePrimaryEngineInitialized();
 
 		ON_SCOPE_EXIT
 		{
 			RuntimeModule.ShutdownModule();
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-			if (EngineSubsystem.IsValid())
-			{
-				EngineSubsystem->Deinitialize();
-			}
-			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -213,10 +179,9 @@ public:
 			DestroySharedTestEngine();
 		};
 
-		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule shutdown test should start without a current engine")))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngine::TryGetCurrentEngine() == EngineSubsystem->GetEngine(),
+			TEXT("RuntimeModule subsystem-route test should start from the production subsystem engine")));
 
 		FAngelscriptRuntimeModule::InitializeAngelscript();
 		if (!this->Assert.IsFalse(
@@ -289,7 +254,6 @@ public:
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -300,17 +264,12 @@ public:
 
 		int32 InitializeCalls = 0;
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-		FAngelscriptRuntimeModuleTickTestAccess::SuppressEngineSubsystemLookup();
 		FAngelscriptRuntimeModuleTickTestAccess::SetInitializeOverride([&InitializeCalls]()
 		{
 			++InitializeCalls;
 			return nullptr;
 		});
 
-		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule startup test should start without a current engine")))
-		{
-			return;
-		}
 
 		FAngelscriptRuntimeModule RuntimeModule;
 		RuntimeModule.StartupModule();
@@ -323,9 +282,9 @@ public:
 		bOk &= this->Assert.IsFalse(
 			FAngelscriptRuntimeModuleTickTestAccess::WasInitializeAngelscriptCalled(),
 			TEXT("RuntimeModule startup test should leave InitializeAngelscript uncalled"));
-		bOk &= this->Assert.IsNull(
-			FAngelscriptEngine::TryGetCurrentEngine(),
-			TEXT("RuntimeModule startup test should leave the context stack empty"));
+		bOk &= this->Assert.IsFalse(
+			FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine(),
+			TEXT("RuntimeModule startup test should not create a module-owned primary engine"));
 
 		RuntimeModule.ShutdownModule();
 
@@ -350,7 +309,6 @@ public:
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -360,11 +318,6 @@ public:
 		};
 
 		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-		FAngelscriptRuntimeModuleTickTestAccess::SuppressEngineSubsystemLookup();
-		if (!this->Assert.IsNull(FAngelscriptEngine::TryGetCurrentEngine(), TEXT("RuntimeModule ambient-initialize test should start without a current engine")))
-		{
-			return;
-		}
 
 		TUniquePtr<FAngelscriptEngine> AmbientEngine = CreateFullTestEngine();
 		if (!this->Assert.IsNotNull(AmbientEngine.Get(), TEXT("RuntimeModule ambient-initialize test should create an isolated ambient engine")))
@@ -435,9 +388,11 @@ public:
 			(void)bOk;
 		}
 
-		(void)this->Assert.IsNull(
-			FAngelscriptEngine::TryGetCurrentEngine(),
-			TEXT("RuntimeModule ambient-initialize test should clear the current engine after the ambient scope exits"));
+		UAngelscriptSubsystem* ProductionSubsystem = UAngelscriptSubsystem::Get();
+		ASSERT_THAT(IsNotNull(ProductionSubsystem, TEXT("RuntimeModule ambient-initialize test should resolve the production subsystem after the scope exits")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptEngine::TryGetCurrentEngine() == ProductionSubsystem->GetEngine(),
+			TEXT("RuntimeModule ambient-initialize test should restore the production subsystem engine after the ambient scope exits")));
 	}
 };
 
@@ -480,7 +435,6 @@ public:
 		ON_SCOPE_EXIT
 		{
 			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
-			FAngelscriptRuntimeModuleTickTestAccess::ResetEngineSubsystemTestState();
 			FAngelscriptEngineContextStack::SnapshotAndClear();
 			if (FAngelscriptEngine::IsInitialized())
 			{
@@ -501,16 +455,11 @@ public:
 			return;
 		}
 
-		FAngelscriptRuntimeModuleTickTestAccess::UseEngineSubsystem(EngineSubsystem.Get());
-		FAngelscriptRuntimeModuleTickTestAccess::SetEngineSubsystemInitializeOverride([&TestEngine]()
-		{
-			return TestEngine.Get();
-		});
+		FAngelscriptEngineScope TestEngineScope(*TestEngine);
 		EngineSubsystem->EnsurePrimaryEngineInitialized();
-		if (!this->Assert.IsTrue(FAngelscriptEngine::TryGetCurrentEngine() == TestEngine.Get(), TEXT("EngineSubsystem tick test should resolve the subsystem engine as current")))
-		{
-			return;
-		}
+		ASSERT_THAT(IsTrue(
+			EngineSubsystem->GetEngine() == TestEngine.Get(),
+			TEXT("EngineSubsystem tick test should adopt the scoped test engine")));
 
 		FAngelscriptTickBehaviorTestAccess::PrepareTickProbe(*TestEngine, -1.0);
 

@@ -34,32 +34,12 @@ public:
 
 	static UAngelscriptSubsystem* Get();
 
-#if WITH_DEV_AUTOMATION_TESTS
-	static void SetStartupEnvironmentOverrideForTesting(const TOptional<bool>& bIsEditorOverride, const TOptional<bool>& bIsRunningCommandletOverride);
-	static void ClearStartupEnvironmentOverrideForTesting();
-	static void SetInitializeOverrideForTesting(TFunction<FAngelscriptEngine*()> InOverride);
-	static void SetSubsystemOverrideForTesting(UAngelscriptSubsystem* InSubsystem);
-	static void ResetInitializeStateForTesting();
-#endif
-
 private:
-	friend struct FAngelscriptEngineSubsystemTestAccess;
-
 	void ReleasePrimaryEngine();
-	bool ShouldBootstrapAngelscript() const;
 
 	UPROPERTY()
 	FAngelscriptEngine OwnedEngine;
 	FAngelscriptEngine* PrimaryEngine = nullptr;
 	bool bOwnsPrimaryEngine = false;
 	bool bInitializedPrimaryEngine = false;
-	bool bUsesOverridePrimaryEngine = false;
-
-#if WITH_DEV_AUTOMATION_TESTS
-	static TOptional<bool> StartupIsEditorOverrideForTesting;
-	static TOptional<bool> StartupIsRunningCommandletOverrideForTesting;
-	static TFunction<FAngelscriptEngine*()> InitializeOverrideForTesting;
-	static TWeakObjectPtr<UAngelscriptSubsystem> SubsystemOverrideForTesting;
-	static bool bHasSubsystemOverrideForTesting;
-#endif
 };

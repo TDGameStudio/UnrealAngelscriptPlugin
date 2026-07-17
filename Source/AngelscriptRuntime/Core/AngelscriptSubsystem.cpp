@@ -2,14 +2,6 @@
 
 #include "Engine/Engine.h"
 
-#if WITH_DEV_AUTOMATION_TESTS
-TOptional<bool> UAngelscriptSubsystem::StartupIsEditorOverrideForTesting;
-TOptional<bool> UAngelscriptSubsystem::StartupIsRunningCommandletOverrideForTesting;
-TFunction<FAngelscriptEngine*()> UAngelscriptSubsystem::InitializeOverrideForTesting;
-TWeakObjectPtr<UAngelscriptSubsystem> UAngelscriptSubsystem::SubsystemOverrideForTesting;
-bool UAngelscriptSubsystem::bHasSubsystemOverrideForTesting = false;
-#endif
-
 UAngelscriptSubsystem::~UAngelscriptSubsystem() = default;
 
 bool UAngelscriptSubsystem::ShouldCreateSubsystem(UObject* Outer) const
@@ -19,7 +11,7 @@ bool UAngelscriptSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 		return false;
 	}
 
-	return ShouldBootstrapAngelscript();
+	return true;
 }
 
 void UAngelscriptSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -84,26 +76,10 @@ void UAngelscriptSubsystem::EnsurePrimaryEngineInitialized()
 		return;
 	}
 
-#if WITH_DEV_AUTOMATION_TESTS
-	if (InitializeOverrideForTesting)
-	{
-		if (FAngelscriptEngine* OverrideEngine = InitializeOverrideForTesting())
-		{
-			PrimaryEngine = OverrideEngine;
-			bOwnsPrimaryEngine = false;
-			bUsesOverridePrimaryEngine = true;
-			bInitializedPrimaryEngine = true;
-			UE_LOG(Angelscript, Verbose, TEXT("[EngineSubsystemStartup] Initialized with automation override engine=%p."), PrimaryEngine);
-		}
-		return;
-	}
-#endif
-
 	if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
 	{
 		PrimaryEngine = CurrentEngine;
 		bOwnsPrimaryEngine = false;
-		bUsesOverridePrimaryEngine = false;
 		bInitializedPrimaryEngine = true;
 		if (PrimaryEngine->GetScriptEngine() == nullptr)
 		{
@@ -119,7 +95,6 @@ void UAngelscriptSubsystem::EnsurePrimaryEngineInitialized()
 
 	PrimaryEngine = &OwnedEngine;
 	bOwnsPrimaryEngine = true;
-	bUsesOverridePrimaryEngine = false;
 	bInitializedPrimaryEngine = true;
 	UE_LOG(Angelscript, Display, TEXT("[EngineSubsystemStartup] Created owned primary engine=%p."), PrimaryEngine);
 	PrimaryEngine->Initialize();
@@ -127,13 +102,6 @@ void UAngelscriptSubsystem::EnsurePrimaryEngineInitialized()
 
 UAngelscriptSubsystem* UAngelscriptSubsystem::Get()
 {
-#if WITH_DEV_AUTOMATION_TESTS
-	if (bHasSubsystemOverrideForTesting)
-	{
-		return SubsystemOverrideForTesting.Get();
-	}
-#endif
-
 	return GEngine != nullptr ? GEngine->GetEngineSubsystem<UAngelscriptSubsystem>() : nullptr;
 }
 
@@ -147,43 +115,4 @@ void UAngelscriptSubsystem::ReleasePrimaryEngine()
 	PrimaryEngine = nullptr;
 	bOwnsPrimaryEngine = false;
 	bInitializedPrimaryEngine = false;
-	bUsesOverridePrimaryEngine = false;
 }
-
-bool UAngelscriptSubsystem::ShouldBootstrapAngelscript() const
-{
-	return true;
-}
-
-#if WITH_DEV_AUTOMATION_TESTS
-void UAngelscriptSubsystem::SetStartupEnvironmentOverrideForTesting(const TOptional<bool>& bIsEditorOverride, const TOptional<bool>& bIsRunningCommandletOverride)
-{
-	StartupIsEditorOverrideForTesting = bIsEditorOverride;
-	StartupIsRunningCommandletOverrideForTesting = bIsRunningCommandletOverride;
-}
-
-void UAngelscriptSubsystem::ClearStartupEnvironmentOverrideForTesting()
-{
-	StartupIsEditorOverrideForTesting.Reset();
-	StartupIsRunningCommandletOverrideForTesting.Reset();
-}
-
-void UAngelscriptSubsystem::SetInitializeOverrideForTesting(TFunction<FAngelscriptEngine*()> InOverride)
-{
-	InitializeOverrideForTesting = MoveTemp(InOverride);
-}
-
-void UAngelscriptSubsystem::SetSubsystemOverrideForTesting(UAngelscriptSubsystem* InSubsystem)
-{
-	SubsystemOverrideForTesting = InSubsystem;
-	bHasSubsystemOverrideForTesting = true;
-}
-
-void UAngelscriptSubsystem::ResetInitializeStateForTesting()
-{
-	ClearStartupEnvironmentOverrideForTesting();
-	InitializeOverrideForTesting = nullptr;
-	SubsystemOverrideForTesting.Reset();
-	bHasSubsystemOverrideForTesting = false;
-}
-#endif

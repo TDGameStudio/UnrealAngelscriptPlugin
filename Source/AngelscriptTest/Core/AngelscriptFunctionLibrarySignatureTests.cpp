@@ -37,7 +37,6 @@ namespace SubsystemGetterMetadataTest
 
 	void ResetIsolatedEnvironment()
 	{
-		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		DestroySharedTestEngine();
 		FAngelscriptBinds::ResetBindState();
 

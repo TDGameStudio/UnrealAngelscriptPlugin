@@ -242,7 +242,6 @@ FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
 	TEST_METHOD(GetPrefersCurrentEngineSharedDatabaseAndFallsBackToLegacySingleton)
 	{
 FBindDatabaseContextStackGuard ContextGuard;
-		FScopedSuppressProductionAngelscriptSubsystem SuppressProductionSubsystem;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); }
 		ContextGuard.DiscardSavedStack();

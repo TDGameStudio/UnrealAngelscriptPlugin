@@ -1,6 +1,5 @@
 #include "Core/AngelscriptTestModule.h"
 
-#include "AngelscriptSubsystem.h"
 #include "Preprocessor/AngelscriptPreprocessorTestHelpers.h"
 #include "AngelscriptTestEnginePool.h"
 
@@ -12,19 +11,6 @@ IMPLEMENT_MODULE(FAngelscriptTestModule, AngelscriptTest);
 
 DEFINE_LOG_CATEGORY_STATIC(LogAngelscriptTest, Log, All);
 
-namespace
-{
-	TUniquePtr<FAngelscriptEngine> GAngelscriptTestStartupOverrideEngine;
-
-	FAngelscriptEngineConfig CreateEditorScanFreeStartupConfig()
-	{
-		FAngelscriptEngineConfig Config = FAngelscriptEngineConfig::FromCurrentProcess();
-		Config.bIsEditor = true;
-		Config.bForcePreprocessEditorCode = true;
-		return Config;
-	}
-}
-
 #if WITH_ANGELSCRIPT_UNITTESTS
 // Definition for the log category declared in AngelscriptPreprocessorTestHelpers.h.
 // Default verbosity is NoLogging; enable on demand via -LogCmds or
@@ -35,18 +21,6 @@ DEFINE_LOG_CATEGORY(LogPreprocessorDump);
 void FAngelscriptTestModule::StartupModule()
 {
 #if WITH_ANGELSCRIPT_UNITTESTS
-	const bool bUseScanFreeStartupEngine = FParse::Param(FCommandLine::Get(), TEXT("AngelscriptTestUseScanFreeStartupEngine"));
-	if (bUseScanFreeStartupEngine)
-	{
-		GAngelscriptTestStartupOverrideEngine = CreateScriptScanFreeFullEngineForTesting(
-			CreateEditorScanFreeStartupConfig(),
-			FAngelscriptEngineDependencies::CreateDefault());
-		UAngelscriptSubsystem::SetInitializeOverrideForTesting([]() -> FAngelscriptEngine*
-		{
-			return GAngelscriptTestStartupOverrideEngine.Get();
-		});
-	}
-
 	const bool bPrewarmEngine = FParse::Param(FCommandLine::Get(), TEXT("AngelscriptTestPrewarmEngine"));
 	StartupTestEnginePool(bPrewarmEngine);
 #endif
@@ -56,9 +30,7 @@ void FAngelscriptTestModule::StartupModule()
 void FAngelscriptTestModule::ShutdownModule()
 {
 #if WITH_ANGELSCRIPT_UNITTESTS
-	UAngelscriptSubsystem::ResetInitializeStateForTesting();
 	ShutdownTestEnginePool();
-	GAngelscriptTestStartupOverrideEngine.Reset();
 #endif
 	UE_LOG(LogAngelscriptTest, Log, TEXT("AngelscriptTest module shut down."));
 }

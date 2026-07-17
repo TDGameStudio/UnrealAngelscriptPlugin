@@ -96,24 +96,6 @@ inline UAngelscriptSubsystem* TryGetRunningProductionSubsystem()
 	return UAngelscriptSubsystem::Get();
 }
 
-class FScopedSuppressProductionAngelscriptSubsystem
-{
-public:
-	FScopedSuppressProductionAngelscriptSubsystem()
-	{
-#if WITH_DEV_AUTOMATION_TESTS
-		UAngelscriptSubsystem::SetSubsystemOverrideForTesting(nullptr);
-#endif
-	}
-
-	~FScopedSuppressProductionAngelscriptSubsystem()
-	{
-#if WITH_DEV_AUTOMATION_TESTS
-		UAngelscriptSubsystem::ResetInitializeStateForTesting();
-#endif
-	}
-};
-
 inline TUniquePtr<FAngelscriptEngine>& GetSharedTestEngineStorage()
 {
 	static TUniquePtr<FAngelscriptEngine> Storage;
