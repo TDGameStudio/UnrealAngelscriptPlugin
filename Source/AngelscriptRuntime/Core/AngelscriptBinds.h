@@ -143,7 +143,7 @@ struct FGeneratedFunctionTableTimingSummary
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptBindState
 {
-	TMap<UClass*, TMap<FString, FFuncEntry>> ClassFuncMaps;
+	TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>> ClassFunctionBindings;
 	TMap<FString, TArray<TObjectPtr<UClass>>> RuntimeClassDB;
 #if WITH_EDITOR
 	TMap<FString, TArray<TObjectPtr<UClass>>> EditorClassDB;
@@ -505,7 +505,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
 #if WITH_EDITOR
 	static TMap<FString, TArray<TObjectPtr<UClass>>>& GetEditorClassDB();
 #endif
-	static TMap<UClass*, TMap<FString, FFuncEntry>>& GetClassFuncMaps();
+	static TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& GetClassFunctionBindings();
 	static TArray<FString>& GetBindModuleNames();
 	static TMap<UClass*, TSet<FString>>& GetSkipBinds();
 	static TSet<TTuple<FName, FName>>& GetSkipBindNames();
@@ -524,25 +524,25 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
 
 	//WILL-EDIT ================================================================
 
-	static void AddFunctionEntry(UClass* Class, FString Name, FFuncEntry Entry)
+	static void RegisterFunctionBinding(UClass* Class, const FString& Name, const FAngelscriptFunctionBinding& Binding)
 	{
 		if (Class == nullptr)
 		{
 			return;
 		}
 
-		auto& ClassFuncMaps = GetClassFuncMaps();
-		TMap<FString, FFuncEntry>& FunctionMap = ClassFuncMaps.FindOrAdd(Class);
-		if (FFuncEntry* ExistingEntry = FunctionMap.Find(Name))
+		auto& ClassFunctionBindings = GetClassFunctionBindings();
+		TMap<FString, FAngelscriptFunctionBinding>& FunctionMap = ClassFunctionBindings.FindOrAdd(Class);
+		if (FAngelscriptFunctionBinding* ExistingBinding = FunctionMap.Find(Name))
 		{
-			if (!ExistingEntry->FuncPtr.IsBound() && !ExistingEntry->bReflectiveFallbackBound && Entry.FuncPtr.IsBound())
+			if (!ExistingBinding->FunctionPointer.IsBound() && !ExistingBinding->bReflectiveFallbackBound && Binding.FunctionPointer.IsBound())
 			{
-				*ExistingEntry = Entry;
+				*ExistingBinding = Binding;
 			}
 			return;
 		}
 
-		FunctionMap.Add(Name, Entry);
+		FunctionMap.Add(Name, Binding);
 	}
 
 	static void SkipFunctionEntry(UClass* Class, FString Name)

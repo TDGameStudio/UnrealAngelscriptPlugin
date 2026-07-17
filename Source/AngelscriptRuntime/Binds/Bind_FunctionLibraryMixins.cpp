@@ -9,7 +9,7 @@
 
 AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FunctionLibraryMixins((int32)FAngelscriptBinds::EOrder::Late + 110, []
 {
-	FAngelscriptBinds::AddFunctionEntry(
+	FAngelscriptBinds::RegisterFunctionBinding(
 		URuntimeFloatCurveMixinLibrary::StaticClass(),
 		"GetTimeRange",
 		{ ERASE_FUNCTION_PTR(URuntimeFloatCurveMixinLibrary::GetTimeRange, (const FRuntimeFloatCurve&, float&, float&), ERASE_ARGUMENT_PACK(void)) });

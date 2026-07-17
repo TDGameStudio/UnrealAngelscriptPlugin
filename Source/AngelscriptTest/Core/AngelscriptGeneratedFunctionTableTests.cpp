@@ -40,7 +40,7 @@ static int32 CountGeneratedBindingRegistrations(const FString& GeneratedDirector
 		FileContents.ParseIntoArrayLines(Lines);
 		for (const FString& Line : Lines)
 		{
-			if (Line.Contains(TEXT("FAngelscriptBinds::AddFunctionEntry(")))
+			if (Line.Contains(TEXT("FAngelscriptBinds::RegisterFunctionBinding(")))
 			{
 				RegistrationCount++;
 			}
@@ -96,41 +96,41 @@ static TArray<FString> LoadNonEmptyFileLines(const FString& FilePath)
 }
 
 public:
-	TEST_METHOD(PopulatesClassFuncMaps)
+	TEST_METHOD(PopulatesClassFunctionBindings)
 	{
 if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
 
 		FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
 		(void)Engine;
 
-		const TMap<UClass*, TMap<FString, FFuncEntry>>& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
+		const TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& ClassFunctionBindings = FAngelscriptBinds::GetClassFunctionBindings();
 		int32 TotalFunctionEntryCount = 0;
-		for (const TPair<UClass*, TMap<FString, FFuncEntry>>& ClassEntry : ClassFuncMaps)
+		for (const TPair<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& ClassEntry : ClassFunctionBindings)
 		{
 			TotalFunctionEntryCount += ClassEntry.Value.Num();
 		}
 
-		if (!this->Assert.IsTrue(TotalFunctionEntryCount > 1000, TEXT("Generated function table startup pass should populate many ClassFuncMaps entries beyond the legacy handwritten baseline")))
+		if (!this->Assert.IsTrue(TotalFunctionEntryCount > 1000, TEXT("Generated function table startup pass should populate many ClassFunctionBindings entries beyond the legacy handwritten baseline")))
 		{
 			return;
 		}
 
-		const TMap<FString, FFuncEntry>* ActorFunctionMap = ClassFuncMaps.Find(AActor::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* ActorFunctionMap = ClassFunctionBindings.Find(AActor::StaticClass());
 		if (!this->Assert.IsNotNull(ActorFunctionMap, TEXT("Generated function table startup pass should register an entry map for AActor")))
 		{
 			return;
 		}
 
-		const FFuncEntry* ActorTimeDilationEntry = ActorFunctionMap->Find(TEXT("GetActorTimeDilation"));
+		const FAngelscriptFunctionBinding* ActorTimeDilationEntry = ActorFunctionMap->Find(TEXT("GetActorTimeDilation"));
 		if (!this->Assert.IsNotNull(ActorTimeDilationEntry, TEXT("Generated function table startup pass should register the generated AActor::GetActorTimeDilation entry")))
 		{
 			return;
 		}
 
 		bool bHasCallableActorEntry = false;
-		for (const TPair<FString, FFuncEntry>& ActorEntry : *ActorFunctionMap)
+		for (const TPair<FString, FAngelscriptFunctionBinding>& ActorEntry : *ActorFunctionMap)
 		{
-			FGenericFuncPtr ActorFuncPtr = ActorEntry.Value.FuncPtr;
+			FGenericFuncPtr ActorFuncPtr = ActorEntry.Value.FunctionPointer;
 			if (ActorFuncPtr.IsBound() || ActorEntry.Value.bReflectiveFallbackBound)
 			{
 				bHasCallableActorEntry = true;
@@ -138,7 +138,7 @@ if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production
 			}
 		}
 
-		(void)this->Assert.IsTrue(bHasCallableActorEntry, TEXT("Generated function table startup pass should leave at least one callable generated AActor entry in ClassFuncMaps"));
+		(void)this->Assert.IsTrue(bHasCallableActorEntry, TEXT("Generated function table startup pass should leave at least one callable generated AActor entry in ClassFunctionBindings"));
 	}
 
 	TEST_METHOD(EditorOutputsUseWithEditorGuard)
@@ -192,7 +192,7 @@ const FString GeneratedDirectory = FPaths::Combine(
 	{
 if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
 
-		const TMap<UClass*, TMap<FString, FFuncEntry>>& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
+		const TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& ClassFunctionBindings = FAngelscriptBinds::GetClassFunctionBindings();
 
 		struct FRepresentativeClassExpectation
 		{
@@ -221,8 +221,8 @@ if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production
 				return;
 			}
 
-			const TMap<FString, FFuncEntry>* FunctionMap = ClassFuncMaps.Find(ExpectedClass);
-			if (!this->Assert.IsNotNull(FunctionMap, FString::Printf(TEXT("Representative coverage test should populate ClassFuncMaps for %s"), Expectation.DisplayName)))
+			const TMap<FString, FAngelscriptFunctionBinding>* FunctionMap = ClassFunctionBindings.Find(ExpectedClass);
+			if (!this->Assert.IsNotNull(FunctionMap, FString::Printf(TEXT("Representative coverage test should populate ClassFunctionBindings for %s"), Expectation.DisplayName)))
 			{
 				return;
 			}
@@ -238,8 +238,8 @@ if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production
 	{
 if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
 
-		const TMap<UClass*, TMap<FString, FFuncEntry>>& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
-		const TMap<FString, FFuncEntry>* PlayerCameraManagerEntries = ClassFuncMaps.Find(APlayerCameraManager::StaticClass());
+		const TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& ClassFunctionBindings = FAngelscriptBinds::GetClassFunctionBindings();
+		const TMap<FString, FAngelscriptFunctionBinding>* PlayerCameraManagerEntries = ClassFunctionBindings.Find(APlayerCameraManager::StaticClass());
 		if (!this->Assert.IsNotNull(PlayerCameraManagerEntries, TEXT("MinimalAPI function export regression test should expose generated entries for APlayerCameraManager")))
 		{
 			return;
@@ -254,13 +254,13 @@ if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production
 
 		for (const TCHAR* ExpectedFunctionName : ExpectedBoundFunctions)
 		{
-			const FFuncEntry* Entry = PlayerCameraManagerEntries->Find(ExpectedFunctionName);
+			const FAngelscriptFunctionBinding* Entry = PlayerCameraManagerEntries->Find(ExpectedFunctionName);
 			if (!this->Assert.IsNotNull(Entry, FString::Printf(TEXT("MinimalAPI function export regression test should register %s"), ExpectedFunctionName)))
 			{
 				return;
 			}
 
-			FGenericFuncPtr FunctionPointer = Entry->FuncPtr;
+			FGenericFuncPtr FunctionPointer = Entry->FunctionPointer;
 			if (!this->Assert.IsTrue(FunctionPointer.IsBound(), FString::Printf(TEXT("MinimalAPI function export regression test should recover a direct-call pointer for %s"), ExpectedFunctionName)))
 			{
 				return;
@@ -272,13 +272,13 @@ if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production
 	{
 if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production engine not initialized in headless mode, skipping")); return; }
 
-		const TMap<UClass*, TMap<FString, FFuncEntry>>& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
+		const TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& ClassFunctionBindings = FAngelscriptBinds::GetClassFunctionBindings();
 		int32 DirectCount = 0;
 		int32 ReflectiveCount = 0;
 		int32 UnresolvedCount = 0;
 		TMap<FString, int32> ReflectiveCountsByModule;
 
-		for (const TPair<UClass*, TMap<FString, FFuncEntry>>& ClassEntry : ClassFuncMaps)
+		for (const TPair<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& ClassEntry : ClassFunctionBindings)
 		{
 			const FString PackageName = ClassEntry.Key != nullptr && ClassEntry.Key->GetOutermost() != nullptr
 				? ClassEntry.Key->GetOutermost()->GetName()
@@ -286,9 +286,9 @@ if (!FAngelscriptEngine::IsInitialized()) { TestRunner->AddInfo(TEXT("Production
 			FString ModuleName = PackageName;
 			ModuleName.RemoveFromStart(TEXT("/Script/"));
 
-			for (const TPair<FString, FFuncEntry>& FunctionEntry : ClassEntry.Value)
+			for (const TPair<FString, FAngelscriptFunctionBinding>& FunctionEntry : ClassEntry.Value)
 			{
-				FGenericFuncPtr FunctionPointer = FunctionEntry.Value.FuncPtr;
+				FGenericFuncPtr FunctionPointer = FunctionEntry.Value.FunctionPointer;
 				if (FunctionPointer.IsBound())
 				{
 					++DirectCount;

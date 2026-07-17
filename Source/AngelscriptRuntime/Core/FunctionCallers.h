@@ -45,7 +45,7 @@ struct FGenericFuncPtr
 			ptr.dummy[n] = reinterpret_cast<const char*>(mthdPtr)[n];
 	}
 
-	FORCEINLINE bool IsBound()
+	FORCEINLINE bool IsBound() const
 	{
 		return flag != 0;
 	}
@@ -376,18 +376,11 @@ namespace ASAutoCaller
 	}
 }
 // END HAZE FIX
-//typedef TPair<FGenericFuncPtr, ASAutoCaller::FunctionCaller> Entry;
-//TMap<FName, TPair<FGenericFuncPtr, ASAutoCaller::FunctionCaller>> GClassMaps;
-//TMap<FGenericFuncPtr, ASAutoCaller::FunctionCaller> GClassMaps;
-//TMap<FName, FGenericFuncMap> ClassMaps;
-
-struct FFuncEntry
+struct FAngelscriptFunctionBinding
 {
-	FGenericFuncPtr FuncPtr;
-	ASAutoCaller::FunctionCaller Caller;
+	FGenericFuncPtr FunctionPointer;
+	ASAutoCaller::FunctionCaller FunctionCaller;
 	void* UserData = nullptr;
 	bool bReflectiveFallbackBound = false;
-	bool bGenericCall = false;
+	bool bUsesGenericCall = false;
 };
-
-//extern void AddFunctionCaller(UClass* Class, FFuncEntry Entry);

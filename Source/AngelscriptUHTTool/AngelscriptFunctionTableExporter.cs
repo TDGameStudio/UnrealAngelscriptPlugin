@@ -13,7 +13,7 @@ namespace AngelscriptUHTTool;
 [UnrealHeaderTool]
 internal static class AngelscriptFunctionTableExporter
 {
-	private sealed record AngelscriptSkippedFunctionEntry(
+	private sealed record AngelscriptSkippedFunctionBinding(
 		string ModuleName,
 		string ClassName,
 		string FunctionName,
@@ -33,7 +33,7 @@ internal static class AngelscriptFunctionTableExporter
 		int reconstructedCount = 0;
 		int skippedCount = 0;
 		int crossModuleReconstructedCount = 0;
-		List<AngelscriptSkippedFunctionEntry> skippedEntries = new();
+		List<AngelscriptSkippedFunctionBinding> skippedEntries = new();
 		AngelscriptSupportedModules supportedModules = AngelscriptFunctionTableCodeGenerator.LoadSupportedModules(factory);
 		int generatedFileCount = AngelscriptFunctionTableCodeGenerator.Generate(factory);
 
@@ -67,7 +67,7 @@ internal static class AngelscriptFunctionTableExporter
 			function.MetaData.ContainsKey("ScriptCallable"));
 	}
 
-	private static void CountAngelscriptCallableFunctions(string moduleName, UhtType type, AngelscriptSupportedModules supportedModules, List<AngelscriptSkippedFunctionEntry> skippedEntries, ref int classCount, ref int functionCount, ref int reconstructedCount, ref int crossModuleReconstructedCount, ref int skippedCount)
+	private static void CountAngelscriptCallableFunctions(string moduleName, UhtType type, AngelscriptSupportedModules supportedModules, List<AngelscriptSkippedFunctionBinding> skippedEntries, ref int classCount, ref int functionCount, ref int reconstructedCount, ref int crossModuleReconstructedCount, ref int skippedCount)
 	{
 		if (type is UhtClass classObj)
 		{
@@ -80,7 +80,7 @@ internal static class AngelscriptFunctionTableExporter
 					if (IsRpcNetFunction(function))
 					{
 						skippedCount++;
-						skippedEntries.Add(new AngelscriptSkippedFunctionEntry(
+						skippedEntries.Add(new AngelscriptSkippedFunctionBinding(
 							moduleName,
 							classObj.SourceName,
 							function.SourceName,
@@ -102,7 +102,7 @@ internal static class AngelscriptFunctionTableExporter
 						else
 						{
 							skippedCount++;
-							skippedEntries.Add(new AngelscriptSkippedFunctionEntry(
+							skippedEntries.Add(new AngelscriptSkippedFunctionBinding(
 								moduleName,
 								classObj.SourceName,
 								function.SourceName,
@@ -112,7 +112,7 @@ internal static class AngelscriptFunctionTableExporter
 					else
 					{
 						skippedCount++;
-						skippedEntries.Add(new AngelscriptSkippedFunctionEntry(
+						skippedEntries.Add(new AngelscriptSkippedFunctionBinding(
 							moduleName,
 							classObj.SourceName,
 							function.SourceName,
@@ -191,7 +191,7 @@ internal static class AngelscriptFunctionTableExporter
 			EFunctionFlags.NetMulticast);
 	}
 
-	private static void WriteSkippedEntriesCsv(IUhtExportFactory factory, List<AngelscriptSkippedFunctionEntry> skippedEntries)
+	private static void WriteSkippedEntriesCsv(IUhtExportFactory factory, List<AngelscriptSkippedFunctionBinding> skippedEntries)
 	{
 		string csvPath = factory.MakePath("AS_FunctionTable_SkippedEntries", ".csv");
 		Directory.CreateDirectory(Path.GetDirectoryName(csvPath)!);
@@ -218,7 +218,7 @@ internal static class AngelscriptFunctionTableExporter
 
 		StringBuilder builder = new();
 		builder.AppendLine("ModuleName,ClassName,FunctionName,FailureReason");
-		foreach (AngelscriptSkippedFunctionEntry entry in skippedEntries)
+		foreach (AngelscriptSkippedFunctionBinding entry in skippedEntries)
 		{
 			builder
 				.Append(EscapeCsv(entry.ModuleName)).Append(',')
@@ -232,7 +232,7 @@ internal static class AngelscriptFunctionTableExporter
 		Console.WriteLine("AngelscriptUHTTool skipped entry dump written: {0} ({1} rows)", csvPath, skippedEntries.Count);
 	}
 
-	private static void WriteSkippedReasonSummaryCsv(IUhtExportFactory factory, List<AngelscriptSkippedFunctionEntry> skippedEntries)
+	private static void WriteSkippedReasonSummaryCsv(IUhtExportFactory factory, List<AngelscriptSkippedFunctionBinding> skippedEntries)
 	{
 		string csvPath = factory.MakePath("AS_FunctionTable_SkippedReasonSummary", ".csv");
 		Directory.CreateDirectory(Path.GetDirectoryName(csvPath)!);

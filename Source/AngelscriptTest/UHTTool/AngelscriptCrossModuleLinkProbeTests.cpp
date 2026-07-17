@@ -8,7 +8,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
-#include "UHT/AngelscriptCrossModuleBindings.h"
+#include "UHT/AngelscriptCrossModuleFunctionBindings.h"
 #include "UObject/FindObjectFlags.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -23,6 +23,7 @@ struct FAngelscriptCrossModuleResolverTests;
 struct FAngelscriptCrossModuleDirectBindProbeTests;
 struct FAngelscriptCrossModuleGenerationProfileTests;
 struct FAngelscriptCrossModuleDefaultOffTests;
+struct FAngelscriptModuleLocalCompileGateTests;
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleLinkProbeTests,
 	"Angelscript.CppTests.UHTToolResolver.LinkProbe",
@@ -35,6 +36,7 @@ private:
 	friend struct FAngelscriptCrossModuleDirectBindProbeTests;
 	friend struct FAngelscriptCrossModuleGenerationProfileTests;
 	friend struct FAngelscriptCrossModuleDefaultOffTests;
+	friend struct FAngelscriptModuleLocalCompileGateTests;
 
 	static constexpr uint32 ProbeLayoutVersion = 0xA5C0DE02u;
 	static FAutomationTestBase* GActiveTest;
@@ -54,16 +56,16 @@ private:
 
 	static_assert(std::is_empty<IModularFeature>::value, "IModularFeature must stay empty for the probe reader layout.");
 	static_assert(!std::is_polymorphic<IModularFeature>::value, "IModularFeature must stay non-polymorphic for the probe reader layout.");
-	static_assert(std::is_standard_layout<FAngelscriptCrossModuleEntry>::value, "Cross-module entry must stay standard-layout.");
-	static_assert(std::is_standard_layout<FAngelscriptCrossModuleFeatureReader>::value, "Cross-module reader must stay standard-layout.");
-	static_assert(FAngelscriptCrossModuleBindings::LayoutVersionExpected == ProbeLayoutVersion, "Cross-module layout token drifted.");
-	static_assert(FAngelscriptCrossModuleBindings::FlagStatic == (1u << 0), "Cross-module static flag drifted.");
-	static_assert(FAngelscriptCrossModuleBindings::FlagConst == (1u << 1), "Cross-module const flag drifted.");
-	static_assert(FAngelscriptCrossModuleBindings::FlagWorldContext == (1u << 2), "Cross-module world-context flag drifted.");
-	static_assert(FAngelscriptCrossModuleBindings::FlagHasOutParams == (1u << 3), "Cross-module out-param flag drifted.");
-	static_assert(FAngelscriptCrossModuleBindings::FlagReturnByRef == (1u << 4), "Cross-module return-by-ref flag drifted.");
+	static_assert(std::is_standard_layout<FAngelscriptCrossModuleBinding>::value, "Cross-module binding must stay standard-layout.");
+	static_assert(std::is_standard_layout<FAngelscriptCrossModuleBindingFeatureReader>::value, "Cross-module binding reader must stay standard-layout.");
+	static_assert(FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected == ProbeLayoutVersion, "Cross-module layout token drifted.");
+	static_assert(FAngelscriptCrossModuleFunctionBindings::FlagStatic == (1u << 0), "Cross-module static flag drifted.");
+	static_assert(FAngelscriptCrossModuleFunctionBindings::FlagConst == (1u << 1), "Cross-module const flag drifted.");
+	static_assert(FAngelscriptCrossModuleFunctionBindings::FlagWorldContext == (1u << 2), "Cross-module world-context flag drifted.");
+	static_assert(FAngelscriptCrossModuleFunctionBindings::FlagHasOutParams == (1u << 3), "Cross-module out-param flag drifted.");
+	static_assert(FAngelscriptCrossModuleFunctionBindings::FlagReturnByRef == (1u << 4), "Cross-module return-by-ref flag drifted.");
 
-	struct FProbeEntryReader
+	struct FProbeBindingReader
 	{
 		const TCHAR* Tag;
 		uint32 Magic;
@@ -71,7 +73,7 @@ private:
 
 	struct FProbeFeatureReader
 	{
-		const FProbeEntryReader* Entries;
+		const FProbeBindingReader* Entries;
 		int32 Count;
 		const TCHAR* ModuleName;
 		uint32 LayoutVersion;
@@ -79,15 +81,15 @@ private:
 
 	struct FProbeFeatureLayoutProbe : public IModularFeature
 	{
-		const FProbeEntryReader* Entries;
+		const FProbeBindingReader* Entries;
 		int32 Count;
 		const TCHAR* ModuleName;
 		uint32 LayoutVersion;
 	};
 
-	struct FCrossModuleFeatureLayoutProbe : public IModularFeature
+	struct FCrossModuleBindingFeatureLayoutProbe : public IModularFeature
 	{
-		const FAngelscriptCrossModuleEntry* Table;
+		const FAngelscriptCrossModuleBinding* Table;
 		int32 Count;
 		const TCHAR* ModuleName;
 		uint32 LayoutVersion;
@@ -98,11 +100,11 @@ private:
 	static_assert(offsetof(FProbeFeatureLayoutProbe, Count) == offsetof(FProbeFeatureReader, Count), "Probe Count offset drifted.");
 	static_assert(offsetof(FProbeFeatureLayoutProbe, ModuleName) == offsetof(FProbeFeatureReader, ModuleName), "Probe ModuleName offset drifted.");
 	static_assert(offsetof(FProbeFeatureLayoutProbe, LayoutVersion) == offsetof(FProbeFeatureReader, LayoutVersion), "Probe LayoutVersion offset drifted.");
-	static_assert(std::is_standard_layout<FCrossModuleFeatureLayoutProbe>::value, "Cross-module feature layout must stay standard-layout.");
-	static_assert(offsetof(FCrossModuleFeatureLayoutProbe, Table) == offsetof(FAngelscriptCrossModuleFeatureReader, Table), "Cross-module Table offset drifted.");
-	static_assert(offsetof(FCrossModuleFeatureLayoutProbe, Count) == offsetof(FAngelscriptCrossModuleFeatureReader, Count), "Cross-module Count offset drifted.");
-	static_assert(offsetof(FCrossModuleFeatureLayoutProbe, ModuleName) == offsetof(FAngelscriptCrossModuleFeatureReader, ModuleName), "Cross-module ModuleName offset drifted.");
-	static_assert(offsetof(FCrossModuleFeatureLayoutProbe, LayoutVersion) == offsetof(FAngelscriptCrossModuleFeatureReader, LayoutVersion), "Cross-module LayoutVersion offset drifted.");
+	static_assert(std::is_standard_layout<FCrossModuleBindingFeatureLayoutProbe>::value, "Cross-module binding feature layout must stay standard-layout.");
+	static_assert(offsetof(FCrossModuleBindingFeatureLayoutProbe, Table) == offsetof(FAngelscriptCrossModuleBindingFeatureReader, Table), "Cross-module Table offset drifted.");
+	static_assert(offsetof(FCrossModuleBindingFeatureLayoutProbe, Count) == offsetof(FAngelscriptCrossModuleBindingFeatureReader, Count), "Cross-module Count offset drifted.");
+	static_assert(offsetof(FCrossModuleBindingFeatureLayoutProbe, ModuleName) == offsetof(FAngelscriptCrossModuleBindingFeatureReader, ModuleName), "Cross-module ModuleName offset drifted.");
+	static_assert(offsetof(FCrossModuleBindingFeatureLayoutProbe, LayoutVersion) == offsetof(FAngelscriptCrossModuleBindingFeatureReader, LayoutVersion), "Cross-module LayoutVersion offset drifted.");
 
 	static FString GetAngelscriptPluginDirectory()
 	{
@@ -119,9 +121,24 @@ private:
 		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptUHTTool/cross-module-generation-modules.json"));
 	}
 
+	static FString GetCompileOptionsFilePath()
+	{
+		return FPaths::Combine(FPaths::ProjectConfigDir(), TEXT("DefaultAngelscriptCompileOptions.ini"));
+	}
+
+	static FString GetRuntimeCrossModuleBridgePath()
+	{
+		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptRuntime/Binds/Bind_CrossModuleDirect.cpp"));
+	}
+
+	static FString GetEditorModulePath()
+	{
+		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptEditor/Core/AngelscriptEditorModule.cpp"));
+	}
+
 	static FString GetCrossModulePublicHeaderPath()
 	{
-		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptRuntime/Public/UHT/AngelscriptCrossModuleBindings.h"));
+		return FPaths::Combine(GetAngelscriptPluginDirectory(), TEXT("Source/AngelscriptRuntime/Public/UHT/AngelscriptCrossModuleFunctionBindings.h"));
 	}
 
 	static FString GetRuntimeBuildCsPath()
@@ -163,16 +180,16 @@ private:
 		return Cast<UClass>(StaticFindFirstObject(UClass::StaticClass(), ClassName, EFindFirstObjectOptions::ExactClass | EFindFirstObjectOptions::NativeFirst));
 	}
 
-	static UClass* ResolveCrossModuleClass(const FAngelscriptCrossModuleEntry& Entry, const FAngelscriptCrossModuleFeatureReader& Reader)
+	static UClass* ResolveCrossModuleClass(const FAngelscriptCrossModuleBinding& Binding, const FAngelscriptCrossModuleBindingFeatureReader& Reader)
 	{
-		if (UClass* Class = ResolveCrossModuleClassByName(Reader.ModuleName, Entry.ClassName))
+		if (UClass* Class = ResolveCrossModuleClassByName(Reader.ModuleName, Binding.ClassName))
 		{
 			return Class;
 		}
 
-		if (Entry.ClassName != nullptr && (Entry.ClassName[0] == TEXT('U') || Entry.ClassName[0] == TEXT('A')) && Entry.ClassName[1] != TEXT('\0'))
+		if (Binding.ClassName != nullptr && (Binding.ClassName[0] == TEXT('U') || Binding.ClassName[0] == TEXT('A')) && Binding.ClassName[1] != TEXT('\0'))
 		{
-			return ResolveCrossModuleClassByName(Reader.ModuleName, Entry.ClassName + 1);
+			return ResolveCrossModuleClassByName(Reader.ModuleName, Binding.ClassName + 1);
 		}
 
 		return nullptr;
@@ -552,6 +569,7 @@ private:
 	static bool RunGenerationProfilesEntries(FAutomationTestBase& Test);
 	static bool RunDefaultOffDiagnostics(FAutomationTestBase& Test);
 	static bool RunDefaultOffGeneratedOutput(FAutomationTestBase& Test);
+	static bool RunModuleLocalCompileGate(FAutomationTestBase& Test);
 
 public:
 	TEST_METHOD(IModularFeaturesRoundtrip)
@@ -592,8 +610,8 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunPublicHeader(FAutomationTestBase&
 	bPassed &= TestFalse(TEXT("Public ABI header should not expose FAngelscriptBinds"), HeaderContents.Contains(TEXT("FAngelscriptBinds")));
 	bPassed &= TestFalse(TEXT("Public ABI header should not expose ASAutoCaller"), HeaderContents.Contains(TEXT("ASAutoCaller")));
 	bPassed &= TestFalse(TEXT("Public ABI header should not expose FGenericFuncPtr"), HeaderContents.Contains(TEXT("FGenericFuncPtr")));
-	bPassed &= TestEqual(TEXT("Cross-module entry ABI size should match"), static_cast<int32>(sizeof(FAngelscriptCrossModuleEntry)), 32);
-	bPassed &= TestEqual(TEXT("Cross-module reader ABI size should match"), static_cast<int32>(sizeof(FAngelscriptCrossModuleFeatureReader)), 32);
+	bPassed &= TestEqual(TEXT("Cross-module binding ABI size should match"), static_cast<int32>(sizeof(FAngelscriptCrossModuleBinding)), 32);
+	bPassed &= TestEqual(TEXT("Cross-module binding reader ABI size should match"), static_cast<int32>(sizeof(FAngelscriptCrossModuleBindingFeatureReader)), 32);
 	return bPassed;
 }
 
@@ -607,7 +625,7 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunLayoutVersionSingleSource(FAutoma
 		return false;
 	}
 
-	const FString ExpectedHeaderToken = FormatLayoutVersionToken(FAngelscriptCrossModuleBindings::LayoutVersionExpected);
+	const FString ExpectedHeaderToken = FormatLayoutVersionToken(FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
 	bool bPassed = TestEqual(TEXT("Layout version file should match public header token"), VersionToken, ExpectedHeaderToken);
 
 	FString GeneratorContents;
@@ -623,8 +641,8 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunLayoutVersionSingleSource(FAutoma
 	bPassed &= TestTrue(TEXT("Cross-module shard template should read arguments from frame slots"), GeneratorContents.Contains(TEXT("Frame->ArgSlots")));
 	bPassed &= TestTrue(TEXT("Cross-module shard template should write returns through the frame return slot"), GeneratorContents.Contains(TEXT("Frame->ReturnSlot")));
 	bPassed &= TestTrue(TEXT("Cross-module shard template should assert cross-module call-frame ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleCallFrame) == 48")));
-	bPassed &= TestTrue(TEXT("Cross-module shard template should assert cross-module entry ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleEntry) == 32")));
-	bPassed &= TestTrue(TEXT("Cross-module shard template should assert cross-module feature ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleFeature) == 32")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should assert cross-module binding ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleBinding) == 32")));
+	bPassed &= TestTrue(TEXT("Cross-module shard template should assert cross-module binding feature ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleBindingFeature) == 32")));
 	bPassed &= TestTrue(TEXT("Cross-module shard template should pass the shared layout token into feature registration"), GeneratorContents.Contains(TEXT("GCrossModuleFeature(GCrossModuleTable, UE_ARRAY_COUNT(GCrossModuleTable), TEXT(\\\"")));
 	bPassed &= TestTrue(TEXT("Cross-module shard template should include return-value thunk support"), GeneratorContents.Contains(TEXT("BuildCrossModuleReturn")));
 	bPassed &= TestTrue(TEXT("Cross-module shard template should include argument marshalling helpers"), GeneratorContents.Contains(TEXT("PassCrossModuleArg<")));
@@ -730,8 +748,8 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunStaticAssertSizeofConsistency(FAu
 {
 	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
 
-	static_assert(sizeof(FAngelscriptCrossModuleEntry) == 32, "FAngelscriptCrossModuleEntry size must match generator-emitted ABI.");
-	static_assert(sizeof(FAngelscriptCrossModuleFeatureReader) == 32, "FAngelscriptCrossModuleFeatureReader size must match generator-emitted ABI.");
+	static_assert(sizeof(FAngelscriptCrossModuleBinding) == 32, "FAngelscriptCrossModuleBinding size must match generator-emitted ABI.");
+	static_assert(sizeof(FAngelscriptCrossModuleBindingFeatureReader) == 32, "FAngelscriptCrossModuleBindingFeatureReader size must match generator-emitted ABI.");
 
 	FString HeaderContents;
 	if (!TestTrue(TEXT("Cross-module public ABI header should be readable"), FFileHelper::LoadFileToString(HeaderContents, *GetCrossModulePublicHeaderPath())))
@@ -746,10 +764,10 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunStaticAssertSizeofConsistency(FAu
 	}
 
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("Public header should assert cross-module entry ABI size"), HeaderContents.Contains(TEXT("static_assert(sizeof(FAngelscriptCrossModuleEntry) == 32")));
-	bPassed &= TestTrue(TEXT("Public header should assert cross-module reader ABI size"), HeaderContents.Contains(TEXT("static_assert(sizeof(FAngelscriptCrossModuleFeatureReader) == 32")));
-	bPassed &= TestTrue(TEXT("Generated shard template should assert cross-module entry ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleEntry) == 32")));
-	bPassed &= TestTrue(TEXT("Generated shard template should assert cross-module feature ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleFeature) == 32")));
+	bPassed &= TestTrue(TEXT("Public header should assert cross-module binding ABI size"), HeaderContents.Contains(TEXT("static_assert(sizeof(FAngelscriptCrossModuleBinding) == 32")));
+	bPassed &= TestTrue(TEXT("Public header should assert cross-module binding reader ABI size"), HeaderContents.Contains(TEXT("static_assert(sizeof(FAngelscriptCrossModuleBindingFeatureReader) == 32")));
+	bPassed &= TestTrue(TEXT("Generated shard template should assert cross-module binding ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleBinding) == 32")));
+	bPassed &= TestTrue(TEXT("Generated shard template should assert cross-module binding feature ABI size"), GeneratorContents.Contains(TEXT("static_assert(sizeof(FCrossModuleBindingFeature) == 32")));
 	bPassed &= TestFalse(TEXT("Generated shard template should not use variable-padding bool fields in ABI payload"), GeneratorContents.Contains(TEXT("\\t\\tbool ")));
 	bPassed &= TestFalse(TEXT("Public header should not use variable-padding bool fields in ABI payload"), HeaderContents.Contains(TEXT("\tbool ")));
 	return bPassed;
@@ -805,7 +823,7 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunAutomaticEntryVisible(FAutomation
 	}
 
 	TArray<IModularFeature*> Features = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
-		FAngelscriptCrossModuleBindings::FeatureName());
+		FAngelscriptCrossModuleFunctionBindings::FeatureName());
 	return TestEqual(TEXT("Automatic cross-module entries should not be injected while generation is disabled by default"), Features.Num(), 0);
 }
 
@@ -850,6 +868,12 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunGenerationProfilesPolicy(FAutomat
 		return false;
 	}
 
+	FString CompileOptionsContents;
+	if (!TestTrue(TEXT("Compile options should be readable"), FFileHelper::LoadFileToString(CompileOptionsContents, *GetCompileOptionsFilePath())))
+	{
+		return false;
+	}
+
 	FString BuildCsContents;
 	if (!TestTrue(TEXT("AngelscriptRuntime.Build.cs should be readable"), FFileHelper::LoadFileToString(BuildCsContents, *GetRuntimeBuildCsPath())))
 	{
@@ -875,7 +899,8 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunGenerationProfilesPolicy(FAutomat
 	};
 
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("Profile config should default cross-module generation to disabled"), ProfileConfigContents.Contains(TEXT("\"enabled\": false")));
+	bPassed &= TestTrue(TEXT("Profile config should remain enabled for explicit compile-option control"), ProfileConfigContents.Contains(TEXT("\"enabled\": true")));
+	bPassed &= TestTrue(TEXT("Compile options should default ModuleLocal generation to disabled"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleLocalBindings=false")));
 	bPassed &= TestTrue(TEXT("Profile config should declare common profile"), ProfileConfigContents.Contains(TEXT("\"common\"")));
 	bPassed &= TestTrue(TEXT("Profile config should declare source profile"), ProfileConfigContents.Contains(TEXT("\"source\"")));
 	bPassed &= TestTrue(TEXT("Profile config should declare installed profile"), ProfileConfigContents.Contains(TEXT("\"installed\"")));
@@ -965,6 +990,12 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunDefaultOffDiagnostics(FAutomation
 		return false;
 	}
 
+	FString CompileOptionsContents;
+	if (!TestTrue(TEXT("Compile options should be readable"), FFileHelper::LoadFileToString(CompileOptionsContents, *GetCompileOptionsFilePath())))
+	{
+		return false;
+	}
+
 	FString SummaryContents;
 	if (!TestTrue(TEXT("Generated summary should be readable"), FFileHelper::LoadFileToString(SummaryContents, *GetGeneratedUhtFilePath(TEXT("AS_FunctionTable_Summary.json")))))
 	{
@@ -978,7 +1009,8 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunDefaultOffDiagnostics(FAutomation
 	}
 
 	bool bPassed = true;
-	bPassed &= TestTrue(TEXT("Config should declare CrossModule generation disabled by default"), ProfileConfigContents.Contains(TEXT("\"enabled\": false")));
+	bPassed &= TestTrue(TEXT("Config should leave the profile available to the compile option"), ProfileConfigContents.Contains(TEXT("\"enabled\": true")));
+	bPassed &= TestTrue(TEXT("Compile options should disable ModuleLocal generation by default"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleLocalBindings=false")));
 	bPassed &= TestTrue(TEXT("Config should keep source profile modules for explicit opt-in"), ProfileConfigContents.Contains(TEXT("\"ControlRigEditor\"")));
 	bPassed &= TestTrue(TEXT("Summary should expose disabled CrossModule generation state"), SummaryContents.Contains(TEXT("\"crossModuleGenerationEnabled\": false")));
 	bPassed &= TestTrue(TEXT("Summary should keep selected profile visible"), SummaryContents.Contains(TEXT("\"crossModuleGenerationProfile\"")));
@@ -1007,13 +1039,43 @@ bool FAngelscriptCrossModuleLinkProbeTests::RunDefaultOffGeneratedOutput(FAutoma
 	TArray<IModularFeature*> ProbeFeatures = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
 		FName(TEXT("AngelscriptCrossModuleLinkProbe")));
 	TArray<IModularFeature*> BindingFeatures = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
-		FAngelscriptCrossModuleBindings::FeatureName());
+		FAngelscriptCrossModuleFunctionBindings::FeatureName());
 
 	bool bPassed = true;
 	bPassed &= TestFalse(TEXT("Entries CSV should not contain CrossModule rows by default"), EntriesContents.Contains(TEXT(",CrossModule,")));
 	bPassed &= TestTrue(TEXT("Skipped diagnostics should retain opt-in opportunities"), SkippedEntriesContents.Contains(TEXT("disabled-safe-cross-module")));
 	bPassed &= TestEqual(TEXT("Engine link probe should not be registered by default"), ProbeFeatures.Num(), 0);
 	bPassed &= TestEqual(TEXT("CrossModule binding features should not be registered by default"), BindingFeatures.Num(), 0);
+	return bPassed;
+}
+
+bool FAngelscriptCrossModuleLinkProbeTests::RunModuleLocalCompileGate(FAutomationTestBase& Test)
+{
+	TGuardValue<FAutomationTestBase*> ActiveTestGuard(GActiveTest, &Test);
+
+	FString CompileOptionsContents;
+	FString BuildCsContents;
+	FString GeneratorContents;
+	FString BridgeContents;
+	FString EditorModuleContents;
+	if (!TestTrue(TEXT("Compile options should be readable"), FFileHelper::LoadFileToString(CompileOptionsContents, *GetCompileOptionsFilePath())) ||
+		!TestTrue(TEXT("Runtime Build.cs should be readable"), FFileHelper::LoadFileToString(BuildCsContents, *GetRuntimeBuildCsPath())) ||
+		!TestTrue(TEXT("UHT code generator should be readable"), FFileHelper::LoadFileToString(GeneratorContents, *GetUhtCodeGeneratorPath())) ||
+		!TestTrue(TEXT("Runtime ModuleLocal bridge should be readable"), FFileHelper::LoadFileToString(BridgeContents, *GetRuntimeCrossModuleBridgePath())) ||
+		!TestTrue(TEXT("Editor module should be readable"), FFileHelper::LoadFileToString(EditorModuleContents, *GetEditorModulePath())))
+	{
+		return false;
+	}
+
+	bool bPassed = true;
+	bPassed &= TestTrue(TEXT("Compile options should default ModuleLocal bindings to disabled"), CompileOptionsContents.Contains(TEXT("bCompileAngelscriptModuleLocalBindings=false")));
+	bPassed &= TestTrue(TEXT("Runtime Build.cs should define the ModuleLocal bindings macro"), BuildCsContents.Contains(TEXT("WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS")));
+	bPassed &= TestTrue(TEXT("Runtime Build.cs should reject ModuleLocal bindings for non-source engines"), BuildCsContents.Contains(TEXT("requires a source engine")));
+	bPassed &= TestTrue(TEXT("UHT should read the ModuleLocal compile option"), GeneratorContents.Contains(TEXT("bCompileAngelscriptModuleLocalBindings")));
+	bPassed &= TestTrue(TEXT("UHT should reject enabled ModuleLocal bindings for non-source engines"), GeneratorContents.Contains(TEXT("requires a source engine")));
+	bPassed &= TestTrue(TEXT("Runtime ModuleLocal bridge should be compile-gated"), BridgeContents.Contains(TEXT("#if WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS")));
+	bPassed &= TestTrue(TEXT("Editor settings should validate ModuleLocal bindings on modification"), EditorModuleContents.Contains(TEXT("OnModified().Bind")));
+	bPassed &= TestTrue(TEXT("Editor settings should reject ModuleLocal bindings for non-source engines"), EditorModuleContents.Contains(TEXT("requires a source engine")));
 	return bPassed;
 }
 
@@ -1109,6 +1171,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDefaultOffTests,
 	TEST_METHOD(GeneratedOutputsSuppressed)
 	{
 		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunDefaultOffGeneratedOutput(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(FAngelscriptModuleLocalCompileGateTests,
+	"Angelscript.CppTests.UHTToolResolver.ModuleLocalCompileGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+	TEST_METHOD(CompileOptionControlsUhtAndRuntimeBridge)
+	{
+		ASSERT_THAT(IsTrue(FAngelscriptCrossModuleLinkProbeTests::RunModuleLocalCompileGate(*TestRunner)));
 	}
 };
 

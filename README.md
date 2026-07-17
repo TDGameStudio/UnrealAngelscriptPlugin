@@ -60,9 +60,10 @@ Enable test registration in the host project before running Angelscript C++ auto
 ; Config/DefaultAngelscriptCompileOptions.ini
 [/Script/AngelscriptRuntime.AngelscriptCompileOptions]
 bCompileAngelscriptUnitTests=true
+bCompileAngelscriptModuleLocalBindings=false
 ```
 
-After changing this file, rebuild the editor target so `AngelscriptTest.Build.cs` can update `WITH_ANGELSCRIPT_UNITTESTS`. In the original host project, tests are run through `Tools/RunTests.ps1`; standalone consumers can run Unreal Automation tests by prefix once the plugin is installed in a host project and rebuilt with test registration enabled.
+`bCompileAngelscriptModuleLocalBindings` is disabled by default and requires a source-built Unreal Engine. It controls both UHT module-local binding shard generation and the Runtime modular-feature bridge. The Editor rejects enabling it for installed or unknown engine distributions; direct ini edits are rejected by UBT and UHT as well. After changing compile options, rebuild the editor target so `AngelscriptTest.Build.cs` can update `WITH_ANGELSCRIPT_UNITTESTS` and `AngelscriptRuntime.Build.cs` can update `WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS`. In the original host project, tests are run through `Tools/RunTests.ps1`; standalone consumers can run Unreal Automation tests by prefix once the plugin is installed in a host project and rebuilt with test registration enabled.
 
 ## History
 

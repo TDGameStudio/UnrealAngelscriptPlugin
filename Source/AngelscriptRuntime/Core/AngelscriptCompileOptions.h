@@ -12,4 +12,7 @@ class ANGELSCRIPTRUNTIME_API UAngelscriptCompileOptions : public UObject
 public:
 	UPROPERTY(Config, EditAnywhere, Category = "Tests", Meta = (ConfigRestartRequired = true))
 	bool bCompileAngelscriptUnitTests = false;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Bindings", Meta = (ConfigRestartRequired = true))
+	bool bCompileAngelscriptModuleLocalBindings = false;
 };

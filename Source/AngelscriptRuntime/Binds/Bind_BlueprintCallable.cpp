@@ -148,19 +148,19 @@ void BindBlueprintCallable(
 #endif
 
 	UClass* OwningClass = CastChecked<UClass>(Function->GetOuter());
-	FFuncEntry* Entry = nullptr;
+	FAngelscriptFunctionBinding* FunctionBinding = nullptr;
 
 	if (OwningClass != nullptr)
 	{
 		FString Name = Function->GetFName().ToString();
-		auto* map = FAngelscriptBinds::GetClassFuncMaps().Find(OwningClass);
+		auto* map = FAngelscriptBinds::GetClassFunctionBindings().Find(OwningClass);
 
 		if (map)
-			Entry = map->Find(Name);
+			FunctionBinding = map->Find(Name);
 	}
 
 	// Don't bind functions without a native pointer
-	if (Entry == nullptr)
+	if (FunctionBinding == nullptr)
 		return;
 
 #if AS_USE_BIND_DB
@@ -175,11 +175,11 @@ void BindBlueprintCallable(
 		return;
 #endif
 
-	auto* DirectNativePointer = &Entry->FuncPtr;
+	auto* DirectNativePointer = &FunctionBinding->FunctionPointer;
 	const bool bHasDirectNativePointer = DirectNativePointer != nullptr && DirectNativePointer->IsBound();
 	if (!bHasDirectNativePointer)
 	{
-		if (!BindBlueprintCallableReflectionFallback(InType, Function, Signature, *Entry))
+		if (!BindBlueprintCallableReflectionFallback(InType, Function, Signature, *FunctionBinding))
 			return;
 
 #if AS_CAN_GENERATE_JIT
@@ -196,7 +196,7 @@ void BindBlueprintCallable(
 		return;
 	}
 
-	Entry->bReflectiveFallbackBound = false;
+	FunctionBinding->bReflectiveFallbackBound = false;
 	if (IsEquivalentScriptSignatureAlreadyBound(InType, Signature))
 	{
 		return;
@@ -208,9 +208,9 @@ void BindBlueprintCallable(
 	FMemory::Memcpy(&ASFuncPtr, DirectNativePointer, sizeof(asSFuncPtr));
 
 	// Actually bind into angelscript engine
-	const asECallConvTypes EntryCallConv = Entry->bGenericCall ? asCALL_GENERIC : asCALL_THISCALL;
-	const ASAutoCaller::FunctionCaller EntryCaller = Entry->bGenericCall ? ASAutoCaller::FunctionCaller::Make() : Entry->Caller;
-	void* EntryUserData = Entry->bGenericCall ? Entry->UserData : nullptr;
+	const asECallConvTypes BindingCallConv = FunctionBinding->bUsesGenericCall ? asCALL_GENERIC : asCALL_THISCALL;
+	const ASAutoCaller::FunctionCaller BindingCaller = FunctionBinding->bUsesGenericCall ? ASAutoCaller::FunctionCaller::Make() : FunctionBinding->FunctionCaller;
+	void* BindingUserData = FunctionBinding->bUsesGenericCall ? FunctionBinding->UserData : nullptr;
 
 	if (Signature.bStaticInScript)
 	{
@@ -218,18 +218,18 @@ void BindBlueprintCallable(
 		if (Signature.bGlobalScope)
 		{
 			//int GlobalFunctionId = FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, FuncInMap->Value);			
-			int GlobalFunctionId = Entry->bGenericCall
-				? FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration, ASFuncPtr, asCALL_GENERIC, EntryCaller, EntryUserData)
-				: FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, EntryCaller);
+			int GlobalFunctionId = FunctionBinding->bUsesGenericCall
+				? FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration, ASFuncPtr, asCALL_GENERIC, BindingCaller, BindingUserData)
+				: FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, BindingCaller);
 			Signature.ModifyScriptFunction(GlobalFunctionId);
 		}
 
 		// Static functions should be bound as a global function in a namespace
 		FAngelscriptBinds::FNamespace ns(Signature.ClassName);
 		//int FunctionId = FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, FuncInMap->Value);
-		int FunctionId = Entry->bGenericCall
-			? FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration, ASFuncPtr, asCALL_GENERIC, EntryCaller, EntryUserData)
-			: FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, EntryCaller);
+		int FunctionId = FunctionBinding->bUsesGenericCall
+			? FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration, ASFuncPtr, asCALL_GENERIC, BindingCaller, BindingUserData)
+			: FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, BindingCaller);
 		Signature.ModifyScriptFunction(FunctionId);
 	}
 	else if (Signature.bStaticInUnreal)
@@ -239,7 +239,7 @@ void BindBlueprintCallable(
 		(
 			Signature.ClassName,
 			Signature.Declaration, ASFuncPtr,
-			Entry->bGenericCall ? asCALL_GENERIC : asCALL_CDECL_OBJFIRST, EntryCaller, EntryUserData
+			FunctionBinding->bUsesGenericCall ? asCALL_GENERIC : asCALL_CDECL_OBJFIRST, BindingCaller, BindingUserData
 		);
 		Signature.ModifyScriptFunction(FunctionId);
 	}
@@ -251,7 +251,7 @@ void BindBlueprintCallable(
 		int FunctionId = FAngelscriptBinds::BindMethodDirect
 		(
 			InType->GetAngelscriptTypeName(),
-			Signature.Declaration, ASFuncPtr, EntryCallConv, EntryCaller, EntryUserData
+			Signature.Declaration, ASFuncPtr, BindingCallConv, BindingCaller, BindingUserData
 		);
 		Signature.ModifyScriptFunction(FunctionId);
 	}
@@ -271,7 +271,7 @@ void BindBlueprintCallable(
 
 #if !AS_USE_BIND_DB && WITH_EDITOR
 // Prepare-only entry point used by the Bind_Defaults Late+100 Phase 2A.
-// Performs all read-only checks and builds Signature + CachedEntry into Prep.
+// Performs all read-only checks and builds Signature + CachedBinding into Prep.
 // On success, sets Prep.Kind = Callable. On any rejection, leaves
 // Prep.Kind = Skip so Phase 2B can short-circuit. Read-only with respect to
 // the AS Engine and the binding registries (UE reflection reads only).
@@ -285,7 +285,7 @@ void BindBlueprintCallable_Prepare(
 {
 	Prep.Function = Function;
 	Prep.Kind = FUFunctionBindPrep::EKind::Skip;
-	Prep.CachedEntry = nullptr;
+	Prep.CachedBinding = nullptr;
 
 	if (Function == nullptr)
 	{
@@ -302,15 +302,15 @@ void BindBlueprintCallable_Prepare(
 	}
 
 	UClass* OwningClass = CastChecked<UClass>(Function->GetOuter());
-	FFuncEntry* Entry = nullptr;
+	FAngelscriptFunctionBinding* FunctionBinding = nullptr;
 	if (OwningClass != nullptr)
 	{
 		FString Name = Function->GetFName().ToString();
-		auto* Map = FAngelscriptBinds::GetClassFuncMaps().Find(OwningClass);
+		auto* Map = FAngelscriptBinds::GetClassFunctionBindings().Find(OwningClass);
 		if (Map)
-			Entry = Map->Find(Name);
+			FunctionBinding = Map->Find(Name);
 	}
-	if (Entry == nullptr)
+	if (FunctionBinding == nullptr)
 	{
 		return;
 	}
@@ -321,7 +321,7 @@ void BindBlueprintCallable_Prepare(
 		return;
 	}
 
-	Prep.CachedEntry = Entry;
+	Prep.CachedBinding = FunctionBinding;
 	Prep.Kind = FUFunctionBindPrep::EKind::Callable;
 }
 
@@ -329,7 +329,7 @@ void BindBlueprintCallable_Prepare(
 // (see Plan_BindParallelization). The caller is responsible for filling Prep with:
 //   - Function           (UFunction*, non-null, FUNC_Native, not skipped)
 //   - Signature          (already InitFromFunction'd, bAllTypesValid == true)
-//   - CachedEntry        (FAngelscriptBinds::GetClassFuncMaps lookup result, non-null)
+//   - CachedBinding      (FAngelscriptBinds::GetClassFunctionBindings lookup result, non-null)
 //   - Kind == Callable
 // This function only performs the AS Engine register half (must run on GameThread).
 void BindBlueprintCallable_FromPrep(
@@ -338,19 +338,19 @@ void BindBlueprintCallable_FromPrep(
 	FAngelscriptMethodBind& DBBind)
 {
 	UFunction* Function = Prep.Function;
-	FFuncEntry* Entry = Prep.CachedEntry;
+	FAngelscriptFunctionBinding* FunctionBinding = Prep.CachedBinding;
 	FAngelscriptFunctionSignature& Signature = Prep.Signature;
 
-	if (Function == nullptr || Entry == nullptr)
+	if (Function == nullptr || FunctionBinding == nullptr)
 	{
 		return;
 	}
 
-	auto* DirectNativePointer = &Entry->FuncPtr;
+	auto* DirectNativePointer = &FunctionBinding->FunctionPointer;
 	const bool bHasDirectNativePointer = DirectNativePointer != nullptr && DirectNativePointer->IsBound();
 	if (!bHasDirectNativePointer)
 	{
-		if (!BindBlueprintCallableReflectionFallback(InType, Function, Signature, *Entry))
+		if (!BindBlueprintCallableReflectionFallback(InType, Function, Signature, *FunctionBinding))
 		{
 			return;
 		}
@@ -363,7 +363,7 @@ void BindBlueprintCallable_FromPrep(
 		return;
 	}
 
-	Entry->bReflectiveFallbackBound = false;
+	FunctionBinding->bReflectiveFallbackBound = false;
 	if (IsEquivalentScriptSignatureAlreadyBound(InType, Signature))
 	{
 		return;
@@ -373,24 +373,24 @@ void BindBlueprintCallable_FromPrep(
 	static_assert(sizeof(asSFuncPtr) == sizeof(FGenericFuncPtr), "FGenericFuncPtr must be the same struct as asSFuncPtr");
 	FMemory::Memcpy(&ASFuncPtr, DirectNativePointer, sizeof(asSFuncPtr));
 
-	const asECallConvTypes EntryCallConv = Entry->bGenericCall ? asCALL_GENERIC : asCALL_THISCALL;
-	const ASAutoCaller::FunctionCaller EntryCaller = Entry->bGenericCall ? ASAutoCaller::FunctionCaller::Make() : Entry->Caller;
-	void* EntryUserData = Entry->bGenericCall ? Entry->UserData : nullptr;
+	const asECallConvTypes BindingCallConv = FunctionBinding->bUsesGenericCall ? asCALL_GENERIC : asCALL_THISCALL;
+	const ASAutoCaller::FunctionCaller BindingCaller = FunctionBinding->bUsesGenericCall ? ASAutoCaller::FunctionCaller::Make() : FunctionBinding->FunctionCaller;
+	void* BindingUserData = FunctionBinding->bUsesGenericCall ? FunctionBinding->UserData : nullptr;
 
 	if (Signature.bStaticInScript)
 	{
 		if (Signature.bGlobalScope)
 		{
-			int GlobalFunctionId = Entry->bGenericCall
-				? FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration, ASFuncPtr, asCALL_GENERIC, EntryCaller, EntryUserData)
-				: FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, EntryCaller);
+			int GlobalFunctionId = FunctionBinding->bUsesGenericCall
+				? FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration, ASFuncPtr, asCALL_GENERIC, BindingCaller, BindingUserData)
+				: FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, BindingCaller);
 			Signature.ModifyScriptFunction(GlobalFunctionId);
 		}
 
 		FAngelscriptBinds::FNamespace ns(Signature.ClassName);
-		int FunctionId = Entry->bGenericCall
-			? FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration, ASFuncPtr, asCALL_GENERIC, EntryCaller, EntryUserData)
-			: FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, EntryCaller);
+		int FunctionId = FunctionBinding->bUsesGenericCall
+			? FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration, ASFuncPtr, asCALL_GENERIC, BindingCaller, BindingUserData)
+			: FAngelscriptBinds::BindGlobalFunction(Signature.Declaration, ASFuncPtr, BindingCaller);
 		Signature.ModifyScriptFunction(FunctionId);
 	}
 	else if (Signature.bStaticInUnreal)
@@ -398,7 +398,7 @@ void BindBlueprintCallable_FromPrep(
 		int FunctionId = FAngelscriptBinds::BindMethodDirect(
 			Signature.ClassName,
 			Signature.Declaration, ASFuncPtr,
-			Entry->bGenericCall ? asCALL_GENERIC : asCALL_CDECL_OBJFIRST, EntryCaller, EntryUserData);
+			FunctionBinding->bUsesGenericCall ? asCALL_GENERIC : asCALL_CDECL_OBJFIRST, BindingCaller, BindingUserData);
 		Signature.ModifyScriptFunction(FunctionId);
 	}
 	else
@@ -406,7 +406,7 @@ void BindBlueprintCallable_FromPrep(
 		int FunctionId = FAngelscriptBinds::BindMethodDirect(
 			InType->GetAngelscriptTypeName(),
 			Signature.Declaration, ASFuncPtr,
-			EntryCallConv, EntryCaller, EntryUserData);
+			BindingCallConv, BindingCaller, BindingUserData);
 		Signature.ModifyScriptFunction(FunctionId);
 	}
 

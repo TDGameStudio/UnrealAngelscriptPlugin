@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using UnrealBuildTool;
 
@@ -9,8 +10,10 @@ namespace UnrealBuildTool.Rules
 		{
 			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 			NumIncludedBytesPerUnityCPPOverride = 131072;
+			bool bCompileAngelscriptModuleLocalBindings = ReadModuleLocalBindingsSetting(Target);
 			PrivateDefinitions.Add("ANGELSCRIPT_EXPORT=1");
 			PublicDefinitions.Add("WITH_ANGELSCRIPT=1");
+			PublicDefinitions.Add("WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS=" + (bCompileAngelscriptModuleLocalBindings ? "1" : "0"));
 			PublicDefinitions.Add("ANGELSCRIPT_DLL_LIBRARY_IMPORT=1");
 
 			PublicIncludePaths.Add(ModuleDirectory);
@@ -117,6 +120,90 @@ namespace UnrealBuildTool.Rules
 						"#endif",
 					});
 			}
+		}
+
+		private bool ReadModuleLocalBindingsSetting(ReadOnlyTargetRules Target)
+		{
+			if (Target.ProjectFile == null)
+			{
+				return false;
+			}
+
+			string? ProjectDirectory = Path.GetDirectoryName(Target.ProjectFile.FullName);
+			if (string.IsNullOrEmpty(ProjectDirectory))
+			{
+				return false;
+			}
+
+			string ConfigPath = Path.Combine(ProjectDirectory, "Config", "DefaultAngelscriptCompileOptions.ini");
+			ExternalDependencies.Add(ConfigPath);
+
+			const string SettingSection = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
+			const string SettingName = "bCompileAngelscriptModuleLocalBindings";
+			if (!File.Exists(ConfigPath))
+			{
+				return false;
+			}
+
+			bool bInSection = false;
+			foreach (string RawLine in File.ReadAllLines(ConfigPath))
+			{
+				string Line = RawLine.Trim();
+				if (Line.Length == 0 || Line.StartsWith(";") || Line.StartsWith("#"))
+				{
+					continue;
+				}
+
+				if (Line.StartsWith("[") && Line.EndsWith("]"))
+				{
+					bInSection = string.Equals(Line.Substring(1, Line.Length - 2), SettingSection, StringComparison.Ordinal);
+					continue;
+				}
+
+				if (!bInSection)
+				{
+					continue;
+				}
+
+				int SeparatorIndex = Line.IndexOf('=');
+				if (SeparatorIndex <= 0 || !string.Equals(Line.Substring(0, SeparatorIndex).Trim(), SettingName, StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
+
+				string Value = Line.Substring(SeparatorIndex + 1).Trim();
+				bool bEnabled = Value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+					Value.Equals("1", StringComparison.OrdinalIgnoreCase) ||
+					Value.Equals("yes", StringComparison.OrdinalIgnoreCase);
+				if (bEnabled && !IsSourceEngine())
+				{
+					throw new BuildException(
+						"Angelscript ModuleLocal binding compilation requires a source engine. Engine '{0}' is installed, binary, or unknown; disable bCompileAngelscriptModuleLocalBindings or use a source engine.",
+						EngineDirectory);
+				}
+
+				return bEnabled;
+			}
+
+			return false;
+		}
+
+		private static bool IsSourceEngine()
+		{
+			string NormalizedEngineDirectory = EngineDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+			if (File.Exists(Path.Combine(NormalizedEngineDirectory, "Build", "InstalledBuild.txt")))
+			{
+				return false;
+			}
+
+			if (File.Exists(Path.Combine(NormalizedEngineDirectory, "Build", "SourceDistribution.txt")) ||
+				Directory.Exists(Path.Combine(NormalizedEngineDirectory, ".git")))
+			{
+				return true;
+			}
+
+			DirectoryInfo? EngineParent = Directory.GetParent(NormalizedEngineDirectory);
+			return EngineParent != null && Directory.Exists(Path.Combine(EngineParent.FullName, ".git"));
 		}
 	}
 }

@@ -1227,7 +1227,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 
 	// ---- Phase 2A: Prepare (read-only AS Engine, parallelizable) ----
 	// Walks every UClass + UFunction once, runs all eligibility checks, and builds
-	// FAngelscriptFunctionSignature + cached FFuncEntry pointer into BindOrder.FunctionPreps.
+	// FAngelscriptFunctionSignature + cached function-binding pointer into BindOrder.FunctionPreps.
 	// No AS Engine writes happen here. Each ClassIdx writes only to its own
 	// ClassesToBind[ClassIdx].FunctionPreps, so the loop is safely parallelizable.
 	// The NameArray prewarm in Phase 1.5 guards against UClass::FindFunctionByName

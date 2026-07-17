@@ -1391,7 +1391,7 @@ void FAngelscriptEditorModule::GenerateFunctionEntries(UClass* Class, TArray<FSt
 
 		if (!Function->HasAnyFunctionFlags(FUNC_Static))
 		{
-			line = "\t\t\tFAngelscriptBinds::AddFunctionEntry(" + ClassName + "::StaticClass(), \"" + name + "\"";
+			line = "\t\t\tFAngelscriptBinds::RegisterFunctionBinding(" + ClassName + "::StaticClass(), \"" + name + "\"";
 			line += ", { ERASE_METHOD_PTR(";
 			line += ClassName + ", ";
 			line += name + ", (";
@@ -1401,7 +1401,7 @@ void FAngelscriptEditorModule::GenerateFunctionEntries(UClass* Class, TArray<FSt
 		{
 			origRet = origRet.Replace(L"static", L"", ESearchCase::CaseSensitive);
 
-			line = "\t\t\tFAngelscriptBinds::AddFunctionEntry(" + ClassName + "::StaticClass(), \"" + name + "\"";
+			line = "\t\t\tFAngelscriptBinds::RegisterFunctionBinding(" + ClassName + "::StaticClass(), \"" + name + "\"";
 			line += ", { ERASE_FUNCTION_PTR(";
 			//line += ClassName + ", ";
 			//line += name + ", (";
@@ -2222,7 +2222,7 @@ void FAngelscriptEditorModule::GenerateFunctionEntriesOld2(UClass* Class, TArray
 
 	for (auto& elem : FuncMap)
 	{
-		FString line = "\t\t\tFAngelscriptBinds::AddFunctionEntry(" + ClassName + "::StaticClass(), \"" + elem.Key->GetName() + "\"";
+		FString line = "\t\t\tFAngelscriptBinds::RegisterFunctionBinding(" + ClassName + "::StaticClass(), \"" + elem.Key->GetName() + "\"";
 		line += ", { ERASE_METHOD_PTR(";
 
 		int32 funcName = 0;
@@ -2301,7 +2301,7 @@ void FAngelscriptEditorModule::GenerateFunctionEntriesOld(UClass* Class, TArray<
 			if (Function->HasAnyFunctionFlags(FUNC_Static)) //TO-DO: Add support for statics I think
 				continue;
 			
-			FString line = "\t\t\tFAngelscriptBinds::AddFunctionEntry(" + ClassName + "::StaticClass(), \"" + Name.ToString() + "\"";
+			FString line = "\t\t\tFAngelscriptBinds::RegisterFunctionBinding(" + ClassName + "::StaticClass(), \"" + Name.ToString() + "\"";
 			line += ", { ERASE_METHOD_PTR(";
 
 			line += ClassName + ", ";
@@ -2631,7 +2631,7 @@ void FAngelscriptEditorModule::OriginalGenerate()
 	TSet<FString> modules = TSet<FString>();
 	includeLines.Add("#include \"FunctionCallers.h\""); //Add Initial header
 	includeLines.Add("#include \"AngelscriptBinds.h\"");
-	lines.Add("FFuncEntry Entries[]");
+	lines.Add("FAngelscriptFunctionBinding Bindings[]");
 	lines.Add("{");
 
 	for (UClass* Class : TObjectRange<UClass>())

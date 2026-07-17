@@ -996,9 +996,9 @@ bool BindBlueprintCallableReflectionFallback(
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
 	FAngelscriptFunctionSignature& Signature,
-	FFuncEntry& Entry)
+	FAngelscriptFunctionBinding& Binding)
 {
-	Entry.bReflectiveFallbackBound = false;
+	Binding.bReflectiveFallbackBound = false;
 
 	if (!ShouldBindBlueprintCallableReflectionFallback(Function))
 	{
@@ -1037,7 +1037,7 @@ bool BindBlueprintCallableReflectionFallback(
 		return false;
 	}
 
-	Entry.bReflectiveFallbackBound = true;
+	Binding.bReflectiveFallbackBound = true;
 	return true;
 }
 

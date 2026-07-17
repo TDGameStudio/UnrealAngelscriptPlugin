@@ -750,7 +750,7 @@ void BindBlueprintEvent(
 // Prepare-only entry point used by the Bind_Defaults Late+100 Phase 2A.
 // Performs all metadata gating + Signature build (read-only). On success, sets
 // Prep.Kind = Event; on any rejection, leaves Prep.Kind = Skip.
-// CachedEntry is unused for Event prepares.
+// CachedBinding is unused for Event prepares.
 void BindBlueprintEvent_Prepare(
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
@@ -758,7 +758,7 @@ void BindBlueprintEvent_Prepare(
 {
 	Prep.Function = Function;
 	Prep.Kind = FUFunctionBindPrep::EKind::Skip;
-	Prep.CachedEntry = nullptr;
+	Prep.CachedBinding = nullptr;
 
 	if (Function == nullptr)
 	{
@@ -799,7 +799,7 @@ void BindBlueprintEvent_Prepare(
 //   - Signature          (already InitFromFunction'd, bAllTypesValid == true,
 //                         ArgumentTypes.Num() <= AS_EVENT_MAX_ARGS)
 //   - Kind == Event
-// CachedEntry is unused for Event commits. This function only performs the AS Engine
+// CachedBinding is unused for Event commits. This function only performs the AS Engine
 // register half (must run on GameThread).
 void BindBlueprintEvent_FromPrep(
 	TSharedRef<FAngelscriptType> InType,

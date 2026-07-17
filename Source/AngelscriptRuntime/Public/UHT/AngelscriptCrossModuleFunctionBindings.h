@@ -21,7 +21,7 @@ struct FAngelscriptCrossModuleCallFrame
 	uint32 Reserved1;
 };
 
-struct FAngelscriptCrossModuleEntry
+struct FAngelscriptCrossModuleBinding
 {
 	const TCHAR* ClassName;
 	const TCHAR* FunctionName;
@@ -31,15 +31,15 @@ struct FAngelscriptCrossModuleEntry
 	uint32 Flags;
 };
 
-struct FAngelscriptCrossModuleFeatureReader
+struct FAngelscriptCrossModuleBindingFeatureReader
 {
-	const FAngelscriptCrossModuleEntry* Table;
+	const FAngelscriptCrossModuleBinding* Table;
 	int32 Count;
 	const TCHAR* ModuleName;
 	uint32 LayoutVersion;
 };
 
-namespace FAngelscriptCrossModuleBindings
+namespace FAngelscriptCrossModuleFunctionBindings
 {
 	static constexpr uint32 LayoutVersionExpected = 0xA5C0DE02u;
 	static constexpr uint32 FlagStatic = 1u << 0;
@@ -50,10 +50,10 @@ namespace FAngelscriptCrossModuleBindings
 
 	inline FName FeatureName()
 	{
-		return FName(TEXT("AngelscriptCrossModuleBindings"));
+		return FName(TEXT("AngelscriptCrossModuleFunctionBindings"));
 	}
 }
 
 static_assert(sizeof(FAngelscriptCrossModuleCallFrame) == 48, "FAngelscriptCrossModuleCallFrame ABI layout changed; bump cross-module-layout-version.txt.");
-static_assert(sizeof(FAngelscriptCrossModuleEntry) == 32, "FAngelscriptCrossModuleEntry ABI layout changed; bump cross-module-layout-version.txt.");
-static_assert(sizeof(FAngelscriptCrossModuleFeatureReader) == 32, "FAngelscriptCrossModuleFeatureReader ABI layout changed; bump cross-module-layout-version.txt.");
+static_assert(sizeof(FAngelscriptCrossModuleBinding) == 32, "FAngelscriptCrossModuleBinding ABI layout changed; bump cross-module-layout-version.txt.");
+static_assert(sizeof(FAngelscriptCrossModuleBindingFeatureReader) == 32, "FAngelscriptCrossModuleBindingFeatureReader ABI layout changed; bump cross-module-layout-version.txt.");

@@ -1,5 +1,6 @@
 #include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
+#include "AngelscriptCompileOptions.h"
 #include "AngelscriptSettings.h"
 
 #include "IDirectoryWatcher.h"
@@ -24,6 +25,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleSettingsTests_P
 	static const FName ProjectSettingsContainerName(TEXT("Project"));
 	static const FName PluginsCategoryName(TEXT("Plugins"));
 	static const FName AngelscriptSectionName(TEXT("Angelscript"));
+	static const FName AngelscriptCompileOptionsSectionName(TEXT("AngelscriptCompileOptions"));
 
 	class FMockDirectoryWatcher final : public IDirectoryWatcher
 	{
@@ -60,6 +62,17 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleSettingsTests_P
 		}
 
 		return PluginsCategory->GetSection(AngelscriptSectionName, true);
+	}
+
+	ISettingsSectionPtr FindAngelscriptCompileOptionsSettingsSection(ISettingsModule& SettingsModule)
+	{
+		const TSharedPtr<ISettingsCategory> PluginsCategory = FindAngelscriptPluginsCategory(SettingsModule);
+		if (!PluginsCategory.IsValid())
+		{
+			return nullptr;
+		}
+
+		return PluginsCategory->GetSection(AngelscriptCompileOptionsSectionName, true);
 	}
 
 	int32 CountAngelscriptProjectSettingsSections(ISettingsModule& SettingsModule)
@@ -213,6 +226,21 @@ static bool RunProjectSettingsEntryMatchesModuleLifetime(FAutomationTestBase& Te
 	return true;
 }
 
+static bool RunCompileOptionsValidationRegistration(FAutomationTestBase& Test)
+{
+	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleSettingsTests_Private;
+	ISettingsModule& SettingsModule = FModuleManager::LoadModuleChecked<ISettingsModule>("Settings");
+	const ISettingsSectionPtr CompileOptionsSection = FindAngelscriptCompileOptionsSettingsSection(SettingsModule);
+	if (!TestNotNull(TEXT("Editor.Module.CompileOptionsValidation should register the compile options section"), CompileOptionsSection.Get()))
+	{
+		return false;
+	}
+
+	return TestTrue(
+		TEXT("Editor.Module.CompileOptionsValidation should bind an OnModified validator"),
+		CompileOptionsSection->OnModified().IsBound());
+}
+
 #undef TestTrue
 #undef TestFalse
 #undef TestEqual
@@ -227,6 +255,11 @@ TEST_CLASS_WITH_FLAGS(
 	TEST_METHOD(ProjectSettingsEntryMatchesModuleLifetime)
 	{
 		ASSERT_THAT(IsTrue(RunProjectSettingsEntryMatchesModuleLifetime(*TestRunner)));
+	}
+
+	TEST_METHOD(CompileOptionsValidationIsRegistered)
+	{
+		ASSERT_THAT(IsTrue(RunCompileOptionsValidationRegistration(*TestRunner)));
 	}
 };
 

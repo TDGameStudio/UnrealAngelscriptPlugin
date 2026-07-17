@@ -14,12 +14,12 @@
 #include "Shared/AngelscriptTestMacros.h"
 #include "Shared/AngelscriptTestModuleScope.h"
 #include "Templates/Atomic.h"
-#include "UHT/AngelscriptCrossModuleBindings.h"
+#include "UHT/AngelscriptCrossModuleFunctionBindings.h"
 
-#if WITH_ANGELSCRIPT_UNITTESTS
+#if WITH_ANGELSCRIPT_UNITTESTS && WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS
 
 ANGELSCRIPTRUNTIME_API void GAngelscriptCrossModuleEnsureRegisteredForTesting();
-ANGELSCRIPTRUNTIME_API int32 GAngelscriptCrossModuleBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptCrossModuleEntry* Entry);
+ANGELSCRIPTRUNTIME_API int32 GAngelscriptCrossModuleBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptCrossModuleBinding* Binding);
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptCrossModuleDirectBindRuntimeTests,
 	"Angelscript.CppTests.UHTToolResolver.CrossModuleDirectBind",
@@ -85,7 +85,7 @@ private:
 	{
 		UClass* Class = nullptr;
 		bool bHadClassMap = false;
-		TMap<FString, FFuncEntry> SavedClassMap;
+		TMap<FString, FAngelscriptFunctionBinding> SavedClassMap;
 
 		explicit FScopedClassFuncMapRestore(UClass* InClass)
 			: Class(InClass)
@@ -95,7 +95,7 @@ private:
 				return;
 			}
 
-			if (TMap<FString, FFuncEntry>* ExistingMap = FAngelscriptBinds::GetClassFuncMaps().Find(Class))
+			if (TMap<FString, FAngelscriptFunctionBinding>* ExistingMap = FAngelscriptBinds::GetClassFunctionBindings().Find(Class))
 			{
 				bHadClassMap = true;
 				SavedClassMap = *ExistingMap;
@@ -109,26 +109,26 @@ private:
 				return;
 			}
 
-			TMap<UClass*, TMap<FString, FFuncEntry>>& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
+			TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& ClassFunctionBindings = FAngelscriptBinds::GetClassFunctionBindings();
 			if (bHadClassMap)
 			{
-				ClassFuncMaps.FindOrAdd(Class) = SavedClassMap;
+				ClassFunctionBindings.FindOrAdd(Class) = SavedClassMap;
 			}
 			else
 			{
-				ClassFuncMaps.Remove(Class);
+				ClassFunctionBindings.Remove(Class);
 			}
 		}
 	};
 
 	struct FTestCrossModuleFeature : public IModularFeature
 	{
-		const FAngelscriptCrossModuleEntry* Table;
+		const FAngelscriptCrossModuleBinding* Table;
 		int32 Count;
 		const TCHAR* ModuleName;
 		uint32 LayoutVersion;
 
-		FTestCrossModuleFeature(const FAngelscriptCrossModuleEntry* InTable, int32 InCount, const TCHAR* InModuleName, uint32 InLayoutVersion)
+		FTestCrossModuleFeature(const FAngelscriptCrossModuleBinding* InTable, int32 InCount, const TCHAR* InModuleName, uint32 InLayoutVersion)
 			: Table(InTable)
 			, Count(InCount)
 			, ModuleName(InModuleName)
@@ -139,19 +139,19 @@ private:
 
 	static void RegisterAndUnregisterFeature(FTestCrossModuleFeature& Feature)
 	{
-		IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &Feature);
-		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &Feature);
+		IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleFunctionBindings::FeatureName(), &Feature);
+		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleFunctionBindings::FeatureName(), &Feature);
 	}
 
-	static const FFuncEntry* FindActorEntry(const TCHAR* FunctionName)
+	static const FAngelscriptFunctionBinding* FindActorEntry(const TCHAR* FunctionName)
 	{
-		const TMap<FString, FFuncEntry>* ActorEntries = FAngelscriptBinds::GetClassFuncMaps().Find(AActor::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* ActorEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(AActor::StaticClass());
 		return ActorEntries != nullptr ? ActorEntries->Find(FunctionName) : nullptr;
 	}
 
-	static bool IsEntryFunctionBound(const FFuncEntry& Entry)
+	static bool IsEntryFunctionBound(const FAngelscriptFunctionBinding& Entry)
 	{
-		return const_cast<FGenericFuncPtr&>(Entry.FuncPtr).IsBound();
+		return const_cast<FGenericFuncPtr&>(Entry.FunctionPointer).IsBound();
 	}
 
 	static bool WaitForGameThreadFeatureInjection(const TCHAR* FunctionName, double TimeoutSeconds = 5.0)
@@ -232,14 +232,14 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunExistingSlotPriority(FAut
 	}
 
 	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
-	const FFuncEntry ExistingEntry = { FGenericFuncPtr::Make(1), ASAutoCaller::FunctionCaller{}, reinterpret_cast<void*>(0x1), false, false };
-	FAngelscriptBinds::AddFunctionEntry(AActor::StaticClass(), ExistingFunctionName, ExistingEntry);
+	const FAngelscriptFunctionBinding ExistingEntry = { FGenericFuncPtr::Make(1), ASAutoCaller::FunctionCaller{}, reinterpret_cast<void*>(0x1), false, false };
+	FAngelscriptBinds::RegisterFunctionBinding(AActor::StaticClass(), ExistingFunctionName, ExistingEntry);
 
-	const FAngelscriptCrossModuleEntry Entry = { TestClassName, ExistingFunctionName, &NoOpThunk, 0, 0, 0 };
-	FTestCrossModuleFeature Feature(&Entry, 1, TestModuleName, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
+	const FAngelscriptCrossModuleBinding Binding = { TestClassName, ExistingFunctionName, &NoOpThunk, 0, 0, 0 };
+	FTestCrossModuleFeature Feature(&Binding, 1, TestModuleName, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
 	RegisterAndUnregisterFeature(Feature);
 
-	const FFuncEntry* FinalEntry = FindActorEntry(ExistingFunctionName);
+	const FAngelscriptFunctionBinding* FinalEntry = FindActorEntry(ExistingFunctionName);
 	if (!Test.TestNotNull(TEXT("Existing same-module entry should remain present"), FinalEntry))
 	{
 		return false;
@@ -247,7 +247,7 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunExistingSlotPriority(FAut
 
 	bool bPassed = true;
 	bPassed &= Test.TestEqual(TEXT("Cross-module injection should not replace an already bound slot"), FinalEntry->UserData, ExistingEntry.UserData);
-	bPassed &= Test.TestFalse(TEXT("Existing non-generic slot should keep its original call mode"), FinalEntry->bGenericCall);
+	bPassed &= Test.TestFalse(TEXT("Existing non-generic slot should keep its original call mode"), FinalEntry->bUsesGenericCall);
 	return bPassed;
 }
 
@@ -259,21 +259,21 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunLateRegistration(FAutomat
 	}
 
 	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
-	const FAngelscriptCrossModuleEntry Entry = { TestClassName, LateFunctionName, &NoOpThunk, 0, 0, 0 };
-	FTestCrossModuleFeature Feature(&Entry, 1, TestModuleName, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
+	const FAngelscriptCrossModuleBinding Binding = { TestClassName, LateFunctionName, &NoOpThunk, 0, 0, 0 };
+	FTestCrossModuleFeature Feature(&Binding, 1, TestModuleName, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
 
 	RegisterAndUnregisterFeature(Feature);
 
-	const FFuncEntry* InjectedEntry = FindActorEntry(LateFunctionName);
-	if (!Test.TestNotNull(TEXT("Late-registered cross-module feature should inject a ClassFuncMaps entry"), InjectedEntry))
+	const FAngelscriptFunctionBinding* InjectedEntry = FindActorEntry(LateFunctionName);
+	if (!Test.TestNotNull(TEXT("Late-registered cross-module feature should inject a ClassFunctionBindings entry"), InjectedEntry))
 	{
 		return false;
 	}
 
 	bool bPassed = true;
 	bPassed &= Test.TestTrue(TEXT("Late-registered cross-module entry should be bound"), IsEntryFunctionBound(*InjectedEntry));
-	bPassed &= Test.TestTrue(TEXT("Late-registered cross-module entry should use the generic bridge"), InjectedEntry->bGenericCall);
-	bPassed &= Test.TestEqual(TEXT("Late-registered cross-module entry should carry the source entry as user data"), InjectedEntry->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&Entry)));
+	bPassed &= Test.TestTrue(TEXT("Late-registered cross-module entry should use the generic bridge"), InjectedEntry->bUsesGenericCall);
+	bPassed &= Test.TestEqual(TEXT("Late-registered cross-module entry should carry the source entry as user data"), InjectedEntry->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleBinding*>(&Binding)));
 	return bPassed;
 }
 
@@ -285,35 +285,35 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunWorkerThreadRegistration(
 	}
 
 	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
-	const FAngelscriptCrossModuleEntry Entry = { TestClassName, WorkerFunctionName, &NoOpThunk, 0, 0, 0 };
-	FTestCrossModuleFeature Feature(&Entry, 1, TestModuleName, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
+	const FAngelscriptCrossModuleBinding Binding = { TestClassName, WorkerFunctionName, &NoOpThunk, 0, 0, 0 };
+	FTestCrossModuleFeature Feature(&Binding, 1, TestModuleName, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
 	TAtomic<bool> bEntryVisibleOnWorkerThread(false);
 
 	TFuture<void> Worker = Async(EAsyncExecution::ThreadPool, [&Feature, &bEntryVisibleOnWorkerThread]()
 	{
-		IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &Feature);
+		IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleFunctionBindings::FeatureName(), &Feature);
 		bEntryVisibleOnWorkerThread = FindActorEntry(WorkerFunctionName) != nullptr;
 	});
 	Worker.Wait();
 
 	ON_SCOPE_EXIT
 	{
-		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &Feature);
+		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleFunctionBindings::FeatureName(), &Feature);
 	};
 
 	bool bPassed = true;
-	bPassed &= Test.TestFalse(TEXT("Worker-thread registration should not mutate ClassFuncMaps on the worker thread"), bEntryVisibleOnWorkerThread.Load());
+	bPassed &= Test.TestFalse(TEXT("Worker-thread registration should not mutate ClassFunctionBindings on the worker thread"), bEntryVisibleOnWorkerThread.Load());
 	bPassed &= Test.TestTrue(TEXT("Worker-thread registration should inject on the game thread"), WaitForGameThreadFeatureInjection(WorkerFunctionName));
 
-	const FFuncEntry* InjectedEntry = FindActorEntry(WorkerFunctionName);
-	if (!Test.TestNotNull(TEXT("Worker-thread cross-module feature should inject a ClassFuncMaps entry"), InjectedEntry))
+	const FAngelscriptFunctionBinding* InjectedEntry = FindActorEntry(WorkerFunctionName);
+	if (!Test.TestNotNull(TEXT("Worker-thread cross-module feature should inject a ClassFunctionBindings entry"), InjectedEntry))
 	{
 		return false;
 	}
 
 	bPassed &= Test.TestTrue(TEXT("Worker-thread cross-module entry should be bound"), IsEntryFunctionBound(*InjectedEntry));
-	bPassed &= Test.TestTrue(TEXT("Worker-thread cross-module entry should use the generic bridge"), InjectedEntry->bGenericCall);
-	bPassed &= Test.TestEqual(TEXT("Worker-thread cross-module entry should carry the source entry as user data"), InjectedEntry->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&Entry)));
+	bPassed &= Test.TestTrue(TEXT("Worker-thread cross-module entry should use the generic bridge"), InjectedEntry->bUsesGenericCall);
+	bPassed &= Test.TestEqual(TEXT("Worker-thread cross-module entry should carry the source entry as user data"), InjectedEntry->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleBinding*>(&Binding)));
 	return bPassed;
 }
 
@@ -325,18 +325,18 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunGenericHookFrameThunk(FAu
 	FGenericHookProbeState ProbeState;
 	TGuardValue<FGenericHookProbeState*> ProbeStateGuard(GGenericHookProbeState, &ProbeState);
 
-	FAngelscriptCrossModuleEntry Entry = {
+	FAngelscriptCrossModuleBinding Binding = {
 		nullptr,
 		TEXT("CrossModuleGenericHookProbe"),
 		&SumThunk,
 		2,
 		sizeof(int32),
-		FAngelscriptCrossModuleBindings::FlagStatic
+		FAngelscriptCrossModuleFunctionBindings::FlagStatic
 	};
 
 	const int32 FunctionId = GAngelscriptCrossModuleBindGlobalFunctionForTesting(
 		"int CrossModuleGenericHookProbe(int Left, int Right)",
-		&Entry);
+		&Binding);
 	if (!Test.TestTrue(TEXT("Cross-module generic hook bridge should register a global function"), FunctionId >= 0))
 	{
 		return false;
@@ -372,7 +372,7 @@ int Run()
 	bPassed &= Test.TestTrue(TEXT("Cross-module generic hook should provide a return slot"), ProbeState.bReturnWasValid);
 	bPassed &= Test.TestTrue(TEXT("Cross-module static generic hook should leave ScriptSelf null"), ProbeState.bScriptSelfWasNull);
 	bPassed &= Test.TestTrue(TEXT("Cross-module generic hook should leave WorldContext null until a policy exists"), ProbeState.bWorldContextWasNull);
-	bPassed &= Test.TestEqual(TEXT("Cross-module generic hook should copy entry flags into the frame"), ProbeState.FrameFlags, FAngelscriptCrossModuleBindings::FlagStatic);
+	bPassed &= Test.TestEqual(TEXT("Cross-module generic hook should copy entry flags into the frame"), ProbeState.FrameFlags, FAngelscriptCrossModuleFunctionBindings::FlagStatic);
 	return bPassed;
 }
 
@@ -384,21 +384,21 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunSameModuleMultipleFeature
 	}
 
 	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
-	const FAngelscriptCrossModuleEntry EntryA = { TestClassName, MultiShardFunctionNameA, &NoOpThunk, 0, 0, 0 };
-	const FAngelscriptCrossModuleEntry EntryB = { TestClassName, MultiShardFunctionNameB, &NoOpThunk, 0, 0, 0 };
-	FTestCrossModuleFeature FeatureA(&EntryA, 1, TestModuleName, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
-	FTestCrossModuleFeature FeatureB(&EntryB, 1, TestModuleName, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
+	const FAngelscriptCrossModuleBinding BindingA = { TestClassName, MultiShardFunctionNameA, &NoOpThunk, 0, 0, 0 };
+	const FAngelscriptCrossModuleBinding BindingB = { TestClassName, MultiShardFunctionNameB, &NoOpThunk, 0, 0, 0 };
+	FTestCrossModuleFeature FeatureA(&BindingA, 1, TestModuleName, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
+	FTestCrossModuleFeature FeatureB(&BindingB, 1, TestModuleName, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
 
-	IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &FeatureA);
-	IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &FeatureB);
+	IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleFunctionBindings::FeatureName(), &FeatureA);
+	IModularFeatures::Get().RegisterModularFeature(FAngelscriptCrossModuleFunctionBindings::FeatureName(), &FeatureB);
 	ON_SCOPE_EXIT
 	{
-		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &FeatureB);
-		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleBindings::FeatureName(), &FeatureA);
+		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleFunctionBindings::FeatureName(), &FeatureB);
+		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptCrossModuleFunctionBindings::FeatureName(), &FeatureA);
 	};
 
-	const FFuncEntry* InjectedEntryA = FindActorEntry(MultiShardFunctionNameA);
-	const FFuncEntry* InjectedEntryB = FindActorEntry(MultiShardFunctionNameB);
+	const FAngelscriptFunctionBinding* InjectedEntryA = FindActorEntry(MultiShardFunctionNameA);
+	const FAngelscriptFunctionBinding* InjectedEntryB = FindActorEntry(MultiShardFunctionNameB);
 	if (!Test.TestNotNull(TEXT("First same-module cross-module feature should inject an entry"), InjectedEntryA) ||
 		!Test.TestNotNull(TEXT("Second same-module cross-module feature should inject an entry"), InjectedEntryB))
 	{
@@ -408,8 +408,8 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunSameModuleMultipleFeature
 	bool bPassed = true;
 	bPassed &= Test.TestTrue(TEXT("First same-module feature entry should be bound"), IsEntryFunctionBound(*InjectedEntryA));
 	bPassed &= Test.TestTrue(TEXT("Second same-module feature entry should be bound"), IsEntryFunctionBound(*InjectedEntryB));
-	bPassed &= Test.TestEqual(TEXT("First same-module feature should keep its own user data"), InjectedEntryA->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&EntryA)));
-	bPassed &= Test.TestEqual(TEXT("Second same-module feature should keep its own user data"), InjectedEntryB->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleEntry*>(&EntryB)));
+	bPassed &= Test.TestEqual(TEXT("First same-module feature should keep its own user data"), InjectedEntryA->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleBinding*>(&BindingA)));
+	bPassed &= Test.TestEqual(TEXT("Second same-module feature should keep its own user data"), InjectedEntryB->UserData, static_cast<void*>(const_cast<FAngelscriptCrossModuleBinding*>(&BindingB)));
 	return bPassed;
 }
 
@@ -421,8 +421,8 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunLayoutMismatch(FAutomatio
 	}
 
 	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
-	const FAngelscriptCrossModuleEntry Entry = { TestClassName, MismatchFunctionName, &NoOpThunk, 0, 0, 0 };
-	FTestCrossModuleFeature Feature(&Entry, 1, TestModuleName, 0xDEADBEEFu);
+	const FAngelscriptCrossModuleBinding Binding = { TestClassName, MismatchFunctionName, &NoOpThunk, 0, 0, 0 };
+	FTestCrossModuleFeature Feature(&Binding, 1, TestModuleName, 0xDEADBEEFu);
 
 	Test.AddExpectedErrorPlain(TEXT("Cross-module binding feature skipped because layout version"), EAutomationExpectedErrorFlags::Contains, 1);
 	RegisterAndUnregisterFeature(Feature);
@@ -438,11 +438,11 @@ bool FAngelscriptCrossModuleDirectBindRuntimeTests::RunMalformedFeature(FAutomat
 	}
 
 	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
-	const FAngelscriptCrossModuleEntry Entry = { TestClassName, MalformedFunctionName, &NoOpThunk, 0, 0, 0 };
+	const FAngelscriptCrossModuleBinding Binding = { TestClassName, MalformedFunctionName, &NoOpThunk, 0, 0, 0 };
 
-	FTestCrossModuleFeature NegativeCountFeature(&Entry, -1, TestModuleName, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
-	FTestCrossModuleFeature NullTableFeature(nullptr, 1, TestModuleName, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
-	FTestCrossModuleFeature NullModuleFeature(&Entry, 1, nullptr, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
+	FTestCrossModuleFeature NegativeCountFeature(&Binding, -1, TestModuleName, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
+	FTestCrossModuleFeature NullTableFeature(nullptr, 1, TestModuleName, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
+	FTestCrossModuleFeature NullModuleFeature(&Binding, 1, nullptr, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
 
 	Test.AddExpectedErrorPlain(TEXT("Cross-module binding feature skipped because its payload is malformed."), EAutomationExpectedErrorFlags::Contains, 3);
 	RegisterAndUnregisterFeature(NegativeCountFeature);

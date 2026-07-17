@@ -50,9 +50,9 @@ TMap<FString, TArray<TObjectPtr<UClass>>>& FAngelscriptBinds::GetEditorClassDB()
 }
 #endif
 
-TMap<UClass*, TMap<FString, FFuncEntry>>& FAngelscriptBinds::GetClassFuncMaps()
+TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& FAngelscriptBinds::GetClassFunctionBindings()
 {
-	return GetBindState().ClassFuncMaps;
+	return GetBindState().ClassFunctionBindings;
 }
 
 TArray<FString>& FAngelscriptBinds::GetBindModuleNames()

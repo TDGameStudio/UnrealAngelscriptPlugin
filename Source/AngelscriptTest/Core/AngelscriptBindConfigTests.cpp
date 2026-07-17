@@ -176,16 +176,16 @@ static const FAngelscriptBinds::FBindInfo* FindBindInfoByName(const TArray<FAnge
 	return nullptr;
 }
 
-static bool IsFunctionEntryBound(const FFuncEntry& Entry)
+static bool IsFunctionEntryBound(const FAngelscriptFunctionBinding& Entry)
 {
-	FGenericFuncPtr FuncPtr = Entry.FuncPtr;
-	return FuncPtr.IsBound() && Entry.Caller.IsBound();
+	FGenericFuncPtr FuncPtr = Entry.FunctionPointer;
+	return FuncPtr.IsBound() && Entry.FunctionCaller.IsBound();
 }
 
-static bool AreFunctionEntriesEqual(const FFuncEntry& Left, const FFuncEntry& Right)
+static bool AreFunctionEntriesEqual(const FAngelscriptFunctionBinding& Left, const FAngelscriptFunctionBinding& Right)
 {
-	return FMemory::Memcmp(&Left.FuncPtr, &Right.FuncPtr, sizeof(FGenericFuncPtr)) == 0 &&
-		FMemory::Memcmp(&Left.Caller, &Right.Caller, sizeof(ASAutoCaller::FunctionCaller)) == 0;
+	return FMemory::Memcmp(&Left.FunctionPointer, &Right.FunctionPointer, sizeof(FGenericFuncPtr)) == 0 &&
+		FMemory::Memcmp(&Left.FunctionCaller, &Right.FunctionCaller, sizeof(ASAutoCaller::FunctionCaller)) == 0;
 }
 
 static void CDECL NoOpGeneric(asIScriptGeneric* Generic)
@@ -454,18 +454,18 @@ DestroySharedTestEngine();
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
 
-		auto& ClassFuncMaps = FAngelscriptBinds::GetClassFuncMaps();
-		const TMap<FString, FFuncEntry>* ActorEntries = ClassFuncMaps.Find(AActor::StaticClass());
-		const TMap<FString, FFuncEntry>* GameplayStaticsEntries = ClassFuncMaps.Find(UGameplayStatics::StaticClass());
-		const TMap<FString, FFuncEntry>* ScriptClassEntries = ClassFuncMaps.Find(UASClass::StaticClass());
+		auto& ClassFunctionBindings = FAngelscriptBinds::GetClassFunctionBindings();
+		const TMap<FString, FAngelscriptFunctionBinding>* ActorEntries = ClassFunctionBindings.Find(AActor::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* GameplayStaticsEntries = ClassFunctionBindings.Find(UGameplayStatics::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* ScriptClassEntries = ClassFunctionBindings.Find(UASClass::StaticClass());
 		if (!this->Assert.IsNotNull(ActorEntries, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for AActor"))
 			|| !this->Assert.IsNotNull(GameplayStaticsEntries, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for UGameplayStatics"))
 			|| !this->Assert.IsNotNull(ScriptClassEntries, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should populate entries for UASClass")))
 		{ return; }
 
-		const FFuncEntry* DestroyActorEntry = ActorEntries->Find(DestroyActorFunction->GetName());
-		const FFuncEntry* GetPlayerControllerEntry = GameplayStaticsEntries->Find(GetPlayerControllerFunction->GetName());
-		const FFuncEntry* IsDeveloperOnlyEntry = ScriptClassEntries->Find(IsDeveloperOnlyFunction->GetName());
+		const FAngelscriptFunctionBinding* DestroyActorEntry = ActorEntries->Find(DestroyActorFunction->GetName());
+		const FAngelscriptFunctionBinding* GetPlayerControllerEntry = GameplayStaticsEntries->Find(GetPlayerControllerFunction->GetName());
+		const FAngelscriptFunctionBinding* IsDeveloperOnlyEntry = ScriptClassEntries->Find(IsDeveloperOnlyFunction->GetName());
 		if (!this->Assert.IsNotNull(DestroyActorEntry, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register AActor::K2_DestroyActor"))
 			|| !this->Assert.IsNotNull(GetPlayerControllerEntry, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register UGameplayStatics::GetPlayerController"))
 			|| !this->Assert.IsNotNull(IsDeveloperOnlyEntry, TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should register UASClass::IsDeveloperOnly")))
@@ -474,26 +474,26 @@ DestroySharedTestEngine();
 		(void)this->Assert.IsTrue(IsFunctionEntryBound(*IsDeveloperOnlyEntry), TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should bind UASClass::IsDeveloperOnly to a direct native function entry"));
 	}
 
-	TEST_METHOD(AddFunctionEntryPreservesFirstRegistration)
+	TEST_METHOD(RegisterFunctionBindingPreservesFirstRegistration)
 	{
 FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); };
 
 		const FString FunctionName = TEXT("K2_DestroyActor");
-		const FFuncEntry FirstEntry = { ERASE_METHOD_PTR(AActor, K2_DestroyActor, (), ERASE_ARGUMENT_PACK(void)) };
-		const FFuncEntry SecondEntry = { ERASE_NO_FUNCTION() };
-		FAngelscriptBinds::AddFunctionEntry(AActor::StaticClass(), FunctionName, FirstEntry);
-		FAngelscriptBinds::AddFunctionEntry(AActor::StaticClass(), FunctionName, SecondEntry);
+		const FAngelscriptFunctionBinding FirstEntry = { ERASE_METHOD_PTR(AActor, K2_DestroyActor, (), ERASE_ARGUMENT_PACK(void)) };
+		const FAngelscriptFunctionBinding SecondEntry = { ERASE_NO_FUNCTION() };
+		FAngelscriptBinds::RegisterFunctionBinding(AActor::StaticClass(), FunctionName, FirstEntry);
+		FAngelscriptBinds::RegisterFunctionBinding(AActor::StaticClass(), FunctionName, SecondEntry);
 
-		const TMap<FString, FFuncEntry>* ActorEntries = FAngelscriptBinds::GetClassFuncMaps().Find(AActor::StaticClass());
-		if (!this->Assert.IsNotNull(ActorEntries, TEXT("AddFunctionEntryPreservesFirstRegistration should create a function entry map for AActor"))) { return; }
-		const FFuncEntry* StoredEntry = ActorEntries->Find(FunctionName);
-		if (!this->Assert.IsNotNull(StoredEntry, TEXT("AddFunctionEntryPreservesFirstRegistration should keep the first function entry"))) { return; }
+		const TMap<FString, FAngelscriptFunctionBinding>* ActorEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(AActor::StaticClass());
+		if (!this->Assert.IsNotNull(ActorEntries, TEXT("RegisterFunctionBindingPreservesFirstRegistration should create a function entry map for AActor"))) { return; }
+		const FAngelscriptFunctionBinding* StoredEntry = ActorEntries->Find(FunctionName);
+		if (!this->Assert.IsNotNull(StoredEntry, TEXT("RegisterFunctionBindingPreservesFirstRegistration should keep the first function entry"))) { return; }
 
 		bool bOk = true;
-		bOk &= this->Assert.IsTrue(IsFunctionEntryBound(*StoredEntry), TEXT("AddFunctionEntryPreservesFirstRegistration should keep the first registration bound"));
-		bOk &= this->Assert.IsTrue(AreFunctionEntriesEqual(*StoredEntry, FirstEntry), TEXT("AddFunctionEntryPreservesFirstRegistration should preserve the first stored function pointer and caller"));
-		bOk &= this->Assert.IsFalse(AreFunctionEntriesEqual(*StoredEntry, SecondEntry), TEXT("AddFunctionEntryPreservesFirstRegistration should ignore the later duplicate registration"));
+		bOk &= this->Assert.IsTrue(IsFunctionEntryBound(*StoredEntry), TEXT("RegisterFunctionBindingPreservesFirstRegistration should keep the first registration bound"));
+		bOk &= this->Assert.IsTrue(AreFunctionEntriesEqual(*StoredEntry, FirstEntry), TEXT("RegisterFunctionBindingPreservesFirstRegistration should preserve the first stored function pointer and caller"));
+		bOk &= this->Assert.IsFalse(AreFunctionEntriesEqual(*StoredEntry, SecondEntry), TEXT("RegisterFunctionBindingPreservesFirstRegistration should ignore the later duplicate registration"));
 		(void)bOk;
 	}
 
@@ -661,10 +661,10 @@ DestroySharedTestEngine();
 		UFunction* OverloadFunction = UAngelscriptUhtOverloadCoverageLibrary::StaticClass()->FindFunctionByName(TEXT("ResolveCoverageOverload"));
 		if (!this->Assert.IsNotNull(OverloadFunction, TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should find the reflected overload function"))) { return; }
 
-		const TMap<FString, FFuncEntry>* OverloadEntries = FAngelscriptBinds::GetClassFuncMaps().Find(UAngelscriptUhtOverloadCoverageLibrary::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* OverloadEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(UAngelscriptUhtOverloadCoverageLibrary::StaticClass());
 		if (!this->Assert.IsNotNull(OverloadEntries, TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should populate entries for the overload test library"))) { return; }
 
-		const FFuncEntry* OverloadEntry = OverloadEntries->Find(OverloadFunction->GetName());
+		const FAngelscriptFunctionBinding* OverloadEntry = OverloadEntries->Find(OverloadFunction->GetName());
 		if (!this->Assert.IsNotNull(OverloadEntry, TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should register the reflected overload function"))) { return; }
 
 		(void)this->Assert.IsTrue(IsFunctionEntryBound(*OverloadEntry), TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"));
@@ -684,9 +684,9 @@ DestroySharedTestEngine();
 
 		UFunction* InlineFunction = URuntimeFloatCurveMixinLibrary::StaticClass()->FindFunctionByName(TEXT("GetNumKeys"));
 		if (!this->Assert.IsNotNull(InlineFunction, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should find the reflected inline function"))) { return; }
-		const TMap<FString, FFuncEntry>* InlineEntries = FAngelscriptBinds::GetClassFuncMaps().Find(URuntimeFloatCurveMixinLibrary::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* InlineEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(URuntimeFloatCurveMixinLibrary::StaticClass());
 		if (!this->Assert.IsNotNull(InlineEntries, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should populate entries for the inline function library"))) { return; }
-		const FFuncEntry* InlineEntry = InlineEntries->Find(InlineFunction->GetName());
+		const FAngelscriptFunctionBinding* InlineEntry = InlineEntries->Find(InlineFunction->GetName());
 		if (!this->Assert.IsNotNull(InlineEntry, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should register the reflected inline function"))) { return; }
 
 		(void)this->Assert.IsTrue(IsFunctionEntryBound(*InlineEntry), TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"));
@@ -706,9 +706,9 @@ DestroySharedTestEngine();
 
 		UFunction* InlineFunction = URuntimeFloatCurveMixinLibrary::StaticClass()->FindFunctionByName(TEXT("GetTimeRange"));
 		if (!this->Assert.IsNotNull(InlineFunction, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should find the reflected out-ref function"))) { return; }
-		const TMap<FString, FFuncEntry>* InlineEntries = FAngelscriptBinds::GetClassFuncMaps().Find(URuntimeFloatCurveMixinLibrary::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* InlineEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(URuntimeFloatCurveMixinLibrary::StaticClass());
 		if (!this->Assert.IsNotNull(InlineEntries, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should populate entries for the inline function library"))) { return; }
-		const FFuncEntry* InlineEntry = InlineEntries->Find(InlineFunction->GetName());
+		const FAngelscriptFunctionBinding* InlineEntry = InlineEntries->Find(InlineFunction->GetName());
 		if (!this->Assert.IsNotNull(InlineEntry, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should register the reflected out-ref function"))) { return; }
 
 		(void)this->Assert.IsTrue(IsFunctionEntryBound(*InlineEntry), TEXT("InlineOutRefFunctionsCanRecoverDirectBind should recover a direct bind instead of ERASE_NO_FUNCTION"));

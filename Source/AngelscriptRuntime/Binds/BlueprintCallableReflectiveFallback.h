@@ -6,7 +6,7 @@ class UFunction;
 class UObject;
 class asIScriptGeneric;
 struct FAngelscriptType;
-struct FFuncEntry;
+struct FAngelscriptFunctionBinding;
 struct FAngelscriptFunctionSignature;
 
 // Result of evaluating whether a UFunction is eligible for reflection-based fallback binding.
@@ -61,4 +61,4 @@ ANGELSCRIPTRUNTIME_API bool BindBlueprintCallableReflectionFallback(
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
 	FAngelscriptFunctionSignature& Signature,
-	FFuncEntry& Entry);
+	FAngelscriptFunctionBinding& Binding);

@@ -1,7 +1,9 @@
+#if WITH_ANGELSCRIPT_MODULE_LOCAL_BINDINGS
+
 #include "Core/AngelscriptBinds.h"
 #include "Core/AngelscriptEngine.h"
 #include "Core/FunctionCallers.h"
-#include "UHT/AngelscriptCrossModuleBindings.h"
+#include "UHT/AngelscriptCrossModuleFunctionBindings.h"
 
 #include "Async/Async.h"
 #include "Containers/Array.h"
@@ -13,7 +15,7 @@
 void GAngelscriptCrossModuleGenericHook(asIScriptGeneric* Generic);
 #if WITH_DEV_AUTOMATION_TESTS
 ANGELSCRIPTRUNTIME_API void GAngelscriptCrossModuleEnsureRegisteredForTesting();
-ANGELSCRIPTRUNTIME_API int32 GAngelscriptCrossModuleBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptCrossModuleEntry* Entry);
+ANGELSCRIPTRUNTIME_API int32 GAngelscriptCrossModuleBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptCrossModuleBinding* Binding);
 #endif
 
 namespace
@@ -41,16 +43,16 @@ namespace
 		return Cast<UClass>(StaticFindFirstObject(UClass::StaticClass(), ClassName, EFindFirstObjectOptions::ExactClass | EFindFirstObjectOptions::NativeFirst));
 	}
 
-	UClass* ResolveCrossModuleClass(const FAngelscriptCrossModuleEntry& Entry, const FAngelscriptCrossModuleFeatureReader& Reader)
+	UClass* ResolveCrossModuleClass(const FAngelscriptCrossModuleBinding& Binding, const FAngelscriptCrossModuleBindingFeatureReader& Reader)
 	{
-		if (UClass* Class = ResolveCrossModuleClassByName(Reader.ModuleName, Entry.ClassName))
+		if (UClass* Class = ResolveCrossModuleClassByName(Reader.ModuleName, Binding.ClassName))
 		{
 			return Class;
 		}
 
-		if (Entry.ClassName != nullptr && (Entry.ClassName[0] == TEXT('U') || Entry.ClassName[0] == TEXT('A')) && Entry.ClassName[1] != TEXT('\0'))
+		if (Binding.ClassName != nullptr && (Binding.ClassName[0] == TEXT('U') || Binding.ClassName[0] == TEXT('A')) && Binding.ClassName[1] != TEXT('\0'))
 		{
-			return ResolveCrossModuleClassByName(Reader.ModuleName, Entry.ClassName + 1);
+			return ResolveCrossModuleClassByName(Reader.ModuleName, Binding.ClassName + 1);
 		}
 
 		return nullptr;
@@ -65,15 +67,15 @@ namespace
 		return FuncPtr;
 	}
 
-	bool IsValidFeatureReader(const FAngelscriptCrossModuleFeatureReader* Reader)
+	bool IsValidFeatureReader(const FAngelscriptCrossModuleBindingFeatureReader* Reader)
 	{
 		if (Reader == nullptr)
 		{
 			return false;
 		}
-		if (Reader->LayoutVersion != FAngelscriptCrossModuleBindings::LayoutVersionExpected)
+		if (Reader->LayoutVersion != FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected)
 		{
-			UE_LOG(Angelscript, Warning, TEXT("Cross-module binding feature skipped because layout version 0x%08x does not match 0x%08x."), Reader->LayoutVersion, FAngelscriptCrossModuleBindings::LayoutVersionExpected);
+			UE_LOG(Angelscript, Warning, TEXT("Cross-module binding feature skipped because layout version 0x%08x does not match 0x%08x."), Reader->LayoutVersion, FAngelscriptCrossModuleFunctionBindings::LayoutVersionExpected);
 			return false;
 		}
 		if (Reader->Count < 0 || (Reader->Count > 0 && Reader->Table == nullptr) || Reader->ModuleName == nullptr)
@@ -86,7 +88,7 @@ namespace
 
 	void InjectCrossModuleFeature(IModularFeature* Feature)
 	{
-		const FAngelscriptCrossModuleFeatureReader* Reader = reinterpret_cast<const FAngelscriptCrossModuleFeatureReader*>(Feature);
+		const FAngelscriptCrossModuleBindingFeatureReader* Reader = reinterpret_cast<const FAngelscriptCrossModuleBindingFeatureReader*>(Feature);
 		if (!IsValidFeatureReader(Reader))
 		{
 			return;
@@ -94,26 +96,26 @@ namespace
 
 		for (int32 EntryIndex = 0; EntryIndex < Reader->Count; ++EntryIndex)
 		{
-			const FAngelscriptCrossModuleEntry& Entry = Reader->Table[EntryIndex];
-			if (Entry.ClassName == nullptr || Entry.FunctionName == nullptr || Entry.Thunk == nullptr)
+			const FAngelscriptCrossModuleBinding& Binding = Reader->Table[EntryIndex];
+			if (Binding.ClassName == nullptr || Binding.FunctionName == nullptr || Binding.Thunk == nullptr)
 			{
 				UE_LOG(Angelscript, Warning, TEXT("Cross-module binding entry skipped because class, function, or thunk is null."));
 				continue;
 			}
 
-			UClass* Class = ResolveCrossModuleClass(Entry, *Reader);
+			UClass* Class = ResolveCrossModuleClass(Binding, *Reader);
 			if (Class == nullptr)
 			{
-				UE_LOG(Angelscript, Warning, TEXT("Cross-module binding entry skipped because class '%s.%s' could not be resolved."), Reader->ModuleName, Entry.ClassName != nullptr ? Entry.ClassName : TEXT("<null>"));
+				UE_LOG(Angelscript, Warning, TEXT("Cross-module binding entry skipped because class '%s.%s' could not be resolved."), Reader->ModuleName, Binding.ClassName != nullptr ? Binding.ClassName : TEXT("<null>"));
 				continue;
 			}
 
-			FFuncEntry FuncEntry;
-			FuncEntry.FuncPtr = MakeCrossModuleGenericFuncPtr();
-			FuncEntry.Caller = ASAutoCaller::FunctionCaller::Make();
-			FuncEntry.UserData = const_cast<FAngelscriptCrossModuleEntry*>(&Entry);
-			FuncEntry.bGenericCall = true;
-			FAngelscriptBinds::AddFunctionEntry(Class, Entry.FunctionName, FuncEntry);
+			FAngelscriptFunctionBinding FunctionBinding;
+			FunctionBinding.FunctionPointer = MakeCrossModuleGenericFuncPtr();
+			FunctionBinding.FunctionCaller = ASAutoCaller::FunctionCaller::Make();
+			FunctionBinding.UserData = const_cast<FAngelscriptCrossModuleBinding*>(&Binding);
+			FunctionBinding.bUsesGenericCall = true;
+			FAngelscriptBinds::RegisterFunctionBinding(Class, Binding.FunctionName, FunctionBinding);
 		}
 	}
 
@@ -141,7 +143,7 @@ namespace
 
 	void OnCrossModuleFeatureRegistered(const FName& Type, IModularFeature* Feature)
 	{
-		if (Type == FAngelscriptCrossModuleBindings::FeatureName())
+		if (Type == FAngelscriptCrossModuleFunctionBindings::FeatureName())
 		{
 			InjectCrossModuleFeatureOnGameThread(Feature);
 		}
@@ -174,7 +176,7 @@ namespace
 		EnsureCrossModuleFeatureSubscription();
 
 		TArray<IModularFeature*> Features = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
-			FAngelscriptCrossModuleBindings::FeatureName());
+			FAngelscriptCrossModuleFunctionBindings::FeatureName());
 		for (IModularFeature* Feature : Features)
 		{
 			InjectCrossModuleFeatureOnGameThread(Feature);
@@ -196,14 +198,14 @@ void GAngelscriptCrossModuleEnsureRegisteredForTesting()
 	EnsureCrossModuleFeatureSubscription();
 }
 
-int32 GAngelscriptCrossModuleBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptCrossModuleEntry* Entry)
+int32 GAngelscriptCrossModuleBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptCrossModuleBinding* Binding)
 {
 	return FAngelscriptBinds::BindGlobalFunctionDirect(
 		Signature,
 		asFUNCTION(GAngelscriptCrossModuleGenericHook),
 		asCALL_GENERIC,
 		ASAutoCaller::FunctionCaller::Make(),
-		Entry);
+		Binding);
 }
 #endif
 
@@ -220,36 +222,38 @@ void GAngelscriptCrossModuleGenericHook(asIScriptGeneric* Generic)
 		return;
 	}
 
-	const FAngelscriptCrossModuleEntry* Entry = static_cast<const FAngelscriptCrossModuleEntry*>(Function->GetUserData());
-	if (Entry == nullptr || Entry->Thunk == nullptr)
+	const FAngelscriptCrossModuleBinding* Binding = static_cast<const FAngelscriptCrossModuleBinding*>(Function->GetUserData());
+	if (Binding == nullptr || Binding->Thunk == nullptr)
 	{
 		return;
 	}
 
 	TArray<void*, TInlineAllocator<8>> Args;
-	Args.Reserve(Entry->ArgCount);
-	for (uint16 ArgIndex = 0; ArgIndex < Entry->ArgCount; ++ArgIndex)
+	Args.Reserve(Binding->ArgCount);
+	for (uint16 ArgIndex = 0; ArgIndex < Binding->ArgCount; ++ArgIndex)
 	{
 		Args.Add(Generic->GetAddressOfArg(ArgIndex));
 	}
 
-	UObject* Self = (Entry->Flags & FAngelscriptCrossModuleBindings::FlagStatic) != 0
+	UObject* Self = (Binding->Flags & FAngelscriptCrossModuleFunctionBindings::FlagStatic) != 0
 		? nullptr
 		: static_cast<UObject*>(Generic->GetObject());
 	FAngelscriptCrossModuleCallFrame Frame = {
 		Args.GetData(),
-		Entry->ArgCount,
+		Binding->ArgCount,
 		0,
-		Entry->RetSize > 0 ? Generic->GetAddressOfReturnLocation() : nullptr,
+		Binding->RetSize > 0 ? Generic->GetAddressOfReturnLocation() : nullptr,
 		Self,
 		nullptr,
-		Entry->Flags,
+		Binding->Flags,
 		0
 	};
-	if ((Entry->Flags & FAngelscriptCrossModuleBindings::FlagStatic) != 0)
+	if ((Binding->Flags & FAngelscriptCrossModuleFunctionBindings::FlagStatic) != 0)
 	{
 		Frame.ScriptSelf = nullptr;
 	}
 
-	Entry->Thunk(Self, &Frame);
+	Binding->Thunk(Self, &Frame);
 }
+
+#endif

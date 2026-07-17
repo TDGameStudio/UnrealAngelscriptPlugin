@@ -15,6 +15,7 @@
 #include "SPositiveActionButton.h"
 
 #include "ISettingsModule.h"
+#include "ISettingsSection.h"
 #include "HAL/FileManager.h"
 #include "Modules/ModuleManager.h"
 #include "IDirectoryWatcher.h"
@@ -27,6 +28,8 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "LevelEditor.h"
+#include "Misc/MessageDialog.h"
+#include "Misc/Paths.h"
 #include "Misc/ScopedSlowTask.h"
 
 #include "ContentBrowser/AngelscriptContentBrowserDataSource.h"
@@ -73,6 +76,47 @@ namespace
 #endif
 
 	FDelegateHandle GOnPostEngineInitHandle;
+
+	bool IsSourceEngineDistribution()
+	{
+		FString EngineDirectory = FPaths::ConvertRelativePathToFull(FPaths::EngineDir());
+		EngineDirectory.RemoveFromEnd(TEXT("/"));
+		EngineDirectory.RemoveFromEnd(TEXT("\\"));
+
+		if (IFileManager::Get().FileExists(*FPaths::Combine(EngineDirectory, TEXT("Build/InstalledBuild.txt"))))
+		{
+			return false;
+		}
+
+		if (IFileManager::Get().FileExists(*FPaths::Combine(EngineDirectory, TEXT("Build/SourceDistribution.txt"))) ||
+			IFileManager::Get().DirectoryExists(*FPaths::Combine(EngineDirectory, TEXT(".git"))))
+		{
+			return true;
+		}
+
+		const FString EngineParentDirectory = FPaths::GetPath(EngineDirectory);
+		return IFileManager::Get().DirectoryExists(*FPaths::Combine(EngineParentDirectory, TEXT(".git")));
+	}
+
+	bool ValidateModuleLocalBindingsCompileOption()
+	{
+		UAngelscriptCompileOptions* CompileOptions = GetMutableDefault<UAngelscriptCompileOptions>();
+		if (!CompileOptions->bCompileAngelscriptModuleLocalBindings || IsSourceEngineDistribution())
+		{
+			return true;
+		}
+
+		CompileOptions->bCompileAngelscriptModuleLocalBindings = false;
+		FMessageDialog::Open(
+			EAppMsgType::Ok,
+			FText::Format(
+				NSLOCTEXT(
+					"Angelscript",
+					"AngelscriptModuleLocalBindingsRequiresSourceEngine",
+					"ModuleLocal binding compilation requires a source engine. The current engine cannot compile Engine module-local binding shards:\n{0}\n\nThe option has been disabled and your change was not saved."),
+				FText::FromString(FPaths::EngineDir())));
+		return false;
+	}
 
 	IDirectoryWatcher* ResolveDirectoryWatcher()
 	{
@@ -891,12 +935,16 @@ void FAngelscriptEditorModule::StartupModule()
 			NSLOCTEXT("Angelscript", "AngelscriptSettingsDescription", "Configuration for behavior of the angelscript compiler and script engine."),
 			GetMutableDefault<UAngelscriptSettings>()
 		);
-		SettingsModule->RegisterSettings(
+		TSharedPtr<ISettingsSection> CompileOptionsSection = SettingsModule->RegisterSettings(
 			"Project", "Plugins", "AngelscriptCompileOptions",
 			NSLOCTEXT("Angelscript", "AngelscriptCompileOptionsTitle", "Angelscript Compile Options"),
 			NSLOCTEXT("Angelscript", "AngelscriptCompileOptionsDescription", "Compile-affecting Angelscript options."),
 			GetMutableDefault<UAngelscriptCompileOptions>()
 		);
+		if (CompileOptionsSection.IsValid())
+		{
+			CompileOptionsSection->OnModified().BindStatic(&ValidateModuleLocalBindingsCompileOption);
+		}
 	}
 
 	// Helper to pop open the content browser or asset editor from the debug server

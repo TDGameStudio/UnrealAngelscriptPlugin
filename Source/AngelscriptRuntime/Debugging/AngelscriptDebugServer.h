@@ -549,17 +549,25 @@ struct FAngelscriptDebugDatabaseSettings : FDebugMessage
 {
 	bool bAutomaticImports = false;
 	bool bFloatIsFloat64 = false;
+	bool bReservedLegacySlot = false;
 	bool bDeprecateStaticClass = false;
 	bool bDisallowStaticClass = false;
+	bool bReservedGlobalFunctionSlot = false;
+	bool bReservedActorGenericDeprecationSlot = false;
+	bool bReservedActorGenericDisallowSlot = false;
 
 	FORCEINLINE friend FArchive& operator<<(FArchive& Ar, FAngelscriptDebugDatabaseSettings& Msg)
 	{
-		int32 Version = 6;
+		int32 Version = 7;
 		Ar << Version;
 		Ar << Msg.bAutomaticImports;
 		Ar << Msg.bFloatIsFloat64;
+		Ar << Msg.bReservedLegacySlot;
 		Ar << Msg.bDeprecateStaticClass;
 		Ar << Msg.bDisallowStaticClass;
+		Ar << Msg.bReservedGlobalFunctionSlot;
+		Ar << Msg.bReservedActorGenericDeprecationSlot;
+		Ar << Msg.bReservedActorGenericDisallowSlot;
 		return Ar;
 	}
 };

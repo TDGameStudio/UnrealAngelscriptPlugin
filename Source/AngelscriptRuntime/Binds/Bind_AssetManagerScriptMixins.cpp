@@ -7,15 +7,15 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AssetManagerScriptMixins((int3
 {
 	// UHT cannot direct-bind a few AssetManager mixin signatures, so provide exact
 	// entries before the generated function table installs reflective stubs.
-	FAngelscriptBinds::AddFunctionEntry(
+	FAngelscriptBinds::RegisterFunctionBinding(
 		UAssetManagerMixinLibrary::StaticClass(),
 		"CallOrRegister_OnCompletedInitialScan",
 		{ ERASE_FUNCTION_PTR(UAssetManagerMixinLibrary::CallOrRegister_OnCompletedInitialScan, (UAssetManager*, UObject*, const FName&), ERASE_ARGUMENT_PACK(void)) });
-	FAngelscriptBinds::AddFunctionEntry(
+	FAngelscriptBinds::RegisterFunctionBinding(
 		UAssetManagerMixinLibrary::StaticClass(),
 		"GetPrimaryAssetData",
 		{ ERASE_FUNCTION_PTR(UAssetManagerMixinLibrary::GetPrimaryAssetData, (UAssetManager*, const FPrimaryAssetId&, FAssetData&), ERASE_ARGUMENT_PACK(bool)) });
-	FAngelscriptBinds::AddFunctionEntry(
+	FAngelscriptBinds::RegisterFunctionBinding(
 		UAssetManagerMixinLibrary::StaticClass(),
 		"GetPrimaryAssetObject",
 		{ ERASE_FUNCTION_PTR(UAssetManagerMixinLibrary::GetPrimaryAssetObject, (UAssetManager*, const FPrimaryAssetId&), ERASE_ARGUMENT_PACK(UObject*)) });

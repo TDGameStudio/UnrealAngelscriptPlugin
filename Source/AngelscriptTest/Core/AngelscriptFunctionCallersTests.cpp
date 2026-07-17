@@ -37,18 +37,18 @@ static void CopyFromPtr(const int32* InValue, int32& OutValue)
 	OutValue = InValue != nullptr ? *InValue : -1;
 }
 
-static void InvokeCaller(const FFuncEntry& Entry, void** Arguments, void* ReturnValue)
+static void InvokeCaller(const FAngelscriptFunctionBinding& Entry, void** Arguments, void* ReturnValue)
 {
-	if (Entry.Caller.type == 1)
+	if (Entry.FunctionCaller.type == 1)
 	{
-		Entry.Caller.FuncPtr(
-			reinterpret_cast<ASAutoCaller::TFunctionPtr>(Entry.FuncPtr.ptr.f.func),
+		Entry.FunctionCaller.FuncPtr(
+			reinterpret_cast<ASAutoCaller::TFunctionPtr>(Entry.FunctionPointer.ptr.f.func),
 			Arguments,
 			ReturnValue);
 		return;
 	}
 
-	if (Entry.Caller.type == 2)
+	if (Entry.FunctionCaller.type == 2)
 	{
 		union FMethodPtrBridge
 		{
@@ -58,31 +58,31 @@ static void InvokeCaller(const FFuncEntry& Entry, void** Arguments, void* Return
 
 		FMethodPtrBridge MethodPtrBridge;
 		FMemory::Memzero(MethodPtrBridge);
-		MethodPtrBridge.Erased = Entry.FuncPtr.ptr.m.mthd;
-		Entry.Caller.MethodPtr(MethodPtrBridge.Auto, Arguments, ReturnValue);
+		MethodPtrBridge.Erased = Entry.FunctionPointer.ptr.m.mthd;
+		Entry.FunctionCaller.MethodPtr(MethodPtrBridge.Auto, Arguments, ReturnValue);
 	}
 }
 
 public:
 	TEST_METHOD(DirectCallersRoundTripValueReferenceAndPointerArguments)
 	{
-FFuncEntry GlobalEntry = { ERASE_AUTO_FUNCTION_PTR(GlobalAddAndBump) };
-		FFuncEntry MethodEntry = { ERASE_AUTO_METHOD_PTR(FFunctionCallerHarness, AddToBias) };
-		FFuncEntry ConstMethodEntry = { ERASE_AUTO_METHOD_PTR(FFunctionCallerHarness, GetBiasRef) };
-		FFuncEntry PointerEntry = { ERASE_AUTO_FUNCTION_PTR(CopyFromPtr) };
+FAngelscriptFunctionBinding GlobalEntry = { ERASE_AUTO_FUNCTION_PTR(GlobalAddAndBump) };
+		FAngelscriptFunctionBinding MethodEntry = { ERASE_AUTO_METHOD_PTR(FFunctionCallerHarness, AddToBias) };
+		FAngelscriptFunctionBinding ConstMethodEntry = { ERASE_AUTO_METHOD_PTR(FFunctionCallerHarness, GetBiasRef) };
+		FAngelscriptFunctionBinding PointerEntry = { ERASE_AUTO_FUNCTION_PTR(CopyFromPtr) };
 
-		ASSERT_THAT(IsTrue(GlobalEntry.FuncPtr.IsBound(), TEXT("Function caller round-trip test should bind the global direct-call pointer")));
-		ASSERT_THAT(IsTrue(GlobalEntry.Caller.IsBound(), TEXT("Function caller round-trip test should bind the global caller thunk")));
-		ASSERT_THAT(AreEqual(1, GlobalEntry.Caller.type, TEXT("Function caller round-trip test should tag the global caller as a function thunk")));
-		ASSERT_THAT(IsTrue(MethodEntry.FuncPtr.IsBound(), TEXT("Function caller round-trip test should bind the method direct-call pointer")));
-		ASSERT_THAT(IsTrue(MethodEntry.Caller.IsBound(), TEXT("Function caller round-trip test should bind the method caller thunk")));
-		ASSERT_THAT(AreEqual(2, MethodEntry.Caller.type, TEXT("Function caller round-trip test should tag the method caller as a method thunk")));
-		ASSERT_THAT(IsTrue(ConstMethodEntry.FuncPtr.IsBound(), TEXT("Function caller round-trip test should bind the const method direct-call pointer")));
-		ASSERT_THAT(IsTrue(ConstMethodEntry.Caller.IsBound(), TEXT("Function caller round-trip test should bind the const method caller thunk")));
-		ASSERT_THAT(AreEqual(2, ConstMethodEntry.Caller.type, TEXT("Function caller round-trip test should keep the const method on the method-thunk path")));
-		ASSERT_THAT(IsTrue(PointerEntry.FuncPtr.IsBound(), TEXT("Function caller round-trip test should bind the pointer-argument direct-call pointer")));
-		ASSERT_THAT(IsTrue(PointerEntry.Caller.IsBound(), TEXT("Function caller round-trip test should bind the pointer-argument caller thunk")));
-		ASSERT_THAT(AreEqual(1, PointerEntry.Caller.type, TEXT("Function caller round-trip test should keep the pointer-argument function on the function-thunk path")));
+		ASSERT_THAT(IsTrue(GlobalEntry.FunctionPointer.IsBound(), TEXT("Function caller round-trip test should bind the global direct-call pointer")));
+		ASSERT_THAT(IsTrue(GlobalEntry.FunctionCaller.IsBound(), TEXT("Function caller round-trip test should bind the global caller thunk")));
+		ASSERT_THAT(AreEqual(1, GlobalEntry.FunctionCaller.type, TEXT("Function caller round-trip test should tag the global caller as a function thunk")));
+		ASSERT_THAT(IsTrue(MethodEntry.FunctionPointer.IsBound(), TEXT("Function caller round-trip test should bind the method direct-call pointer")));
+		ASSERT_THAT(IsTrue(MethodEntry.FunctionCaller.IsBound(), TEXT("Function caller round-trip test should bind the method caller thunk")));
+		ASSERT_THAT(AreEqual(2, MethodEntry.FunctionCaller.type, TEXT("Function caller round-trip test should tag the method caller as a method thunk")));
+		ASSERT_THAT(IsTrue(ConstMethodEntry.FunctionPointer.IsBound(), TEXT("Function caller round-trip test should bind the const method direct-call pointer")));
+		ASSERT_THAT(IsTrue(ConstMethodEntry.FunctionCaller.IsBound(), TEXT("Function caller round-trip test should bind the const method caller thunk")));
+		ASSERT_THAT(AreEqual(2, ConstMethodEntry.FunctionCaller.type, TEXT("Function caller round-trip test should keep the const method on the method-thunk path")));
+		ASSERT_THAT(IsTrue(PointerEntry.FunctionPointer.IsBound(), TEXT("Function caller round-trip test should bind the pointer-argument direct-call pointer")));
+		ASSERT_THAT(IsTrue(PointerEntry.FunctionCaller.IsBound(), TEXT("Function caller round-trip test should bind the pointer-argument caller thunk")));
+		ASSERT_THAT(AreEqual(1, PointerEntry.FunctionCaller.type, TEXT("Function caller round-trip test should keep the pointer-argument function on the function-thunk path")));
 
 		int32 GlobalValue = 9;
 		int32 GlobalInOut = 4;
