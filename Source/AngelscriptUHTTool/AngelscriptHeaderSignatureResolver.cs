@@ -106,7 +106,7 @@ internal static class AngelscriptHeaderSignatureResolver
 		return false;
 	}
 
-	public static bool TryBuildCrossModule(UhtClass classObj, UhtFunction function, out AngelscriptFunctionSignature? signature, out string? failureReason)
+	public static bool TryBuildModuleBinding(UhtClass classObj, UhtFunction function, out AngelscriptFunctionSignature? signature, out string? failureReason)
 	{
 		signature = null;
 
@@ -165,7 +165,7 @@ internal static class AngelscriptHeaderSignatureResolver
 			return true;
 		}
 
-		failureReason = exactMatches.Count > 1 ? "overloaded-ambiguous" : "cross-module-signature-unresolved";
+		failureReason = exactMatches.Count > 1 ? "overloaded-ambiguous" : "module-binding-signature-unresolved";
 		return false;
 	}
 

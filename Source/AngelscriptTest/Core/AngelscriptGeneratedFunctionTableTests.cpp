@@ -373,8 +373,8 @@ const FString GeneratedDirectory = FPaths::Combine(
 			return;
 		}
 
-		int32 TotalCrossModuleEntries = 0;
-		if (!this->Assert.IsTrue(SummaryObject->TryGetNumberField(TEXT("totalCrossModuleEntries"), TotalCrossModuleEntries), TEXT("Generated function table summary test should expose totalCrossModuleEntries")))
+		int32 TotalModuleBindingEntries = 0;
+		if (!this->Assert.IsTrue(SummaryObject->TryGetNumberField(TEXT("totalModuleBindingEntries"), TotalModuleBindingEntries), TEXT("Generated function table summary test should expose totalModuleBindingEntries")))
 		{
 			return;
 		}
@@ -391,8 +391,8 @@ const FString GeneratedDirectory = FPaths::Combine(
 			return;
 		}
 
-		double CrossModuleRate = 0.0;
-		if (!this->Assert.IsTrue(SummaryObject->TryGetNumberField(TEXT("crossModuleRate"), CrossModuleRate), TEXT("Generated function table summary test should expose crossModuleRate")))
+		double ModuleBindingRate = 0.0;
+		if (!this->Assert.IsTrue(SummaryObject->TryGetNumberField(TEXT("moduleBindingRate"), ModuleBindingRate), TEXT("Generated function table summary test should expose moduleBindingRate")))
 		{
 			return;
 		}
@@ -403,19 +403,19 @@ const FString GeneratedDirectory = FPaths::Combine(
 			return;
 		}
 
-		if (!this->Assert.AreEqual(TotalDirectBindEntries + TotalStubEntries + TotalCrossModuleEntries, TotalGeneratedEntries, TEXT("Generated function table summary test should keep direct, stub, and cross-module totals aligned with totalGeneratedEntries")))
+		if (!this->Assert.AreEqual(TotalDirectBindEntries + TotalStubEntries + TotalModuleBindingEntries, TotalGeneratedEntries, TEXT("Generated function table summary test should keep direct, stub, and module-binding totals aligned with totalGeneratedEntries")))
 		{
 			return;
 		}
 
 		const double ExpectedDirectBindRate = TotalGeneratedEntries > 0 ? static_cast<double>(TotalDirectBindEntries) / static_cast<double>(TotalGeneratedEntries) : 0.0;
 		const double ExpectedStubRate = TotalGeneratedEntries > 0 ? static_cast<double>(TotalStubEntries) / static_cast<double>(TotalGeneratedEntries) : 0.0;
-		const double ExpectedCrossModuleRate = TotalGeneratedEntries > 0 ? static_cast<double>(TotalCrossModuleEntries) / static_cast<double>(TotalGeneratedEntries) : 0.0;
+		const double ExpectedModuleBindingRate = TotalGeneratedEntries > 0 ? static_cast<double>(TotalModuleBindingEntries) / static_cast<double>(TotalGeneratedEntries) : 0.0;
 		bool bOk = true;
 		bOk &= this->Assert.IsNear(ExpectedDirectBindRate, DirectBindRate, 1.e-9, TEXT("Generated function table summary test should keep directBindRate aligned with entry counts"));
 		bOk &= this->Assert.IsNear(ExpectedStubRate, StubRate, 1.e-9, TEXT("Generated function table summary test should keep stubRate aligned with entry counts"));
-		bOk &= this->Assert.IsNear(ExpectedCrossModuleRate, CrossModuleRate, 1.e-9, TEXT("Generated function table summary test should keep crossModuleRate aligned with entry counts"));
-		bOk &= this->Assert.IsNear(1.0, DirectBindRate + StubRate + CrossModuleRate, 1.e-9, TEXT("Generated function table summary test should keep directBindRate, stubRate, and crossModuleRate normalized"));
+		bOk &= this->Assert.IsNear(ExpectedModuleBindingRate, ModuleBindingRate, 1.e-9, TEXT("Generated function table summary test should keep moduleBindingRate aligned with entry counts"));
+		bOk &= this->Assert.IsNear(1.0, DirectBindRate + StubRate + ModuleBindingRate, 1.e-9, TEXT("Generated function table summary test should keep directBindRate, stubRate, and moduleBindingRate normalized"));
 
 		const TArray<TSharedPtr<FJsonValue>>* Modules = nullptr;
 		if (!this->Assert.IsTrue(SummaryObject->TryGetArrayField(TEXT("modules"), Modules) && Modules != nullptr, TEXT("Generated function table summary test should expose per-module summaries")))
@@ -433,10 +433,10 @@ const FString GeneratedDirectory = FPaths::Combine(
 				int32 ModuleEntries = 0;
 				int32 ModuleDirectBindEntries = 0;
 				int32 ModuleStubEntries = 0;
-				int32 ModuleCrossModuleEntries = 0;
+				int32 ModuleModuleBindingEntries = 0;
 				double ModuleDirectBindRate = 0.0;
 				double ModuleStubRate = 0.0;
-				double ModuleCrossModuleRate = 0.0;
+				double ModuleModuleBindingRate = 0.0;
 				if ((*ModuleObject)->TryGetNumberField(TEXT("totalEntries"), ModuleEntries))
 				{
 					SummedModuleEntries += ModuleEntries;
@@ -452,7 +452,7 @@ const FString GeneratedDirectory = FPaths::Combine(
 					return;
 				}
 
-				if (!this->Assert.IsTrue((*ModuleObject)->TryGetNumberField(TEXT("crossModuleEntries"), ModuleCrossModuleEntries), TEXT("Generated function table summary test should expose per-module crossModuleEntries")))
+				if (!this->Assert.IsTrue((*ModuleObject)->TryGetNumberField(TEXT("moduleBindingEntries"), ModuleModuleBindingEntries), TEXT("Generated function table summary test should expose per-module moduleBindingEntries")))
 				{
 					return;
 				}
@@ -467,12 +467,12 @@ const FString GeneratedDirectory = FPaths::Combine(
 					return;
 				}
 
-				if (!this->Assert.IsTrue((*ModuleObject)->TryGetNumberField(TEXT("crossModuleRate"), ModuleCrossModuleRate), TEXT("Generated function table summary test should expose per-module crossModuleRate")))
+				if (!this->Assert.IsTrue((*ModuleObject)->TryGetNumberField(TEXT("moduleBindingRate"), ModuleModuleBindingRate), TEXT("Generated function table summary test should expose per-module moduleBindingRate")))
 				{
 					return;
 				}
 
-				if (!this->Assert.AreEqual(ModuleDirectBindEntries + ModuleStubEntries + ModuleCrossModuleEntries, ModuleEntries, TEXT("Generated function table summary test should keep module totals aligned")))
+				if (!this->Assert.AreEqual(ModuleDirectBindEntries + ModuleStubEntries + ModuleModuleBindingEntries, ModuleEntries, TEXT("Generated function table summary test should keep module totals aligned")))
 				{
 					return;
 				}
@@ -483,7 +483,7 @@ const FString GeneratedDirectory = FPaths::Combine(
 
 				const double ExpectedModuleDirectRate = ModuleEntries > 0 ? static_cast<double>(ModuleDirectBindEntries) / static_cast<double>(ModuleEntries) : 0.0;
 				const double ExpectedModuleStubRate = ModuleEntries > 0 ? static_cast<double>(ModuleStubEntries) / static_cast<double>(ModuleEntries) : 0.0;
-				const double ExpectedModuleCrossModuleRate = ModuleEntries > 0 ? static_cast<double>(ModuleCrossModuleEntries) / static_cast<double>(ModuleEntries) : 0.0;
+				const double ExpectedModuleModuleBindingRate = ModuleEntries > 0 ? static_cast<double>(ModuleModuleBindingEntries) / static_cast<double>(ModuleEntries) : 0.0;
 				if (!this->Assert.IsNear(ExpectedModuleDirectRate, ModuleDirectBindRate, 1.e-9, TEXT("Generated function table summary test should keep module directBindRate aligned with entry counts")))
 				{
 					return;
@@ -494,7 +494,7 @@ const FString GeneratedDirectory = FPaths::Combine(
 					return;
 				}
 
-				if (!this->Assert.IsNear(ExpectedModuleCrossModuleRate, ModuleCrossModuleRate, 1.e-9, TEXT("Generated function table summary test should keep module crossModuleRate aligned with entry counts")))
+				if (!this->Assert.IsNear(ExpectedModuleModuleBindingRate, ModuleModuleBindingRate, 1.e-9, TEXT("Generated function table summary test should keep module moduleBindingRate aligned with entry counts")))
 				{
 					return;
 				}
@@ -547,8 +547,8 @@ const FString GeneratedDirectory = FPaths::Combine(
 			return;
 		}
 
-		int32 TotalCrossModuleEntries = 0;
-		if (!this->Assert.IsTrue(SummaryObject->TryGetNumberField(TEXT("totalCrossModuleEntries"), TotalCrossModuleEntries), TEXT("Generated function table csv test should expose totalCrossModuleEntries")))
+		int32 TotalModuleBindingEntries = 0;
+		if (!this->Assert.IsTrue(SummaryObject->TryGetNumberField(TEXT("totalModuleBindingEntries"), TotalModuleBindingEntries), TEXT("Generated function table csv test should expose totalModuleBindingEntries")))
 		{
 			return;
 		}
@@ -567,7 +567,7 @@ const FString GeneratedDirectory = FPaths::Combine(
 
 		bool bOk = true;
 		bOk &= this->Assert.AreEqual(Modules->Num(), ModuleLines.Num() - 1, TEXT("Generated function table csv test should keep one module csv row per module summary"));
-		bOk &= this->Assert.AreEqual(FString(TEXT("ModuleName,EditorOnly,TotalEntries,DirectBindEntries,StubEntries,CrossModuleEntries,DirectBindRate,StubRate,CrossModuleRate,ShardCount")), ModuleLines[0], TEXT("Generated function table csv test should write the expected module csv header"));
+		bOk &= this->Assert.AreEqual(FString(TEXT("ModuleName,EditorOnly,TotalEntries,DirectBindEntries,StubEntries,ModuleBindingEntries,DirectBindRate,StubRate,ModuleBindingRate,ShardCount")), ModuleLines[0], TEXT("Generated function table csv test should write the expected module csv header"));
 
 		const TArray<FString> EntryLines = LoadNonEmptyFileLines(EntryCsvPath);
 		if (!this->Assert.IsTrue(EntryLines.Num() > 0, TEXT("Generated function table csv test should write the entry detail csv")))
@@ -580,7 +580,7 @@ const FString GeneratedDirectory = FPaths::Combine(
 
 		int32 DirectCsvEntries = 0;
 		int32 StubCsvEntries = 0;
-		int32 CrossModuleCsvEntries = 0;
+		int32 ModuleBindingCsvEntries = 0;
 		for (int32 LineIndex = 1; LineIndex < EntryLines.Num(); ++LineIndex)
 		{
 			const FString& EntryLine = EntryLines[LineIndex];
@@ -592,15 +592,15 @@ const FString GeneratedDirectory = FPaths::Combine(
 			{
 				StubCsvEntries++;
 			}
-			else if (EntryLine.Contains(TEXT(",CrossModule,")))
+			else if (EntryLine.Contains(TEXT(",ModuleBinding,")))
 			{
-				CrossModuleCsvEntries++;
+				ModuleBindingCsvEntries++;
 			}
 		}
 
 		bOk &= this->Assert.AreEqual(TotalDirectBindEntries, DirectCsvEntries, TEXT("Generated function table csv test should keep direct entry rows aligned with the summary"));
 		bOk &= this->Assert.AreEqual(TotalStubEntries, StubCsvEntries, TEXT("Generated function table csv test should keep stub entry rows aligned with the summary"));
-		bOk &= this->Assert.AreEqual(TotalCrossModuleEntries, CrossModuleCsvEntries, TEXT("Generated function table csv test should keep cross-module entry rows aligned with the summary"));
+		bOk &= this->Assert.AreEqual(TotalModuleBindingEntries, ModuleBindingCsvEntries, TEXT("Generated function table csv test should keep module-binding entry rows aligned with the summary"));
 
 		FString RunBehaviorTreeCsvLine;
 		if (!this->Assert.IsTrue(FindGeneratedBindingLine(GeneratedDirectory, TEXT("\"RunBehaviorTree\""), RunBehaviorTreeCsvLine), TEXT("Generated function table csv test should include RunBehaviorTree in the entry csv")))

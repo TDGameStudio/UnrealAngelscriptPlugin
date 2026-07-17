@@ -32,7 +32,7 @@ internal static class AngelscriptFunctionTableExporter
 		int functionCount = 0;
 		int reconstructedCount = 0;
 		int skippedCount = 0;
-		int crossModuleReconstructedCount = 0;
+		int moduleBindingReconstructedCount = 0;
 		List<AngelscriptSkippedFunctionBinding> skippedEntries = new();
 		AngelscriptSupportedModules supportedModules = AngelscriptFunctionTableCodeGenerator.LoadSupportedModules(factory);
 		int generatedFileCount = AngelscriptFunctionTableCodeGenerator.Generate(factory);
@@ -40,19 +40,19 @@ internal static class AngelscriptFunctionTableExporter
 		foreach (UhtModule module in factory.Session.Modules)
 		{
 			packageCount++;
-			CountAngelscriptCallableFunctions(module.ShortName, module.ScriptPackage, supportedModules, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref crossModuleReconstructedCount, ref skippedCount);
+			CountAngelscriptCallableFunctions(module.ShortName, module.ScriptPackage, supportedModules, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref moduleBindingReconstructedCount, ref skippedCount);
 		}
 
 		WriteSkippedEntriesCsv(factory, skippedEntries);
 		WriteSkippedReasonSummaryCsv(factory, skippedEntries);
 
 		Console.WriteLine(
-			"AngelscriptUHTTool exporter visited {0} packages, {1} classes, {2} AS-callable functions, reconstructed {3}, reconstructed cross-module {4}, skipped {5}, wrote {6} module files.",
+			"AngelscriptUHTTool exporter visited {0} packages, {1} classes, {2} AS-callable functions, reconstructed {3}, reconstructed module-binding {4}, skipped {5}, wrote {6} module files.",
 			packageCount,
 			classCount,
 			functionCount,
 			reconstructedCount,
-			crossModuleReconstructedCount,
+			moduleBindingReconstructedCount,
 			skippedCount,
 			generatedFileCount);
 	}
@@ -67,7 +67,7 @@ internal static class AngelscriptFunctionTableExporter
 			function.MetaData.ContainsKey("ScriptCallable"));
 	}
 
-	private static void CountAngelscriptCallableFunctions(string moduleName, UhtType type, AngelscriptSupportedModules supportedModules, List<AngelscriptSkippedFunctionBinding> skippedEntries, ref int classCount, ref int functionCount, ref int reconstructedCount, ref int crossModuleReconstructedCount, ref int skippedCount)
+	private static void CountAngelscriptCallableFunctions(string moduleName, UhtType type, AngelscriptSupportedModules supportedModules, List<AngelscriptSkippedFunctionBinding> skippedEntries, ref int classCount, ref int functionCount, ref int reconstructedCount, ref int moduleBindingReconstructedCount, ref int skippedCount)
 	{
 		if (type is UhtClass classObj)
 		{
@@ -93,11 +93,11 @@ internal static class AngelscriptFunctionTableExporter
 						_ = signature!.BuildEraseMacro();
 						reconstructedCount++;
 					}
-					else if (TryClassifyCrossModuleOutcome(moduleName, supportedModules, classObj, function, failureReason, out string? crossModuleFailureReason))
+					else if (TryClassifyModuleBindingOutcome(moduleName, supportedModules, classObj, function, failureReason, out string? moduleBindingFailureReason))
 					{
-						if (crossModuleFailureReason == null)
+						if (moduleBindingFailureReason == null)
 						{
-							crossModuleReconstructedCount++;
+							moduleBindingReconstructedCount++;
 						}
 						else
 						{
@@ -106,7 +106,7 @@ internal static class AngelscriptFunctionTableExporter
 								moduleName,
 								classObj.SourceName,
 								function.SourceName,
-								crossModuleFailureReason));
+								moduleBindingFailureReason));
 						}
 					}
 					else
@@ -124,11 +124,11 @@ internal static class AngelscriptFunctionTableExporter
 
 		foreach (UhtType child in type.Children)
 		{
-			CountAngelscriptCallableFunctions(moduleName, child, supportedModules, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref crossModuleReconstructedCount, ref skippedCount);
+			CountAngelscriptCallableFunctions(moduleName, child, supportedModules, skippedEntries, ref classCount, ref functionCount, ref reconstructedCount, ref moduleBindingReconstructedCount, ref skippedCount);
 		}
 	}
 
-	private static bool TryClassifyCrossModuleOutcome(string moduleName, AngelscriptSupportedModules supportedModules, UhtClass classObj, UhtFunction function, string? directFailureReason, out string? skippedReason)
+	private static bool TryClassifyModuleBindingOutcome(string moduleName, AngelscriptSupportedModules supportedModules, UhtClass classObj, UhtFunction function, string? directFailureReason, out string? skippedReason)
 	{
 		skippedReason = null;
 		if (!string.Equals(directFailureReason, "unexported-symbol", StringComparison.Ordinal))
@@ -137,12 +137,12 @@ internal static class AngelscriptFunctionTableExporter
 		}
 
 		bool runtimeLinked = supportedModules.RuntimeLinked.Contains(moduleName);
-		bool crossModuleOnly = supportedModules.CrossModuleOnly.Contains(moduleName);
-		if (!runtimeLinked && !crossModuleOnly)
+		bool moduleBindingOnly = supportedModules.ModuleBindingOnly.Contains(moduleName);
+		if (!runtimeLinked && !moduleBindingOnly)
 		{
-			if (AngelscriptFunctionTableCodeGenerator.TryClassifyCrossModuleOutcome(classObj, function, out _, out string? disabledModuleReason))
+			if (AngelscriptFunctionTableCodeGenerator.TryClassifyModuleBindingOutcome(classObj, function, out _, out string? disabledModuleReason))
 			{
-				skippedReason = "disabled-safe-cross-module";
+				skippedReason = "disabled-safe-module-binding";
 			}
 			else
 			{
@@ -153,16 +153,16 @@ internal static class AngelscriptFunctionTableExporter
 			return true;
 		}
 
-		if (!supportedModules.CrossModuleGenerationEnabled)
+		if (!supportedModules.ModuleBindingGenerationEnabled)
 		{
-			if (AngelscriptFunctionTableCodeGenerator.TryClassifyCrossModuleOutcome(classObj, function, out _, out string? disabledReason))
+			if (AngelscriptFunctionTableCodeGenerator.TryClassifyModuleBindingOutcome(classObj, function, out _, out string? disabledReason))
 			{
-				skippedReason = "cross-module-generation-disabled";
+				skippedReason = "module-binding-generation-disabled";
 			}
 			else
 			{
 				skippedReason = string.IsNullOrEmpty(disabledReason)
-					? "cross-module-generation-disabled"
+					? "module-binding-generation-disabled"
 					: $"disabled-{disabledReason}";
 			}
 			return true;
@@ -174,7 +174,7 @@ internal static class AngelscriptFunctionTableExporter
 			return true;
 		}
 
-		if (!AngelscriptFunctionTableCodeGenerator.TryClassifyCrossModuleOutcome(classObj, function, out _, out skippedReason))
+		if (!AngelscriptFunctionTableCodeGenerator.TryClassifyModuleBindingOutcome(classObj, function, out _, out skippedReason))
 		{
 			return true;
 		}

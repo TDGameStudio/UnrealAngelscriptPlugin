@@ -9,7 +9,7 @@ class UObject;
 // Flags:
 // bit0 Static, bit1 Const, bit2 WorldContext, bit3 HasOutParams, bit4 ReturnByRef.
 // Higher bits are reserved and require a layout-version bump before use.
-struct FAngelscriptCrossModuleCallFrame
+struct FAngelscriptModuleBindingCallFrame
 {
 	void** ArgSlots;
 	uint16 ArgCount;
@@ -21,25 +21,25 @@ struct FAngelscriptCrossModuleCallFrame
 	uint32 Reserved1;
 };
 
-struct FAngelscriptCrossModuleBinding
+struct FAngelscriptModuleBinding
 {
 	const TCHAR* ClassName;
 	const TCHAR* FunctionName;
-	void (*Thunk)(UObject* Self, FAngelscriptCrossModuleCallFrame* Frame);
+	void (*Thunk)(UObject* Self, FAngelscriptModuleBindingCallFrame* Frame);
 	uint16 ArgCount;
 	uint16 RetSize;
 	uint32 Flags;
 };
 
-struct FAngelscriptCrossModuleBindingFeatureReader
+struct FAngelscriptModuleBindingFeatureView
 {
-	const FAngelscriptCrossModuleBinding* Table;
+	const FAngelscriptModuleBinding* Table;
 	int32 Count;
 	const TCHAR* ModuleName;
 	uint32 LayoutVersion;
 };
 
-namespace FAngelscriptCrossModuleFunctionBindings
+namespace FAngelscriptModuleBindingProtocol
 {
 	static constexpr uint32 LayoutVersionExpected = 0xA5C0DE02u;
 	static constexpr uint32 FlagStatic = 1u << 0;
@@ -50,10 +50,10 @@ namespace FAngelscriptCrossModuleFunctionBindings
 
 	inline FName FeatureName()
 	{
-		return FName(TEXT("AngelscriptCrossModuleFunctionBindings"));
+		return FName(TEXT("AngelscriptModuleBindingFeature"));
 	}
 }
 
-static_assert(sizeof(FAngelscriptCrossModuleCallFrame) == 48, "FAngelscriptCrossModuleCallFrame ABI layout changed; bump cross-module-layout-version.txt.");
-static_assert(sizeof(FAngelscriptCrossModuleBinding) == 32, "FAngelscriptCrossModuleBinding ABI layout changed; bump cross-module-layout-version.txt.");
-static_assert(sizeof(FAngelscriptCrossModuleBindingFeatureReader) == 32, "FAngelscriptCrossModuleBindingFeatureReader ABI layout changed; bump cross-module-layout-version.txt.");
+static_assert(sizeof(FAngelscriptModuleBindingCallFrame) == 48, "FAngelscriptModuleBindingCallFrame ABI layout changed; bump module-binding-layout-version.txt.");
+static_assert(sizeof(FAngelscriptModuleBinding) == 32, "FAngelscriptModuleBinding ABI layout changed; bump module-binding-layout-version.txt.");
+static_assert(sizeof(FAngelscriptModuleBindingFeatureView) == 32, "FAngelscriptModuleBindingFeatureView ABI layout changed; bump module-binding-layout-version.txt.");
