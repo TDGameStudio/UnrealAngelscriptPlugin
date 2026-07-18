@@ -35,6 +35,8 @@ private:
 	static constexpr const TCHAR* ExistingFunctionName = TEXT("NativeModuleFunctionBindingExistingSlotAutomationProbe");
 	static constexpr const TCHAR* MultiShardFunctionNameA = TEXT("NativeModuleFunctionBindingMultiShardAutomationProbeA");
 	static constexpr const TCHAR* MultiShardFunctionNameB = TEXT("NativeModuleFunctionBindingMultiShardAutomationProbeB");
+	static constexpr const TCHAR* DeferredUnregisterFunctionName = TEXT("NativeModuleFunctionBindingDeferredUnregisterAutomationProbe");
+	static constexpr const TCHAR* ReloadFunctionName = TEXT("NativeModuleFunctionBindingReloadAutomationProbe");
 
 	struct FGenericHookProbeState
 	{
@@ -180,6 +182,8 @@ private:
 	static bool RunExistingSlotPriority(FAutomationTestBase& Test);
 	static bool RunLateRegistration(FAutomationTestBase& Test);
 	static bool RunWorkerThreadRegistration(FAutomationTestBase& Test);
+	static bool RunDeferredUnregister(FAutomationTestBase& Test);
+	static bool RunModuleReload(FAutomationTestBase& Test);
 	static bool RunGenericHookFrameThunk(FAutomationTestBase& Test);
 	static bool RunSameModuleMultipleFeature(FAutomationTestBase& Test);
 	static bool RunLayoutMismatch(FAutomationTestBase& Test);
@@ -199,6 +203,34 @@ public:
 	TEST_METHOD(OnModularFeatureRegistered_WorkerThreadInvocation_MarshalsToGameThread)
 	{
 		ASSERT_THAT(IsTrue(RunWorkerThreadRegistration(*TestRunner)));
+	}
+
+	TEST_METHOD(OnModularFeatureUnregistered_BeforeQueuedInjection_DoesNotReadPayload)
+	{
+		ASSERT_THAT(IsTrue(RunDeferredUnregister(*TestRunner)));
+	}
+
+	TEST_METHOD(OnModularFeatureReload_ReplacesOldDescriptor)
+	{
+		ASSERT_THAT(IsTrue(RunModuleReload(*TestRunner)));
+	}
+
+	TEST_METHOD(OnModularFeatureUnregistered_RemovesInjectedBinding)
+	{
+		if (!EnsureNativeModuleFunctionBindingSubscriptionReady())
+		{
+			return;
+		}
+
+		FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
+		const FAngelscriptNativeModuleFunctionBinding Binding = { TestClassName, LateFunctionName, &NoOpThunk, 0, 0, 0 };
+		FTestNativeModuleFunctionBindingFeature Feature(&Binding, 1, TestModuleName, FAngelscriptNativeModuleFunctionBindingBridge::LayoutVersionExpected);
+
+		RegisterAndUnregisterFeature(Feature);
+
+		ASSERT_THAT(IsTrue(
+			FindActorFunctionBinding(LateFunctionName) == nullptr,
+			TEXT("Unregistering a native module function binding feature should remove its injected binding")));
 	}
 
 	TEST_METHOD(GenericHook_FrameThunkReceivesSlotsAndReturn)
@@ -262,7 +294,11 @@ bool FAngelscriptNativeModuleFunctionBindingRuntimeTests::RunLateRegistration(FA
 	const FAngelscriptNativeModuleFunctionBinding Binding = { TestClassName, LateFunctionName, &NoOpThunk, 0, 0, 0 };
 	FTestNativeModuleFunctionBindingFeature Feature(&Binding, 1, TestModuleName, FAngelscriptNativeModuleFunctionBindingBridge::LayoutVersionExpected);
 
-	RegisterAndUnregisterFeature(Feature);
+	IModularFeatures::Get().RegisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &Feature);
+	ON_SCOPE_EXIT
+	{
+		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &Feature);
+	};
 
 	const FAngelscriptFunctionBinding* InjectedFunctionBinding = FindActorFunctionBinding(LateFunctionName);
 	if (!Test.TestNotNull(TEXT("Late-registered native module function binding feature should inject a ClassFunctionBindings binding"), InjectedFunctionBinding))
@@ -314,6 +350,77 @@ bool FAngelscriptNativeModuleFunctionBindingRuntimeTests::RunWorkerThreadRegistr
 	bPassed &= Test.TestTrue(TEXT("Worker-thread native module function binding should be bound"), IsFunctionBindingBound(*InjectedFunctionBinding));
 	bPassed &= Test.TestTrue(TEXT("Worker-thread native module function binding should use the generic bridge"), InjectedFunctionBinding->bUsesGenericCall);
 	bPassed &= Test.TestEqual(TEXT("Worker-thread native module function binding should carry the source binding as user data"), InjectedFunctionBinding->UserData, static_cast<void*>(const_cast<FAngelscriptNativeModuleFunctionBinding*>(&Binding)));
+	return bPassed;
+}
+
+bool FAngelscriptNativeModuleFunctionBindingRuntimeTests::RunDeferredUnregister(FAutomationTestBase& Test)
+{
+	if (!EnsureNativeModuleFunctionBindingSubscriptionReady())
+	{
+		return true;
+	}
+
+	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
+	const FAngelscriptNativeModuleFunctionBinding Binding = { TestClassName, DeferredUnregisterFunctionName, &NoOpThunk, 0, 0, 0 };
+	FTestNativeModuleFunctionBindingFeature Feature(&Binding, 1, TestModuleName, FAngelscriptNativeModuleFunctionBindingBridge::LayoutVersionExpected);
+
+	TFuture<void> Worker = Async(EAsyncExecution::ThreadPool, [&Feature]()
+	{
+		IModularFeatures::Get().RegisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &Feature);
+		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &Feature);
+	});
+	Worker.Wait();
+
+	FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread);
+
+	return Test.TestNull(
+		TEXT("A feature unregistered before deferred injection should not leave a binding behind"),
+		FindActorFunctionBinding(DeferredUnregisterFunctionName));
+}
+
+bool FAngelscriptNativeModuleFunctionBindingRuntimeTests::RunModuleReload(FAutomationTestBase& Test)
+{
+	if (!EnsureNativeModuleFunctionBindingSubscriptionReady())
+	{
+		return true;
+	}
+
+	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
+	const FAngelscriptNativeModuleFunctionBinding FirstBinding = { TestClassName, ReloadFunctionName, &NoOpThunk, 0, 0, 0 };
+	const FAngelscriptNativeModuleFunctionBinding SecondBinding = { TestClassName, ReloadFunctionName, &SumThunk, 2, sizeof(int32), FAngelscriptNativeModuleFunctionBindingBridge::FlagStatic };
+	FTestNativeModuleFunctionBindingFeature FirstFeature(&FirstBinding, 1, TestModuleName, FAngelscriptNativeModuleFunctionBindingBridge::LayoutVersionExpected);
+	FTestNativeModuleFunctionBindingFeature SecondFeature(&SecondBinding, 1, TestModuleName, FAngelscriptNativeModuleFunctionBindingBridge::LayoutVersionExpected);
+
+	IModularFeatures::Get().RegisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &FirstFeature);
+	const FAngelscriptFunctionBinding* FirstInjectedBinding = FindActorFunctionBinding(ReloadFunctionName);
+	if (!Test.TestNotNull(TEXT("The first module load should inject its binding"), FirstInjectedBinding))
+	{
+		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &FirstFeature);
+		return false;
+	}
+
+	const void* FirstUserData = FirstInjectedBinding->UserData;
+	IModularFeatures::Get().UnregisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &FirstFeature);
+	if (!Test.TestNull(TEXT("Unloading a target module should remove its binding before reload"), FindActorFunctionBinding(ReloadFunctionName)))
+	{
+		return false;
+	}
+
+	IModularFeatures::Get().RegisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &SecondFeature);
+	ON_SCOPE_EXIT
+	{
+		IModularFeatures::Get().UnregisterModularFeature(FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(), &SecondFeature);
+	};
+
+	const FAngelscriptFunctionBinding* SecondInjectedBinding = FindActorFunctionBinding(ReloadFunctionName);
+	if (!Test.TestNotNull(TEXT("The reloaded module should inject a new binding"), SecondInjectedBinding))
+	{
+		return false;
+	}
+
+	bool bPassed = true;
+	bPassed &= Test.TestNotEqual(TEXT("Reloaded binding should not retain the unloaded module descriptor"), SecondInjectedBinding->UserData, FirstUserData);
+	bPassed &= Test.TestEqual(TEXT("Reloaded binding should point at the new descriptor"), SecondInjectedBinding->UserData, static_cast<void*>(const_cast<FAngelscriptNativeModuleFunctionBinding*>(&SecondBinding)));
 	return bPassed;
 }
 
@@ -446,7 +553,7 @@ bool FAngelscriptNativeModuleFunctionBindingRuntimeTests::RunMalformedFeature(FA
 
 	Test.AddExpectedErrorPlain(TEXT("Native module function binding feature skipped because its payload is malformed."), EAutomationExpectedErrorFlags::Contains, 3);
 	RegisterAndUnregisterFeature(NegativeCountFeature);
-	RegisterAndUnregisterFeature(NullTableFeature);
+	RegisterAndUnregisterFeature(NullBindingsFeature);
 	RegisterAndUnregisterFeature(NullModuleFeature);
 
 	return Test.TestNull(TEXT("Malformed native module function binding features should not inject bindings"), FindActorFunctionBinding(MalformedFunctionName));

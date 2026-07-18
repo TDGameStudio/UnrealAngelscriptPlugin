@@ -8,7 +8,11 @@
 #include "Async/Async.h"
 #include "Containers/Array.h"
 #include "Features/IModularFeatures.h"
+#include "HAL/CriticalSection.h"
 #include "Misc/CoreDelegates.h"
+#include "Misc/ScopeLock.h"
+#include "Templates/Atomic.h"
+#include "Templates/SharedPointer.h"
 #include "UObject/FindObjectFlags.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -21,8 +25,36 @@ ANGELSCRIPTRUNTIME_API int32 GAngelscriptNativeModuleFunctionBindingBindGlobalFu
 namespace
 {
 	FDelegateHandle GNativeModuleFunctionBindingRegisteredHandle;
+	FDelegateHandle GNativeModuleFunctionBindingUnregisteredHandle;
+	FDelegateHandle GNativeModuleFunctionBindingObjectConstructedHandle;
 	FDelegateHandle GNativeModuleFunctionBindingPreExitHandle;
 	bool bNativeModuleFunctionBindingShuttingDown = false;
+
+	struct FInjectedNativeModuleFunctionBinding
+	{
+		UClass* Class = nullptr;
+		FString FunctionName;
+		void* UserData = nullptr;
+	};
+
+	struct FNativeModuleFunctionBindingRegistrationState : TSharedFromThis<FNativeModuleFunctionBindingRegistrationState>
+	{
+		explicit FNativeModuleFunctionBindingRegistrationState(IModularFeature* InFeature)
+			: Feature(InFeature)
+			, bRegistered(true)
+		{
+		}
+
+		FCriticalSection Mutex;
+		IModularFeature* Feature = nullptr;
+		TAtomic<bool> bRegistered;
+		bool bHasPendingBindings = false;
+		TArray<int32> PendingBindingIndices;
+		TArray<FInjectedNativeModuleFunctionBinding> InjectedBindings;
+	};
+
+	FCriticalSection GNativeModuleFunctionBindingStatesMutex;
+	TMap<IModularFeature*, TSharedPtr<FNativeModuleFunctionBindingRegistrationState>> GNativeModuleFunctionBindingStates;
 
 	UClass* ResolveNativeModuleFunctionClassByName(const TCHAR* ModuleName, const TCHAR* ClassName)
 	{
@@ -86,16 +118,85 @@ namespace
 		return true;
 	}
 
-	void InjectNativeModuleFunctionBindingFeature(IModularFeature* Feature)
+	void RemoveInjectedNativeModuleFunctionBindings(FNativeModuleFunctionBindingRegistrationState& State)
 	{
-		const FAngelscriptNativeModuleFunctionBindingView* Reader = reinterpret_cast<const FAngelscriptNativeModuleFunctionBindingView*>(Feature);
-		if (!IsValidNativeModuleFunctionBindingView(Reader))
+		check(IsInGameThread());
+
+		TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>>& ClassFunctionBindings = FAngelscriptBinds::GetClassFunctionBindings();
+		for (const FInjectedNativeModuleFunctionBinding& InjectedBinding : State.InjectedBindings)
+		{
+			if (InjectedBinding.Class == nullptr)
+			{
+				continue;
+			}
+
+			TMap<FString, FAngelscriptFunctionBinding>* FunctionMap = ClassFunctionBindings.Find(InjectedBinding.Class);
+			if (FunctionMap == nullptr)
+			{
+				continue;
+			}
+
+			FAngelscriptFunctionBinding* ExistingBinding = FunctionMap->Find(InjectedBinding.FunctionName);
+			if (ExistingBinding != nullptr && ExistingBinding->UserData == InjectedBinding.UserData)
+			{
+				FunctionMap->Remove(InjectedBinding.FunctionName);
+				if (FunctionMap->Num() == 0)
+				{
+					ClassFunctionBindings.Remove(InjectedBinding.Class);
+				}
+			}
+		}
+		State.InjectedBindings.Empty();
+	}
+
+	void InjectNativeModuleFunctionBindingState(const TSharedPtr<FNativeModuleFunctionBindingRegistrationState>& State)
+	{
+		if (!State.IsValid() || bNativeModuleFunctionBindingShuttingDown)
 		{
 			return;
 		}
 
-		for (int32 BindingIndex = 0; BindingIndex < Reader->Count; ++BindingIndex)
+		if (!IsInGameThread())
 		{
+			AsyncTask(ENamedThreads::GameThread, [State]()
+			{
+				InjectNativeModuleFunctionBindingState(State);
+			});
+			return;
+		}
+
+		FScopeLock StateLock(&State->Mutex);
+		if (!State->bRegistered.Load() || State->Feature == nullptr)
+		{
+			return;
+		}
+
+		const FAngelscriptNativeModuleFunctionBindingView* Reader = reinterpret_cast<const FAngelscriptNativeModuleFunctionBindingView*>(State->Feature);
+		if (!IsValidNativeModuleFunctionBindingView(Reader))
+		{
+			State->PendingBindingIndices.Empty();
+			State->bHasPendingBindings = true;
+			return;
+		}
+
+		if (!State->bHasPendingBindings)
+		{
+			State->PendingBindingIndices.Reserve(Reader->Count);
+			for (int32 BindingIndex = 0; BindingIndex < Reader->Count; ++BindingIndex)
+			{
+				State->PendingBindingIndices.Add(BindingIndex);
+			}
+			State->bHasPendingBindings = true;
+		}
+
+		TArray<int32> UnresolvedBindingIndices;
+		for (int32 BindingIndex : State->PendingBindingIndices)
+		{
+			if (BindingIndex < 0 || BindingIndex >= Reader->Count)
+			{
+				continue;
+			}
+
 			const FAngelscriptNativeModuleFunctionBinding& Binding = Reader->Table[BindingIndex];
 			if (Binding.ClassName == nullptr || Binding.FunctionName == nullptr || Binding.Thunk == nullptr)
 			{
@@ -106,7 +207,13 @@ namespace
 			UClass* Class = ResolveNativeModuleFunctionClass(Binding, *Reader);
 			if (Class == nullptr)
 			{
-				UE_LOG(Angelscript, Warning, TEXT("Native module function binding skipped because class '%s.%s' could not be resolved."), Reader->ModuleName, Binding.ClassName);
+				UnresolvedBindingIndices.Add(BindingIndex);
+				continue;
+			}
+
+			TMap<FString, FAngelscriptFunctionBinding>* ExistingFunctionMap = FAngelscriptBinds::GetClassFunctionBindings().Find(Class);
+			if (ExistingFunctionMap != nullptr && ExistingFunctionMap->Contains(Binding.FunctionName))
+			{
 				continue;
 			}
 
@@ -116,36 +223,117 @@ namespace
 			FunctionBinding.UserData = const_cast<FAngelscriptNativeModuleFunctionBinding*>(&Binding);
 			FunctionBinding.bUsesGenericCall = true;
 			FAngelscriptBinds::RegisterFunctionBinding(Class, Binding.FunctionName, FunctionBinding);
+			State->InjectedBindings.Add({ Class, Binding.FunctionName, FunctionBinding.UserData });
 		}
+		State->PendingBindingIndices = MoveTemp(UnresolvedBindingIndices);
 	}
 
-	void InjectNativeModuleFunctionBindingFeatureOnGameThread(IModularFeature* Feature)
+	void QueueNativeModuleFunctionBindingFeature(IModularFeature* Feature)
 	{
 		if (Feature == nullptr || bNativeModuleFunctionBindingShuttingDown)
 		{
 			return;
 		}
 
-		if (IsInGameThread())
+		TSharedPtr<FNativeModuleFunctionBindingRegistrationState> State;
 		{
-			InjectNativeModuleFunctionBindingFeature(Feature);
-			return;
-		}
-
-		AsyncTask(ENamedThreads::GameThread, [Feature]()
-		{
-			if (!bNativeModuleFunctionBindingShuttingDown)
+			FScopeLock StatesLock(&GNativeModuleFunctionBindingStatesMutex);
+			State = GNativeModuleFunctionBindingStates.FindRef(Feature);
+			if (!State.IsValid())
 			{
-				InjectNativeModuleFunctionBindingFeature(Feature);
+				State = MakeShared<FNativeModuleFunctionBindingRegistrationState>(Feature);
+				GNativeModuleFunctionBindingStates.Add(Feature, State);
 			}
-		});
+		}
+		InjectNativeModuleFunctionBindingState(State);
 	}
 
 	void OnNativeModuleFunctionBindingRegistered(const FName& Type, IModularFeature* Feature)
 	{
 		if (Type == FAngelscriptNativeModuleFunctionBindingBridge::FeatureName())
 		{
-			InjectNativeModuleFunctionBindingFeatureOnGameThread(Feature);
+			QueueNativeModuleFunctionBindingFeature(Feature);
+		}
+	}
+
+	void OnNativeModuleFunctionBindingUnregistered(const FName& Type, IModularFeature* Feature)
+	{
+		if (Type != FAngelscriptNativeModuleFunctionBindingBridge::FeatureName())
+		{
+			return;
+		}
+
+		TSharedPtr<FNativeModuleFunctionBindingRegistrationState> State;
+		{
+			FScopeLock StatesLock(&GNativeModuleFunctionBindingStatesMutex);
+			State = GNativeModuleFunctionBindingStates.FindRef(Feature);
+			GNativeModuleFunctionBindingStates.Remove(Feature);
+		}
+		if (!State.IsValid())
+		{
+			return;
+		}
+
+		if (IsInGameThread())
+		{
+			FScopeLock StateLock(&State->Mutex);
+			State->bRegistered.Store(false);
+			RemoveInjectedNativeModuleFunctionBindings(*State);
+			State->Feature = nullptr;
+			State->PendingBindingIndices.Empty();
+			return;
+		}
+
+		{
+			FScopeLock StateLock(&State->Mutex);
+			State->bRegistered.Store(false);
+			State->Feature = nullptr;
+		}
+		AsyncTask(ENamedThreads::GameThread, [State]()
+		{
+			FScopeLock StateLock(&State->Mutex);
+			RemoveInjectedNativeModuleFunctionBindings(*State);
+			State->PendingBindingIndices.Empty();
+		});
+	}
+
+	void OnNativeModuleFunctionBindingObjectConstructed(UObject* Object)
+	{
+		if (Object == nullptr || !Object->IsA(UClass::StaticClass()) || bNativeModuleFunctionBindingShuttingDown)
+		{
+			return;
+		}
+
+		TArray<TSharedPtr<FNativeModuleFunctionBindingRegistrationState>> States;
+		{
+			FScopeLock StatesLock(&GNativeModuleFunctionBindingStatesMutex);
+			GNativeModuleFunctionBindingStates.GenerateValueArray(States);
+		}
+		for (const TSharedPtr<FNativeModuleFunctionBindingRegistrationState>& State : States)
+		{
+			InjectNativeModuleFunctionBindingState(State);
+		}
+	}
+
+	void RequeueRegisteredNativeModuleFunctionBindings()
+	{
+		TArray<TSharedPtr<FNativeModuleFunctionBindingRegistrationState>> States;
+		{
+			FScopeLock StatesLock(&GNativeModuleFunctionBindingStatesMutex);
+			GNativeModuleFunctionBindingStates.GenerateValueArray(States);
+		}
+		for (const TSharedPtr<FNativeModuleFunctionBindingRegistrationState>& State : States)
+		{
+			if (!State.IsValid())
+			{
+				continue;
+			}
+			FScopeLock StateLock(&State->Mutex);
+			if (State->bRegistered.Load())
+			{
+				State->bHasPendingBindings = false;
+				State->PendingBindingIndices.Empty();
+			}
 		}
 	}
 
@@ -157,6 +345,16 @@ namespace
 			IModularFeatures::Get().OnModularFeatureRegistered().Remove(GNativeModuleFunctionBindingRegisteredHandle);
 			GNativeModuleFunctionBindingRegisteredHandle.Reset();
 		}
+		if (GNativeModuleFunctionBindingUnregisteredHandle.IsValid())
+		{
+			IModularFeatures::Get().OnModularFeatureUnregistered().Remove(GNativeModuleFunctionBindingUnregisteredHandle);
+			GNativeModuleFunctionBindingUnregisteredHandle.Reset();
+		}
+		if (GNativeModuleFunctionBindingObjectConstructedHandle.IsValid())
+		{
+			FCoreUObjectDelegates::OnObjectConstructed.Remove(GNativeModuleFunctionBindingObjectConstructedHandle);
+			GNativeModuleFunctionBindingObjectConstructedHandle.Reset();
+		}
 	}
 
 	void EnsureNativeModuleFunctionBindingSubscription()
@@ -164,6 +362,14 @@ namespace
 		if (!GNativeModuleFunctionBindingRegisteredHandle.IsValid())
 		{
 			GNativeModuleFunctionBindingRegisteredHandle = IModularFeatures::Get().OnModularFeatureRegistered().AddStatic(&OnNativeModuleFunctionBindingRegistered);
+		}
+		if (!GNativeModuleFunctionBindingUnregisteredHandle.IsValid())
+		{
+			GNativeModuleFunctionBindingUnregisteredHandle = IModularFeatures::Get().OnModularFeatureUnregistered().AddStatic(&OnNativeModuleFunctionBindingUnregistered);
+		}
+		if (!GNativeModuleFunctionBindingObjectConstructedHandle.IsValid())
+		{
+			GNativeModuleFunctionBindingObjectConstructedHandle = FCoreUObjectDelegates::OnObjectConstructed.AddStatic(&OnNativeModuleFunctionBindingObjectConstructed);
 		}
 		if (!GNativeModuleFunctionBindingPreExitHandle.IsValid())
 		{
@@ -174,12 +380,13 @@ namespace
 	void RegisterExistingNativeModuleFunctionBindings()
 	{
 		EnsureNativeModuleFunctionBindingSubscription();
+		RequeueRegisteredNativeModuleFunctionBindings();
 
 		TArray<IModularFeature*> Features = IModularFeatures::Get().GetModularFeatureImplementations<IModularFeature>(
 			FAngelscriptNativeModuleFunctionBindingBridge::FeatureName());
 		for (IModularFeature* Feature : Features)
 		{
-			InjectNativeModuleFunctionBindingFeatureOnGameThread(Feature);
+			QueueNativeModuleFunctionBindingFeature(Feature);
 		}
 	}
 

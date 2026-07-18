@@ -1,4 +1,5 @@
 using System;
+using EpicGames.Core;
 using EpicGames.UHT.Tables;
 using EpicGames.UHT.Types;
 using EpicGames.UHT.Utils;
@@ -22,10 +23,8 @@ internal static class AngelscriptFunctionBindingExporter
 
 	internal static bool IsAngelscriptCallable(UhtFunction function)
 	{
-		string functionFlags = function.FunctionFlags.ToString();
 		return function.FunctionType == UhtFunctionType.Function &&
-			(functionFlags.Contains("BlueprintCallable", StringComparison.Ordinal) ||
-			functionFlags.Contains("BlueprintPure", StringComparison.Ordinal) ||
+			(function.FunctionFlags.HasAnyFlags(EFunctionFlags.BlueprintCallable | EFunctionFlags.BlueprintPure) ||
 			function.MetaData.ContainsKey("ScriptCallable"));
 	}
 }

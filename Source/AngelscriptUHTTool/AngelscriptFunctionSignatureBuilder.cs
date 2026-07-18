@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using EpicGames.Core;
 using EpicGames.UHT.Types;
 
 namespace AngelscriptUHTTool;
@@ -49,12 +50,7 @@ internal static class AngelscriptFunctionSignatureBuilder
 			return true;
 		}
 
-		if (failureReason == "non-public" || failureReason == "unexported-symbol")
-		{
-			return false;
-		}
-
-		if (failureReason == "overloaded-unresolved" && !IsExplicitSignatureFallbackAllowed(classObj, function))
+		if (!IsExplicitSignatureFallbackAllowed(classObj, function))
 		{
 			return false;
 		}
@@ -92,8 +88,8 @@ internal static class AngelscriptFunctionSignatureBuilder
 			function.SourceName,
 			returnType,
 			parameterTypes,
-			HasFunctionFlag(function, "Static"),
-			HasFunctionFlag(function, "Const"),
+			function.FunctionFlags.HasAnyFlags(EFunctionFlags.Static),
+			function.FunctionFlags.HasAnyFlags(EFunctionFlags.Const),
 			true);
 
 		failureReason = null;
@@ -116,9 +112,7 @@ internal static class AngelscriptFunctionSignatureBuilder
 	private static string BuildReturnType(UhtProperty property)
 	{
 		string typeText = property.TypeTokens.ToString().Trim();
-		string propertyFlags = property.PropertyFlags.ToString();
-
-		if (propertyFlags.Contains("ConstParm", StringComparison.Ordinal) &&
+		if (property.PropertyFlags.HasAnyFlags(EPropertyFlags.ConstParm) &&
 			!typeText.StartsWith("const ", StringComparison.Ordinal))
 		{
 			typeText = "const " + typeText;
@@ -127,8 +121,4 @@ internal static class AngelscriptFunctionSignatureBuilder
 		return typeText;
 	}
 
-	private static bool HasFunctionFlag(UhtFunction function, string flagName)
-	{
-		return function.FunctionFlags.ToString().Contains(flagName, StringComparison.Ordinal);
-	}
 }

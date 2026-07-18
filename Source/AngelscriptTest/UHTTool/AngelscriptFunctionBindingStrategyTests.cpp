@@ -45,12 +45,18 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionBindingStrategyContractTests,
 		FString ConfigContents;
 		FString BuildCsContents;
 		FString GeneratorContents;
+		FString ConfigurationContents;
+		FString PolicyContents;
+		FString ResolverContents;
 		FString EditorContents;
 		bool bPassed = true;
 		bPassed &= ReadFile(FPaths::Combine(GetPluginDirectory(), TEXT("Source/AngelscriptRuntime/Core/AngelscriptCompileOptions.h")), HeaderContents, *TestRunner);
 		bPassed &= ReadFile(GetCompileOptionsPath(), ConfigContents, *TestRunner);
 		bPassed &= ReadFile(FPaths::Combine(GetPluginDirectory(), TEXT("Source/AngelscriptRuntime/AngelscriptRuntime.Build.cs")), BuildCsContents, *TestRunner);
 		bPassed &= ReadFile(FPaths::Combine(GetPluginDirectory(), TEXT("Source/AngelscriptUHTTool/AngelscriptFunctionBindingCodeGenerator.cs")), GeneratorContents, *TestRunner);
+		bPassed &= ReadFile(FPaths::Combine(GetPluginDirectory(), TEXT("Source/AngelscriptUHTTool/AngelscriptFunctionBindingConfiguration.cs")), ConfigurationContents, *TestRunner);
+		bPassed &= ReadFile(FPaths::Combine(GetPluginDirectory(), TEXT("Source/AngelscriptUHTTool/AngelscriptFunctionBindingPolicy.cs")), PolicyContents, *TestRunner);
+		bPassed &= ReadFile(FPaths::Combine(GetPluginDirectory(), TEXT("Source/AngelscriptUHTTool/AngelscriptFunctionBindingConfigurationResolver.cs")), ResolverContents, *TestRunner);
 		bPassed &= ReadFile(FPaths::Combine(GetPluginDirectory(), TEXT("Source/AngelscriptEditor/Core/AngelscriptEditorModule.cpp")), EditorContents, *TestRunner);
 		if (!bPassed)
 		{
@@ -65,6 +71,10 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionBindingStrategyContractTests,
 		bPassed &= TestRunner->TestTrue(TEXT("Default config should use UE array syntax"), ConfigContents.Contains(TEXT("+NativeRuntimeLinkedModules=")));
 		bPassed &= TestRunner->TestTrue(TEXT("Build.cs should parse FunctionBindingMethod"), BuildCsContents.Contains(TEXT("FunctionBindingMethod")));
 		bPassed &= TestRunner->TestTrue(TEXT("UHT should parse both module arrays"), GeneratorContents.Contains(TEXT("NativeModuleFunctionAddressModules")) && GeneratorContents.Contains(TEXT("NativeRuntimeLinkedModules")));
+		bPassed &= TestRunner->TestTrue(TEXT("Configuration parser should own the canonical method and module tokens"), ConfigurationContents.Contains(TEXT("FunctionBindingMethodKey")) && ConfigurationContents.Contains(TEXT("NativeRuntimeLinkedModulesKey")) && ConfigurationContents.Contains(TEXT("NativeModuleFunctionAddressModulesKey")));
+		bPassed &= TestRunner->TestTrue(TEXT("Configuration parser should implement UE append, remove, and clear operations"), ConfigurationContents.Contains(TEXT("case '+'")) && ConfigurationContents.Contains(TEXT("case '-'")) && ConfigurationContents.Contains(TEXT("operation == '!'") ));
+		bPassed &= TestRunner->TestTrue(TEXT("Function binding policy should keep callable and target signature decisions explicit"), PolicyContents.Contains(TEXT("IsEligible")) && PolicyContents.Contains(TEXT("GetRuntimeFallbackReason")) && PolicyContents.Contains(TEXT("ClassifyUnsupportedNativeModuleFunctionBindingSignature")));
+		bPassed &= TestRunner->TestTrue(TEXT("Configuration resolver should own engine classification and path discovery"), ResolverContents.Contains(TEXT("ClassifyEngineDistribution")) && ResolverContents.Contains(TEXT("TryExtractEngineDirectory")));
 		bPassed &= TestRunner->TestTrue(TEXT("Editor should validate target-module source-engine requirements"), EditorContents.Contains(TEXT("ValidateFunctionBindingMethod")) && EditorContents.Contains(TEXT("NativeModuleFunctionAddress")));
 		bPassed &= TestRunner->TestFalse(TEXT("Removed compile boolean should not remain active"), BuildCsContents.Contains(TEXT("bCompileAngelscriptModuleBindings")) || GeneratorContents.Contains(TEXT("bCompileAngelscriptModuleBindings")));
 		bPassed &= TestRunner->TestFalse(TEXT("Removed JSON profile should not remain active"), GeneratorContents.Contains(TEXT("module-binding-generation-modules.json")));

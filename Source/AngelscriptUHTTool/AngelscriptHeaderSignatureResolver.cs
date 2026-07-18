@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using EpicGames.Core;
 using EpicGames.UHT.Types;
 
 namespace AngelscriptUHTTool;
@@ -29,6 +30,11 @@ internal static class AngelscriptHeaderSignatureResolver
 		if (!TryFindClassBody(header, classObj.SourceName, out int classBodyStart, out int classBodyEnd, out string classDeclaration))
 		{
 			failureReason = "class-range";
+			return false;
+		}
+		if (ContainsConditionalPreprocessor(header, classBodyStart, classBodyEnd))
+		{
+			failureReason = "preprocessor-context-ambiguous";
 			return false;
 		}
 
@@ -60,8 +66,8 @@ internal static class AngelscriptHeaderSignatureResolver
 				function.SourceName,
 				string.Empty,
 				Array.Empty<string>(),
-				function.FunctionFlags.ToString().Contains("Static", StringComparison.Ordinal),
-				function.FunctionFlags.ToString().Contains("Const", StringComparison.Ordinal),
+				function.FunctionFlags.HasAnyFlags(EFunctionFlags.Static),
+				function.FunctionFlags.HasAnyFlags(EFunctionFlags.Const),
 				false);
 			failureReason = null;
 			return true;
@@ -120,6 +126,11 @@ internal static class AngelscriptHeaderSignatureResolver
 		if (!TryFindClassBody(header, classObj.SourceName, out int classBodyStart, out int classBodyEnd, out _))
 		{
 			failureReason = "class-range";
+			return false;
+		}
+		if (ContainsConditionalPreprocessor(header, classBodyStart, classBodyEnd))
+		{
+			failureReason = "preprocessor-context-ambiguous";
 			return false;
 		}
 
@@ -202,9 +213,7 @@ internal static class AngelscriptHeaderSignatureResolver
 	private static string BuildExpectedReturnType(UhtProperty property)
 	{
 		string typeText = property.TypeTokens.ToString().Trim();
-		string propertyFlags = property.PropertyFlags.ToString();
-
-		if (propertyFlags.Contains("ConstParm", StringComparison.Ordinal) &&
+		if (property.PropertyFlags.HasAnyFlags(EPropertyFlags.ConstParm) &&
 			!typeText.StartsWith("const ", StringComparison.Ordinal))
 		{
 			typeText = "const " + typeText;
@@ -251,13 +260,16 @@ internal static class AngelscriptHeaderSignatureResolver
 		StringBuilder builder = new(header.Length);
 		bool inLineComment = false;
 		bool inBlockComment = false;
+		bool inString = false;
+		bool inCharacter = false;
+		bool escaped = false;
 
 		for (int index = 0; index < header.Length; index++)
 		{
 			char current = header[index];
 			char next = index + 1 < header.Length ? header[index + 1] : '\0';
 
-			if (!inLineComment && !inBlockComment && current == '/' && next == '/')
+			if (!inLineComment && !inBlockComment && !inString && !inCharacter && current == '/' && next == '/')
 			{
 				inLineComment = true;
 				builder.Append(' ');
@@ -266,7 +278,7 @@ internal static class AngelscriptHeaderSignatureResolver
 				continue;
 			}
 
-			if (!inLineComment && !inBlockComment && current == '/' && next == '*')
+			if (!inLineComment && !inBlockComment && !inString && !inCharacter && current == '/' && next == '*')
 			{
 				inBlockComment = true;
 				builder.Append(' ');
@@ -302,6 +314,52 @@ internal static class AngelscriptHeaderSignatureResolver
 				{
 					builder.Append(current == '\n' ? '\n' : ' ');
 				}
+				continue;
+			}
+
+			if (inString || inCharacter)
+			{
+				if (current == '\n')
+				{
+					inString = false;
+					inCharacter = false;
+					escaped = false;
+					builder.Append('\n');
+				}
+				else
+				{
+					if (escaped)
+					{
+						escaped = false;
+					}
+					else if (current == '\\')
+					{
+						escaped = true;
+					}
+					else if (inString && current == '"')
+					{
+						inString = false;
+					}
+					else if (inCharacter && current == '\'')
+					{
+						inCharacter = false;
+					}
+					builder.Append(' ');
+				}
+				continue;
+			}
+
+			if (current == '"')
+			{
+				inString = true;
+				builder.Append(' ');
+				continue;
+			}
+
+			if (current == '\'')
+			{
+				inCharacter = true;
+				builder.Append(' ');
 				continue;
 			}
 
@@ -376,6 +434,31 @@ internal static class AngelscriptHeaderSignatureResolver
 		return classHasApiMacro && !classIsMinimalApi;
 	}
 
+	private static bool ContainsConditionalPreprocessor(string header, int startIndex, int endIndex)
+	{
+		int lineStart = startIndex;
+		while (lineStart < endIndex)
+		{
+			int lineEnd = header.IndexOf('\n', lineStart, endIndex - lineStart);
+			if (lineEnd < 0)
+			{
+				lineEnd = endIndex;
+			}
+
+			string line = header.Substring(lineStart, lineEnd - lineStart).TrimStart();
+			if (line.StartsWith("#if", StringComparison.Ordinal) ||
+				line.StartsWith("#else", StringComparison.Ordinal) ||
+				line.StartsWith("#elif", StringComparison.Ordinal) ||
+				line.StartsWith("#endif", StringComparison.Ordinal))
+			{
+				return true;
+			}
+
+			lineStart = lineEnd < endIndex ? lineEnd + 1 : endIndex;
+		}
+		return false;
+	}
+
 	private static string StripLeadingMacroInvocations(string declaration)
 	{
 		string normalizedDeclaration = declaration.TrimStart();
@@ -438,6 +521,12 @@ internal static class AngelscriptHeaderSignatureResolver
 			}
 
 			if (nameIndex > classBodyStart && IsWordChar(header[nameIndex - 1]))
+			{
+				searchIndex = nameIndex + marker.Length;
+				continue;
+			}
+
+			if (GetBraceDepth(header, classBodyStart, nameIndex) != 0)
 			{
 				searchIndex = nameIndex + marker.Length;
 				continue;
@@ -521,8 +610,36 @@ internal static class AngelscriptHeaderSignatureResolver
 
 	private static bool MatchesLabel(string header, int index, string label)
 	{
-		return index + label.Length <= header.Length &&
-			header.AsSpan(index, label.Length).SequenceEqual(label.AsSpan());
+		string labelName = label.TrimEnd(':');
+		if (index + labelName.Length > header.Length ||
+			!header.AsSpan(index, labelName.Length).SequenceEqual(labelName.AsSpan()))
+		{
+			return false;
+		}
+
+		int colonIndex = index + labelName.Length;
+		while (colonIndex < header.Length && char.IsWhiteSpace(header[colonIndex]))
+		{
+			colonIndex++;
+		}
+		return colonIndex < header.Length && header[colonIndex] == ':';
+	}
+
+	private static int GetBraceDepth(string header, int startIndex, int endIndex)
+	{
+		int depth = 0;
+		for (int index = startIndex; index < endIndex; index++)
+		{
+			if (header[index] == '{')
+			{
+				depth++;
+			}
+			else if (header[index] == '}')
+			{
+				depth = Math.Max(0, depth - 1);
+			}
+		}
+		return depth;
 	}
 
 	private static bool TryParseDeclaration(UhtClass classObj, UhtFunction function, string declaration, bool useExplicitSignature, out AngelscriptFunctionSignature? signature, out string? failureReason)
@@ -545,7 +662,7 @@ internal static class AngelscriptHeaderSignatureResolver
 		}
 
 		string prefix = declaration.Substring(0, functionNameIndex).Trim();
-		bool isStatic = function.FunctionFlags.ToString().Contains("Static", StringComparison.Ordinal);
+		bool isStatic = function.FunctionFlags.HasAnyFlags(EFunctionFlags.Static);
 		string returnType = function.ReturnProperty is UhtProperty returnProperty
 			? BuildReturnTypeFromTokens(returnProperty)
 			: CleanReturnType(prefix);
@@ -562,7 +679,7 @@ internal static class AngelscriptHeaderSignatureResolver
 			return false;
 		}
 
-		bool isConst = function.FunctionFlags.ToString().Contains("Const", StringComparison.Ordinal);
+		bool isConst = function.FunctionFlags.HasAnyFlags(EFunctionFlags.Const);
 
 		signature = new AngelscriptFunctionSignature(classObj.SourceName, function.SourceName, returnType, parameterTypes, isStatic, isConst, useExplicitSignature);
 		failureReason = null;
@@ -594,9 +711,7 @@ internal static class AngelscriptHeaderSignatureResolver
 	private static string BuildReturnTypeFromTokens(UhtProperty property)
 	{
 		string typeText = property.TypeTokens.ToString().Trim();
-		string propertyFlags = property.PropertyFlags.ToString();
-
-		if (propertyFlags.Contains("ConstParm", StringComparison.Ordinal) &&
+		if (property.PropertyFlags.HasAnyFlags(EPropertyFlags.ConstParm) &&
 			!typeText.StartsWith("const ", StringComparison.Ordinal))
 		{
 			typeText = "const " + typeText;

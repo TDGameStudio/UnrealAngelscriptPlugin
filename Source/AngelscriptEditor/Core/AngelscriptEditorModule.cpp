@@ -95,16 +95,29 @@ namespace
 			return EAngelscriptEngineDistribution::Installed;
 		}
 
-		if (IFileManager::Get().FileExists(*FPaths::Combine(EngineDirectory, TEXT("Build/SourceDistribution.txt"))) ||
-			IFileManager::Get().DirectoryExists(*FPaths::Combine(EngineDirectory, TEXT(".git"))))
+		if (IFileManager::Get().FileExists(*FPaths::Combine(EngineDirectory, TEXT("Build/SourceDistribution.txt"))))
 		{
 			return EAngelscriptEngineDistribution::SourceBuilt;
 		}
 
-		const FString EngineParentDirectory = FPaths::GetPath(EngineDirectory);
-		return IFileManager::Get().DirectoryExists(*FPaths::Combine(EngineParentDirectory, TEXT(".git")))
-			? EAngelscriptEngineDistribution::SourceBuilt
-			: EAngelscriptEngineDistribution::Unknown;
+		FString CurrentDirectory = EngineDirectory;
+		while (!CurrentDirectory.IsEmpty())
+		{
+			if (IFileManager::Get().FileExists(*FPaths::Combine(CurrentDirectory, TEXT(".git"))) ||
+				IFileManager::Get().DirectoryExists(*FPaths::Combine(CurrentDirectory, TEXT(".git"))))
+			{
+				return EAngelscriptEngineDistribution::SourceBuilt;
+			}
+
+			const FString ParentDirectory = FPaths::GetPath(CurrentDirectory);
+			if (ParentDirectory == CurrentDirectory)
+			{
+				break;
+			}
+			CurrentDirectory = ParentDirectory;
+		}
+
+		return EAngelscriptEngineDistribution::Unknown;
 	}
 
 	bool ValidateFunctionBindingMethod()

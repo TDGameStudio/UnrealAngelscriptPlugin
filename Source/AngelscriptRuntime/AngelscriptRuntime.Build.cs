@@ -8,6 +8,11 @@ namespace UnrealBuildTool.Rules
 {
 	public class AngelscriptRuntime : ModuleRules
 	{
+		private const string FunctionBindingSettingsSection = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
+		private const string FunctionBindingMethodKey = "FunctionBindingMethod";
+		private const string NativeRuntimeLinkedModulesKey = "NativeRuntimeLinkedModules";
+		private const string NativeModuleFunctionAddressModulesKey = "NativeModuleFunctionAddressModules";
+
 		public AngelscriptRuntime(ReadOnlyTargetRules Target) : base(Target)
 		{
 			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
@@ -108,18 +113,18 @@ namespace UnrealBuildTool.Rules
 		private void AddGeneratedFunctionBindingModuleWrappers(string moduleName)
 		{
 			const int MaxShardCount = 64;
+			List<string> aggregatorSource = new();
 			for (int shardIndex = 0; shardIndex < MaxShardCount; shardIndex++)
 			{
 				string shardName = $"AS_FunctionBinding_{moduleName}_{shardIndex:D3}";
-				FilesToGenerate.Add(
-					$"AngelscriptGeneratedFunctionBindingWrappers/{shardName}.cpp",
-					new[]
-					{
-						$"#if __has_include(\"{shardName}.gen.cpp\")",
-						$"#include UE_INLINE_GENERATED_CPP_BY_NAME({shardName})",
-						"#endif",
-					});
+				aggregatorSource.Add($"#if __has_include(\"{shardName}.gen.cpp\")");
+				aggregatorSource.Add($"#include UE_INLINE_GENERATED_CPP_BY_NAME({shardName})");
+				aggregatorSource.Add("#endif");
 			}
+
+			FilesToGenerate.Add(
+				$"AngelscriptGeneratedFunctionBindingWrappers/AS_FunctionBinding_{moduleName}_Aggregator.cpp",
+				aggregatorSource.ToArray());
 		}
 
 		private void AddConfiguredRuntimeLinkedDependencies(HashSet<string> moduleNames, ReadOnlyTargetRules target)
@@ -154,7 +159,10 @@ namespace UnrealBuildTool.Rules
 			}
 		}
 
-		private sealed record FunctionBindingSettings(FunctionBindingMethod Method, HashSet<string> RuntimeLinkedModules);
+		private sealed record FunctionBindingSettings(
+			FunctionBindingMethod Method,
+			HashSet<string> RuntimeLinkedModules,
+			HashSet<string> NativeModuleFunctionAddressModules);
 
 		private enum FunctionBindingMethod
 		{
@@ -166,24 +174,25 @@ namespace UnrealBuildTool.Rules
 		private FunctionBindingSettings ReadFunctionBindingSettings(ReadOnlyTargetRules target)
 		{
 			HashSet<string> runtimeLinkedModules = new(StringComparer.OrdinalIgnoreCase);
+			HashSet<string> nativeModuleFunctionAddressModules = new(StringComparer.OrdinalIgnoreCase);
 			if (target.ProjectFile == null)
 			{
-				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules);
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules, nativeModuleFunctionAddressModules);
 			}
 
 			string? projectDirectory = Path.GetDirectoryName(target.ProjectFile.FullName);
 			if (string.IsNullOrEmpty(projectDirectory))
 			{
-				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules);
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules, nativeModuleFunctionAddressModules);
 			}
 
 			string configPath = Path.Combine(projectDirectory, "Config", "DefaultAngelscriptCompileOptions.ini");
 			ExternalDependencies.Add(configPath);
 
-			const string settingSection = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
+			const string settingSection = FunctionBindingSettingsSection;
 			if (!File.Exists(configPath))
 			{
-				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules);
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules, nativeModuleFunctionAddressModules);
 			}
 
 			FunctionBindingMethod method = FunctionBindingMethod.NativeRuntimeLinked;
@@ -213,19 +222,25 @@ namespace UnrealBuildTool.Rules
 					continue;
 				}
 
-				string key = line.Substring(0, separatorIndex).Trim().TrimStart('+');
+				string rawKey = line.Substring(0, separatorIndex).Trim();
+				char operation = rawKey.Length > 0 && (rawKey[0] == '+' || rawKey[0] == '-' || rawKey[0] == '!') ? rawKey[0] : '\0';
+				string key = operation == '\0' ? rawKey : rawKey.Substring(1).Trim();
 				string value = line.Substring(separatorIndex + 1).Trim();
-				if (key.Equals("FunctionBindingMethod", StringComparison.OrdinalIgnoreCase))
+				if (key.Equals(FunctionBindingMethodKey, StringComparison.OrdinalIgnoreCase))
 				{
+					if (operation != '\0')
+					{
+					throw new BuildException("{0} does not support array operation '{1}' in '{2}'.", FunctionBindingMethodKey, operation, configPath);
+					}
 					method = ParseFunctionBindingMethod(value);
 				}
-				else if (key.Equals("NativeRuntimeLinkedModules", StringComparison.OrdinalIgnoreCase))
+				else if (key.Equals(NativeRuntimeLinkedModulesKey, StringComparison.OrdinalIgnoreCase))
 				{
-					if (value.Length == 0)
-					{
-						throw new BuildException("NativeRuntimeLinkedModules contains an empty module name in '{0}'.", configPath);
-					}
-					runtimeLinkedModules.Add(value);
+					ApplyModuleArrayOperation(runtimeLinkedModules, operation, value, key, configPath);
+				}
+				else if (key.Equals(NativeModuleFunctionAddressModulesKey, StringComparison.OrdinalIgnoreCase))
+				{
+					ApplyModuleArrayOperation(nativeModuleFunctionAddressModules, operation, value, key, configPath);
 				}
 			}
 
@@ -236,7 +251,39 @@ namespace UnrealBuildTool.Rules
 					EngineDirectory);
 			}
 
-			return new FunctionBindingSettings(method, runtimeLinkedModules);
+			return new FunctionBindingSettings(method, runtimeLinkedModules, nativeModuleFunctionAddressModules);
+		}
+
+		private static void ApplyModuleArrayOperation(HashSet<string> modules, char operation, string value, string key, string configPath)
+		{
+			if (operation == '!')
+			{
+				if (value.Length > 0 && !value.Equals("ClearArray", StringComparison.OrdinalIgnoreCase))
+				{
+					throw new BuildException("{0} uses '!'; expected an empty value or ClearArray in '{1}'.", key, configPath);
+				}
+				modules.Clear();
+				return;
+			}
+
+			if (value.Length == 0)
+			{
+				throw new BuildException("{0} contains an empty module name in '{1}'.", key, configPath);
+			}
+
+			switch (operation)
+			{
+				case '+':
+					modules.Add(value);
+					break;
+				case '-':
+					modules.Remove(value);
+					break;
+				default:
+					modules.Clear();
+					modules.Add(value);
+					break;
+			}
 		}
 
 		private static FunctionBindingMethod ParseFunctionBindingMethod(string value)
@@ -250,22 +297,28 @@ namespace UnrealBuildTool.Rules
 			};
 		}
 
-		private static bool IsSourceEngine()
+		private bool IsSourceEngine()
 		{
-			string NormalizedEngineDirectory = EngineDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-			if (File.Exists(Path.Combine(NormalizedEngineDirectory, "Build", "InstalledBuild.txt")))
+			string normalizedEngineDirectory = EngineDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+			if (File.Exists(Path.Combine(normalizedEngineDirectory, "Build", "InstalledBuild.txt")))
 			{
 				return false;
 			}
 
-			if (File.Exists(Path.Combine(NormalizedEngineDirectory, "Build", "SourceDistribution.txt")) ||
-				Directory.Exists(Path.Combine(NormalizedEngineDirectory, ".git")))
+			if (File.Exists(Path.Combine(normalizedEngineDirectory, "Build", "SourceDistribution.txt")))
 			{
 				return true;
 			}
 
-			DirectoryInfo? EngineParent = Directory.GetParent(NormalizedEngineDirectory);
-			return EngineParent != null && Directory.Exists(Path.Combine(EngineParent.FullName, ".git"));
+			for (DirectoryInfo? directory = new DirectoryInfo(normalizedEngineDirectory); directory != null; directory = directory.Parent)
+			{
+				if (File.Exists(Path.Combine(directory.FullName, ".git")) || Directory.Exists(Path.Combine(directory.FullName, ".git")))
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 	}
 }
