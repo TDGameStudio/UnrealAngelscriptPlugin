@@ -11,10 +11,10 @@ namespace AngelscriptUHTTool;
 
 internal static partial class AngelscriptFunctionBindingCodeGenerator
 {
-	private static StringBuilder BuildRuntimeShard(string moduleName, bool editorOnly, List<AngelscriptGeneratedFunctionRegistration> bindings, int startIndex, int entryCount, int shardIndex, int shardCount)
+	private static StringBuilder BuildGeneratedFunctionBindingShard(string moduleName, bool editorOnly, List<AngelscriptGeneratedFunctionRegistration> bindings, int startIndex, int bindingCount, int shardIndex, int shardCount)
 	{
 		SortedSet<string> includes = new(StringComparer.Ordinal);
-		for (int bindingIndex = startIndex; bindingIndex < startIndex + entryCount; bindingIndex++)
+		for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
 		{
 			if (bindings[bindingIndex].IncludePath.Length > 0)
 			{
@@ -42,7 +42,7 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		builder.Append("AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AS_FunctionBinding_").Append(moduleName).Append('_').Append(shardIndex.ToString("D3", CultureInfo.InvariantCulture)).AppendLine("((int32)FAngelscriptBinds::EOrder::Late + 50, []()");
 		builder.AppendLine("{");
 		builder.AppendLine("\tconst double GeneratedFunctionBindingStartSeconds = FPlatformTime::Seconds();");
-		for (int bindingIndex = startIndex; bindingIndex < startIndex + entryCount; bindingIndex++)
+		for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
 		{
 			AngelscriptGeneratedFunctionRegistration binding = bindings[bindingIndex];
 			bool needsEditorGuard = !editorOnly && binding.EditorOnlyGuard != null;
@@ -58,8 +58,8 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		}
 
 		builder.AppendLine("\tconst double GeneratedFunctionBindingElapsedMilliseconds = (FPlatformTime::Seconds() - GeneratedFunctionBindingStartSeconds) * 1000.0;");
-		builder.Append("\tFAngelscriptBinds::RecordGeneratedFunctionBindingShardTiming(TEXT(\"").Append(moduleName).Append("\"), ").Append(shardIndex + 1).Append(", ").Append(shardCount).Append(", ").Append(entryCount).AppendLine(", GeneratedFunctionBindingElapsedMilliseconds);");
-		builder.Append("\tUE_LOG(Angelscript, Log, TEXT(\"[UHT] Registered %d generated AS-callable bindings for module %s shard %d/%d in %.3f ms\"), ").Append(entryCount).Append(", TEXT(\"").Append(moduleName).Append("\"), ").Append(shardIndex + 1).Append(", ").Append(shardCount).AppendLine(", GeneratedFunctionBindingElapsedMilliseconds);");
+		builder.Append("\tFAngelscriptBinds::RecordGeneratedFunctionBindingShardTiming(TEXT(\"").Append(moduleName).Append("\"), ").Append(shardIndex + 1).Append(", ").Append(shardCount).Append(", ").Append(bindingCount).AppendLine(", GeneratedFunctionBindingElapsedMilliseconds);");
+		builder.Append("\tUE_LOG(Angelscript, Log, TEXT(\"[UHT] Registered %d generated AS-callable bindings for module %s shard %d/%d in %.3f ms\"), ").Append(bindingCount).Append(", TEXT(\"").Append(moduleName).Append("\"), ").Append(shardIndex + 1).Append(", ").Append(shardCount).AppendLine(", GeneratedFunctionBindingElapsedMilliseconds);");
 		builder.AppendLine("});");
 		builder.AppendLine("PRAGMA_ENABLE_DEPRECATION_WARNINGS");
 		if (editorOnly)
@@ -69,10 +69,10 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		return builder;
 	}
 
-	private static StringBuilder BuildNativeModuleFunctionAddressShard(string moduleName, List<AngelscriptNativeModuleFunctionBinding> bindings, int startIndex, int entryCount, int shardIndex, int shardCount, string layoutVersion)
+	private static StringBuilder BuildNativeModuleFunctionAddressShard(string moduleName, List<AngelscriptNativeModuleFunctionBinding> bindings, int startIndex, int bindingCount, int shardIndex, int shardCount, string layoutVersion)
 	{
 		SortedSet<string> includes = new(StringComparer.Ordinal);
-		for (int bindingIndex = startIndex; bindingIndex < startIndex + entryCount; bindingIndex++)
+		for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
 		{
 			foreach (string include in bindings[bindingIndex].IncludePaths)
 			{
@@ -144,7 +144,7 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		builder.AppendLine("\t}");
 		builder.AppendLine();
 
-		for (int bindingIndex = startIndex; bindingIndex < startIndex + entryCount; bindingIndex++)
+		for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
 		{
 			AngelscriptNativeModuleFunctionBinding binding = bindings[bindingIndex];
 			string thunkName = BuildNativeModuleFunctionBindingThunkName(binding);
@@ -186,7 +186,7 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 
 		builder.AppendLine("\tstatic const FAngelscriptNativeModuleFunctionBinding GNativeModuleFunctionBindingTable[] =");
 		builder.AppendLine("\t{");
-		for (int bindingIndex = startIndex; bindingIndex < startIndex + entryCount; bindingIndex++)
+		for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
 		{
 			AngelscriptNativeModuleFunctionBinding binding = bindings[bindingIndex];
 			builder.Append("\t\t{ TEXT(\"").Append(binding.ClassName).Append("\"), TEXT(\"").Append(binding.FunctionName).Append("\"), &").Append(BuildNativeModuleFunctionBindingThunkName(binding)).Append(", ").Append(binding.ParameterTypes.Count).Append(", ").Append(GetReturnSizeExpression(binding.ReturnType)).Append(", ").Append(BuildNativeModuleFunctionBindingFlagsExpression(binding)).AppendLine(" },");

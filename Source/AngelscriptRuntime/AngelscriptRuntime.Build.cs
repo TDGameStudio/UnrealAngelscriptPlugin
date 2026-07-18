@@ -17,10 +17,10 @@ namespace UnrealBuildTool.Rules
 		{
 			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 			NumIncludedBytesPerUnityCPPOverride = 131072;
-			FunctionBindingSettings bindingSettings = ReadFunctionBindingSettings(Target);
+			FunctionBindingSettings BindingSettings = ReadFunctionBindingSettings(Target);
 			PrivateDefinitions.Add("ANGELSCRIPT_EXPORT=1");
 			PublicDefinitions.Add("WITH_ANGELSCRIPT=1");
-			PublicDefinitions.Add("WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS=" + (bindingSettings.Method == FunctionBindingMethod.NativeModuleFunctionAddress ? "1" : "0"));
+			PublicDefinitions.Add("WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS=" + (BindingSettings.Method == FunctionBindingMethod.NativeModuleFunctionAddress ? "1" : "0"));
 			PublicDefinitions.Add("ANGELSCRIPT_DLL_LIBRARY_IMPORT=1");
 
 			PublicIncludePaths.Add(ModuleDirectory);
@@ -87,10 +87,10 @@ namespace UnrealBuildTool.Rules
 				});
 			}
 
-			if (bindingSettings.Method == FunctionBindingMethod.NativeRuntimeLinked)
+			if (BindingSettings.Method == FunctionBindingMethod.NativeRuntimeLinked)
 			{
-				AddConfiguredRuntimeLinkedDependencies(bindingSettings.RuntimeLinkedModules, Target);
-				AddGeneratedFunctionBindingWrappers(bindingSettings.RuntimeLinkedModules);
+				AddConfiguredRuntimeLinkedDependencies(BindingSettings.RuntimeLinkedModules, Target);
+				AddGeneratedFunctionBindingWrappers(BindingSettings.RuntimeLinkedModules);
 			}
 
             //var PluginPath = "../Plugins/Angelscript";
@@ -102,59 +102,59 @@ namespace UnrealBuildTool.Rules
 			//PublicIncludePaths.Add(PluginPath + "/ThirdParty/source");
 		}
 
-		private void AddGeneratedFunctionBindingWrappers(HashSet<string> moduleNames)
+		private void AddGeneratedFunctionBindingWrappers(HashSet<string> ModuleNames)
 		{
-			foreach (string moduleName in moduleNames.OrderBy(static name => name, StringComparer.OrdinalIgnoreCase))
+			foreach (string ModuleName in ModuleNames.OrderBy(static Name => Name, StringComparer.OrdinalIgnoreCase))
 			{
-				AddGeneratedFunctionBindingModuleWrappers(moduleName);
+				AddGeneratedFunctionBindingModuleWrappers(ModuleName);
 			}
 		}
 
-		private void AddGeneratedFunctionBindingModuleWrappers(string moduleName)
+		private void AddGeneratedFunctionBindingModuleWrappers(string ModuleName)
 		{
 			const int MaxShardCount = 64;
-			List<string> aggregatorSource = new();
-			for (int shardIndex = 0; shardIndex < MaxShardCount; shardIndex++)
+			List<string> AggregatorSource = new();
+			for (int ShardIndex = 0; ShardIndex < MaxShardCount; ShardIndex++)
 			{
-				string shardName = $"AS_FunctionBinding_{moduleName}_{shardIndex:D3}";
-				aggregatorSource.Add($"#if __has_include(\"{shardName}.gen.cpp\")");
-				aggregatorSource.Add($"#include UE_INLINE_GENERATED_CPP_BY_NAME({shardName})");
-				aggregatorSource.Add("#endif");
+				string ShardName = $"AS_FunctionBinding_{ModuleName}_{ShardIndex:D3}";
+				AggregatorSource.Add($"#if __has_include(\"{ShardName}.gen.cpp\")");
+				AggregatorSource.Add($"#include UE_INLINE_GENERATED_CPP_BY_NAME({ShardName})");
+				AggregatorSource.Add("#endif");
 			}
 
 			FilesToGenerate.Add(
-				$"AngelscriptGeneratedFunctionBindingWrappers/AS_FunctionBinding_{moduleName}_Aggregator.cpp",
-				aggregatorSource.ToArray());
+				$"AngelscriptGeneratedFunctionBindingWrappers/AS_FunctionBinding_{ModuleName}_Aggregator.cpp",
+				AggregatorSource.ToArray());
 		}
 
-		private void AddConfiguredRuntimeLinkedDependencies(HashSet<string> moduleNames, ReadOnlyTargetRules target)
+		private void AddConfiguredRuntimeLinkedDependencies(HashSet<string> ModuleNames, ReadOnlyTargetRules Target)
 		{
-			HashSet<string> existingDependencies = new(StringComparer.OrdinalIgnoreCase);
-			foreach (string dependency in PublicDependencyModuleNames)
+			HashSet<string> ExistingDependencies = new(StringComparer.OrdinalIgnoreCase);
+			foreach (string Dependency in PublicDependencyModuleNames)
 			{
-				existingDependencies.Add(dependency);
+				ExistingDependencies.Add(Dependency);
 			}
-			foreach (string dependency in PrivateDependencyModuleNames)
+			foreach (string Dependency in PrivateDependencyModuleNames)
 			{
-				existingDependencies.Add(dependency);
+				ExistingDependencies.Add(Dependency);
 			}
 
-			HashSet<string> editorOnlyModules = new(StringComparer.OrdinalIgnoreCase)
+			HashSet<string> EditorOnlyModules = new(StringComparer.OrdinalIgnoreCase)
 			{
 				"UMGEditor",
 				"UnrealEd",
 			};
-			foreach (string moduleName in moduleNames)
+			foreach (string ModuleName in ModuleNames)
 			{
-				if (moduleName.Length == 0 || moduleName.Equals("AngelscriptRuntime", StringComparison.OrdinalIgnoreCase) || (!target.bBuildEditor && editorOnlyModules.Contains(moduleName)))
+				if (ModuleName.Length == 0 || ModuleName.Equals("AngelscriptRuntime", StringComparison.OrdinalIgnoreCase) || (!Target.bBuildEditor && EditorOnlyModules.Contains(ModuleName)))
 				{
 					continue;
 				}
 
-				if (!existingDependencies.Contains(moduleName))
+				if (!ExistingDependencies.Contains(ModuleName))
 				{
-					PrivateDependencyModuleNames.Add(moduleName);
-					existingDependencies.Add(moduleName);
+					PrivateDependencyModuleNames.Add(ModuleName);
+					ExistingDependencies.Add(ModuleName);
 				}
 			}
 		}
@@ -171,148 +171,148 @@ namespace UnrealBuildTool.Rules
 			NativeModuleFunctionAddress,
 		}
 
-		private FunctionBindingSettings ReadFunctionBindingSettings(ReadOnlyTargetRules target)
+		private FunctionBindingSettings ReadFunctionBindingSettings(ReadOnlyTargetRules Target)
 		{
-			HashSet<string> runtimeLinkedModules = new(StringComparer.OrdinalIgnoreCase);
-			HashSet<string> nativeModuleFunctionAddressModules = new(StringComparer.OrdinalIgnoreCase);
-			if (target.ProjectFile == null)
+			HashSet<string> RuntimeLinkedModules = new(StringComparer.OrdinalIgnoreCase);
+			HashSet<string> NativeModuleFunctionAddressModules = new(StringComparer.OrdinalIgnoreCase);
+			if (Target.ProjectFile == null)
 			{
-				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules, nativeModuleFunctionAddressModules);
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, RuntimeLinkedModules, NativeModuleFunctionAddressModules);
 			}
 
-			string? projectDirectory = Path.GetDirectoryName(target.ProjectFile.FullName);
-			if (string.IsNullOrEmpty(projectDirectory))
+			string? ProjectDirectory = Path.GetDirectoryName(Target.ProjectFile.FullName);
+			if (string.IsNullOrEmpty(ProjectDirectory))
 			{
-				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules, nativeModuleFunctionAddressModules);
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, RuntimeLinkedModules, NativeModuleFunctionAddressModules);
 			}
 
-			string configPath = Path.Combine(projectDirectory, "Config", "DefaultAngelscriptCompileOptions.ini");
-			ExternalDependencies.Add(configPath);
+			string ConfigPath = Path.Combine(ProjectDirectory, "Config", "DefaultAngelscriptCompileOptions.ini");
+			ExternalDependencies.Add(ConfigPath);
 
-			const string settingSection = FunctionBindingSettingsSection;
-			if (!File.Exists(configPath))
+			const string SettingSection = FunctionBindingSettingsSection;
+			if (!File.Exists(ConfigPath))
 			{
-				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules, nativeModuleFunctionAddressModules);
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, RuntimeLinkedModules, NativeModuleFunctionAddressModules);
 			}
 
-			FunctionBindingMethod method = FunctionBindingMethod.NativeRuntimeLinked;
-			bool inSection = false;
-			foreach (string rawLine in File.ReadAllLines(configPath))
+			FunctionBindingMethod Method = FunctionBindingMethod.NativeRuntimeLinked;
+			bool bInSection = false;
+			foreach (string RawLine in File.ReadAllLines(ConfigPath))
 			{
-				string line = rawLine.Trim();
-				if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#"))
+				string Line = RawLine.Trim();
+				if (Line.Length == 0 || Line.StartsWith(";") || Line.StartsWith("#"))
 				{
 					continue;
 				}
 
-				if (line.StartsWith("[") && line.EndsWith("]"))
+				if (Line.StartsWith("[") && Line.EndsWith("]"))
 				{
-					inSection = string.Equals(line.Substring(1, line.Length - 2), settingSection, StringComparison.Ordinal);
+					bInSection = string.Equals(Line.Substring(1, Line.Length - 2), SettingSection, StringComparison.Ordinal);
 					continue;
 				}
 
-				if (!inSection)
-				{
-					continue;
-				}
-
-				int separatorIndex = line.IndexOf('=');
-				if (separatorIndex <= 0)
+				if (!bInSection)
 				{
 					continue;
 				}
 
-				string rawKey = line.Substring(0, separatorIndex).Trim();
-				char operation = rawKey.Length > 0 && (rawKey[0] == '+' || rawKey[0] == '-' || rawKey[0] == '!') ? rawKey[0] : '\0';
-				string key = operation == '\0' ? rawKey : rawKey.Substring(1).Trim();
-				string value = line.Substring(separatorIndex + 1).Trim();
-				if (key.Equals(FunctionBindingMethodKey, StringComparison.OrdinalIgnoreCase))
+				int SeparatorIndex = Line.IndexOf('=');
+				if (SeparatorIndex <= 0)
 				{
-					if (operation != '\0')
+					continue;
+				}
+
+				string RawKey = Line.Substring(0, SeparatorIndex).Trim();
+				char Operation = RawKey.Length > 0 && (RawKey[0] == '+' || RawKey[0] == '-' || RawKey[0] == '!') ? RawKey[0] : '\0';
+				string Key = Operation == '\0' ? RawKey : RawKey.Substring(1).Trim();
+				string Value = Line.Substring(SeparatorIndex + 1).Trim();
+				if (Key.Equals(FunctionBindingMethodKey, StringComparison.OrdinalIgnoreCase))
+				{
+					if (Operation != '\0')
 					{
-					throw new BuildException("{0} does not support array operation '{1}' in '{2}'.", FunctionBindingMethodKey, operation, configPath);
+					throw new BuildException("{0} does not support array operation '{1}' in '{2}'.", FunctionBindingMethodKey, Operation, ConfigPath);
 					}
-					method = ParseFunctionBindingMethod(value);
+					Method = ParseFunctionBindingMethod(Value);
 				}
-				else if (key.Equals(NativeRuntimeLinkedModulesKey, StringComparison.OrdinalIgnoreCase))
+				else if (Key.Equals(NativeRuntimeLinkedModulesKey, StringComparison.OrdinalIgnoreCase))
 				{
-					ApplyModuleArrayOperation(runtimeLinkedModules, operation, value, key, configPath);
+					ApplyModuleArrayOperation(RuntimeLinkedModules, Operation, Value, Key, ConfigPath);
 				}
-				else if (key.Equals(NativeModuleFunctionAddressModulesKey, StringComparison.OrdinalIgnoreCase))
+				else if (Key.Equals(NativeModuleFunctionAddressModulesKey, StringComparison.OrdinalIgnoreCase))
 				{
-					ApplyModuleArrayOperation(nativeModuleFunctionAddressModules, operation, value, key, configPath);
+					ApplyModuleArrayOperation(NativeModuleFunctionAddressModules, Operation, Value, Key, ConfigPath);
 				}
 			}
 
-			if (method == FunctionBindingMethod.NativeModuleFunctionAddress && !IsSourceEngine())
+			if (Method == FunctionBindingMethod.NativeModuleFunctionAddress && !IsSourceEngine())
 			{
 				throw new BuildException(
 					"NativeModuleFunctionAddress compilation requires a source engine. Engine '{0}' is installed, binary, or unknown; select None or NativeRuntimeLinked, or use a source engine.",
 					EngineDirectory);
 			}
 
-			return new FunctionBindingSettings(method, runtimeLinkedModules, nativeModuleFunctionAddressModules);
+			return new FunctionBindingSettings(Method, RuntimeLinkedModules, NativeModuleFunctionAddressModules);
 		}
 
-		private static void ApplyModuleArrayOperation(HashSet<string> modules, char operation, string value, string key, string configPath)
+		private static void ApplyModuleArrayOperation(HashSet<string> Modules, char Operation, string Value, string Key, string ConfigPath)
 		{
-			if (operation == '!')
+			if (Operation == '!')
 			{
-				if (value.Length > 0 && !value.Equals("ClearArray", StringComparison.OrdinalIgnoreCase))
+				if (Value.Length > 0 && !Value.Equals("ClearArray", StringComparison.OrdinalIgnoreCase))
 				{
-					throw new BuildException("{0} uses '!'; expected an empty value or ClearArray in '{1}'.", key, configPath);
+					throw new BuildException("{0} uses '!'; expected an empty value or ClearArray in '{1}'.", Key, ConfigPath);
 				}
-				modules.Clear();
+				Modules.Clear();
 				return;
 			}
 
-			if (value.Length == 0)
+			if (Value.Length == 0)
 			{
-				throw new BuildException("{0} contains an empty module name in '{1}'.", key, configPath);
+				throw new BuildException("{0} contains an empty module name in '{1}'.", Key, ConfigPath);
 			}
 
-			switch (operation)
+			switch (Operation)
 			{
 				case '+':
-					modules.Add(value);
+					Modules.Add(Value);
 					break;
 				case '-':
-					modules.Remove(value);
+					Modules.Remove(Value);
 					break;
 				default:
-					modules.Clear();
-					modules.Add(value);
+					Modules.Clear();
+					Modules.Add(Value);
 					break;
 			}
 		}
 
-		private static FunctionBindingMethod ParseFunctionBindingMethod(string value)
+		private static FunctionBindingMethod ParseFunctionBindingMethod(string Value)
 		{
-			return value switch
+			return Value switch
 			{
 				"None" => FunctionBindingMethod.None,
 				"NativeRuntimeLinked" => FunctionBindingMethod.NativeRuntimeLinked,
 				"NativeModuleFunctionAddress" => FunctionBindingMethod.NativeModuleFunctionAddress,
-				_ => throw new BuildException("Unknown FunctionBindingMethod '{0}'. Expected None, NativeRuntimeLinked, or NativeModuleFunctionAddress.", value),
+				_ => throw new BuildException("Unknown FunctionBindingMethod '{0}'. Expected None, NativeRuntimeLinked, or NativeModuleFunctionAddress.", Value),
 			};
 		}
 
 		private bool IsSourceEngine()
 		{
-			string normalizedEngineDirectory = EngineDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-			if (File.Exists(Path.Combine(normalizedEngineDirectory, "Build", "InstalledBuild.txt")))
+			string NormalizedEngineDirectory = EngineDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+			if (File.Exists(Path.Combine(NormalizedEngineDirectory, "Build", "InstalledBuild.txt")))
 			{
 				return false;
 			}
 
-			if (File.Exists(Path.Combine(normalizedEngineDirectory, "Build", "SourceDistribution.txt")))
+			if (File.Exists(Path.Combine(NormalizedEngineDirectory, "Build", "SourceDistribution.txt")))
 			{
 				return true;
 			}
 
-			for (DirectoryInfo? directory = new DirectoryInfo(normalizedEngineDirectory); directory != null; directory = directory.Parent)
+			for (DirectoryInfo? Directory = new DirectoryInfo(NormalizedEngineDirectory); Directory != null; Directory = Directory.Parent)
 			{
-				if (File.Exists(Path.Combine(directory.FullName, ".git")) || Directory.Exists(Path.Combine(directory.FullName, ".git")))
+				if (File.Exists(Path.Combine(Directory.FullName, ".git")) || System.IO.Directory.Exists(Path.Combine(Directory.FullName, ".git")))
 				{
 					return true;
 				}

@@ -14,7 +14,7 @@ namespace AngelscriptUHTTool;
 
 internal static partial class AngelscriptFunctionBindingCodeGenerator
 {
-	private const int MaxEntriesPerShard = 256;
+	private const int MaxBindingsPerShard = 256;
 	private const int MaxRuntimeWrapperShardCount = 64;
 	private const string LayoutVersionFileName = "native-module-function-binding-layout-version.txt";
 
@@ -92,7 +92,7 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		}
 
 		SortedSet<string> includes = new(StringComparer.Ordinal);
-		List<AngelscriptGeneratedFunctionRegistration> runtimeBindings = new();
+		List<AngelscriptGeneratedFunctionRegistration> generatedBindings = new();
 		List<AngelscriptNativeModuleFunctionBinding> nativeModuleFunctionBindings = new();
 		int analyzedFunctionCount = 0;
 		int skippedFunctionStart = skippedDiagnostics.Count;
@@ -104,19 +104,19 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 			emitRuntimeLinked,
 			emitNativeModuleFunctionAddress,
 			includes,
-			runtimeBindings,
+			generatedBindings,
 			nativeModuleFunctionBindings,
 			skippedDiagnostics,
 			ref analyzedFunctionCount);
 
-		if (runtimeBindings.Count == 0 && nativeModuleFunctionBindings.Count == 0)
+		if (generatedBindings.Count == 0 && nativeModuleFunctionBindings.Count == 0)
 		{
 			return analyzedFunctionCount == 0
 				? null
 				: new AngelscriptFunctionBindingModuleStatistics(module.ShortName, editorOnly, analyzedFunctionCount, 0, 0, 0, skippedDiagnostics.Count - skippedFunctionStart, 0);
 		}
 
-		runtimeBindings.Sort(static (left, right) =>
+		generatedBindings.Sort(static (left, right) =>
 		{
 			int classComparison = StringComparer.Ordinal.Compare(left.ClassName, right.ClassName);
 			if (classComparison != 0)
@@ -141,27 +141,27 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		return functionComparison != 0 ? functionComparison : left.StableIndex.CompareTo(right.StableIndex);
 		});
 
-		int nativeRuntimeLinkedCount = runtimeBindings.Count(static binding => binding.FunctionBindingCategory == "NativeRuntimeLinked");
-		int reflectiveFallbackCount = runtimeBindings.Count(static binding => binding.FunctionBindingCategory == "ReflectiveFallback");
+		int nativeRuntimeLinkedCount = generatedBindings.Count(static binding => binding.FunctionBindingCategory == "NativeRuntimeLinked");
+		int reflectiveFallbackCount = generatedBindings.Count(static binding => binding.FunctionBindingCategory == "ReflectiveFallback");
 		int nativeModuleFunctionAddressCount = nativeModuleFunctionBindings.Count;
 		int shardCount = 0;
 
-		int runtimeShardCount = emitRuntimeLinked ? GetShardCount(runtimeBindings.Count) : 0;
-		if (runtimeShardCount > MaxRuntimeWrapperShardCount)
+		int generatedShardCount = emitRuntimeLinked ? GetShardCount(generatedBindings.Count) : 0;
+		if (generatedShardCount > MaxRuntimeWrapperShardCount)
 		{
-			throw new InvalidOperationException($"Runtime-linked module '{module.ShortName}' requires {runtimeShardCount} function binding shards, exceeding the Build.cs wrapper limit of {MaxRuntimeWrapperShardCount}.");
+			throw new InvalidOperationException($"Runtime-linked module '{module.ShortName}' requires {generatedShardCount} function binding shards, exceeding the Build.cs wrapper limit of {MaxRuntimeWrapperShardCount}.");
 		}
-		for (int shardIndex = 0; shardIndex < runtimeShardCount; shardIndex++)
+		for (int shardIndex = 0; shardIndex < generatedShardCount; shardIndex++)
 		{
-			int startIndex = shardIndex * MaxEntriesPerShard;
-			int entryCount = Math.Min(MaxEntriesPerShard, runtimeBindings.Count - startIndex);
+			int startIndex = shardIndex * MaxBindingsPerShard;
+			int bindingCount = Math.Min(MaxBindingsPerShard, generatedBindings.Count - startIndex);
 			string outputPath = factory.MakePath($"AS_FunctionBinding_{module.ShortName}_{shardIndex:D3}", ".gen.cpp");
-			factory.CommitOutput(outputPath, BuildRuntimeShard(module.ShortName, editorOnly, runtimeBindings, startIndex, entryCount, shardIndex, runtimeShardCount));
+			factory.CommitOutput(outputPath, BuildGeneratedFunctionBindingShard(module.ShortName, editorOnly, generatedBindings, startIndex, bindingCount, shardIndex, generatedShardCount));
 			generatedPaths.Add(outputPath);
 			shardCount++;
-			for (int entryIndex = startIndex; entryIndex < startIndex + entryCount; entryIndex++)
+			for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
 			{
-				AngelscriptGeneratedFunctionRegistration binding = runtimeBindings[entryIndex];
+				AngelscriptGeneratedFunctionRegistration binding = generatedBindings[bindingIndex];
 				generatedDiagnostics.Add(new AngelscriptFunctionBindingDiagnosticRow(
 					module.ShortName,
 					editorOnly,
@@ -178,15 +178,15 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		int nativeModuleFunctionAddressShardCount = emitNativeModuleFunctionAddress ? GetShardCount(nativeModuleFunctionBindings.Count) : 0;
 		for (int shardIndex = 0; shardIndex < nativeModuleFunctionAddressShardCount; shardIndex++)
 		{
-			int startIndex = shardIndex * MaxEntriesPerShard;
-			int entryCount = Math.Min(MaxEntriesPerShard, nativeModuleFunctionBindings.Count - startIndex);
+			int startIndex = shardIndex * MaxBindingsPerShard;
+			int bindingCount = Math.Min(MaxBindingsPerShard, nativeModuleFunctionBindings.Count - startIndex);
 			string outputPath = Path.Combine(module.Module.OutputDirectory, $"AS_FunctionBinding_{module.ShortName}_NativeModuleFunctionAddress_{shardIndex:D3}.cpp");
-			factory.CommitOutput(outputPath, BuildNativeModuleFunctionAddressShard(module.ShortName, nativeModuleFunctionBindings, startIndex, entryCount, shardIndex, nativeModuleFunctionAddressShardCount, layoutVersion));
+			factory.CommitOutput(outputPath, BuildNativeModuleFunctionAddressShard(module.ShortName, nativeModuleFunctionBindings, startIndex, bindingCount, shardIndex, nativeModuleFunctionAddressShardCount, layoutVersion));
 			generatedPaths.Add(outputPath);
 			shardCount++;
-			for (int entryIndex = startIndex; entryIndex < startIndex + entryCount; entryIndex++)
+			for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
 			{
-				AngelscriptNativeModuleFunctionBinding binding = nativeModuleFunctionBindings[entryIndex];
+				AngelscriptNativeModuleFunctionBinding binding = nativeModuleFunctionBindings[bindingIndex];
 				generatedDiagnostics.Add(new AngelscriptFunctionBindingDiagnosticRow(
 					module.ShortName,
 					editorOnly,
@@ -211,9 +211,9 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 			shardCount);
 	}
 
-	private static int GetShardCount(int entryCount)
+	private static int GetShardCount(int bindingCount)
 	{
-		return entryCount == 0 ? 0 : (entryCount + MaxEntriesPerShard - 1) / MaxEntriesPerShard;
+		return bindingCount == 0 ? 0 : (bindingCount + MaxBindingsPerShard - 1) / MaxBindingsPerShard;
 	}
 
 	private static void CollectFunctionBindings(
@@ -223,7 +223,7 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		bool emitRuntimeLinked,
 		bool emitNativeModuleFunctionAddress,
 		SortedSet<string> includes,
-		List<AngelscriptGeneratedFunctionRegistration> runtimeBindings,
+		List<AngelscriptGeneratedFunctionRegistration> generatedBindings,
 		List<AngelscriptNativeModuleFunctionBinding> nativeModuleFunctionBindings,
 		List<AngelscriptSkippedFunctionDiagnostic> skippedDiagnostics,
 		ref int analyzedFunctionCount)
@@ -242,7 +242,7 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 				if (emitRuntimeLinked)
 				{
 					AngelscriptFunctionBindingAnalysisResult analysis = AnalyzeRuntimeLinkedFunction(moduleName, classObj, function);
-					runtimeBindings.Add(new AngelscriptGeneratedFunctionRegistration(
+					generatedBindings.Add(new AngelscriptGeneratedFunctionRegistration(
 						classObj.SourceName,
 						function.SourceName,
 						includePath,
@@ -292,7 +292,7 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 
 		foreach (UhtType child in type.Children)
 		{
-			CollectFunctionBindings(factory, child, moduleName, emitRuntimeLinked, emitNativeModuleFunctionAddress, includes, runtimeBindings, nativeModuleFunctionBindings, skippedDiagnostics, ref analyzedFunctionCount);
+			CollectFunctionBindings(factory, child, moduleName, emitRuntimeLinked, emitNativeModuleFunctionAddress, includes, generatedBindings, nativeModuleFunctionBindings, skippedDiagnostics, ref analyzedFunctionCount);
 		}
 	}
 
