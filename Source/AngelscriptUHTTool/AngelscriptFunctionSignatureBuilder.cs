@@ -54,7 +54,7 @@ internal static class AngelscriptFunctionSignatureBuilder
 			return false;
 		}
 
-		if (failureReason == "overloaded-unresolved" && !IsWhitelistedDirectBindFallback(classObj, function))
+		if (failureReason == "overloaded-unresolved" && !IsExplicitSignatureFallbackAllowed(classObj, function))
 		{
 			return false;
 		}
@@ -100,7 +100,7 @@ internal static class AngelscriptFunctionSignatureBuilder
 		return true;
 	}
 
-	private static bool IsWhitelistedDirectBindFallback(UhtClass classObj, UhtFunction function)
+	private static bool IsExplicitSignatureFallbackAllowed(UhtClass classObj, UhtFunction function)
 	{
 		return classObj.SourceName == "URuntimeFloatCurveMixinLibrary" &&
 			(function.SourceName == "GetNumKeys" || function.SourceName == "GetTimeRange");

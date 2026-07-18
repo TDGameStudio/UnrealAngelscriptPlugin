@@ -2,8 +2,8 @@
 #error WITH_ANGELSCRIPT_UNITTESTS must be defined by AngelscriptTest.Build.cs.
 #endif
 
-#ifndef WITH_ANGELSCRIPT_MODULE_BINDINGS
-#error WITH_ANGELSCRIPT_MODULE_BINDINGS must be defined by AngelscriptRuntime.Build.cs.
+#ifndef WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS
+#error WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS must be defined by AngelscriptRuntime.Build.cs.
 #endif
 
 static_assert(
@@ -11,5 +11,5 @@ static_assert(
 	"WITH_ANGELSCRIPT_UNITTESTS must be a boolean-like compile definition.");
 
 static_assert(
-	WITH_ANGELSCRIPT_MODULE_BINDINGS == 0 || WITH_ANGELSCRIPT_MODULE_BINDINGS == 1,
-	"WITH_ANGELSCRIPT_MODULE_BINDINGS must be a boolean-like compile definition.");
+	WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS == 0 || WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS == 1,
+	"WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS must be a boolean-like compile definition.");

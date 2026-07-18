@@ -77,7 +77,14 @@ namespace
 
 	FDelegateHandle GOnPostEngineInitHandle;
 
-	bool IsSourceEngineDistribution()
+	enum class EAngelscriptEngineDistribution
+	{
+		SourceBuilt,
+		Installed,
+		Unknown,
+	};
+
+	EAngelscriptEngineDistribution ClassifyEngineDistribution()
 	{
 		FString EngineDirectory = FPaths::ConvertRelativePathToFull(FPaths::EngineDir());
 		EngineDirectory.RemoveFromEnd(TEXT("/"));
@@ -85,35 +92,37 @@ namespace
 
 		if (IFileManager::Get().FileExists(*FPaths::Combine(EngineDirectory, TEXT("Build/InstalledBuild.txt"))))
 		{
-			return false;
+			return EAngelscriptEngineDistribution::Installed;
 		}
 
 		if (IFileManager::Get().FileExists(*FPaths::Combine(EngineDirectory, TEXT("Build/SourceDistribution.txt"))) ||
 			IFileManager::Get().DirectoryExists(*FPaths::Combine(EngineDirectory, TEXT(".git"))))
 		{
-			return true;
+			return EAngelscriptEngineDistribution::SourceBuilt;
 		}
 
 		const FString EngineParentDirectory = FPaths::GetPath(EngineDirectory);
-		return IFileManager::Get().DirectoryExists(*FPaths::Combine(EngineParentDirectory, TEXT(".git")));
+		return IFileManager::Get().DirectoryExists(*FPaths::Combine(EngineParentDirectory, TEXT(".git")))
+			? EAngelscriptEngineDistribution::SourceBuilt
+			: EAngelscriptEngineDistribution::Unknown;
 	}
 
-	bool ValidateModuleBindingCompileOption()
+	bool ValidateFunctionBindingMethod()
 	{
 		UAngelscriptCompileOptions* CompileOptions = GetMutableDefault<UAngelscriptCompileOptions>();
-		if (!CompileOptions->bCompileAngelscriptModuleBindings || IsSourceEngineDistribution())
+		if (CompileOptions->FunctionBindingMethod != EAngelscriptFunctionBindingMethod::NativeModuleFunctionAddress || ClassifyEngineDistribution() == EAngelscriptEngineDistribution::SourceBuilt)
 		{
 			return true;
 		}
 
-		CompileOptions->bCompileAngelscriptModuleBindings = false;
+		CompileOptions->FunctionBindingMethod = EAngelscriptFunctionBindingMethod::None;
 		FMessageDialog::Open(
 			EAppMsgType::Ok,
 			FText::Format(
 				NSLOCTEXT(
 					"Angelscript",
-					"AngelscriptModuleBindingsRequiresSourceEngine",
-					"ModuleBinding compilation requires a source engine. The current engine cannot compile Engine ModuleBinding shards:\n{0}\n\nThe option has been disabled and your change was not saved."),
+					"AngelscriptNativeModuleFunctionAddressRequiresSourceEngine",
+					"NativeModuleFunctionAddress binding requires a source engine. The current engine cannot compile target-module function binding shards:\n{0}\n\nThe option has been reset to None and your change was not saved."),
 				FText::FromString(FPaths::EngineDir())));
 		return false;
 	}
@@ -943,7 +952,7 @@ void FAngelscriptEditorModule::StartupModule()
 		);
 		if (CompileOptionsSection.IsValid())
 		{
-			CompileOptionsSection->OnModified().BindStatic(&ValidateModuleBindingCompileOption);
+			CompileOptionsSection->OnModified().BindStatic(&ValidateFunctionBindingMethod);
 		}
 	}
 

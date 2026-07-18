@@ -106,7 +106,7 @@ internal static class AngelscriptHeaderSignatureResolver
 		return false;
 	}
 
-	public static bool TryBuildModuleBinding(UhtClass classObj, UhtFunction function, out AngelscriptFunctionSignature? signature, out string? failureReason)
+	public static bool TryBuildNativeModuleFunctionSignature(UhtClass classObj, UhtFunction function, out AngelscriptFunctionSignature? signature, out string? failureReason)
 	{
 		signature = null;
 

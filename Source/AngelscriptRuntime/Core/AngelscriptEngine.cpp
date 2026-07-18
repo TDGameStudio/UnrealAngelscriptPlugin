@@ -2361,9 +2361,9 @@ void FAngelscriptEngine::BindScriptTypes()
 	FAngelscriptEnumTableBaselineProbe::Reset();
 	#endif
 
-	FAngelscriptBinds::ResetGeneratedFunctionTableTiming();
+	FAngelscriptBinds::ResetGeneratedFunctionBindingTiming();
 	FAngelscriptBinds::CallBinds(CollectDisabledBindNames());
-	FAngelscriptBinds::LogGeneratedFunctionTableTimingSummary();
+	FAngelscriptBinds::LogGeneratedFunctionBindingTimingSummary();
 
 	#if WITH_DEV_AUTOMATION_TESTS
 	FAngelscriptBindExecutionObservation::EndBindScriptTypesTiming();

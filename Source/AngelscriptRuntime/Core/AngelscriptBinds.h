@@ -115,14 +115,14 @@ struct FSystemFunctionBind
 	TSharedPtr<FAngelscriptType> ObjectType;
 };
 
-struct FGeneratedFunctionTableModuleTiming
+struct FGeneratedFunctionBindingModuleTiming
 {
 	int32 EntryCount = 0;
 	int32 ShardCount = 0;
 	double TotalDurationMs = 0.0;
 };
 
-struct FGeneratedFunctionTableShardTiming
+struct FGeneratedFunctionBindingShardTiming
 {
 	FName ModuleName = NAME_None;
 	int32 ShardIndex = 0;
@@ -131,10 +131,10 @@ struct FGeneratedFunctionTableShardTiming
 	double DurationMs = 0.0;
 };
 
-struct FGeneratedFunctionTableTimingSummary
+struct FGeneratedFunctionBindingTimingSummary
 {
-	TMap<FName, FGeneratedFunctionTableModuleTiming> ModuleTimings;
-	FGeneratedFunctionTableShardTiming SlowestShard;
+	TMap<FName, FGeneratedFunctionBindingModuleTiming> ModuleTimings;
+	FGeneratedFunctionBindingShardTiming SlowestShard;
 	int32 TotalEntryCount = 0;
 	int32 TotalShardCount = 0;
 	double TotalDurationMs = 0.0;
@@ -154,7 +154,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBindState
 	TSet<FName> SkipBindClasses;
 	int32 PreviouslyBoundFunction = -1;
 	int32 PreviouslyBoundGlobalProperty = -1;
-	FGeneratedFunctionTableTimingSummary GeneratedFunctionTableTimingSummary;
+	FGeneratedFunctionBindingTimingSummary GeneratedFunctionBindingTimingSummary;
 };
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
@@ -510,9 +510,9 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
 	static TMap<UClass*, TSet<FString>>& GetSkipBinds();
 	static TSet<TTuple<FName, FName>>& GetSkipBindNames();
 	static TSet<FName>& GetSkipBindClasses();
-	static void ResetGeneratedFunctionTableTiming();
-	static void RecordGeneratedFunctionTableShardTiming(const TCHAR* ModuleName, int32 ShardIndex, int32 ShardCount, int32 EntryCount, double ElapsedMilliseconds);
-	static void LogGeneratedFunctionTableTimingSummary();
+	static void ResetGeneratedFunctionBindingTiming();
+	static void RecordGeneratedFunctionBindingShardTiming(const TCHAR* ModuleName, int32 ShardIndex, int32 ShardCount, int32 EntryCount, double ElapsedMilliseconds);
+	static void LogGeneratedFunctionBindingTimingSummary();
 
 	struct ANGELSCRIPTRUNTIME_API FNamespace
 	{

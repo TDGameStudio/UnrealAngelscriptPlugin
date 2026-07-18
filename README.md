@@ -60,10 +60,12 @@ Enable test registration in the host project before running Angelscript C++ auto
 ; Config/DefaultAngelscriptCompileOptions.ini
 [/Script/AngelscriptRuntime.AngelscriptCompileOptions]
 bCompileAngelscriptUnitTests=true
-bCompileAngelscriptModuleBindings=false
+FunctionBindingMethod=NativeRuntimeLinked
++NativeRuntimeLinkedModules=Engine
++NativeRuntimeLinkedModules=UMG
 ```
 
-`bCompileAngelscriptModuleBindings` is disabled by default and requires a source-built Unreal Engine. It controls both UHT ModuleBinding shard generation and the Runtime modular-feature bridge. The Editor rejects enabling it for installed or unknown engine distributions; direct ini edits are rejected by UBT and UHT as well. After changing compile options, rebuild the editor target so `AngelscriptTest.Build.cs` can update `WITH_ANGELSCRIPT_UNITTESTS` and `AngelscriptRuntime.Build.cs` can update `WITH_ANGELSCRIPT_MODULE_BINDINGS`. In the original host project, tests are run through `Tools/RunTests.ps1`; standalone consumers can run Unreal Automation tests by prefix once the plugin is installed in a host project and rebuilt with test registration enabled.
+`FunctionBindingMethod` selects one global automatic binding backend: `None`, `NativeRuntimeLinked`, or `NativeModuleFunctionAddress`. Runtime-linked modules are listed with `+NativeRuntimeLinkedModules=ModuleName`; target-module address generation is listed with `+NativeModuleFunctionAddressModules=ModuleName`. `NativeModuleFunctionAddress` requires a source-built Unreal Engine and is rejected by the Editor, UBT, and UHT for installed or unknown engine distributions. After changing compile options, rebuild the editor target so `AngelscriptTest.Build.cs` and `AngelscriptRuntime.Build.cs` consume the new method and module arrays. In the original host project, tests are run through `Tools/RunTests.ps1`; standalone consumers can run Unreal Automation tests by prefix once the plugin is installed in a host project and rebuilt with test registration enabled.
 
 ## History
 

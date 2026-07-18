@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnrealBuildTool;
 
 namespace UnrealBuildTool.Rules
@@ -10,10 +12,10 @@ namespace UnrealBuildTool.Rules
 		{
 			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 			NumIncludedBytesPerUnityCPPOverride = 131072;
-			bool bCompileAngelscriptModuleBindings = ReadModuleBindingSetting(Target);
+			FunctionBindingSettings bindingSettings = ReadFunctionBindingSettings(Target);
 			PrivateDefinitions.Add("ANGELSCRIPT_EXPORT=1");
 			PublicDefinitions.Add("WITH_ANGELSCRIPT=1");
-			PublicDefinitions.Add("WITH_ANGELSCRIPT_MODULE_BINDINGS=" + (bCompileAngelscriptModuleBindings ? "1" : "0"));
+			PublicDefinitions.Add("WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS=" + (bindingSettings.Method == FunctionBindingMethod.NativeModuleFunctionAddress ? "1" : "0"));
 			PublicDefinitions.Add("ANGELSCRIPT_DLL_LIBRARY_IMPORT=1");
 
 			PublicIncludePaths.Add(ModuleDirectory);
@@ -31,8 +33,6 @@ namespace UnrealBuildTool.Rules
 			{
 				OptimizeCode = CodeOptimization.Never;
 			}
-
-			AddGeneratedFunctionTableWrappers();
 
 			/* Link to libraries used in core angelscript code */
 			PublicDependencyModuleNames.AddRange(new string[]
@@ -82,6 +82,12 @@ namespace UnrealBuildTool.Rules
 				});
 			}
 
+			if (bindingSettings.Method == FunctionBindingMethod.NativeRuntimeLinked)
+			{
+				AddConfiguredRuntimeLinkedDependencies(bindingSettings.RuntimeLinkedModules, Target);
+				AddGeneratedFunctionBindingWrappers(bindingSettings.RuntimeLinkedModules);
+			}
+
             //var PluginPath = "../Plugins/Angelscript";
             //var PluginPath = "./Plugins/Angelscript";
             //var PluginPath = "./";
@@ -91,101 +97,157 @@ namespace UnrealBuildTool.Rules
 			//PublicIncludePaths.Add(PluginPath + "/ThirdParty/source");
 		}
 
-		private void AddGeneratedFunctionTableWrappers()
+		private void AddGeneratedFunctionBindingWrappers(HashSet<string> moduleNames)
 		{
-			AddGeneratedFunctionTableModuleWrappers("AIModule", 2);
-			AddGeneratedFunctionTableModuleWrappers("AngelscriptRuntime", 2);
-			AddGeneratedFunctionTableModuleWrappers("AssetRegistry", 2);
-			AddGeneratedFunctionTableModuleWrappers("Engine", 32);
-			AddGeneratedFunctionTableModuleWrappers("EngineSettings", 2);
-			AddGeneratedFunctionTableModuleWrappers("EnhancedInput", 2);
-			AddGeneratedFunctionTableModuleWrappers("Landscape", 2);
-			AddGeneratedFunctionTableModuleWrappers("NavigationSystem", 2);
-			AddGeneratedFunctionTableModuleWrappers("UMG", 8);
-			AddGeneratedFunctionTableModuleWrappers("UMGEditor", 2);
-			AddGeneratedFunctionTableModuleWrappers("UnrealEd", 4);
+			foreach (string moduleName in moduleNames.OrderBy(static name => name, StringComparer.OrdinalIgnoreCase))
+			{
+				AddGeneratedFunctionBindingModuleWrappers(moduleName);
+			}
 		}
 
-		private void AddGeneratedFunctionTableModuleWrappers(string ModuleName, int MaxShardCount)
+		private void AddGeneratedFunctionBindingModuleWrappers(string moduleName)
 		{
-			for (int ShardIndex = 0; ShardIndex < MaxShardCount; ShardIndex++)
+			const int MaxShardCount = 64;
+			for (int shardIndex = 0; shardIndex < MaxShardCount; shardIndex++)
 			{
-				string ShardName = $"AS_FunctionTable_{ModuleName}_{ShardIndex:D3}";
+				string shardName = $"AS_FunctionBinding_{moduleName}_{shardIndex:D3}";
 				FilesToGenerate.Add(
-					$"AngelscriptGeneratedFunctionTableWrappers/{ShardName}.cpp",
+					$"AngelscriptGeneratedFunctionBindingWrappers/{shardName}.cpp",
 					new[]
 					{
-						$"#if __has_include(\"{ShardName}.gen.cpp\")",
-						$"#include UE_INLINE_GENERATED_CPP_BY_NAME({ShardName})",
+						$"#if __has_include(\"{shardName}.gen.cpp\")",
+						$"#include UE_INLINE_GENERATED_CPP_BY_NAME({shardName})",
 						"#endif",
 					});
 			}
 		}
 
-		private bool ReadModuleBindingSetting(ReadOnlyTargetRules Target)
+		private void AddConfiguredRuntimeLinkedDependencies(HashSet<string> moduleNames, ReadOnlyTargetRules target)
 		{
-			if (Target.ProjectFile == null)
+			HashSet<string> existingDependencies = new(StringComparer.OrdinalIgnoreCase);
+			foreach (string dependency in PublicDependencyModuleNames)
 			{
-				return false;
+				existingDependencies.Add(dependency);
+			}
+			foreach (string dependency in PrivateDependencyModuleNames)
+			{
+				existingDependencies.Add(dependency);
 			}
 
-			string? ProjectDirectory = Path.GetDirectoryName(Target.ProjectFile.FullName);
-			if (string.IsNullOrEmpty(ProjectDirectory))
+			HashSet<string> editorOnlyModules = new(StringComparer.OrdinalIgnoreCase)
 			{
-				return false;
-			}
-
-			string ConfigPath = Path.Combine(ProjectDirectory, "Config", "DefaultAngelscriptCompileOptions.ini");
-			ExternalDependencies.Add(ConfigPath);
-
-			const string SettingSection = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
-			const string SettingName = "bCompileAngelscriptModuleBindings";
-			if (!File.Exists(ConfigPath))
+				"UMGEditor",
+				"UnrealEd",
+			};
+			foreach (string moduleName in moduleNames)
 			{
-				return false;
-			}
-
-			bool bInSection = false;
-			foreach (string RawLine in File.ReadAllLines(ConfigPath))
-			{
-				string Line = RawLine.Trim();
-				if (Line.Length == 0 || Line.StartsWith(";") || Line.StartsWith("#"))
+				if (moduleName.Length == 0 || moduleName.Equals("AngelscriptRuntime", StringComparison.OrdinalIgnoreCase) || (!target.bBuildEditor && editorOnlyModules.Contains(moduleName)))
 				{
 					continue;
 				}
 
-				if (Line.StartsWith("[") && Line.EndsWith("]"))
+				if (!existingDependencies.Contains(moduleName))
 				{
-					bInSection = string.Equals(Line.Substring(1, Line.Length - 2), SettingSection, StringComparison.Ordinal);
-					continue;
+					PrivateDependencyModuleNames.Add(moduleName);
+					existingDependencies.Add(moduleName);
 				}
+			}
+		}
 
-				if (!bInSection)
-				{
-					continue;
-				}
+		private sealed record FunctionBindingSettings(FunctionBindingMethod Method, HashSet<string> RuntimeLinkedModules);
 
-				int SeparatorIndex = Line.IndexOf('=');
-				if (SeparatorIndex <= 0 || !string.Equals(Line.Substring(0, SeparatorIndex).Trim(), SettingName, StringComparison.OrdinalIgnoreCase))
-				{
-					continue;
-				}
+		private enum FunctionBindingMethod
+		{
+			None,
+			NativeRuntimeLinked,
+			NativeModuleFunctionAddress,
+		}
 
-				string Value = Line.Substring(SeparatorIndex + 1).Trim();
-				bool bEnabled = Value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
-					Value.Equals("1", StringComparison.OrdinalIgnoreCase) ||
-					Value.Equals("yes", StringComparison.OrdinalIgnoreCase);
-				if (bEnabled && !IsSourceEngine())
-				{
-					throw new BuildException(
-						"Angelscript ModuleBinding compilation requires a source engine. Engine '{0}' is installed, binary, or unknown; disable bCompileAngelscriptModuleBindings or use a source engine.",
-						EngineDirectory);
-				}
-
-				return bEnabled;
+		private FunctionBindingSettings ReadFunctionBindingSettings(ReadOnlyTargetRules target)
+		{
+			HashSet<string> runtimeLinkedModules = new(StringComparer.OrdinalIgnoreCase);
+			if (target.ProjectFile == null)
+			{
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules);
 			}
 
-			return false;
+			string? projectDirectory = Path.GetDirectoryName(target.ProjectFile.FullName);
+			if (string.IsNullOrEmpty(projectDirectory))
+			{
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules);
+			}
+
+			string configPath = Path.Combine(projectDirectory, "Config", "DefaultAngelscriptCompileOptions.ini");
+			ExternalDependencies.Add(configPath);
+
+			const string settingSection = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
+			if (!File.Exists(configPath))
+			{
+				return new FunctionBindingSettings(FunctionBindingMethod.NativeRuntimeLinked, runtimeLinkedModules);
+			}
+
+			FunctionBindingMethod method = FunctionBindingMethod.NativeRuntimeLinked;
+			bool inSection = false;
+			foreach (string rawLine in File.ReadAllLines(configPath))
+			{
+				string line = rawLine.Trim();
+				if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#"))
+				{
+					continue;
+				}
+
+				if (line.StartsWith("[") && line.EndsWith("]"))
+				{
+					inSection = string.Equals(line.Substring(1, line.Length - 2), settingSection, StringComparison.Ordinal);
+					continue;
+				}
+
+				if (!inSection)
+				{
+					continue;
+				}
+
+				int separatorIndex = line.IndexOf('=');
+				if (separatorIndex <= 0)
+				{
+					continue;
+				}
+
+				string key = line.Substring(0, separatorIndex).Trim().TrimStart('+');
+				string value = line.Substring(separatorIndex + 1).Trim();
+				if (key.Equals("FunctionBindingMethod", StringComparison.OrdinalIgnoreCase))
+				{
+					method = ParseFunctionBindingMethod(value);
+				}
+				else if (key.Equals("NativeRuntimeLinkedModules", StringComparison.OrdinalIgnoreCase))
+				{
+					if (value.Length == 0)
+					{
+						throw new BuildException("NativeRuntimeLinkedModules contains an empty module name in '{0}'.", configPath);
+					}
+					runtimeLinkedModules.Add(value);
+				}
+			}
+
+			if (method == FunctionBindingMethod.NativeModuleFunctionAddress && !IsSourceEngine())
+			{
+				throw new BuildException(
+					"NativeModuleFunctionAddress compilation requires a source engine. Engine '{0}' is installed, binary, or unknown; select None or NativeRuntimeLinked, or use a source engine.",
+					EngineDirectory);
+			}
+
+			return new FunctionBindingSettings(method, runtimeLinkedModules);
+		}
+
+		private static FunctionBindingMethod ParseFunctionBindingMethod(string value)
+		{
+			return value switch
+			{
+				"None" => FunctionBindingMethod.None,
+				"NativeRuntimeLinked" => FunctionBindingMethod.NativeRuntimeLinked,
+				"NativeModuleFunctionAddress" => FunctionBindingMethod.NativeModuleFunctionAddress,
+				_ => throw new BuildException("Unknown FunctionBindingMethod '{0}'. Expected None, NativeRuntimeLinked, or NativeModuleFunctionAddress.", value),
+			};
 		}
 
 		private static bool IsSourceEngine()

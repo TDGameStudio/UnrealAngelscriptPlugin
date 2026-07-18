@@ -85,9 +85,9 @@ int32& FAngelscriptBinds::GetPreviouslyBoundGlobalPropertyRef()
 	return GetBindState().PreviouslyBoundGlobalProperty;
 }
 
-static FGeneratedFunctionTableTimingSummary& GetGeneratedFunctionTableTimingSummaryRef()
+static FGeneratedFunctionBindingTimingSummary& GetGeneratedFunctionBindingTimingSummaryRef()
 {
-	return GetBindState().GeneratedFunctionTableTimingSummary;
+	return GetBindState().GeneratedFunctionBindingTimingSummary;
 }
 
 bool FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(const UFunction* Function)
@@ -231,20 +231,20 @@ void FAngelscriptBinds::ResetBindState()
 	GetBindState() = FAngelscriptBindState();
 }
 
-void FAngelscriptBinds::ResetGeneratedFunctionTableTiming()
+void FAngelscriptBinds::ResetGeneratedFunctionBindingTiming()
 {
-	GetGeneratedFunctionTableTimingSummaryRef() = FGeneratedFunctionTableTimingSummary();
+	GetGeneratedFunctionBindingTimingSummaryRef() = FGeneratedFunctionBindingTimingSummary();
 }
 
-void FAngelscriptBinds::RecordGeneratedFunctionTableShardTiming(const TCHAR* ModuleName, int32 ShardIndex, int32 ShardCount, int32 EntryCount, double ElapsedMilliseconds)
+void FAngelscriptBinds::RecordGeneratedFunctionBindingShardTiming(const TCHAR* ModuleName, int32 ShardIndex, int32 ShardCount, int32 EntryCount, double ElapsedMilliseconds)
 {
-	FGeneratedFunctionTableTimingSummary& TimingSummary = GetGeneratedFunctionTableTimingSummaryRef();
+	FGeneratedFunctionBindingTimingSummary& TimingSummary = GetGeneratedFunctionBindingTimingSummaryRef();
 	TimingSummary.TotalEntryCount += EntryCount;
 	TimingSummary.TotalShardCount++;
 	TimingSummary.TotalDurationMs += ElapsedMilliseconds;
 
 	const FName ModuleFName(ModuleName);
-	FGeneratedFunctionTableModuleTiming& ModuleTiming = TimingSummary.ModuleTimings.FindOrAdd(ModuleFName);
+	FGeneratedFunctionBindingModuleTiming& ModuleTiming = TimingSummary.ModuleTimings.FindOrAdd(ModuleFName);
 	ModuleTiming.EntryCount += EntryCount;
 	ModuleTiming.ShardCount++;
 	ModuleTiming.TotalDurationMs += ElapsedMilliseconds;
@@ -260,18 +260,18 @@ void FAngelscriptBinds::RecordGeneratedFunctionTableShardTiming(const TCHAR* Mod
 	}
 }
 
-void FAngelscriptBinds::LogGeneratedFunctionTableTimingSummary()
+void FAngelscriptBinds::LogGeneratedFunctionBindingTimingSummary()
 {
-	const FGeneratedFunctionTableTimingSummary& TimingSummary = GetGeneratedFunctionTableTimingSummaryRef();
+	const FGeneratedFunctionBindingTimingSummary& TimingSummary = GetGeneratedFunctionBindingTimingSummaryRef();
 	if (TimingSummary.TotalShardCount == 0)
 	{
 		return;
 	}
 
 	FName SlowestModuleName = NAME_None;
-	FGeneratedFunctionTableModuleTiming SlowestModuleTiming;
+	FGeneratedFunctionBindingModuleTiming SlowestModuleTiming;
 	bool bHasSlowestModule = false;
-	for (const TPair<FName, FGeneratedFunctionTableModuleTiming>& ModulePair : TimingSummary.ModuleTimings)
+	for (const TPair<FName, FGeneratedFunctionBindingModuleTiming>& ModulePair : TimingSummary.ModuleTimings)
 	{
 		if (!bHasSlowestModule || ModulePair.Value.TotalDurationMs > SlowestModuleTiming.TotalDurationMs)
 		{
