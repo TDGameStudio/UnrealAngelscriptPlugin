@@ -112,19 +112,17 @@ namespace UnrealBuildTool.Rules
 
 		private void AddGeneratedFunctionBindingModuleWrappers(string ModuleName)
 		{
-			const int MaxShardCount = 64;
-			List<string> AggregatorSource = new();
-			for (int ShardIndex = 0; ShardIndex < MaxShardCount; ShardIndex++)
+			string GeneratedSourceName = $"AS_FunctionBinding_{ModuleName}";
+			string[] AggregatorSource =
 			{
-				string ShardName = $"AS_FunctionBinding_{ModuleName}_{ShardIndex:D3}";
-				AggregatorSource.Add($"#if __has_include(\"{ShardName}.gen.cpp\")");
-				AggregatorSource.Add($"#include UE_INLINE_GENERATED_CPP_BY_NAME({ShardName})");
-				AggregatorSource.Add("#endif");
-			}
+				$"#if __has_include(\"{GeneratedSourceName}.gen.cpp\")",
+				$"#include UE_INLINE_GENERATED_CPP_BY_NAME({GeneratedSourceName})",
+				"#endif",
+			};
 
 			FilesToGenerate.Add(
 				$"AngelscriptGeneratedFunctionBindingWrappers/AS_FunctionBinding_{ModuleName}_Aggregator.cpp",
-				AggregatorSource.ToArray());
+				AggregatorSource);
 		}
 
 		private void AddConfiguredRuntimeLinkedDependencies(HashSet<string> ModuleNames, ReadOnlyTargetRules Target)

@@ -11,14 +11,16 @@ namespace AngelscriptUHTTool;
 
 internal static partial class AngelscriptFunctionBindingCodeGenerator
 {
-	private static StringBuilder BuildGeneratedFunctionBindingShard(string moduleName, bool editorOnly, List<AngelscriptGeneratedFunctionRegistration> bindings, int startIndex, int bindingCount, int shardIndex, int shardCount)
+	private const int MaxBindingsPerRuntimeLinkedHelperFunction = 256;
+
+	private static StringBuilder BuildGeneratedFunctionBindingModule(string moduleName, bool editorOnly, List<AngelscriptGeneratedFunctionRegistration> bindings)
 	{
 		SortedSet<string> includes = new(StringComparer.Ordinal);
-		for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
+		foreach (AngelscriptGeneratedFunctionRegistration binding in bindings)
 		{
-			if (bindings[bindingIndex].IncludePath.Length > 0)
+			if (binding.IncludePath.Length > 0)
 			{
-				includes.Add(bindings[bindingIndex].IncludePath);
+				includes.Add(binding.IncludePath);
 			}
 		}
 
@@ -38,10 +40,41 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 			builder.Append("#include \"").Append(include).AppendLine("\"");
 		}
 
+		string moduleIdentifier = SanitizeIdentifier(moduleName);
+		int helperFunctionCount = (bindings.Count + MaxBindingsPerRuntimeLinkedHelperFunction - 1) / MaxBindingsPerRuntimeLinkedHelperFunction;
 		builder.AppendLine();
-		builder.Append("AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AS_FunctionBinding_").Append(moduleName).Append('_').Append(shardIndex.ToString("D3", CultureInfo.InvariantCulture)).AppendLine("((int32)FAngelscriptBinds::EOrder::Late + 50, []()");
+		builder.AppendLine("namespace");
 		builder.AppendLine("{");
-		builder.AppendLine("\tconst double GeneratedFunctionBindingStartSeconds = FPlatformTime::Seconds();");
+		for (int helperFunctionIndex = 0; helperFunctionIndex < helperFunctionCount; helperFunctionIndex++)
+		{
+			int startIndex = helperFunctionIndex * MaxBindingsPerRuntimeLinkedHelperFunction;
+			int bindingCount = Math.Min(MaxBindingsPerRuntimeLinkedHelperFunction, bindings.Count - startIndex);
+			builder.Append("\tstatic void RegisterGeneratedFunctionBindingBatch_").Append(moduleIdentifier).Append('_').Append(helperFunctionIndex.ToString("D3", CultureInfo.InvariantCulture)).AppendLine("()");
+			builder.AppendLine("\t{");
+			AppendGeneratedFunctionBindingRegistrations(builder, editorOnly, bindings, startIndex, bindingCount);
+			builder.AppendLine("\t}");
+			builder.AppendLine();
+		}
+		builder.AppendLine("}");
+		builder.AppendLine();
+		builder.Append("AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AS_FunctionBinding_").Append(moduleName).Append("(TEXT(\"UHT.FunctionBinding.").Append(moduleName).AppendLine("\"), (int32)FAngelscriptBinds::EOrder::Late + 50, []()");
+		builder.AppendLine("{");
+		for (int helperFunctionIndex = 0; helperFunctionIndex < helperFunctionCount; helperFunctionIndex++)
+		{
+			builder.Append("\tRegisterGeneratedFunctionBindingBatch_").Append(moduleIdentifier).Append('_').Append(helperFunctionIndex.ToString("D3", CultureInfo.InvariantCulture)).AppendLine("();");
+		}
+
+		builder.AppendLine("});");
+		builder.AppendLine("PRAGMA_ENABLE_DEPRECATION_WARNINGS");
+		if (editorOnly)
+		{
+			builder.AppendLine("#endif");
+		}
+		return builder;
+	}
+
+	private static void AppendGeneratedFunctionBindingRegistrations(StringBuilder builder, bool editorOnly, List<AngelscriptGeneratedFunctionRegistration> bindings, int startIndex, int bindingCount)
+	{
 		for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
 		{
 			AngelscriptGeneratedFunctionRegistration binding = bindings[bindingIndex];
@@ -50,23 +83,12 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 			{
 				builder.Append("#if ").AppendLine(binding.EditorOnlyGuard);
 			}
-			builder.AppendLine(binding.BuildBindingRegistrationLine());
+			builder.Append('\t').AppendLine(binding.BuildBindingRegistrationLine());
 			if (needsEditorGuard)
 			{
 				builder.AppendLine("#endif");
 			}
 		}
-
-		builder.AppendLine("\tconst double GeneratedFunctionBindingElapsedMilliseconds = (FPlatformTime::Seconds() - GeneratedFunctionBindingStartSeconds) * 1000.0;");
-		builder.Append("\tFAngelscriptBinds::RecordGeneratedFunctionBindingShardTiming(TEXT(\"").Append(moduleName).Append("\"), ").Append(shardIndex + 1).Append(", ").Append(shardCount).Append(", ").Append(bindingCount).AppendLine(", GeneratedFunctionBindingElapsedMilliseconds);");
-		builder.Append("\tUE_LOG(Angelscript, Log, TEXT(\"[UHT] Registered %d generated AS-callable bindings for module %s shard %d/%d in %.3f ms\"), ").Append(bindingCount).Append(", TEXT(\"").Append(moduleName).Append("\"), ").Append(shardIndex + 1).Append(", ").Append(shardCount).AppendLine(", GeneratedFunctionBindingElapsedMilliseconds);");
-		builder.AppendLine("});");
-		builder.AppendLine("PRAGMA_ENABLE_DEPRECATION_WARNINGS");
-		if (editorOnly)
-		{
-			builder.AppendLine("#endif");
-		}
-		return builder;
 	}
 
 	private static StringBuilder BuildNativeModuleFunctionAddressShard(string moduleName, List<AngelscriptNativeModuleFunctionBinding> bindings, int startIndex, int bindingCount, int shardIndex, int shardCount, string layoutVersion)

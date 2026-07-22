@@ -24,31 +24,49 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionBindingTests,
 	"Angelscript.TestModule.Engine.GeneratedFunctionBinding",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	TEST_METHOD(GeneratedRuntimeShardsUseFunctionBindingPrefix)
+	TEST_METHOD(GeneratedRuntimeModulesUseSingleNamedBindingFile)
 	{
 		TArray<FString> GeneratedFiles;
 		IFileManager::Get().FindFilesRecursive(GeneratedFiles, *GetGeneratedDirectory(), TEXT("AS_FunctionBinding_*.gen.cpp"), true, false);
-		if (!TestRunner->TestTrue(TEXT("Function binding UHT should emit runtime shards"), GeneratedFiles.Num() > 0))
+		if (!TestRunner->TestTrue(TEXT("Function binding UHT should emit Runtime-linked module files"), GeneratedFiles.Num() > 0))
 		{
 			return;
 		}
 
-		int32 RegistrationCount = 0;
+		TMap<FString, int32> ModuleFileCounts;
+		bool bPassed = true;
 		for (const FString& GeneratedFile : GeneratedFiles)
 		{
 			FString Contents;
 			if (!FFileHelper::LoadFileToString(Contents, *GeneratedFile))
 			{
+				bPassed &= TestRunner->TestTrue(*FString::Printf(TEXT("Generated binding source should be readable: %s"), *GeneratedFile), false);
 				continue;
 			}
-			TArray<FString> Lines;
-			Contents.ParseIntoArrayLines(Lines);
-			for (const FString& Line : Lines)
+
+			FString ModuleName = FPaths::GetCleanFilename(GeneratedFile);
+			ModuleName.RemoveFromStart(TEXT("AS_FunctionBinding_"));
+			ModuleName.RemoveFromEnd(TEXT(".gen.cpp"));
+			ModuleFileCounts.FindOrAdd(ModuleName)++;
+
+			bool bLegacyShardSuffix = ModuleName.Len() >= 4 && ModuleName[ModuleName.Len() - 4] == TCHAR('_');
+			for (int32 CharacterIndex = ModuleName.Len() - 3; bLegacyShardSuffix && CharacterIndex < ModuleName.Len(); ++CharacterIndex)
 			{
-				RegistrationCount += Line.Contains(TEXT("FAngelscriptBinds::RegisterFunctionBinding(")) ? 1 : 0;
+				bLegacyShardSuffix &= FChar::IsDigit(ModuleName[CharacterIndex]);
 			}
+
+			bPassed &= TestRunner->TestFalse(*FString::Printf(TEXT("Generated Runtime-linked source should not use a numeric shard suffix: %s"), *GeneratedFile), bLegacyShardSuffix);
+			bPassed &= TestRunner->TestTrue(*FString::Printf(TEXT("Generated Runtime-linked bind should have a stable module name: %s"), *GeneratedFile), Contents.Contains(*FString::Printf(TEXT("TEXT(\"UHT.FunctionBinding.%s\")"), *ModuleName)));
+			bPassed &= TestRunner->TestFalse(*FString::Printf(TEXT("Generated Runtime-linked bind should not start an elapsed-time measurement: %s"), *GeneratedFile), Contents.Contains(TEXT("GeneratedFunctionBindingStartSeconds")));
+			bPassed &= TestRunner->TestFalse(*FString::Printf(TEXT("Generated Runtime-linked bind should not record shard timing: %s"), *GeneratedFile), Contents.Contains(TEXT("RecordGeneratedFunctionBindingShardTiming")));
+			bPassed &= TestRunner->TestFalse(*FString::Printf(TEXT("Generated Runtime-linked bind should not log registration timing: %s"), *GeneratedFile), Contents.Contains(TEXT("[UHT] Registered")));
 		}
-		TestRunner->TestTrue(TEXT("Generated runtime shards should contain registrations"), RegistrationCount > 0);
+
+		for (const TPair<FString, int32>& ModuleFileCount : ModuleFileCounts)
+		{
+			bPassed &= TestRunner->TestEqual(*FString::Printf(TEXT("Each Runtime-linked module should emit one generated source: %s"), *ModuleFileCount.Key), ModuleFileCount.Value, 1);
+		}
+		TestRunner->TestTrue(TEXT("Generated Runtime-linked module output contract should pass"), bPassed);
 	}
 
 	TEST_METHOD(StatisticsUseAnalyzedFunctionDenominator)

@@ -14,8 +14,7 @@ namespace AngelscriptUHTTool;
 
 internal static partial class AngelscriptFunctionBindingCodeGenerator
 {
-	private const int MaxBindingsPerShard = 256;
-	private const int MaxRuntimeWrapperShardCount = 64;
+	private const int MaxBindingsPerNativeModuleFunctionAddressShard = 256;
 	private const string LayoutVersionFileName = "native-module-function-binding-layout-version.txt";
 
 	public static int Generate(IUhtExportFactory factory)
@@ -146,22 +145,14 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		int nativeModuleFunctionAddressCount = nativeModuleFunctionBindings.Count;
 		int shardCount = 0;
 
-		int generatedShardCount = emitRuntimeLinked ? GetShardCount(generatedBindings.Count) : 0;
-		if (generatedShardCount > MaxRuntimeWrapperShardCount)
+		if (emitRuntimeLinked && generatedBindings.Count > 0)
 		{
-			throw new InvalidOperationException($"Runtime-linked module '{module.ShortName}' requires {generatedShardCount} function binding shards, exceeding the Build.cs wrapper limit of {MaxRuntimeWrapperShardCount}.");
-		}
-		for (int shardIndex = 0; shardIndex < generatedShardCount; shardIndex++)
-		{
-			int startIndex = shardIndex * MaxBindingsPerShard;
-			int bindingCount = Math.Min(MaxBindingsPerShard, generatedBindings.Count - startIndex);
-			string outputPath = factory.MakePath($"AS_FunctionBinding_{module.ShortName}_{shardIndex:D3}", ".gen.cpp");
-			factory.CommitOutput(outputPath, BuildGeneratedFunctionBindingShard(module.ShortName, editorOnly, generatedBindings, startIndex, bindingCount, shardIndex, generatedShardCount));
+			string outputPath = factory.MakePath($"AS_FunctionBinding_{module.ShortName}", ".gen.cpp");
+			factory.CommitOutput(outputPath, BuildGeneratedFunctionBindingModule(module.ShortName, editorOnly, generatedBindings));
 			generatedPaths.Add(outputPath);
 			shardCount++;
-			for (int bindingIndex = startIndex; bindingIndex < startIndex + bindingCount; bindingIndex++)
+			foreach (AngelscriptGeneratedFunctionRegistration binding in generatedBindings)
 			{
-				AngelscriptGeneratedFunctionRegistration binding = generatedBindings[bindingIndex];
 				generatedDiagnostics.Add(new AngelscriptFunctionBindingDiagnosticRow(
 					module.ShortName,
 					editorOnly,
@@ -171,15 +162,15 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 					binding.FailureReason,
 					binding.EraseMacro,
 					Path.GetFileName(outputPath),
-					shardIndex + 1));
+					1));
 			}
 		}
 
-		int nativeModuleFunctionAddressShardCount = emitNativeModuleFunctionAddress ? GetShardCount(nativeModuleFunctionBindings.Count) : 0;
+		int nativeModuleFunctionAddressShardCount = emitNativeModuleFunctionAddress ? GetNativeModuleFunctionAddressShardCount(nativeModuleFunctionBindings.Count) : 0;
 		for (int shardIndex = 0; shardIndex < nativeModuleFunctionAddressShardCount; shardIndex++)
 		{
-			int startIndex = shardIndex * MaxBindingsPerShard;
-			int bindingCount = Math.Min(MaxBindingsPerShard, nativeModuleFunctionBindings.Count - startIndex);
+			int startIndex = shardIndex * MaxBindingsPerNativeModuleFunctionAddressShard;
+			int bindingCount = Math.Min(MaxBindingsPerNativeModuleFunctionAddressShard, nativeModuleFunctionBindings.Count - startIndex);
 			string outputPath = Path.Combine(module.Module.OutputDirectory, $"AS_FunctionBinding_{module.ShortName}_NativeModuleFunctionAddress_{shardIndex:D3}.cpp");
 			factory.CommitOutput(outputPath, BuildNativeModuleFunctionAddressShard(module.ShortName, nativeModuleFunctionBindings, startIndex, bindingCount, shardIndex, nativeModuleFunctionAddressShardCount, layoutVersion));
 			generatedPaths.Add(outputPath);
@@ -211,9 +202,9 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 			shardCount);
 	}
 
-	private static int GetShardCount(int bindingCount)
+	private static int GetNativeModuleFunctionAddressShardCount(int bindingCount)
 	{
-		return bindingCount == 0 ? 0 : (bindingCount + MaxBindingsPerShard - 1) / MaxBindingsPerShard;
+		return bindingCount == 0 ? 0 : (bindingCount + MaxBindingsPerNativeModuleFunctionAddressShard - 1) / MaxBindingsPerNativeModuleFunctionAddressShard;
 	}
 
 	private static void CollectFunctionBindings(

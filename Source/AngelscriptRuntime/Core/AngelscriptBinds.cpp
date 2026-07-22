@@ -85,11 +85,6 @@ int32& FAngelscriptBinds::GetPreviouslyBoundGlobalPropertyRef()
 	return GetBindState().PreviouslyBoundGlobalProperty;
 }
 
-static FGeneratedFunctionBindingTimingSummary& GetGeneratedFunctionBindingTimingSummaryRef()
-{
-	return GetBindState().GeneratedFunctionBindingTimingSummary;
-}
-
 bool FAngelscriptBinds::ShouldSkipBlueprintCallableFunction(const UFunction* Function)
 {
 	if (Function == nullptr)
@@ -229,75 +224,6 @@ TArray<FAngelscriptBinds::FBindInfo> FAngelscriptBinds::GetBindInfoList(const TS
 void FAngelscriptBinds::ResetBindState()
 {
 	GetBindState() = FAngelscriptBindState();
-}
-
-void FAngelscriptBinds::ResetGeneratedFunctionBindingTiming()
-{
-	GetGeneratedFunctionBindingTimingSummaryRef() = FGeneratedFunctionBindingTimingSummary();
-}
-
-void FAngelscriptBinds::RecordGeneratedFunctionBindingShardTiming(const TCHAR* ModuleName, int32 ShardIndex, int32 ShardCount, int32 EntryCount, double ElapsedMilliseconds)
-{
-	FGeneratedFunctionBindingTimingSummary& TimingSummary = GetGeneratedFunctionBindingTimingSummaryRef();
-	TimingSummary.TotalEntryCount += EntryCount;
-	TimingSummary.TotalShardCount++;
-	TimingSummary.TotalDurationMs += ElapsedMilliseconds;
-
-	const FName ModuleFName(ModuleName);
-	FGeneratedFunctionBindingModuleTiming& ModuleTiming = TimingSummary.ModuleTimings.FindOrAdd(ModuleFName);
-	ModuleTiming.EntryCount += EntryCount;
-	ModuleTiming.ShardCount++;
-	ModuleTiming.TotalDurationMs += ElapsedMilliseconds;
-
-	if (!TimingSummary.bHasSlowestShard || ElapsedMilliseconds > TimingSummary.SlowestShard.DurationMs)
-	{
-		TimingSummary.bHasSlowestShard = true;
-		TimingSummary.SlowestShard.ModuleName = ModuleFName;
-		TimingSummary.SlowestShard.ShardIndex = ShardIndex;
-		TimingSummary.SlowestShard.ShardCount = ShardCount;
-		TimingSummary.SlowestShard.EntryCount = EntryCount;
-		TimingSummary.SlowestShard.DurationMs = ElapsedMilliseconds;
-	}
-}
-
-void FAngelscriptBinds::LogGeneratedFunctionBindingTimingSummary()
-{
-	const FGeneratedFunctionBindingTimingSummary& TimingSummary = GetGeneratedFunctionBindingTimingSummaryRef();
-	if (TimingSummary.TotalShardCount == 0)
-	{
-		return;
-	}
-
-	FName SlowestModuleName = NAME_None;
-	FGeneratedFunctionBindingModuleTiming SlowestModuleTiming;
-	bool bHasSlowestModule = false;
-	for (const TPair<FName, FGeneratedFunctionBindingModuleTiming>& ModulePair : TimingSummary.ModuleTimings)
-	{
-		if (!bHasSlowestModule || ModulePair.Value.TotalDurationMs > SlowestModuleTiming.TotalDurationMs)
-		{
-			bHasSlowestModule = true;
-			SlowestModuleName = ModulePair.Key;
-			SlowestModuleTiming = ModulePair.Value;
-		}
-	}
-
-	const FString SlowestModuleNameString = SlowestModuleName.ToString();
-	const FString SlowestShardModuleNameString = TimingSummary.SlowestShard.ModuleName.ToString();
-	UE_LOG(
-		Angelscript,
-		Log,
-		TEXT("[UHT] Registered %d generated BlueprintCallable entries across %d shard(s) in %.3f ms (%d module(s); slowest module %s %.3f ms; slowest shard %s %d/%d %.3f ms, %d entries)"),
-		TimingSummary.TotalEntryCount,
-		TimingSummary.TotalShardCount,
-		TimingSummary.TotalDurationMs,
-		TimingSummary.ModuleTimings.Num(),
-		bHasSlowestModule ? *SlowestModuleNameString : TEXT("<none>"),
-		bHasSlowestModule ? SlowestModuleTiming.TotalDurationMs : 0.0,
-		TimingSummary.bHasSlowestShard ? *SlowestShardModuleNameString : TEXT("<none>"),
-		TimingSummary.bHasSlowestShard ? TimingSummary.SlowestShard.ShardIndex : 0,
-		TimingSummary.bHasSlowestShard ? TimingSummary.SlowestShard.ShardCount : 0,
-		TimingSummary.bHasSlowestShard ? TimingSummary.SlowestShard.DurationMs : 0.0,
-		TimingSummary.bHasSlowestShard ? TimingSummary.SlowestShard.EntryCount : 0);
 }
 
 void FAngelscriptBinds::CallBinds()

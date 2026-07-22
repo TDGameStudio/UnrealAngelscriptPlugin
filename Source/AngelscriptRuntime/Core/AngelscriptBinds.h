@@ -115,32 +115,6 @@ struct FSystemFunctionBind
 	TSharedPtr<FAngelscriptType> ObjectType;
 };
 
-struct FGeneratedFunctionBindingModuleTiming
-{
-	int32 EntryCount = 0;
-	int32 ShardCount = 0;
-	double TotalDurationMs = 0.0;
-};
-
-struct FGeneratedFunctionBindingShardTiming
-{
-	FName ModuleName = NAME_None;
-	int32 ShardIndex = 0;
-	int32 ShardCount = 0;
-	int32 EntryCount = 0;
-	double DurationMs = 0.0;
-};
-
-struct FGeneratedFunctionBindingTimingSummary
-{
-	TMap<FName, FGeneratedFunctionBindingModuleTiming> ModuleTimings;
-	FGeneratedFunctionBindingShardTiming SlowestShard;
-	int32 TotalEntryCount = 0;
-	int32 TotalShardCount = 0;
-	double TotalDurationMs = 0.0;
-	bool bHasSlowestShard = false;
-};
-
 struct ANGELSCRIPTRUNTIME_API FAngelscriptBindState
 {
 	TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>> ClassFunctionBindings;
@@ -154,7 +128,6 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBindState
 	TSet<FName> SkipBindClasses;
 	int32 PreviouslyBoundFunction = -1;
 	int32 PreviouslyBoundGlobalProperty = -1;
-	FGeneratedFunctionBindingTimingSummary GeneratedFunctionBindingTimingSummary;
 };
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
@@ -510,9 +483,6 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
 	static TMap<UClass*, TSet<FString>>& GetSkipBinds();
 	static TSet<TTuple<FName, FName>>& GetSkipBindNames();
 	static TSet<FName>& GetSkipBindClasses();
-	static void ResetGeneratedFunctionBindingTiming();
-	static void RecordGeneratedFunctionBindingShardTiming(const TCHAR* ModuleName, int32 ShardIndex, int32 ShardCount, int32 EntryCount, double ElapsedMilliseconds);
-	static void LogGeneratedFunctionBindingTimingSummary();
 
 	struct ANGELSCRIPTRUNTIME_API FNamespace
 	{
