@@ -36,16 +36,18 @@
 
 BEGIN_AS_NAMESPACE
 
-int     asCompareStrings(const char *str1, size_t len1, const char *str2, size_t len2);
+//[UE++]: Export string utilities for the AngelscriptTest module without changing behavior.
+ANGELSCRIPTRUNTIME_API int     asCompareStrings(const char *str1, size_t len1, const char *str2, size_t len2);
 
-double  asStringScanDouble(const char *string);
-float  asStringScanFloat(const char *string);
-asQWORD asStringScanUInt64(const char *string, int base, size_t *numScanned, bool *overflow);
+ANGELSCRIPTRUNTIME_API double  asStringScanDouble(const char *string);
+ANGELSCRIPTRUNTIME_API float  asStringScanFloat(const char *string);
+ANGELSCRIPTRUNTIME_API asQWORD asStringScanUInt64(const char *string, int base, size_t *numScanned, bool *overflow);
 
-int     asStringEncodeUTF8(unsigned int value, char *outEncodedBuffer);
-int     asStringDecodeUTF8(const char *encodedBuffer, unsigned int *outLength);
+ANGELSCRIPTRUNTIME_API int     asStringEncodeUTF8(unsigned int value, char *outEncodedBuffer);
+ANGELSCRIPTRUNTIME_API int     asStringDecodeUTF8(const char *encodedBuffer, unsigned int *outLength);
 
-int     asStringEncodeUTF16(unsigned int value, char *outEncodedBuffer);
+ANGELSCRIPTRUNTIME_API int     asStringEncodeUTF16(unsigned int value, char *outEncodedBuffer);
+//[UE--]
 
 END_AS_NAMESPACE
 

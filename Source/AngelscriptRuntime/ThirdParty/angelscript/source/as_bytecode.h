@@ -176,7 +176,9 @@ protected:
 	asCScriptEngine* engine;
 };
 
-class asCByteInstruction
+//[UE++]: Export bytecode-instruction internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCByteInstruction
+//[UE--]
 {
 public:
 	asCByteInstruction();

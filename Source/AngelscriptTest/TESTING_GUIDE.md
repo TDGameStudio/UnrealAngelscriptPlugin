@@ -159,6 +159,20 @@ TEST_METHOD(IsolatedTest)
 Use this only for direct AngelScript SDK API tests. Do not introduce
 `FAngelscriptEngine` in `AngelScriptSDK/` native tests.
 
+Native SDK sources live under behavior-owned `AngelScriptSDK/Engine`, `Frontend`,
+`Compiler`, `Runtime`, `Module`, `TypeSystem`, `Language`, `Embedding`, and
+`Conformance` directories. Include `Support/AngelscriptNativeCoreTestSupport.h`
+for raw engine/module support and `Support/AngelscriptNativeExecutionTestSupport.h`
+only when invoking a compiled function. Resolve functions by their full canonical
+declaration; do not fall back to a name-only lookup. The native core suite excludes
+all `sdk/add_on` registrations.
+
+Current fork behavior is a valid regression contract. In particular, tests must
+assert actual float64 ABI slots and explicit rejection diagnostics rather than
+accepting alternate upstream outcomes. Expressible selected 2.38 script semantics
+are compiled CQTest classes with `EAutomationTestFlags::Disabled` and the
+`#as-v238-backport` tag; do not hide them behind a preprocessor false branch.
+
 ```cpp
 TEST_METHOD(SDKTest)
 {

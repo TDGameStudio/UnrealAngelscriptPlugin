@@ -60,7 +60,9 @@ public:
 // TODO: Add const overload for GetAddressOfProperty
 
 // TODO: weak: Should move to its own file
-class asCLockableSharedBool : public asILockableSharedBool
+//[UE++]: Export weak-reference internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCLockableSharedBool : public asILockableSharedBool
+//[UE--]
 {
 public:
 	asCLockableSharedBool();

@@ -56,7 +56,9 @@ BEGIN_AS_NAMESPACE
 // This class represents the value of an expression as evaluated by the compiler.
 // It holds information such as the type of the value, stack offset for a local 
 // variable, value of constants, whether the value can be modified (i.e. lvalue), etc.
-struct asCExprValue
+//[UE++]: Export compiler expression-value internals for the AngelscriptTest module without changing layout.
+struct ANGELSCRIPTRUNTIME_API asCExprValue
+//[UE--]
 {
 	asCExprValue();
 	void Set(const asCDataType &dataType);
@@ -140,7 +142,9 @@ struct asSDeferredParam
 
 // This class holds information about an expression that is being evaluated, e.g.
 // the current bytecode, ambiguous symbol names, property accessors, etc.
-struct asCExprContext
+//[UE++]: Export compiler expression-context internals for the AngelscriptTest module without changing layout.
+struct ANGELSCRIPTRUNTIME_API asCExprContext
+//[UE--]
 {
 	asCExprContext(asCBuilder* builder);
 	~asCExprContext();

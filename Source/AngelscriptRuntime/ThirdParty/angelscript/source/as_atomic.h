@@ -46,7 +46,9 @@
 
 BEGIN_AS_NAMESPACE
 
-class asCAtomic
+//[UE++]: Export atomic internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCAtomic
+//[UE--]
 {
 public:
 	asCAtomic();

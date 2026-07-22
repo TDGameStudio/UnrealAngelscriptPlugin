@@ -167,7 +167,9 @@ ANGELSCRIPTRUNTIME_API asCString operator +(const asCString &, const asCString &
 //[UE--]
 
 // a wrapper for using the pointer of asCString in asCMap
-class asCStringPointer
+//[UE++]: Export string-pointer internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCStringPointer
+//[UE--]
 {
 public:
 	asCStringPointer();

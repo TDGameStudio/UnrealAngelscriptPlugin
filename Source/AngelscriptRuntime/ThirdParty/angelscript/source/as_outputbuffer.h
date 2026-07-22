@@ -52,7 +52,9 @@ BEGIN_AS_NAMESPACE
 struct asSSystemFunctionInterface;
 class asCScriptEngine;
 
-class asCOutputBuffer
+//[UE++]: Export output-buffer internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCOutputBuffer
+//[UE--]
 {
 public:
 	~asCOutputBuffer ();

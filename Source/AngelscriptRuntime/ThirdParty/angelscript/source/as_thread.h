@@ -49,7 +49,9 @@ BEGIN_AS_NAMESPACE
 
 class asIScriptContext;
 
-class asCThreadLocalData
+//[UE++]: Export thread-local internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCThreadLocalData
+//[UE--]
 {
 public:
 	class asCContext* activeContext = nullptr;
@@ -66,7 +68,9 @@ protected:
 	~asCThreadLocalData();
 };
 
-class asCThreadManager
+//[UE++]: Export thread-manager internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCThreadManager
+//[UE--]
 {
 public:
    static asCThreadLocalData* GetLocalData();

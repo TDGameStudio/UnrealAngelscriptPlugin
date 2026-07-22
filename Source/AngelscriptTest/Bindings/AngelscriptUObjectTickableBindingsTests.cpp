@@ -2,6 +2,8 @@
 
 #include "AngelscriptFunctionalTestUtils.h"
 #include "AngelscriptTestEngineHelper.h"
+#include "Shared/AngelscriptTestUtilities.h"
+#include "Shared/AngelscriptTestMacros.h"
 #include "Binds/UObjectTickable.h"
 
 #include "Engine/EngineBaseTypes.h"

@@ -47,7 +47,9 @@
 
 BEGIN_AS_NAMESPACE
 
-class asCConfigGroup
+//[UE++]: Export configuration-group internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCConfigGroup
+//[UE--]
 {
 public:
 	asCConfigGroup();

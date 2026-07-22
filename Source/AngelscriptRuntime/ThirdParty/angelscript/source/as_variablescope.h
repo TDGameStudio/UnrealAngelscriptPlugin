@@ -61,7 +61,9 @@ struct sVariable
 	bool        onHeap;
 };
 
-class asCVariableScope
+//[UE++]: Export variable-scope internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCVariableScope
+//[UE--]
 {
 public:
 	asCVariableScope(asCVariableScope *parent);

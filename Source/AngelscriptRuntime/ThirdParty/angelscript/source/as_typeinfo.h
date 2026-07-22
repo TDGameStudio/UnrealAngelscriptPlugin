@@ -200,7 +200,9 @@ struct asSEnumValue
 	int       value;
 };
 
-class asCEnumType : public asCTypeInfo
+//[UE++]: Export enum-type internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCEnumType : public asCTypeInfo
+//[UE--]
 {
 public:
 	asCEnumType(asCScriptEngine *engine) : asCTypeInfo(engine)
@@ -217,7 +219,9 @@ protected:
 	asCEnumType() : asCTypeInfo() {}
 };
 
-class asCTypedefType : public asCTypeInfo
+//[UE++]: Export typedef-type internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCTypedefType : public asCTypeInfo
+//[UE--]
 {
 public:
 	asCTypedefType(asCScriptEngine *engine) : asCTypeInfo(engine) {}
@@ -233,7 +237,9 @@ protected:
 	asCTypedefType() : asCTypeInfo() {}
 };
 
-class asCFuncdefType : public asCTypeInfo
+//[UE++]: Export funcdef-type internals for the AngelscriptTest module without changing layout.
+class ANGELSCRIPTRUNTIME_API asCFuncdefType : public asCTypeInfo
+//[UE--]
 {
 public:
 	asCFuncdefType(asCScriptEngine *engine, asCScriptFunction *func);
