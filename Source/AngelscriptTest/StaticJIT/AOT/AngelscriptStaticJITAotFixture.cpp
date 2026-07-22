@@ -176,10 +176,8 @@ namespace AngelscriptStaticJITAotFixture
 	const FString& GetGeneratedSetupInstructions()
 	{
 		static const FString Instructions =
-			TEXT("powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\\RunBuild.ps1 -Label staticjit-aot-build -TimeoutMs 180000\n")
-			TEXT("powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\\RunCommandlet.ps1 -Commandlet AngelscriptStaticJITAotTest -Label staticjit-aot-generate -TimeoutMs 600000 -ExtraArgs \"-Mode=Generate\"\n")
-			TEXT("powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\\RunBuild.ps1 -Label staticjit-aot-generated -TimeoutMs 180000\n")
-			TEXT("powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\\RunTests.ps1 -TestPrefix \"Angelscript.TestModule.StaticJIT.AOT\" -Label staticjit-aot -TimeoutMs 600000");
+			TEXT("powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\\RunStaticJITTests.ps1 -LabelPrefix staticjit-aot\n")
+			TEXT("The AOT cache and generated .jit.cpp/.jit.hpp files are a matched build pair; do not regenerate the cache at runtime or skip the generated-source rebuild.");
 		return Instructions;
 	}
 

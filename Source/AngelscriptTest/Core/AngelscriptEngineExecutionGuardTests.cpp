@@ -60,6 +60,7 @@ struct TScopedAsRelease
 public:
 	TEST_METHOD(PrepareContextLogsCrossEngineMismatch)
 	{
+		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
 FEngineExecutionGuardContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())

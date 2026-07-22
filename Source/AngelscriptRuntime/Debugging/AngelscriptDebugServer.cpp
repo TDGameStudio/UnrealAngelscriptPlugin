@@ -654,6 +654,7 @@ void FAngelscriptDebugServer::RemoveClientState(FSocket* Client, bool bResetDebu
 	ClientsThatWantDebugDatabase.RemoveSwap(Client);
 	CallstackRequests.RemoveSwap(Client);
 	QueuedSends.Remove(Client);
+	ReceivedMessageBuffers.Remove(Client);
 
 	if (bResetDebugStateIfLastDebuggingClient && RemovedDebuggingClients > 0 && ClientsThatAreDebugging.Num() == 0)
 	{
@@ -707,6 +708,7 @@ void FAngelscriptDebugServer::ResetClientStateForShutdown()
 	Clients.Empty();
 	ClientsThatWantDebugDatabase.Empty();
 	ClientsThatAreDebugging.Empty();
+	ReceivedMessageBuffers.Empty();
 	QueuedSends.Empty();
 	CallstackRequests.Empty();
 
@@ -1117,6 +1119,7 @@ void FAngelscriptDebugServer::ProcessMessages()
 		if (Client == nullptr)
 		{
 			QueuedSends.Remove(nullptr);
+			ReceivedMessageBuffers.Remove(nullptr);
 			Clients.RemoveAtSwap(ClientIndex);
 			continue;
 		}
@@ -1132,50 +1135,64 @@ void FAngelscriptDebugServer::ProcessMessages()
 		}
 	}
 
-	for (TArray<class FSocket*>::TIterator ClientIt(Clients); ClientIt; ++ClientIt)
+	for (int32 ClientIndex = Clients.Num() - 1; ClientIndex >= 0; --ClientIndex)
 	{
-		FSocket* Client = *ClientIt;
+		FSocket* Client = Clients[ClientIndex];
+		TArray<uint8>& ReceiveBuffer = ReceivedMessageBuffers.FindOrAdd(Client);
 		uint32 DataSize = 0;
+		bool bRemoveClient = false;
 
-		while (Client->HasPendingData(DataSize))
+		while (Client->HasPendingData(DataSize) && DataSize > 0)
 		{
-			int32 BytesReceived = 0;
-			int32 PacketSize = -1;
+			const int32 ChunkSize = static_cast<int32>(FMath::Min<uint32>(DataSize, 64 * 1024));
+			TArray<uint8> Chunk;
+			Chunk.SetNumUninitialized(ChunkSize);
 
-			FArrayReaderPtr Datagram = MakeShareable(new FArrayReader(true));
-			Datagram->SetNumUninitialized(sizeof(PacketSize));
-
-			// Loop to get packet size
-			if (BytesReceived < sizeof(PacketSize))
+			int32 BytesRead = 0;
+			if (!Client->Recv(Chunk.GetData(), Chunk.Num(), BytesRead) || BytesRead <= 0)
 			{
-				while (BytesReceived < sizeof(PacketSize))
+				// A non-blocking socket may have been drained between HasPendingData
+				// and Recv. Leave any partial frame buffered for the next tick.
+				break;
+			}
+
+			Chunk.SetNum(BytesRead, EAllowShrinking::No);
+			ReceiveBuffer.Append(Chunk);
+
+			while (true)
+			{
+				FAngelscriptDebugMessageEnvelope Envelope;
+				bool bHasEnvelope = false;
+				FString EnvelopeError;
+				if (!TryDeserializeDebugMessageEnvelope(ReceiveBuffer, Envelope, bHasEnvelope, &EnvelopeError))
 				{
-					int32 BytesRead = 0;
-					Client->Recv(Datagram->GetData(), Datagram->Num() - BytesReceived, BytesRead);
-					BytesReceived += BytesRead;
+					UE_LOG(Angelscript, Warning, TEXT("Removing angelscript debug client from %s: %s"), *Client->GetDescription(), *EnvelopeError);
+					bRemoveClient = true;
+					break;
 				}
 
-				*Datagram << PacketSize;
+				if (!bHasEnvelope)
+				{
+					break;
+				}
+
+				FArrayReaderPtr Datagram = MakeShareable(new FArrayReader(true));
+				Datagram->Append(Envelope.Body);
+				HandleMessage(Envelope.MessageType, Datagram, Client);
 			}
 
-			if (PacketSize <= 0 || PacketSize > MaxDebuggerEnvelopeSizeBytes)
-				break;
-
-			// Loop until all data received
-			BytesReceived = 0;
-			Datagram = MakeShareable(new FArrayReader(true));
-			Datagram->SetNumUninitialized(PacketSize);
-			while (BytesReceived < PacketSize)
+			if (bRemoveClient)
 			{
-				int32 BytesRead = 0;
-				Client->Recv(Datagram->GetData(), Datagram->Num() - BytesReceived, BytesRead);
-				BytesReceived += BytesRead;
+				break;
 			}
+		}
 
-			EDebugMessageType MessageType;
-			*Datagram << MessageType;
-
-			HandleMessage(MessageType, Datagram, Client);
+		if (bRemoveClient)
+		{
+			RemoveClientState(Client, true);
+			CloseAndDestroyClient(Client);
+			Clients.RemoveAtSwap(ClientIndex);
+			continue;
 		}
 
 		TrySendingMessages(Client);

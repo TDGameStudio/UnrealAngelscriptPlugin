@@ -226,6 +226,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Priv
 static bool RunShowAssetListPopupHonorsInitGateAndBuildsExpectedOpenFlow(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModulePopupTests_Private;
+	FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
 	FAssetListPopupCallLog CallLog;
 	TArray<FAngelscriptEngine*> SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
 	TUniquePtr<FAngelscriptEngine> Engine = MakePopupTestEngine();

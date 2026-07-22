@@ -241,6 +241,7 @@ FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
 
 	TEST_METHOD(GetPrefersCurrentEngineSharedDatabaseAndFallsBackToLegacySingleton)
 	{
+		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
 FBindDatabaseContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); }

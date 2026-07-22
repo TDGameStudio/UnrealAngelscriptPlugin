@@ -604,6 +604,7 @@ class ANGELSCRIPTRUNTIME_API FAngelscriptDebugServer
 	TArray<class FSocket*> Clients;
 	TArray<class FSocket*> ClientsThatWantDebugDatabase;
 	TArray<class FSocket*> ClientsThatAreDebugging;
+	TMap<class FSocket*, TArray<uint8>> ReceivedMessageBuffers;
 	double NextPingDebuggerAliveTime = 0.0;
 
 	bool HandleConnectionAccepted(class FSocket* ClientSocket, const FIPv4Endpoint& ClientEndpoint);

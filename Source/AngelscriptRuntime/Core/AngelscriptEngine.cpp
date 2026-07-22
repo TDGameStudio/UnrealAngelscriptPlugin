@@ -86,6 +86,9 @@ static FName NAME_BlueprintSetter("BlueprintSetter");
 static FName NAME_BlueprintGetter("BlueprintGetter");
 
 static TArray<FAngelscriptEngine*> GAngelscriptEngineContextStack;
+#if WITH_DEV_AUTOMATION_TESTS
+static thread_local int32 GAngelscriptEngineResolutionSuppressionDepthForTesting = 0;
+#endif
 static TArray<FName> GLegacyStaticNames;
 static TMap<FName, int32> GLegacyStaticNamesByIndex;
 static int32 GAngelscriptPackageRefCount = 0;
@@ -519,6 +522,33 @@ void FAngelscriptEngineContextStack::RestoreSnapshot(TArray<FAngelscriptEngine*>
 {
 	GAngelscriptEngineContextStack = MoveTemp(SavedStack);
 }
+
+void FAngelscriptEngineContextStack::PushEngineResolutionSuppressionForTesting()
+{
+	++GAngelscriptEngineResolutionSuppressionDepthForTesting;
+}
+
+void FAngelscriptEngineContextStack::PopEngineResolutionSuppressionForTesting()
+{
+	checkf(GAngelscriptEngineResolutionSuppressionDepthForTesting > 0,
+		TEXT("Angelscript engine-resolution suppression scope underflow."));
+	--GAngelscriptEngineResolutionSuppressionDepthForTesting;
+}
+
+bool FAngelscriptEngineContextStack::IsEngineResolutionSuppressedForTesting()
+{
+	return GAngelscriptEngineResolutionSuppressionDepthForTesting > 0;
+}
+
+FScopedAngelscriptEngineResolutionSuppressionForTesting::FScopedAngelscriptEngineResolutionSuppressionForTesting()
+{
+	FAngelscriptEngineContextStack::PushEngineResolutionSuppressionForTesting();
+}
+
+FScopedAngelscriptEngineResolutionSuppressionForTesting::~FScopedAngelscriptEngineResolutionSuppressionForTesting()
+{
+	FAngelscriptEngineContextStack::PopEngineResolutionSuppressionForTesting();
+}
 #endif
 
 FAngelscriptEngineScope::FAngelscriptEngineScope(FAngelscriptEngine& InEngine, UObject* InWorldContext)
@@ -725,6 +755,13 @@ bool FAngelscriptEngine::IsInitialized()
 		return true;
 	}
 
+#if WITH_DEV_AUTOMATION_TESTS
+	if (FAngelscriptEngineContextStack::IsEngineResolutionSuppressedForTesting())
+	{
+		return false;
+	}
+#endif
+
 	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::Get())
 	{
 		return Subsystem->GetEngine() != nullptr;
@@ -775,6 +812,13 @@ FAngelscriptEngine* FAngelscriptEngine::TryGetCurrentEngine()
 	{
 		return ScopedEngine;
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	if (FAngelscriptEngineContextStack::IsEngineResolutionSuppressedForTesting())
+	{
+		return nullptr;
+	}
+#endif
 
 	if (UAngelscriptSubsystem* Subsystem = UAngelscriptSubsystem::Get())
 	{

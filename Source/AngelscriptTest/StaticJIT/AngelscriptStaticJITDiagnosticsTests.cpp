@@ -151,7 +151,8 @@ bool FAngelscriptStaticJITAotDiagnosticTests::RunDiagnosticsResolveFixtureState(
 
 bool FAngelscriptStaticJITAotDiagnosticTests::RunDiagnosticsConsoleCommandRegistered(FAutomationTestBase& Test)
 {
-	FScopedClearedCurrentEngineStack NoCurrentEngineScope;
+	FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
+	FScopedClearedCurrentEngineStack ClearedStackScope;
 	const FStaticJITDiagnostics::FSnapshot Snapshot = FStaticJITDiagnostics::CaptureSnapshot();
 	Test.TestFalse(TEXT("StaticJIT diagnostics command test should run with no current engine"), Snapshot.bHasCurrentEngine);
 

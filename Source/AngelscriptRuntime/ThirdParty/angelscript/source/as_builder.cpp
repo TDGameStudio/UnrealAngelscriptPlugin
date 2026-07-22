@@ -2823,6 +2823,7 @@ void asCBuilder::CompileGlobalVariables()
 	for (auto* gvar : RemoveEnums)
 	{
 		globVariables.Remove(gvar);
+		globVariableList.RemoveValue(gvar);
 		asDELETE(gvar, sGlobalVariableDescription);
 	}
 }

@@ -835,8 +835,26 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineContextStack
 #if WITH_DEV_AUTOMATION_TESTS
 	static TArray<FAngelscriptEngine*> SnapshotAndClear();
 	static void RestoreSnapshot(TArray<FAngelscriptEngine*>&& SavedStack);
+	static void PushEngineResolutionSuppressionForTesting();
+	static void PopEngineResolutionSuppressionForTesting();
+	static bool IsEngineResolutionSuppressedForTesting();
 #endif
 };
+
+#if WITH_DEV_AUTOMATION_TESTS
+/**
+ * Lets automation tests exercise legacy no-current-engine branches without
+ * mutating the editor-owned primary engine subsystem.
+ */
+struct ANGELSCRIPTRUNTIME_API FScopedAngelscriptEngineResolutionSuppressionForTesting
+{
+	FScopedAngelscriptEngineResolutionSuppressionForTesting();
+	~FScopedAngelscriptEngineResolutionSuppressionForTesting();
+
+	FScopedAngelscriptEngineResolutionSuppressionForTesting(const FScopedAngelscriptEngineResolutionSuppressionForTesting&) = delete;
+	FScopedAngelscriptEngineResolutionSuppressionForTesting& operator=(const FScopedAngelscriptEngineResolutionSuppressionForTesting&) = delete;
+};
+#endif
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineScope
 {

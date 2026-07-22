@@ -230,6 +230,35 @@ static bool RunCompileOptionsValidationRegistration(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleSettingsTests_Private;
 	ISettingsModule& SettingsModule = FModuleManager::LoadModuleChecked<ISettingsModule>("Settings");
+	FMockDirectoryWatcher DirectoryWatcher;
+	FAngelscriptEditorModule Module;
+	bool bModuleStarted = false;
+
+	// Other lifecycle tests deliberately exercise StartupModule/ShutdownModule on
+	// temporary module instances. Settings registrations are global, so this
+	// assertion must own the registration it observes instead of relying on the
+	// editor module instance that was loaded during process startup.
+	SettingsModule.UnregisterSettings(
+		ProjectSettingsContainerName,
+		PluginsCategoryName,
+		AngelscriptCompileOptionsSectionName);
+	FAngelscriptEditorModuleTestAccess::SetDirectoryWatcherResolver([&DirectoryWatcher]()
+	{
+		return &DirectoryWatcher;
+	});
+
+	ON_SCOPE_EXIT
+	{
+		if (bModuleStarted)
+		{
+			Module.ShutdownModule();
+		}
+		FAngelscriptEditorModuleTestAccess::ResetDirectoryWatcherResolver();
+	};
+
+	Module.StartupModule();
+	bModuleStarted = true;
+
 	const ISettingsSectionPtr CompileOptionsSection = FindAngelscriptCompileOptionsSettingsSection(SettingsModule);
 	if (!TestNotNull(TEXT("Editor.Module.CompileOptionsValidation should register the compile options section"), CompileOptionsSection.Get()))
 	{

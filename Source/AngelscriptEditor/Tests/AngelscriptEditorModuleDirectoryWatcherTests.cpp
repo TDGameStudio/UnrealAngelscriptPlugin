@@ -143,6 +143,7 @@ namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleDirectoryWatche
 static bool RunOnScriptFileChangesGuardsEngineInitAndQueuesRootScripts(FAutomationTestBase& Test)
 {
 	using namespace AngelscriptEditor_Private_Tests_AngelscriptEditorModuleDirectoryWatcherTests_Private;
+	FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
 	IFileManager& FileManager = IFileManager::Get();
 	const FString RootPath = MakeTempEditorModuleRoot(TEXT("OnScriptFileChanges"));
 	const FString ScriptsFolder = RootPath / TEXT("Scripts");

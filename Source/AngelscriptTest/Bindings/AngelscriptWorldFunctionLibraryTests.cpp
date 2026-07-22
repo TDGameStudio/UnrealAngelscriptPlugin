@@ -48,8 +48,8 @@ public:
 	{
 		TestRunner->AddExpectedError(TEXT("Null pointer access"), EAutomationExpectedErrorFlags::Contains, 0);
 		TestRunner->AddExpectedError(TEXT("ASWorldStreamingNullGuards"), EAutomationExpectedErrorFlags::Contains, 0);
-		TestRunner->AddExpectedError(TEXT("int GetStreamingLevelCount(UWorld) | Line 4 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
-		TestRunner->AddExpectedError(TEXT("bool GetLevelVisibleInEditor(ULevelStreaming) | Line 9 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
+		TestRunner->AddExpectedError(TEXT("int GetStreamingLevelCount(UWorld) | Line 3 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
+		TestRunner->AddExpectedError(TEXT("bool GetLevelVisibleInEditor(ULevelStreaming) | Line 8 | Col 2"), EAutomationExpectedErrorFlags::Contains, 1, false);
 
 		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		FAngelscriptEngineScope _AutoEngineScope(Engine);

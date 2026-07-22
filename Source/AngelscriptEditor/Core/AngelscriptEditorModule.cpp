@@ -948,25 +948,26 @@ void FAngelscriptEditorModule::StartupModule()
 	}
 
 	// Register the angelscript settings that can be edited in project settings
-	ISettingsModule* SettingsModule = FModuleManager::GetModulePtr<ISettingsModule>("Settings");
-	if (SettingsModule)
+	// This module starts at PostDefault, before Settings is necessarily loaded.
+	// The settings sections are part of the editor surface, not optional work
+	// that may be skipped based on startup order; Settings is already a declared
+	// private dependency of this module.
+	ISettingsModule& SettingsModule = FModuleManager::LoadModuleChecked<ISettingsModule>("Settings");
+	SettingsModule.RegisterSettings(
+		"Project", "Plugins", "Angelscript",
+		NSLOCTEXT("Angelscript", "AngelscriptSettingsTitle", "Angelscript"),
+		NSLOCTEXT("Angelscript", "AngelscriptSettingsDescription", "Configuration for behavior of the angelscript compiler and script engine."),
+		GetMutableDefault<UAngelscriptSettings>()
+	);
+	TSharedPtr<ISettingsSection> CompileOptionsSection = SettingsModule.RegisterSettings(
+		"Project", "Plugins", "AngelscriptCompileOptions",
+		NSLOCTEXT("Angelscript", "AngelscriptCompileOptionsTitle", "Angelscript Compile Options"),
+		NSLOCTEXT("Angelscript", "AngelscriptCompileOptionsDescription", "Compile-affecting Angelscript options."),
+		GetMutableDefault<UAngelscriptCompileOptions>()
+	);
+	if (CompileOptionsSection.IsValid())
 	{
-		SettingsModule->RegisterSettings(
-			"Project", "Plugins", "Angelscript", 
-			NSLOCTEXT("Angelscript", "AngelscriptSettingsTitle", "Angelscript"),
-			NSLOCTEXT("Angelscript", "AngelscriptSettingsDescription", "Configuration for behavior of the angelscript compiler and script engine."),
-			GetMutableDefault<UAngelscriptSettings>()
-		);
-		TSharedPtr<ISettingsSection> CompileOptionsSection = SettingsModule->RegisterSettings(
-			"Project", "Plugins", "AngelscriptCompileOptions",
-			NSLOCTEXT("Angelscript", "AngelscriptCompileOptionsTitle", "Angelscript Compile Options"),
-			NSLOCTEXT("Angelscript", "AngelscriptCompileOptionsDescription", "Compile-affecting Angelscript options."),
-			GetMutableDefault<UAngelscriptCompileOptions>()
-		);
-		if (CompileOptionsSection.IsValid())
-		{
-			CompileOptionsSection->OnModified().BindStatic(&ValidateFunctionBindingMethod);
-		}
+		CompileOptionsSection->OnModified().BindStatic(&ValidateFunctionBindingMethod);
 	}
 
 	// Helper to pop open the content browser or asset editor from the debug server

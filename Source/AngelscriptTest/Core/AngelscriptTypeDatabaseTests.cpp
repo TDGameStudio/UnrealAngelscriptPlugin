@@ -115,6 +115,7 @@ static bool ExpectUsageMatches(
 public:
 	TEST_METHOD(AliasAndTypeFindersResetCleanly)
 	{
+		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
 FCoreTestContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
