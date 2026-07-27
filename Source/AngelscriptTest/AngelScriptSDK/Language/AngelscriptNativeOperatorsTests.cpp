@@ -1,38 +1,97 @@
 #include "../Support/AngelscriptNativeExecutionTestSupport.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace
-{
-	template<typename T>
-	bool ExpectOperatorValue(FAutomationTestBase& Test, asIScriptEngine* Engine, asIScriptModule* Module, const char* Declaration, T Expected, const TCHAR* Context)
-	{
-		FNoDiscardAsserter Assert(Test);
-		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(Test, Engine, Module, Declaration);
-		return Assert.IsTrue(Invoker.IsValid(), Context) && Assert.AreEqual(Expected, Invoker.CallAndReturn<T>(T{}), Context);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FOperatorsTests, "Angelscript.TestModule.AngelScriptSDK.Language.Operators", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	template<typename T>
+	static bool ExpectOperatorValue(
+		FAutomationTestBase& Test,
+		asIScriptEngine* Engine,
+		asIScriptModule* Module,
+		const char* Declaration,
+		T Expected,
+		const TCHAR* Context)
+	{
+		FNoDiscardAsserter Assert(Test);
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(
+			Test,
+			Engine,
+			Module,
+			Declaration);
+		return Assert.IsTrue(Invoker.IsValid(), Context)
+			&& Assert.AreEqual(
+				Expected,
+				Invoker.CallAndReturn<T>(T{}),
+				Context);
+	}
+
+public:
 	TEST_METHOD(OperatorsBitwise)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-BITWISE and LANG-OP-ASSIGNMENT supersede this fixed bitwise sample across types, operators, counts, categories, compound forms, runtime, and cleanup");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorBitwise", R"AS(
-uint BitAnd() { uint a = 0b11001100; uint b = 0b10101010; return a & b; }
-uint BitOr() { uint a = 0b11001100; uint b = 0b10101010; return a | b; }
-uint BitXor() { uint a = 0b11001100; uint b = 0b10101010; return a ^ b; }
-uint8 BitNot() { uint8 c = 0b11110000; return ~c; }
-uint ShiftLeft() { return 5 << 2; }
-uint ShiftRight() { return 20 >> 2; }
-uint CompoundBitwise() { uint x = 0xFF; x &= 0x0F; x |= 0xF0; x ^= 0x55; x <<= 1; x >>= 2; return x; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorBitwise", ASTEST_AS_ANSI(R"AS(
+			uint BitAnd()
+			{
+				uint a = 0b11001100;
+				uint b = 0b10101010;
+				return a & b;
+			}
+
+			uint BitOr()
+			{
+				uint a = 0b11001100;
+				uint b = 0b10101010;
+				return a | b;
+			}
+
+			uint BitXor()
+			{
+				uint a = 0b11001100;
+				uint b = 0b10101010;
+				return a ^ b;
+			}
+
+			uint8 BitNot()
+			{
+				uint8 c = 0b11110000;
+				return ~c;
+			}
+
+			uint ShiftLeft()
+			{
+				return 5 << 2;
+			}
+
+			uint ShiftRight()
+			{
+				return 20 >> 2;
+			}
+
+			uint CompoundBitwise()
+			{
+				uint x = 0xFF;
+				x &= 0x0F;
+				x |= 0xF0;
+				x ^= 0x55;
+				x <<= 1;
+				x >>= 2;
+				return x;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		if (!ExpectOperatorValue(*TestRunner, Engine.Get(), Module, "uint BitAnd()", uint32(136), TEXT("Bitwise and should execute"))) return;
 		if (!ExpectOperatorValue(*TestRunner, Engine.Get(), Module, "uint BitOr()", uint32(238), TEXT("Bitwise or should execute"))) return;
@@ -46,18 +105,63 @@ uint CompoundBitwise() { uint x = 0xFF; x &= 0x0F; x |= 0xF0; x ^= 0x55; x <<= 1
 	TEST_METHOD(OperatorsAssignment)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-ASSIGNMENT and LANG-VAR-ASSIGN-TARGET supersede this scalar assignment smoke across operators, target states, chained use, types, diagnostics, and runtime");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorAssignment", R"AS(
-int SimpleAssign() { int a = 10; return a; }
-int AddAssign() { int b = 10; b += 5; return b; }
-int SubAssign() { int c = 10; c -= 3; return c; }
-int MulAssign() { int d = 10; d *= 2; return d; }
-int DivAssign() { int e = 10; e /= 2; return e; }
-int ModAssign() { int f = 10; f %= 3; return f; }
-int ChainedAssign() { int x = 0, y = 0, z = 0; x = y = z = 42; return x + y + z; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorAssignment", ASTEST_AS_ANSI(R"AS(
+			int SimpleAssign()
+			{
+				int a = 10;
+				return a;
+			}
+
+			int AddAssign()
+			{
+				int b = 10;
+				b += 5;
+				return b;
+			}
+
+			int SubAssign()
+			{
+				int c = 10;
+				c -= 3;
+				return c;
+			}
+
+			int MulAssign()
+			{
+				int d = 10;
+				d *= 2;
+				return d;
+			}
+
+			int DivAssign()
+			{
+				int e = 10;
+				e /= 2;
+				return e;
+			}
+
+			int ModAssign()
+			{
+				int f = 10;
+				f %= 3;
+				return f;
+			}
+
+			int ChainedAssign()
+			{
+				int x = 0, y = 0, z = 0;
+				x = y = z = 42;
+				return x + y + z;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		const TPair<const char*, int32> Cases[] = { { "int SimpleAssign()", 10 }, { "int AddAssign()", 15 }, { "int SubAssign()", 7 }, { "int MulAssign()", 20 }, { "int DivAssign()", 5 }, { "int ModAssign()", 1 }, { "int ChainedAssign()", 126 } };
 		for (const TPair<const char*, int32>& Case : Cases)
@@ -69,16 +173,41 @@ int ChainedAssign() { int x = 0, y = 0, z = 0; x = y = z = 42; return x + y + z;
 	TEST_METHOD(OperatorsPow)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-POWER-UNIVERSAL, LANG-OP-POWER-FRACTIONAL-EXPONENT, and LANG-OP-POWER-NEGATIVE-EXPONENT supersede these exponent samples across base/exponent types, source shapes, values, overflow, and runtime");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPow", R"AS(
-int IntPow() { return 3 ** 2; }
-double SqrtPow() { return 9.0 ** 0.5; }
-double FractionalPow() { return 2.5 ** 2; }
-int WidePow() { return 2 ** 10; }
-void Overflow() { double x = 1.0e100; x = x ** 6.0; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPow", ASTEST_AS_ANSI(R"AS(
+			int IntPow()
+			{
+				return 3 ** 2;
+			}
+
+			double SqrtPow()
+			{
+				return 9.0 ** 0.5;
+			}
+
+			double FractionalPow()
+			{
+				return 2.5 ** 2;
+			}
+
+			int WidePow()
+			{
+				return 2 ** 10;
+			}
+
+			void Overflow()
+			{
+				double x = 1.0e100;
+				x = x ** 6.0;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		if (!ExpectOperatorValue(*TestRunner, Engine.Get(), Module, "int IntPow()", 9, TEXT("Integer exponentiation should execute"))) return;
 		if (!ExpectOperatorValue(*TestRunner, Engine.Get(), Module, "int WidePow()", 1024, TEXT("Wide integer exponentiation should execute"))) return;

@@ -1,5 +1,5 @@
 #include "../Support/AngelscriptNativeExecutionTestSupport.h"
-#include "../Support/AngelscriptNativeExecutionTestSupport.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
@@ -12,17 +12,25 @@ TEST_CLASS_WITH_FLAGS(FReferencesTests,
 {
 	TEST_METHOD(ReferencesRefArgument)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-FN-PARAM-DIRECTION and LANG-REF-DIRECTION supersede this single int out-parameter sample across core types, directions, alias/null states, writeback, runtime, and cleanup");
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function ref-argument test should create a standalone engine")));
 
-		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRefArgument", R"(
-void WriteValue(int &out Value)
-{
-	Value = 7;
-}
-)");
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionRefArgument", ASTEST_AS_ANSI(R"AS(
+			void WriteValue(int &out Value)
+			{
+				Value = 7;
+			}
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;
@@ -41,17 +49,25 @@ void WriteValue(int &out Value)
 
 	TEST_METHOD(ReferencesByRefMutation)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-FN-PARAM-DIRECTION and LANG-REF-DIRECTION supersede this single int inout sample across transfer directions, alias states, mutation, runtime, and cleanup");
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function by-ref mutation test should create a standalone engine")));
 
-		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionByRefMutation", R"(
-void Increment(int &inout Value)
-{
-	Value += 1;
-}
-)");
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionByRefMutation", ASTEST_AS_ANSI(R"AS(
+			void Increment(int &inout Value)
+			{
+				Value += 1;
+			}
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;
@@ -70,17 +86,25 @@ void Increment(int &inout Value)
 
 	TEST_METHOD(ReferencesConstInRef)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-FN-PARAM-DIRECTION, LANG-FN-PARAM-POSITION, and LANG-REF-DIRECTION supersede this two-int const-in sample across types, parameter positions, directions, identity, runtime, and cleanup");
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK function const-in-ref test should create a standalone engine")));
 
-		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionConstInRef", R"(
-int Sum(const int &in A, const int &in B)
-{
-	return A + B;
-}
-)");
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKFunctionConstInRef", ASTEST_AS_ANSI(R"AS(
+			int Sum(const int &in A, const int &in B)
+			{
+				return A + B;
+			}
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;

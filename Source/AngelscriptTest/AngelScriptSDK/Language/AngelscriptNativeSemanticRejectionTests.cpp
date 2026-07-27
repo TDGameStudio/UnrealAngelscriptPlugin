@@ -1,4 +1,5 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -13,17 +14,22 @@ TEST_CLASS_WITH_FLAGS(FSemanticRejectionTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
-		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
-		const int CompileResult = CompileSnippet("ReferenceCompilerConstObjectAssignment", R"(
-class Foo
-{
-}
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-VAR-FAILURE-BOUNDARY and LANG-CONV-FAILURE supersede this incompatible initializer predecessor with fresh/same-module recovery, exact diagnostics, and cleanup");
 
-void Main()
-{
-	const Foo F = 10;
-}
-)",
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class Foo
+			{
+			}
+
+			void Main()
+			{
+				const Foo F = 10;
+			}
+			)AS");
+		const int CompileResult = CompileSnippet("ReferenceCompilerConstObjectAssignment", ScriptSource.c_str(),
 			Messages);
 
 		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference invalid const object assignment should fail to build")));
@@ -35,16 +41,22 @@ void Main()
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-VAR-FAILURE-BOUNDARY and LANG-VAR-SHADOW supersede this use-after-scope predecessor across recovery modes, scope relations, use paths, diagnostics, and cleanup");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
-		const int CompileResult = CompileSnippet("ReferenceCompilerOutOfScopeLocal", R"(
-int Entry()
-{
-	{
-		int Inner = 2;
-	}
-	return Inner;
-}
-)",
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			int Entry()
+			{
+				{
+					int Inner = 2;
+				}
+
+				return Inner;
+			}
+			)AS");
+		const int CompileResult = CompileSnippet("ReferenceCompilerOutOfScopeLocal", ScriptSource.c_str(),
 			Messages);
 
 		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference out-of-scope local should fail to build")));
@@ -56,13 +68,18 @@ int Entry()
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-EXPR-RESOLUTION and LANG-EXPR-FAILURE supersede this missing-call predecessor across callable states, expression contexts, recovery, exact diagnostics, and cleanup");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
-		const int CompileResult = CompileSnippet("ReferenceCompilerUnknownCall", R"(
-void Entry()
-{
-	MissingCall(1, 2);
-}
-)",
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			void Entry()
+			{
+				MissingCall(1, 2);
+			}
+			)AS");
+		const int CompileResult = CompileSnippet("ReferenceCompilerUnknownCall", ScriptSource.c_str(),
 			Messages);
 
 		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference unknown function call should fail to build")));
@@ -74,18 +91,23 @@ void Entry()
 	{
 		using namespace AngelscriptNativeTestSupport;
 
-		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
-		const int CompileResult = CompileSnippet("ReferenceCompilerReturnObjectAsInt", R"(
-class Foo
-{
-}
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-FN-RETURN and LANG-CONV-FAILURE supersede this incompatible return predecessor across return types, control paths, conversion outcomes, recovery, and cleanup");
 
-int Entry()
-{
-	Foo F;
-	return F;
-}
-)",
+		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class Foo
+			{
+			}
+
+			int Entry()
+			{
+				Foo F;
+				return F;
+			}
+			)AS");
+		const int CompileResult = CompileSnippet("ReferenceCompilerReturnObjectAsInt", ScriptSource.c_str(),
 			Messages);
 
 		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference object returned from int function should fail to build")));
@@ -97,14 +119,20 @@ int Entry()
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-VAR-FAILURE-BOUNDARY supersedes this long-identifier predecessor with both recovery modes, exact generated source, diagnostic preservation, module isolation, and cleanup");
+
 		const FString LongIdentifier = FString::ChrN(400, TEXT('a'));
-		const FString Source = FString::Printf(TEXT(R"(
-void Entry()
-{
-	%s = 1;
-}
-)"),
-			*LongIdentifier);
+		const FString SourceFormat = ASTEST_AS(R"AS(
+			void Entry()
+			{
+				%s = 1;
+			}
+			)AS");
+		FString Source = SourceFormat;
+		ASSERT_THAT(AreEqual(1, Source.ReplaceInline(TEXT("%s"), *LongIdentifier, ESearchCase::CaseSensitive),
+			TEXT("Reference long-token source should replace its single identifier placeholder")));
 		const FTCHARToUTF8 SourceUtf8(*Source);
 
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;

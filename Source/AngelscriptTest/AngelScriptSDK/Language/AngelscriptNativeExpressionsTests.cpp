@@ -1,53 +1,114 @@
 #include "../Support/AngelscriptNativeExecutionTestSupport.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace
-{
-	bool ExpectExpressionInt(FAutomationTestBase& Test, asIScriptEngine* Engine, asIScriptModule* Module, const char* Declaration, int32 Expected, const TCHAR* Context)
-	{
-		FNoDiscardAsserter Assert(Test);
-		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(Test, Engine, Module, Declaration);
-		return Assert.IsTrue(Invoker.IsValid(), Context) && Assert.AreEqual(Expected, Invoker.CallAndReturn<int32>(INDEX_NONE), Context);
-	}
-
-	bool ExpectExpressionBool(FAutomationTestBase& Test, asIScriptEngine* Engine, asIScriptModule* Module, const char* Declaration, bool bExpected, const TCHAR* Context)
-	{
-		FNoDiscardAsserter Assert(Test);
-		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(Test, Engine, Module, Declaration);
-		return Assert.IsTrue(Invoker.IsValid(), Context) && Assert.AreEqual(bExpected, Invoker.CallAndReturn<bool>(!bExpected), Context);
-	}
-}
-
 TEST_CLASS_WITH_FLAGS(FExpressionsTests, "Angelscript.TestModule.AngelScriptSDK.Language.Expressions", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static bool ExpectExpressionInt(
+		FAutomationTestBase& Test,
+		asIScriptEngine* Engine,
+		asIScriptModule* Module,
+		const char* Declaration,
+		int32 Expected,
+		const TCHAR* Context)
+	{
+		FNoDiscardAsserter Assert(Test);
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(
+			Test,
+			Engine,
+			Module,
+			Declaration);
+		return Assert.IsTrue(Invoker.IsValid(), Context)
+			&& Assert.AreEqual(
+				Expected,
+				Invoker.CallAndReturn<int32>(INDEX_NONE),
+				Context);
+	}
+
+	static bool ExpectExpressionBool(
+		FAutomationTestBase& Test,
+		asIScriptEngine* Engine,
+		asIScriptModule* Module,
+		const char* Declaration,
+		bool bExpected,
+		const TCHAR* Context)
+	{
+		FNoDiscardAsserter Assert(Test);
+		AngelscriptSDKTestSupport::FSdkFunctionInvoker Invoker(
+			Test,
+			Engine,
+			Module,
+			Declaration);
+		return Assert.IsTrue(Invoker.IsValid(), Context)
+			&& Assert.AreEqual(
+				bExpected,
+				Invoker.CallAndReturn<bool>(!bExpected),
+				Context);
+	}
+
+public:
 	TEST_METHOD(ExpressionsArithmetic)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-NUMERIC-BINARY, LANG-OP-UNARY, and LANG-EXPR-EVAL-ORDER supersede this arithmetic smoke with operand-type, operator, value, count, order, diagnostic, and runtime products");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorArithmetic", R"AS(
-int Add() { return 10 + 5; }
-int Subtract() { return 10 - 5; }
-int Multiply() { return 10 * 5; }
-int Divide() { return 10 / 5; }
-int Modulo() { return 10 % 3; }
-int UnaryPlus() { return +5; }
-int UnaryMinus() { return -5; }
-int IncrementDecrement()
-{
-	int a = 5;
-	int b = ++a;
-	int c = a++;
-	int d = --a;
-	int e = a--;
-	return a * 10000 + b * 1000 + c * 100 + d * 10 + e;
-}
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorArithmetic", ASTEST_AS_ANSI(R"AS(
+			int Add()
+			{
+				return 10 + 5;
+			}
+
+			int Subtract()
+			{
+				return 10 - 5;
+			}
+
+			int Multiply()
+			{
+				return 10 * 5;
+			}
+
+			int Divide()
+			{
+				return 10 / 5;
+			}
+
+			int Modulo()
+			{
+				return 10 % 3;
+			}
+
+			int UnaryPlus()
+			{
+				return +5;
+			}
+
+			int UnaryMinus()
+			{
+				return -5;
+			}
+
+			int IncrementDecrement()
+			{
+				int a = 5;
+				int b = ++a;
+				int c = a++;
+				int d = --a;
+				int e = a--;
+				return a * 10000 + b * 1000 + c * 100 + d * 10 + e;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		if (!ExpectExpressionInt(*TestRunner, Engine.Get(), Module, "int Add()", 15, TEXT("Arithmetic should preserve addition"))) return;
 		if (!ExpectExpressionInt(*TestRunner, Engine.Get(), Module, "int Subtract()", 5, TEXT("Arithmetic should preserve subtraction"))) return;
@@ -62,19 +123,59 @@ int IncrementDecrement()
 	TEST_METHOD(ExpressionsComparison)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-BUILTIN-COMPARISON and LANG-OP-RESULT-CONTEXT supersede this all-true comparison sample across types, operators, relations, contexts, outcomes, and cleanup");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorComparison", R"AS(
-bool Equal() { int a = 10; int c = 10; return a == c; }
-bool NotEqual() { int a = 10; int b = 20; return a != b; }
-bool LessThan() { return 10 < 20; }
-bool LessEqualDifferent() { return 10 <= 20; }
-bool LessEqualSame() { return 10 <= 10; }
-bool GreaterThan() { return 20 > 10; }
-bool GreaterEqualDifferent() { return 20 >= 10; }
-bool GreaterEqualSame() { return 10 >= 10; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorComparison", ASTEST_AS_ANSI(R"AS(
+			bool Equal()
+			{
+				int a = 10;
+				int c = 10;
+				return a == c;
+			}
+
+			bool NotEqual()
+			{
+				int a = 10;
+				int b = 20;
+				return a != b;
+			}
+
+			bool LessThan()
+			{
+				return 10 < 20;
+			}
+
+			bool LessEqualDifferent()
+			{
+				return 10 <= 20;
+			}
+
+			bool LessEqualSame()
+			{
+				return 10 <= 10;
+			}
+
+			bool GreaterThan()
+			{
+				return 20 > 10;
+			}
+
+			bool GreaterEqualDifferent()
+			{
+				return 20 >= 10;
+			}
+
+			bool GreaterEqualSame()
+			{
+				return 10 >= 10;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		for (const char* Declaration : { "bool Equal()", "bool NotEqual()", "bool LessThan()", "bool LessEqualDifferent()", "bool LessEqualSame()", "bool GreaterThan()", "bool GreaterEqualDifferent()", "bool GreaterEqualSame()" })
 		{
@@ -85,25 +186,85 @@ bool GreaterEqualSame() { return 10 >= 10; }
 	TEST_METHOD(ExpressionsLogical)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-LOGICAL and LANG-OP-LOGICAL-NOT supersede this truth-table predecessor with context, lazy-evaluation, operand, truth, and negation products");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorLogical", R"AS(
-bool AndTrueTrue() { return true && true; }
-bool AndTrueFalse() { return true && false; }
-bool AndFalseTrue() { return false && true; }
-bool AndFalseFalse() { return false && false; }
-bool OrTrueTrue() { return true || true; }
-bool OrTrueFalse() { return true || false; }
-bool OrFalseTrue() { return false || true; }
-bool OrFalseFalse() { return false || false; }
-bool XorTrueTrue() { return true ^^ true; }
-bool XorTrueFalse() { return true ^^ false; }
-bool XorFalseTrue() { return false ^^ true; }
-bool XorFalseFalse() { return false ^^ false; }
-bool NotTrue() { return !true; }
-bool NotFalse() { return !false; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorLogical", ASTEST_AS_ANSI(R"AS(
+			bool AndTrueTrue()
+			{
+				return true && true;
+			}
+
+			bool AndTrueFalse()
+			{
+				return true && false;
+			}
+
+			bool AndFalseTrue()
+			{
+				return false && true;
+			}
+
+			bool AndFalseFalse()
+			{
+				return false && false;
+			}
+
+			bool OrTrueTrue()
+			{
+				return true || true;
+			}
+
+			bool OrTrueFalse()
+			{
+				return true || false;
+			}
+
+			bool OrFalseTrue()
+			{
+				return false || true;
+			}
+
+			bool OrFalseFalse()
+			{
+				return false || false;
+			}
+
+			bool XorTrueTrue()
+			{
+				return true ^^ true;
+			}
+
+			bool XorTrueFalse()
+			{
+				return true ^^ false;
+			}
+
+			bool XorFalseTrue()
+			{
+				return false ^^ true;
+			}
+
+			bool XorFalseFalse()
+			{
+				return false ^^ false;
+			}
+
+			bool NotTrue()
+			{
+				return !true;
+			}
+
+			bool NotFalse()
+			{
+				return !false;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		const TPair<const char*, bool> Cases[] = {
 			{ "bool AndTrueTrue()", true }, { "bool AndTrueFalse()", false }, { "bool AndFalseTrue()", false }, { "bool AndFalseFalse()", false },
@@ -120,15 +281,38 @@ bool NotFalse() { return !false; }
 	TEST_METHOD(ExpressionsTernary)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-EXPR-LAZY-EVALUATION, LANG-EXPR-EVAL-ORDER, and LANG-EXPR-PRECEDENCE supersede this ternary sample with selector, nesting, grouping, side-effect, and evaluation-order products");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorTernary", R"AS(
-int TrueBranch() { return true ? 10 : 20; }
-int FalseBranch() { return false ? 10 : 20; }
-int NestedBranch() { int x = 5; return x > 10 ? 1 : x > 5 ? 2 : x == 5 ? 3 : 4; }
-int SideEffectCounter() { int counter = 0; int c = (counter++ > 0) ? 100 : 200; return c + counter; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorTernary", ASTEST_AS_ANSI(R"AS(
+			int TrueBranch()
+			{
+				return true ? 10 : 20;
+			}
+
+			int FalseBranch()
+			{
+				return false ? 10 : 20;
+			}
+
+			int NestedBranch()
+			{
+				int x = 5;
+				return x > 10 ? 1 : x > 5 ? 2 : x == 5 ? 3 : 4;
+			}
+
+			int SideEffectCounter()
+			{
+				int counter = 0;
+				int c = (counter++ > 0) ? 100 : 200;
+				return c + counter;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		if (!ExpectExpressionInt(*TestRunner, Engine.Get(), Module, "int TrueBranch()", 10, TEXT("Ternary should select its true branch"))) return;
 		if (!ExpectExpressionInt(*TestRunner, Engine.Get(), Module, "int FalseBranch()", 20, TEXT("Ternary should select its false branch"))) return;
@@ -139,18 +323,39 @@ int SideEffectCounter() { int counter = 0; int c = (counter++ > 0) ? 100 : 200; 
 	TEST_METHOD(ExpressionsCall)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"LANG-EXPR-PRIMARY-CONTEXT, LANG-EXPR-RESOLUTION, and LANG-EXPR-SOURCE-BOUNDARY own callable-object resolution plus the isolated script-class construction boundary; this method retains one focused null-instance witness");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKExpressionCall", R"AS(
-class Adder
-{
-	int opCall(int A, int B) { return A + B; }
-	int opCall(int A, int B, int C) { return A + B + C; }
-}
-bool InvokeAdderPair() { Adder Value; return Value(2, 3) == 5; }
-bool InvokeAdderTriple() { Adder Value; return Value(1, 2, 3) == 6; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKExpressionCall", ASTEST_AS_ANSI(R"AS(
+			class Adder
+			{
+				int opCall(int A, int B)
+				{
+					return A + B;
+				}
+				int opCall(int A, int B, int C)
+				{
+					return A + B + C;
+				}
+			}
+
+			bool InvokeAdderPair()
+			{
+				Adder Value;
+				return Value(2, 3) == 5;
+			}
+
+			bool InvokeAdderTriple()
+			{
+				Adder Value;
+				return Value(1, 2, 3) == 6;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "bool InvokeAdderPair()");
 		ASSERT_THAT(IsNotNull(Function, TEXT("Call expression target should resolve")));
@@ -165,25 +370,35 @@ bool InvokeAdderTriple() { Adder Value; return Value(1, 2, 3) == 6; }
 	TEST_METHOD(ExpressionsIndex)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"LANG-EXPR-PRIMARY-CONTEXT, LANG-EXPR-CHAIN, and LANG-EXPR-SOURCE-BOUNDARY own index resolution/use plus the isolated script-class construction boundary; this method retains one focused null-instance witness");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKExpressionIndex", R"AS(
-class SimpleArray
-{
-	int Data0 = 10;
-	int Data1 = 20;
-	int Data2 = 30;
-	int opIndex(int Index) const
-	{
-		if (Index == 0) return Data0;
-		if (Index == 1) return Data1;
-		if (Index == 2) return Data2;
-		return -1;
-	}
-}
-int ReadSlot(int Index) { SimpleArray Value; return Value[Index]; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKExpressionIndex", ASTEST_AS_ANSI(R"AS(
+			class SimpleArray
+			{
+				int Data0 = 10;
+				int Data1 = 20;
+				int Data2 = 30;
+				int opIndex(int Index) const
+				{
+					if (Index == 0) return Data0;
+					if (Index == 1) return Data1;
+					if (Index == 2) return Data2;
+					return -1;
+				}
+			}
+
+			int ReadSlot(int Index)
+			{
+				SimpleArray Value;
+				return Value[Index];
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int ReadSlot(const int)");
 		ASSERT_THAT(IsNotNull(Function, TEXT("Index expression target should resolve")));
@@ -200,17 +415,45 @@ int ReadSlot(int Index) { SimpleArray Value; return Value[Index]; }
 	TEST_METHOD(ExpressionsPrecedence)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-EXPR-PRECEDENCE and LANG-EXPR-ASSOCIATIVITY supersede these selected precedence examples with every ordered level pair, grouping state, and same-level sequence");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPrecedence", R"AS(
-int MultiplicativeBeforeAdditive() { return 2 + 3 * 4; }
-int ParenthesesOverride() { return (2 + 3) * 4; }
-int UnaryMinusBeforeMultiply() { return -2 * 3; }
-int ShiftAfterAdditive() { return 1 + 2 << 1; }
-int BitwiseAndBeforeOr() { return 0xF0 | 0x0F & 0x33; }
-bool ComparisonBeforeLogical() { return 2 + 2 == 4 && 3 * 3 > 8; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorPrecedence", ASTEST_AS_ANSI(R"AS(
+			int MultiplicativeBeforeAdditive()
+			{
+				return 2 + 3 * 4;
+			}
+
+			int ParenthesesOverride()
+			{
+				return (2 + 3) * 4;
+			}
+
+			int UnaryMinusBeforeMultiply()
+			{
+				return -2 * 3;
+			}
+
+			int ShiftAfterAdditive()
+			{
+				return 1 + 2 << 1;
+			}
+
+			int BitwiseAndBeforeOr()
+			{
+				return 0xF0 | 0x0F & 0x33;
+			}
+
+			bool ComparisonBeforeLogical()
+			{
+				return 2 + 2 == 4 && 3 * 3 > 8;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		if (!ExpectExpressionInt(*TestRunner, Engine.Get(), Module, "int MultiplicativeBeforeAdditive()", 14, TEXT("Precedence should bind multiplication first"))) return;
 		if (!ExpectExpressionInt(*TestRunner, Engine.Get(), Module, "int ParenthesesOverride()", 20, TEXT("Parentheses should override precedence"))) return;

@@ -1,4 +1,5 @@
 #include "Support/AngelscriptNativeCoreTestSupport.h"
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -180,25 +181,38 @@ public:
 	TEST_METHOD(ConstructorChain)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CTOR-PARAM-SELECT, LANG-CTOR-VISIBILITY, and LANG-CTOR-BOUNDARY supersede this single derived super-call predecessor with parameter selection, visibility, diagnostics, metadata, runtime-boundary, and cleanup products");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "ConstructorChain", R"AS(
-class Base
-{
-	int Value;
-	Base(int InValue) { Value = InValue; }
-}
-class Derived : Base
-{
-	Derived() { super(40); }
-}
-int Entry()
-{
-	Derived Value;
-	return Value.Value + 2;
-}
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "ConstructorChain", ASTEST_AS_ANSI(R"AS(
+			class Base
+			{
+				int Value;
+				Base(int InValue)
+				{
+					Value = InValue;
+				}
+			}
+
+			class Derived : Base
+			{
+				Derived()
+				{
+					super(40);
+				}
+			}
+
+			int Entry()
+			{
+				Derived Value;
+				return Value.Value + 2;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		asIScriptFunction* Function = GetNativeFunctionByDecl(Module, "int Entry()");
 		ASSERT_THAT(IsNotNull(Function, TEXT("Constructor-chain entry should resolve")));
@@ -212,6 +226,10 @@ int Entry()
 
 	TEST_METHOD(ConstructorMetadataAndIsolatedExecutionException)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"LANG-CTOR-KIND-CALL and LANG-CTOR-BOUNDARY own script-class constructor metadata plus the isolated null-instance runtime boundary; this method retains a focused metadata/exception witness");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class constructor test should create a native engine")));
@@ -221,28 +239,29 @@ int Entry()
 			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildScriptClassModule(*TestRunner, ScriptEngine, "ReferenceScriptClassConstructor", R"(
-class Counter
-{
-	int Value = 10;
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class Counter
+			{
+				int Value = 10;
 
-	Counter()
-	{
-		Value += 32;
-	}
+				Counter()
+				{
+					Value += 32;
+				}
 
-	int Get()
-	{
-		return Value;
-	}
-}
+				int Get()
+				{
+					return Value;
+				}
+			}
 
-int Entry()
-{
-	Counter C;
-	return C.Get();
-}
-)",
+			int Entry()
+			{
+				Counter C;
+				return C.Get();
+			}
+			)AS");
+		asIScriptModule* Module = BuildScriptClassModule(*TestRunner, ScriptEngine, "ReferenceScriptClassConstructor", ScriptSource.c_str(),
 			Messages);
 		ASSERT_THAT(IsNotNull(Module, TEXT("Reference script-class constructor test should build module")));
 
@@ -269,6 +288,10 @@ int Entry()
 	}
 	TEST_METHOD(ConstructorArgumentsAreRejectedForValueStyleConstruction)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CTOR-PARAM-SELECT and LANG-CTOR-KIND-CALL supersede this one parameterized value-style rejection with constructor family, arity, call-form, exact diagnostic, and recovery coverage");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class argument constructor test should create a native engine")));
@@ -279,30 +302,31 @@ int Entry()
 		};
 
 		asIScriptModule* Module = nullptr;
-		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassConstructorArgs", R"(
-class Pair
-{
-	int A;
-	int B;
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class Pair
+			{
+				int A;
+				int B;
 
-	Pair(int InA, int InB)
-	{
-		A = InA;
-		B = InB;
-	}
+				Pair(int InA, int InB)
+				{
+					A = InA;
+					B = InB;
+				}
 
-	int Sum()
-	{
-		return A + B;
-	}
-}
+				int Sum()
+				{
+					return A + B;
+				}
+			}
 
-int Entry()
-{
-	Pair P(20, 22);
-	return P.Sum();
-}
-)",
+			int Entry()
+			{
+				Pair P(20, 22);
+				return P.Sum();
+			}
+			)AS");
+		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassConstructorArgs", ScriptSource.c_str(),
 			Module);
 		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference script-class argument constructor should document current value-style construction rejection")));
 		if (!TestHasMessageContaining(*TestRunner, Messages, TEXT("Only objects have constructors"), TEXT("Reference script-class argument constructor should report current fork diagnostic")))
@@ -312,6 +336,10 @@ int Entry()
 	}
 	TEST_METHOD(PrivateConstructorBlocksDerivedSuperCall)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CTOR-VISIBILITY supersedes this private derived-super predecessor across every visibility, call site, and candidate-selection form");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class private constructor test should create a native engine")));
@@ -322,35 +350,36 @@ int Entry()
 		};
 
 		asIScriptModule* Module = nullptr;
-		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassPrivateConstructors", R"(
-class A
-{
-	private A()
-	{
-	}
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class A
+			{
+				private A()
+				{
+				}
 
-	A(int Value)
-	{
-	}
+				A(int Value)
+				{
+				}
 
-	protected A(float Value)
-	{
-	}
+				protected A(float Value)
+				{
+				}
 
-	A create()
-	{
-		return A();
-	}
-}
+				A create()
+				{
+					return A();
+				}
+			}
 
-class B : A
-{
-	B()
-	{
-		super();
-	}
-}
-)",
+			class B : A
+			{
+				B()
+				{
+					super();
+				}
+			}
+			)AS");
+		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassPrivateConstructors", ScriptSource.c_str(),
 			Module);
 
 		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference private constructor script should fail to compile when a derived class calls super()")));
@@ -361,6 +390,10 @@ class B : A
 	}
 	TEST_METHOD(ProtectedConstructorAllowsDerivedSuperCall)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CTOR-VISIBILITY supersedes this protected derived-super predecessor with compile, exact metadata, runtime-boundary, and cleanup evidence across all sites");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class protected constructor test should create a native engine")));
@@ -371,22 +404,23 @@ class B : A
 		};
 
 		asIScriptModule* Module = nullptr;
-		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassProtectedConstructors", R"(
-class A
-{
-	protected A(float Value)
-	{
-	}
-}
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class A
+			{
+				protected A(float Value)
+				{
+				}
+			}
 
-class B : A
-{
-	B()
-	{
-		super(1.4f);
-	}
-}
-)",
+			class B : A
+			{
+				B()
+				{
+					super(1.4f);
+				}
+			}
+			)AS");
+		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassProtectedConstructors", ScriptSource.c_str(),
 			Module);
 
 		ASSERT_THAT(IsTrue(CompileResult >= 0, TEXT("Reference protected constructor script should compile when the derived class calls super(1.4f)")));
@@ -409,6 +443,10 @@ class B : A
 	}
 	TEST_METHOD(BaseWithoutDefaultConstructorGetsAutoGeneratedDefaultConstructor)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CTOR-SPECIAL-POLICY supersedes this generated-default predecessor with explicit engine-option, base/derived, metadata, compile, runtime-boundary, and cleanup cases");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class base-constructor test should create a native engine")));
@@ -419,29 +457,30 @@ class B : A
 		};
 
 		asIScriptModule* Module = nullptr;
-		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassBaseWithoutDefault", R"(
-class Base
-{
-	Base(int Value)
-	{
-	}
-}
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class Base
+			{
+				Base(int Value)
+				{
+				}
+			}
 
-class BadDerived : Base
-{
-	BadDerived()
-	{
-	}
-}
+			class BadDerived : Base
+			{
+				BadDerived()
+				{
+				}
+			}
 
-class GoodDerived : Base
-{
-	GoodDerived()
-	{
-		super(42);
-	}
-}
-)",
+			class GoodDerived : Base
+			{
+				GoodDerived()
+				{
+					super(42);
+				}
+			}
+			)AS");
+		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassBaseWithoutDefault", ScriptSource.c_str(),
 			Module);
 
 		ASSERT_THAT(IsTrue(CompileResult >= 0, TEXT("Reference base-constructor script should compile because the fork auto-creates a default constructor")));
@@ -471,6 +510,10 @@ class GoodDerived : Base
 	}
 	TEST_METHOD(DeletedDefaultConstructorIsRejected)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CTOR-SPECIAL-POLICY and the tagged selected-2.38 special-member owners supersede this single deleted-default predecessor with discoverable current/future policy evidence");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class deleted constructor test should create a native engine")));
@@ -481,18 +524,19 @@ class GoodDerived : Base
 		};
 
 		asIScriptModule* Module = nullptr;
-		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassDeletedConstructor", R"(
-class NoDefault
-{
-	NoDefault() delete;
-}
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class NoDefault
+			{
+				NoDefault() delete;
+			}
 
-int Entry()
-{
-	NoDefault Value;
-	return 1;
-}
-)",
+			int Entry()
+			{
+				NoDefault Value;
+				return 1;
+			}
+			)AS");
+		const int CompileResult = AngelscriptNativeTestSupport::CompileNativeModule(ScriptEngine, "ReferenceScriptClassDeletedConstructor", ScriptSource.c_str(),
 			Module);
 
 		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Reference deleted default constructor should not allow default construction")));

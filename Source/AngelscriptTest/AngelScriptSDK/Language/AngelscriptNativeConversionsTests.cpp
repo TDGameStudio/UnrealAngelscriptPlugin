@@ -1,5 +1,5 @@
 #include "../Support/AngelscriptNativeExecutionTestSupport.h"
-#include "../Support/AngelscriptNativeExecutionTestSupport.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
@@ -33,22 +33,30 @@ private:
 public:
 	TEST_METHOD(ConversionsNumeric)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CONV-NUMERIC supersedes this small numeric conversion sample across source/target type, implicit/explicit form, value category, compile, runtime, metadata, and cleanup");
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK numeric conversion test should create a standalone engine")));
 
-		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumeric", R"(
-int AddSmallAndMedium(int8 Small, uint16 Medium)
-{
-	return Small + Medium;
-}
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumeric", ASTEST_AS_ANSI(R"AS(
+			int AddSmallAndMedium(int8 Small, uint16 Medium)
+			{
+				return Small + Medium;
+			}
 
-float NarrowPrecise(double Value)
-{
-	return float(Value);
-}
-)");
+			float NarrowPrecise(double Value)
+			{
+				return float(Value);
+			}
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;
@@ -80,27 +88,35 @@ float NarrowPrecise(double Value)
 
 	TEST_METHOD(ConversionsExplicitCast)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CONV-NUMERIC and LANG-CONV-ABI supersede this explicit-cast sample with full numeric and floating ABI products");
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK explicit-cast conversion test should create a standalone engine")));
 
-		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionExplicit", R"(
-int TruncateDouble(double Value)
-{
-	return int(Value);
-}
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionExplicit", ASTEST_AS_ANSI(R"AS(
+			int TruncateDouble(double Value)
+			{
+				return int(Value);
+			}
 
-uint64 WidenToUint64(int Value)
-{
-	return uint64(Value);
-}
+			uint64 WidenToUint64(int Value)
+			{
+				return uint64(Value);
+			}
 
-float AddFloatQuarter(uint64 Value)
-{
-	return float(Value) + 0.25f;
-}
-)");
+			float AddFloatQuarter(uint64 Value)
+			{
+				return float(Value) + 0.25f;
+			}
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;
@@ -146,27 +162,35 @@ float AddFloatQuarter(uint64 Value)
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"LANG-CONV-OBJECT and LANG-CONV-FAILURE own implicit object conversion plus the isolated script-class null-instance boundary and recovery; this method retains one focused witness");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK implicit value-type conversion test should create a standalone engine")));
 
-		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionImplicitValueType", R"(
-class Test
-{
-	int opImplConv() const
-	{
-		return 7;
-	}
-}
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionImplicitValueType", ASTEST_AS_ANSI(R"AS(
+			class Test
+			{
+				int opImplConv() const
+				{
+					return 7;
+				}
+			}
 
-int ConvertTestToInt()
-{
-	Test Value;
-	int Result = Value;
-	return Result;
-}
-)");
+			int ConvertTestToInt()
+			{
+				Test Value;
+				int Result = Value;
+				return Result;
+			}
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;
@@ -196,32 +220,40 @@ int ConvertTestToInt()
 
 	TEST_METHOD(ConversionsNumericBoundary)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CONV-NUMERIC, LANG-CONV-FLOAT-FINITE-SPECIAL, and LANG-CONV-FLOAT64-TO-FLOAT32-RANGE supersede these five numeric boundaries with source/target/form/value products");
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK numeric-boundary conversion test should create a standalone engine")));
 
-		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumericBoundary", R"(
-int Truncate(double Value)
-{
-	return int(Value);
-}
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionNumericBoundary", ASTEST_AS_ANSI(R"AS(
+			int Truncate(double Value)
+			{
+				return int(Value);
+			}
 
-int RoundTripSmallInt(int Value)
-{
-	return int(float(Value));
-}
+			int RoundTripSmallInt(int Value)
+			{
+				return int(float(Value));
+			}
 
-uint SignedToUnsigned(int Value)
-{
-	return uint(Value);
-}
+			uint SignedToUnsigned(int Value)
+			{
+				return uint(Value);
+			}
 
-int64 WidenInt(int Value)
-{
-	return int64(Value) + 1;
-}
-)");
+			int64 WidenInt(int Value)
+			{
+				return int64(Value) + 1;
+			}
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;
@@ -285,22 +317,30 @@ int64 WidenInt(int Value)
 
 	TEST_METHOD(ConversionsBoolConversion)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CONV-BOOL-CONTEXT and LANG-EXPR-LAZY-EVALUATION supersede this comparison/ternary bool sample across contexts, values, selector outcomes, and runtime effects");
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("SDK bool-conversion test should create a standalone engine")));
 
-		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionBool", R"(
-bool IsNonZero(int Value)
-{
-	return Value != 0;
-}
+		AngelscriptNativeTestSupport::FScopedNativeModule Module(*TestRunner, Engine, "SDKConversionBool", ASTEST_AS_ANSI(R"AS(
+			bool IsNonZero(int Value)
+			{
+				return Value != 0;
+			}
 
-int BoolToInt(bool Value)
-{
-	return Value ? 1 : 0;
-}
-)");
+			int BoolToInt(bool Value)
+			{
+				return Value ? 1 : 0;
+			}
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;

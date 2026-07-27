@@ -1,4 +1,5 @@
 #include "Support/AngelscriptNativeCoreTestSupport.h"
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -179,6 +180,10 @@ private:
 public:
 	TEST_METHOD(InheritanceMetadataAndIsolatedExecutionException)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"LANG-INH-DISPATCH, LANG-INH-ACCESS, and LANG-INH-CLASS-RULE own inheritance metadata, method/property visibility, dispatch, and the isolated script-class null-instance boundary; this method retains one focused witness");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Reference script-class inheritance test should create a native engine")));
@@ -188,27 +193,28 @@ public:
 			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
 		};
 
-		asIScriptModule* Module = BuildScriptClassModule(*TestRunner, ScriptEngine, "ReferenceScriptClassInheritance", R"(
-class Base
-{
-	int Value = 21;
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			class Base
+			{
+				int Value = 21;
 
-	int Twice()
-	{
-		return Value * 2;
-	}
-}
+				int Twice()
+				{
+					return Value * 2;
+				}
+			}
 
-class Derived : Base
-{
-}
+			class Derived : Base
+			{
+			}
 
-int Entry()
-{
-	Derived D;
-	return D.Twice();
-}
-)",
+			int Entry()
+			{
+				Derived D;
+				return D.Twice();
+			}
+			)AS");
+		asIScriptModule* Module = BuildScriptClassModule(*TestRunner, ScriptEngine, "ReferenceScriptClassInheritance", ScriptSource.c_str(),
 			Messages);
 		ASSERT_THAT(IsNotNull(Module, TEXT("Reference script-class inheritance test should build module")));
 

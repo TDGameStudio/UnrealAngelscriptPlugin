@@ -1,4 +1,5 @@
 #include "../Support/AngelscriptNativeExecutionTestSupport.h"
+#include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
@@ -9,14 +10,29 @@ TEST_CLASS_WITH_FLAGS(FControlFlowTests, "Angelscript.TestModule.AngelScriptSDK.
 {
 	TEST_METHOD(ControlFlowShortCircuit)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-EXPR-LAZY-EVALUATION and LANG-OP-LOGICAL supersede this short-circuit smoke with selector, outcome, source-shape, truth-table, side-effect, runtime, and cleanup products");
+
 		using namespace AngelscriptNativeTestSupport;
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
-		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorShortCircuit", R"AS(
-int AndCounter() { int counter = 0; bool value = false && (++counter > 0); return value ? -1 : counter; }
-int OrCounter() { int counter = 0; bool value = true || (++counter > 0); return value ? counter : -1; }
-)AS");
+		FScopedNativeModule Module(*TestRunner, Engine, "SDKOperatorShortCircuit", ASTEST_AS_ANSI(R"AS(
+			int AndCounter()
+			{
+				int counter = 0;
+				bool value = false && (++counter > 0);
+				return value ? -1 : counter;
+			}
+
+			int OrCounter()
+			{
+				int counter = 0;
+				bool value = true || (++counter > 0);
+				return value ? counter : -1;
+			}
+		)AS"));
 		if (!Module.IsValid()) return;
 		AngelscriptSDKTestSupport::FSdkFunctionInvoker AndInvoker(*TestRunner, Engine.Get(), Module, "int AndCounter()");
 		AngelscriptSDKTestSupport::FSdkFunctionInvoker OrInvoker(*TestRunner, Engine.Get(), Module, "int OrCounter()");
