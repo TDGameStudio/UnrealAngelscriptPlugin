@@ -368,6 +368,62 @@ namespace AngelscriptCoverageLoopTests_NS
 				TEXT("TMap for-each exposes an iterator, not a Pair.Key/Pair.Value object"))));
 		}
 
+		TEST_METHOD(ForEachContainerMutationSurface)
+		{
+			FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+			FAngelscriptEngineScope Scope(Engine);
+
+			asIScriptModule* Module = BuildModule(*TestRunner, Engine, "ASCovLoop_ForEachContainerMutationSurface", ASTEST_AS(R"AS(
+			int ForEachAddMutationSurface()
+			{
+				TArray<int> Values;
+				Values.Add(1);
+				Values.Add(2);
+				bool bAdded = false;
+				for (int Value : Values)
+				{
+					if (!bAdded)
+					{
+						Values.Add(3);
+						bAdded = true;
+					}
+				}
+				return Values.Num();
+			}
+
+			int ForEachRemoveMutationSurface()
+			{
+				TArray<int> Values;
+				Values.Add(1);
+				Values.Add(2);
+				Values.Add(3);
+				bool bRemoved = false;
+				for (int Value : Values)
+				{
+					if (!bRemoved && Value == 1)
+					{
+						Values.RemoveAt(1);
+						bRemoved = true;
+					}
+				}
+				return Values.Num();
+			}
+			)AS"));
+			ON_SCOPE_EXIT
+			{
+				if (Module != nullptr)
+				{
+					Engine.DiscardModule(UTF8_TO_TCHAR(Module->GetName()));
+				}
+			};
+
+			ASSERT_THAT(IsNotNull(Module, TEXT("for-each container mutation fixture should compile")));
+			if (Module != nullptr)
+			{
+				TestRunner->AddInfo(TEXT("For-each Add/Remove mutation is compile-reachable; runtime invalidation semantics remain intentionally characterized by the later focused test pass."));
+			}
+		}
+
 		// -------------------------------------------------------------------------
 		// Nested for loops
 		// -------------------------------------------------------------------------
