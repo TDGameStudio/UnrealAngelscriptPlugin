@@ -1,10 +1,16 @@
 #include "CQTest.h"
 
 #include "AngelscriptTestEngineHelper.h"
+#include "AngelscriptTestEngineAcquisition.h"
 #include "AngelscriptTestMacros.h"
 #include "StaticJIT/PrecompiledData.h"
 #include "StaticJIT/StaticJITDiagnostics.h"
 #include "StaticJIT/StaticJITHeader.h"
+
+#include "StartAngelscriptHeaders.h"
+#include "source/as_bytecode.h"
+#include "source/as_scriptfunction.h"
+#include "EndAngelscriptHeaders.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -161,6 +167,97 @@ private:
 				ScriptSource));
 	}
 
+	static void DiscardActiveModules(FAngelscriptEngine& Engine)
+	{
+		const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
+		for (const TSharedRef<FAngelscriptModuleDesc>& Module : ActiveModules)
+		{
+			Engine.DiscardModule(*Module->ModuleName);
+		}
+	}
+
+	static bool FindReferenceCopyTypeOperand(
+		asIScriptFunction& Function,
+		asPWORD& OutTypeOperand)
+	{
+		OutTypeOperand = 0;
+
+		asUINT BytecodeLength = 0;
+		const asDWORD* const Bytecode = Function.GetByteCode(&BytecodeLength);
+		if (Bytecode == nullptr || BytecodeLength == 0)
+		{
+			return false;
+		}
+
+		asUINT DwordIndex = 0;
+		while (DwordIndex < BytecodeLength)
+		{
+			const asEBCInstr Opcode = static_cast<asEBCInstr>(
+				*reinterpret_cast<const asBYTE*>(&Bytecode[DwordIndex]));
+			if (static_cast<int32>(Opcode) > static_cast<int32>(asBC_MAXBYTECODE))
+			{
+				return false;
+			}
+
+			const int32 InstructionSize = asBCTypeSize[asBCInfo[Opcode].type];
+			if (InstructionSize <= 0
+				|| DwordIndex + static_cast<asUINT>(InstructionSize) > BytecodeLength)
+			{
+				return false;
+			}
+
+			if (Opcode == asBC_REFCPY || Opcode == asBC_RefCpyV)
+			{
+				OutTypeOperand = asBC_PTRARG(&Bytecode[DwordIndex]);
+				return true;
+			}
+
+			DwordIndex += static_cast<asUINT>(InstructionSize);
+		}
+
+		return false;
+	}
+
+	static const FAngelscriptPrecompiledFunction* FindSerializedGlobalFunction(
+		const FAngelscriptPrecompiledData& Data,
+		const FName& InModuleName,
+		const ANSICHAR* InFunctionName)
+	{
+		const FAngelscriptPrecompiledModule* const Module = Data.Modules.Find(InModuleName.ToString());
+		if (Module == nullptr || InFunctionName == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (const FAngelscriptPrecompiledFunction& Function : Module->Functions)
+		{
+			if (FCStringAnsi::Strcmp(*Function.FunctionName, InFunctionName) == 0)
+			{
+				return &Function;
+			}
+		}
+
+		return nullptr;
+	}
+
+	static bool RestoreSerializedBytecode(
+		const FAngelscriptPrecompiledFunction& SerializedFunction,
+		asIScriptFunction& TargetFunction)
+	{
+		asCScriptFunction& TargetInternalFunction = static_cast<asCScriptFunction&>(TargetFunction);
+		if (TargetInternalFunction.scriptData == nullptr)
+		{
+			return false;
+		}
+
+		TargetInternalFunction.scriptData->byteCode.SetLength(SerializedFunction.ByteCode.Num());
+		FMemory::Memcpy(
+			TargetInternalFunction.scriptData->byteCode.AddressOf(),
+			SerializedFunction.ByteCode.GetData(),
+			SerializedFunction.ByteCode.Num() * sizeof(asDWORD));
+		return true;
+	}
+
 	static bool RunBuildIdentifierValidation(FAutomationTestBase& Test);
 	static bool RunGlobalReferenceNameReuse(FAutomationTestBase& Test);
 	static bool RunRepeatedLoadClearsRuntimeCache(FAutomationTestBase& Test);
@@ -179,6 +276,161 @@ public:
 	TEST_METHOD(RepeatedLoadClearsRuntimeCache)
 	{
 		ASSERT_THAT(IsTrue(RunRepeatedLoadClearsRuntimeCache(*TestRunner)));
+	}
+
+	TEST_METHOD(ReferenceCopyTypeOperandsRemapAcrossPrecompiledLoad)
+	{
+		const FName FixtureModuleName(TEXT("ASPrecompiledReferenceCopyTypeRemap"));
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int Entry(UObject Source)
+			{
+				UObject Alias = Source;
+				return Alias == nullptr ? 1 : 0;
+			}
+			)AS");
+		TestRunner->AddInfo(FString::Printf(
+			TEXT("[AS-STATICJIT-PRECOMPILED-SOURCE]\n%s"),
+			*ScriptSource));
+
+		TUniquePtr<FAngelscriptEngine> SourceEngine = CreateScriptScanFreeFullEngineForTesting();
+		ASSERT_THAT(IsNotNull(SourceEngine.Get(), TEXT("StaticJIT.PrecompiledData reference-copy remap should create the source engine")));
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptEngineScope SourceCleanupScope(*SourceEngine);
+			DiscardActiveModules(*SourceEngine);
+		};
+
+		FScopedTempPrecompiledCacheFile CacheFile(TEXT("PrecompiledReferenceCopyTypeRemap"));
+		asPWORD SourceTypeOperand = 0;
+		asPWORD SourceTypePointer = 0;
+		{
+			FAngelscriptEngineScope SourceScope(*SourceEngine);
+
+			ASSERT_THAT(IsTrue(
+				CompileModuleFromMemory(
+					SourceEngine.Get(),
+					FixtureModuleName,
+					TEXT("PrecompiledReferenceCopyTypeRemap.as"),
+					ScriptSource),
+				TEXT("StaticJIT.PrecompiledData reference-copy remap should compile the source fixture")));
+
+			asIScriptModule* const SourceModule = FindCompiledModule(*TestRunner, *SourceEngine, FixtureModuleName);
+			ASSERT_THAT(IsNotNull(SourceModule, TEXT("StaticJIT.PrecompiledData reference-copy remap should publish the source module")));
+
+			asIScriptFunction* const SourceEntry = SourceModule->GetFunctionByName("Entry");
+			ASSERT_THAT(IsNotNull(SourceEntry, TEXT("StaticJIT.PrecompiledData reference-copy remap should publish the source entry function")));
+			TestRunner->AddInfo(FString::Printf(
+				TEXT("[AS-STATICJIT-PRECOMPILED-DECLARATION][source] %s"),
+				UTF8_TO_TCHAR(SourceEntry->GetDeclaration())));
+
+			ASSERT_THAT(IsTrue(
+				FindReferenceCopyTypeOperand(*SourceEntry, SourceTypeOperand),
+				TEXT("StaticJIT.PrecompiledData reference-copy remap source bytecode should contain a typed reference-copy instruction")));
+
+			asITypeInfo* const SourceType = SourceEngine->GetScriptEngine()->GetTypeInfoByDecl("UObject");
+			ASSERT_THAT(IsNotNull(SourceType, TEXT("StaticJIT.PrecompiledData reference-copy remap should publish the source type")));
+			SourceTypePointer = reinterpret_cast<asPWORD>(SourceType);
+			ASSERT_THAT(AreEqual(
+				SourceTypePointer,
+				SourceTypeOperand,
+				TEXT("StaticJIT.PrecompiledData reference-copy source operand should reference its source type")));
+
+			FAngelscriptPrecompiledData Snapshot(SourceEngine->GetScriptEngine());
+			Snapshot.InitFromActiveScript();
+			Snapshot.Save(CacheFile.GetFilename());
+			ASSERT_THAT(IsTrue(
+				IFileManager::Get().FileExists(*CacheFile.GetFilename()),
+				TEXT("StaticJIT.PrecompiledData reference-copy remap should save a precompiled cache")));
+		}
+
+		TUniquePtr<FAngelscriptEngine> RestoredEngine = CreateScriptScanFreeFullEngineForTesting();
+		ASSERT_THAT(IsNotNull(RestoredEngine.Get(), TEXT("StaticJIT.PrecompiledData reference-copy remap should create the restored engine")));
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptEngineScope RestoredCleanupScope(*RestoredEngine);
+			DiscardActiveModules(*RestoredEngine);
+		};
+		FAngelscriptEngineScope RestoredScope(*RestoredEngine);
+		ASSERT_THAT(IsTrue(
+			CompileModuleFromMemory(
+				RestoredEngine.Get(),
+				FixtureModuleName,
+				TEXT("PrecompiledReferenceCopyTypeRemap.as"),
+				ScriptSource),
+			TEXT("StaticJIT.PrecompiledData reference-copy remap should compile the target fixture")));
+
+		asIScriptModule* const RestoredModule = FindCompiledModule(*TestRunner, *RestoredEngine, FixtureModuleName);
+		ASSERT_THAT(IsNotNull(RestoredModule, TEXT("StaticJIT.PrecompiledData reference-copy remap should publish the restored module")));
+
+		asIScriptFunction* const RestoredEntry = RestoredModule->GetFunctionByName("Entry");
+		ASSERT_THAT(IsNotNull(RestoredEntry, TEXT("StaticJIT.PrecompiledData reference-copy remap should publish the restored entry function")));
+		TestRunner->AddInfo(FString::Printf(
+			TEXT("[AS-STATICJIT-PRECOMPILED-DECLARATION][target] %s"),
+			UTF8_TO_TCHAR(RestoredEntry->GetDeclaration())));
+
+		FAngelscriptPrecompiledData LoadedData(RestoredEngine->GetScriptEngine());
+		LoadedData.Load(CacheFile.GetFilename());
+		ASSERT_THAT(IsTrue(
+			LoadedData.IsValidForCurrentBuild(),
+			TEXT("StaticJIT.PrecompiledData reference-copy remap should load a cache for the current build")));
+
+		const FAngelscriptPrecompiledFunction* const SerializedEntry = FindSerializedGlobalFunction(
+			LoadedData,
+			FixtureModuleName,
+			"Entry");
+		ASSERT_THAT(IsNotNull(SerializedEntry, TEXT("StaticJIT.PrecompiledData reference-copy remap should retain serialized entry bytecode")));
+		ASSERT_THAT(IsTrue(
+			RestoreSerializedBytecode(*SerializedEntry, *RestoredEntry),
+			TEXT("StaticJIT.PrecompiledData reference-copy remap should restore serialized bytecode into the target function")));
+
+		asPWORD SerializedTypeOperand = 0;
+		ASSERT_THAT(IsTrue(
+			FindReferenceCopyTypeOperand(*RestoredEntry, SerializedTypeOperand),
+			TEXT("StaticJIT.PrecompiledData reference-copy remap restored serialized bytecode should contain a typed reference-copy instruction")));
+		ASSERT_THAT(AreEqual(
+			SourceTypePointer,
+			SerializedTypeOperand,
+			TEXT("StaticJIT.PrecompiledData reference-copy serialized operand should retain the source type before reader remapping")));
+
+		asITypeInfo* const RestoredType = RestoredEngine->GetScriptEngine()->GetTypeInfoByDecl("UObject");
+		ASSERT_THAT(IsNotNull(RestoredType, TEXT("StaticJIT.PrecompiledData reference-copy remap should publish the restored type")));
+		const asPWORD RestoredTypePointer = reinterpret_cast<asPWORD>(RestoredType);
+		ASSERT_THAT(AreNotEqual(
+			SourceTypePointer,
+			RestoredTypePointer,
+			TEXT("StaticJIT.PrecompiledData reference-copy source and restored engines should own distinct type objects")));
+
+		SerializedEntry->Process(LoadedData, static_cast<asCScriptFunction*>(RestoredEntry));
+
+		asPWORD RestoredTypeOperand = 0;
+		ASSERT_THAT(IsTrue(
+			FindReferenceCopyTypeOperand(*RestoredEntry, RestoredTypeOperand),
+			TEXT("StaticJIT.PrecompiledData reference-copy remapped bytecode should retain a typed reference-copy instruction")));
+		ASSERT_THAT(AreEqual(
+			RestoredTypePointer,
+			RestoredTypeOperand,
+			TEXT("StaticJIT.PrecompiledData reference-copy operand should remap to the restored engine type")));
+
+		asIScriptContext* const Context = RestoredEngine->GetScriptEngine()->CreateContext();
+		ASSERT_THAT(IsNotNull(Context, TEXT("StaticJIT.PrecompiledData reference-copy remap should create an execution context")));
+		ON_SCOPE_EXIT
+		{
+			Context->Release();
+		};
+		ASSERT_THAT(IsTrue(
+			Context->Prepare(RestoredEntry) >= 0,
+			TEXT("StaticJIT.PrecompiledData reference-copy remap should prepare the restored entry function")));
+		ASSERT_THAT(IsTrue(
+			Context->SetArgObject(0, nullptr) >= 0,
+			TEXT("StaticJIT.PrecompiledData reference-copy remap should bind a null registered reference argument")));
+		ASSERT_THAT(AreEqual(
+			asEXECUTION_FINISHED,
+			Context->Execute(),
+			TEXT("StaticJIT.PrecompiledData reference-copy remap should execute the restored entry function")));
+		ASSERT_THAT(AreEqual(
+			static_cast<asDWORD>(1),
+			Context->GetReturnDWord(),
+			TEXT("StaticJIT.PrecompiledData reference-copy remap should preserve the null reference result after load")));
 	}
 };
 

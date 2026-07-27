@@ -1,5 +1,6 @@
 #include "CQTest.h"
 
+#include "AngelscriptTestEngineAcquisition.h"
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestMacros.h"
 #include "ClassGenerator/ASClass.h"
@@ -10,6 +11,7 @@
 #include "StaticJIT/StaticJITHeader.h"
 
 #include "StartAngelscriptHeaders.h"
+#include "source/as_bytecode.h"
 #include "source/as_context.h"
 #include "source/as_objecttype.h"
 #include "source/as_scriptfunction.h"
@@ -49,6 +51,95 @@ private:
 		int32 Value = 0;
 		int32 ReturnValue = 0;
 	};
+
+	struct FDoubleInt64ConversionResults
+	{
+		int64 SignedValue = 0;
+		uint64 UnsignedValue = 0;
+	};
+
+	static void DiscardActiveModules(FAngelscriptEngine& Engine)
+	{
+		const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
+		for (const TSharedRef<FAngelscriptModuleDesc>& Module : ActiveModules)
+		{
+			Engine.DiscardModule(*Module->ModuleName);
+		}
+	}
+
+	static bool FunctionContainsOpcode(asCScriptFunction& Function, const asEBCInstr ExpectedOpcode)
+	{
+		asUINT BytecodeLength = 0;
+		const asDWORD* Bytecode = Function.GetByteCode(&BytecodeLength);
+		if (Bytecode == nullptr || BytecodeLength == 0)
+		{
+			return false;
+		}
+
+		asUINT DwordIndex = 0;
+		while (DwordIndex < BytecodeLength)
+		{
+			const asEBCInstr Opcode = static_cast<asEBCInstr>(*reinterpret_cast<const asBYTE*>(&Bytecode[DwordIndex]));
+			if (Opcode == ExpectedOpcode)
+			{
+				return true;
+			}
+
+			if (static_cast<int32>(Opcode) > static_cast<int32>(asBC_MAXBYTECODE))
+			{
+				break;
+			}
+
+			const int32 InstructionSize = asBCTypeSize[asBCInfo[Opcode].type];
+			if (InstructionSize <= 0)
+			{
+				break;
+			}
+
+			DwordIndex += static_cast<asUINT>(InstructionSize);
+		}
+
+		return false;
+	}
+
+	static bool ExecuteDoubleArgumentFunction(
+		FAutomationTestBase& Test,
+		asIScriptEngine& ScriptEngine,
+		asCScriptFunction& Function,
+		const double Input,
+		const TCHAR* Label,
+		asQWORD& OutRawResult)
+	{
+		FNoDiscardAsserter LocalAssert(Test);
+		asIScriptContext* Context = ScriptEngine.CreateContext();
+		if (!LocalAssert.IsNotNull(Context, *FString::Printf(TEXT("%s should create an execution context"), Label)))
+		{
+			return false;
+		}
+		ON_SCOPE_EXIT
+		{
+			Context->Release();
+		};
+
+		if (!LocalAssert.AreEqual(
+				static_cast<int32>(asSUCCESS),
+				Context->Prepare(&Function),
+				*FString::Printf(TEXT("%s should prepare the conversion function"), Label))
+			|| !LocalAssert.AreEqual(
+				static_cast<int32>(asSUCCESS),
+				Context->SetArgDouble(0, Input),
+				*FString::Printf(TEXT("%s should bind the runtime double argument"), Label))
+			|| !LocalAssert.AreEqual(
+				static_cast<int32>(asEXECUTION_FINISHED),
+				Context->Execute(),
+				*FString::Printf(TEXT("%s should finish conversion execution"), Label)))
+		{
+			return false;
+		}
+
+		OutRawResult = Context->GetReturnQWord();
+		return true;
+	}
 
 	static asCScriptFunction* FindEntryFunction(FAngelscriptEngine& Engine)
 	{
@@ -246,6 +337,14 @@ private:
 
 	static bool LoadAotFixtureFromPrecompiledData(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
+		if (!Test.TestTrue(
+				TEXT("StaticJIT.AOT should register the object-last native fixture surface before loading"),
+				AngelscriptStaticJITAotFixture::RegisterObjectLastNativeSurface(
+					*Engine.GetScriptEngine())))
+		{
+			return false;
+		}
+
 		FString AvailabilityError;
 		if (!Test.TestTrue(TEXT("StaticJIT.AOT generated output and local cache should be available before runtime verification"), AngelscriptStaticJITAotFixture::IsGeneratedOutputAvailable(&AvailabilityError)))
 		{
@@ -292,6 +391,272 @@ public:
 	TEST_METHOD(RuntimeExecuteUsesGeneratedEntry)
 	{
 		ASSERT_THAT(IsTrue(RunRuntimeExecution(*TestRunner)));
+	}
+
+	TEST_METHOD(DoubleInt64ConversionsMatchInterpreter)
+	{
+		constexpr double SignedInput = -4294967296.75;
+		constexpr double UnsignedInput = 4294967296.75;
+		constexpr int64 ExpectedSigned = -4294967296LL;
+		constexpr uint64 ExpectedUnsigned = 4294967296ULL;
+		FDoubleInt64ConversionResults InterpreterResults;
+
+		TestRunner->AddInfo(FString::Printf(
+			TEXT("[AS-STATICJIT-AOT-SOURCE-BEGIN][DoubleInt64ConversionsMatchInterpreter]\n%s[AS-STATICJIT-AOT-SOURCE-END][DoubleInt64ConversionsMatchInterpreter]"),
+			*AngelscriptStaticJITAotFixture::GetScriptSource()));
+
+		{
+			TUniquePtr<FAngelscriptEngine> InterpreterEngine = CreateIsolatedFullEngine();
+			ASSERT_THAT(IsNotNull(InterpreterEngine.Get(), TEXT("StaticJIT.AOT parity should create an isolated interpreter engine")));
+			FAngelscriptEngineScope InterpreterScope(*InterpreterEngine);
+			ON_SCOPE_EXIT
+			{
+				DiscardActiveModules(*InterpreterEngine);
+			};
+			ASSERT_THAT(IsTrue(
+				AngelscriptStaticJITAotFixture::RegisterObjectLastNativeSurface(
+					*InterpreterEngine->GetScriptEngine()),
+				TEXT("StaticJIT.AOT parity should register the fixture object-last native surface")));
+
+			ASSERT_THAT(IsTrue(
+				CompileAnnotatedModuleFromMemory(
+					InterpreterEngine.Get(),
+					AngelscriptStaticJITAotFixture::GetModuleName(),
+					AngelscriptStaticJITAotFixture::GetSourceFilename(),
+					AngelscriptStaticJITAotFixture::GetScriptSource()),
+				TEXT("StaticJIT.AOT parity should compile the fixture for interpreter execution")));
+
+			asCScriptFunction* SignedFunction = FindGlobalFunction(
+				*TestRunner,
+				*InterpreterEngine,
+				AngelscriptStaticJITAotFixture::GetDoubleToInt64Declaration());
+			asCScriptFunction* UnsignedFunction = FindGlobalFunction(
+				*TestRunner,
+				*InterpreterEngine,
+				AngelscriptStaticJITAotFixture::GetDoubleToUint64Declaration());
+			ASSERT_THAT(IsNotNull(SignedFunction, TEXT("Interpreter should resolve the signed double conversion")));
+			ASSERT_THAT(IsNotNull(UnsignedFunction, TEXT("Interpreter should resolve the unsigned double conversion")));
+
+			const int32 DoubleTypeId = InterpreterEngine->GetScriptEngine()->GetTypeIdByDecl("double");
+			int32 SignedParameterTypeId = asINVALID_TYPE;
+			int32 UnsignedParameterTypeId = asINVALID_TYPE;
+			ASSERT_THAT(AreEqual(static_cast<asUINT>(1), SignedFunction->GetParamCount(), TEXT("Signed interpreter conversion should expose one parameter")));
+			ASSERT_THAT(AreEqual(static_cast<asUINT>(1), UnsignedFunction->GetParamCount(), TEXT("Unsigned interpreter conversion should expose one parameter")));
+			ASSERT_THAT(AreEqual(asSUCCESS, SignedFunction->GetParam(0, &SignedParameterTypeId), TEXT("Signed interpreter parameter metadata should be readable")));
+			ASSERT_THAT(AreEqual(asSUCCESS, UnsignedFunction->GetParam(0, &UnsignedParameterTypeId), TEXT("Unsigned interpreter parameter metadata should be readable")));
+			ASSERT_THAT(AreEqual(DoubleTypeId, SignedParameterTypeId, TEXT("Signed interpreter conversion should accept double")));
+			ASSERT_THAT(AreEqual(DoubleTypeId, UnsignedParameterTypeId, TEXT("Unsigned interpreter conversion should accept double")));
+			ASSERT_THAT(AreEqual(static_cast<int32>(asTYPEID_INT64), SignedFunction->GetReturnTypeId(), TEXT("Signed interpreter conversion should return int64")));
+			ASSERT_THAT(AreEqual(static_cast<int32>(asTYPEID_UINT64), UnsignedFunction->GetReturnTypeId(), TEXT("Unsigned interpreter conversion should return uint64")));
+
+			ASSERT_THAT(IsNull(SignedFunction->jitFunction, TEXT("Signed interpreter conversion should not attach jitFunction")));
+			ASSERT_THAT(IsNull(SignedFunction->jitFunction_Raw, TEXT("Signed interpreter conversion should not attach jitFunction_Raw")));
+			ASSERT_THAT(IsNull(SignedFunction->jitFunction_ParmsEntry, TEXT("Signed interpreter conversion should not attach jitFunction_ParmsEntry")));
+			ASSERT_THAT(IsNull(UnsignedFunction->jitFunction, TEXT("Unsigned interpreter conversion should not attach jitFunction")));
+			ASSERT_THAT(IsNull(UnsignedFunction->jitFunction_Raw, TEXT("Unsigned interpreter conversion should not attach jitFunction_Raw")));
+			ASSERT_THAT(IsNull(UnsignedFunction->jitFunction_ParmsEntry, TEXT("Unsigned interpreter conversion should not attach jitFunction_ParmsEntry")));
+			ASSERT_THAT(IsTrue(FunctionContainsOpcode(*SignedFunction, asBC_dTOi64), TEXT("Signed interpreter conversion should retain asBC_dTOi64 bytecode")));
+			ASSERT_THAT(IsTrue(FunctionContainsOpcode(*UnsignedFunction, asBC_dTOu64), TEXT("Unsigned interpreter conversion should retain asBC_dTOu64 bytecode")));
+
+			asQWORD SignedRawResult = 0;
+			asQWORD UnsignedRawResult = 0;
+			ASSERT_THAT(IsTrue(ExecuteDoubleArgumentFunction(
+				*TestRunner,
+				*InterpreterEngine->GetScriptEngine(),
+				*SignedFunction,
+				SignedInput,
+				TEXT("Signed interpreter conversion"),
+				SignedRawResult)));
+			ASSERT_THAT(IsTrue(ExecuteDoubleArgumentFunction(
+				*TestRunner,
+				*InterpreterEngine->GetScriptEngine(),
+				*UnsignedFunction,
+				UnsignedInput,
+				TEXT("Unsigned interpreter conversion"),
+				UnsignedRawResult)));
+			FMemory::Memcpy(&InterpreterResults.SignedValue, &SignedRawResult, sizeof(InterpreterResults.SignedValue));
+			InterpreterResults.UnsignedValue = static_cast<uint64>(UnsignedRawResult);
+			ASSERT_THAT(AreEqual(ExpectedSigned, InterpreterResults.SignedValue, TEXT("Interpreter signed conversion should truncate toward zero exactly")));
+			ASSERT_THAT(AreEqual(ExpectedUnsigned, InterpreterResults.UnsignedValue, TEXT("Interpreter unsigned conversion should preserve the 64-bit value exactly")));
+			DiscardActiveModules(*InterpreterEngine);
+			ASSERT_THAT(AreEqual(0, InterpreterEngine->GetActiveModules().Num(), TEXT("Interpreter parity phase should discard every active module")));
+		}
+
+		{
+			TUniquePtr<FAngelscriptEngine> AotEngine = CreateIsolatedFullEngine();
+			ASSERT_THAT(IsNotNull(AotEngine.Get(), TEXT("StaticJIT.AOT parity should create an isolated loaded-AOT engine")));
+			FAngelscriptEngineScope AotScope(*AotEngine);
+			ON_SCOPE_EXIT
+			{
+				DiscardActiveModules(*AotEngine);
+			};
+
+			ASSERT_THAT(IsTrue(
+				LoadAotFixtureFromPrecompiledData(*TestRunner, *AotEngine),
+				TEXT("StaticJIT.AOT parity should load the precompiled fixture")));
+
+			asCScriptFunction* SignedFunction = FindGlobalFunction(
+				*TestRunner,
+				*AotEngine,
+				AngelscriptStaticJITAotFixture::GetDoubleToInt64Declaration());
+			asCScriptFunction* UnsignedFunction = FindGlobalFunction(
+				*TestRunner,
+				*AotEngine,
+				AngelscriptStaticJITAotFixture::GetDoubleToUint64Declaration());
+			ASSERT_THAT(IsNotNull(SignedFunction, TEXT("Loaded AOT should resolve the signed double conversion")));
+			ASSERT_THAT(IsNotNull(UnsignedFunction, TEXT("Loaded AOT should resolve the unsigned double conversion")));
+
+			const int32 DoubleTypeId = AotEngine->GetScriptEngine()->GetTypeIdByDecl("double");
+			int32 SignedParameterTypeId = asINVALID_TYPE;
+			int32 UnsignedParameterTypeId = asINVALID_TYPE;
+			ASSERT_THAT(AreEqual(static_cast<asUINT>(1), SignedFunction->GetParamCount(), TEXT("Signed loaded-AOT conversion should expose one parameter")));
+			ASSERT_THAT(AreEqual(static_cast<asUINT>(1), UnsignedFunction->GetParamCount(), TEXT("Unsigned loaded-AOT conversion should expose one parameter")));
+			ASSERT_THAT(AreEqual(asSUCCESS, SignedFunction->GetParam(0, &SignedParameterTypeId), TEXT("Signed loaded-AOT parameter metadata should be readable")));
+			ASSERT_THAT(AreEqual(asSUCCESS, UnsignedFunction->GetParam(0, &UnsignedParameterTypeId), TEXT("Unsigned loaded-AOT parameter metadata should be readable")));
+			ASSERT_THAT(AreEqual(DoubleTypeId, SignedParameterTypeId, TEXT("Signed loaded-AOT conversion should accept double")));
+			ASSERT_THAT(AreEqual(DoubleTypeId, UnsignedParameterTypeId, TEXT("Unsigned loaded-AOT conversion should accept double")));
+			ASSERT_THAT(AreEqual(static_cast<int32>(asTYPEID_INT64), SignedFunction->GetReturnTypeId(), TEXT("Signed loaded-AOT conversion should return int64")));
+			ASSERT_THAT(AreEqual(static_cast<int32>(asTYPEID_UINT64), UnsignedFunction->GetReturnTypeId(), TEXT("Unsigned loaded-AOT conversion should return uint64")));
+
+			uint32 SignedFunctionId = 0;
+			uint32 UnsignedFunctionId = 0;
+			ASSERT_THAT(IsTrue(RequireJitEntries(
+				*TestRunner,
+				*AotEngine,
+				SignedFunction,
+				TEXT("signed double-to-int64 conversion"),
+				SignedFunctionId)));
+			ASSERT_THAT(IsTrue(RequireJitEntries(
+				*TestRunner,
+				*AotEngine,
+				UnsignedFunction,
+				TEXT("unsigned double-to-uint64 conversion"),
+				UnsignedFunctionId)));
+
+			FStaticJITDiagnostics::ResetEntryCounters();
+			asQWORD SignedRawResult = 0;
+			asQWORD UnsignedRawResult = 0;
+			ASSERT_THAT(IsTrue(ExecuteDoubleArgumentFunction(
+				*TestRunner,
+				*AotEngine->GetScriptEngine(),
+				*SignedFunction,
+				SignedInput,
+				TEXT("Signed loaded-AOT conversion"),
+				SignedRawResult)));
+			ASSERT_THAT(IsTrue(ExecuteDoubleArgumentFunction(
+				*TestRunner,
+				*AotEngine->GetScriptEngine(),
+				*UnsignedFunction,
+				UnsignedInput,
+				TEXT("Unsigned loaded-AOT conversion"),
+				UnsignedRawResult)));
+
+			FDoubleInt64ConversionResults AotResults;
+			FMemory::Memcpy(&AotResults.SignedValue, &SignedRawResult, sizeof(AotResults.SignedValue));
+			AotResults.UnsignedValue = static_cast<uint64>(UnsignedRawResult);
+			ASSERT_THAT(AreEqual(ExpectedSigned, AotResults.SignedValue, TEXT("Loaded AOT signed conversion should truncate toward zero exactly")));
+			ASSERT_THAT(AreEqual(ExpectedUnsigned, AotResults.UnsignedValue, TEXT("Loaded AOT unsigned conversion should preserve the 64-bit value exactly")));
+			ASSERT_THAT(AreEqual(InterpreterResults.SignedValue, AotResults.SignedValue, TEXT("Loaded AOT signed conversion should match the interpreter exactly")));
+			ASSERT_THAT(AreEqual(InterpreterResults.UnsignedValue, AotResults.UnsignedValue, TEXT("Loaded AOT unsigned conversion should match the interpreter exactly")));
+			ASSERT_THAT(AreEqual(1, FStaticJITDiagnostics::GetEntryCount(SignedFunctionId), TEXT("Signed conversion should execute its generated entry exactly once")));
+			ASSERT_THAT(AreEqual(1, FStaticJITDiagnostics::GetEntryCount(UnsignedFunctionId), TEXT("Unsigned conversion should execute its generated entry exactly once")));
+			DiscardActiveModules(*AotEngine);
+			ASSERT_THAT(AreEqual(0, AotEngine->GetActiveModules().Num(), TEXT("Loaded-AOT parity phase should discard every active module")));
+		}
+	}
+
+	TEST_METHOD(ObjectLastNativeConstructorUsesGeneratedEntry)
+	{
+		TestRunner->AddInfo(FString::Printf(
+			TEXT("[AS-STATICJIT-AOT-SOURCE-BEGIN][ObjectLastNativeConstructorUsesGeneratedEntry]\n%s[AS-STATICJIT-AOT-SOURCE-END][ObjectLastNativeConstructorUsesGeneratedEntry]"),
+			*AngelscriptStaticJITAotFixture::GetScriptSource()));
+
+		TUniquePtr<FAngelscriptEngine> AotEngine = CreateIsolatedFullEngine();
+		ASSERT_THAT(IsNotNull(
+			AotEngine.Get(),
+			TEXT("StaticJIT.AOT object-last test should create an isolated loaded-AOT engine")));
+		if (!AotEngine)
+		{
+			return;
+		}
+		FAngelscriptEngineScope AotScope(*AotEngine);
+		ON_SCOPE_EXIT
+		{
+			DiscardActiveModules(*AotEngine);
+		};
+
+		ASSERT_THAT(IsTrue(
+			LoadAotFixtureFromPrecompiledData(*TestRunner, *AotEngine),
+			TEXT("StaticJIT.AOT object-last test should load the precompiled fixture")));
+		asCScriptFunction* const Function = FindGlobalFunction(
+			*TestRunner,
+			*AotEngine,
+			AngelscriptStaticJITAotFixture::GetObjectLastNativeEntryDeclaration());
+		ASSERT_THAT(IsNotNull(
+			Function,
+			TEXT("StaticJIT.AOT object-last test should resolve its exact generated function")));
+		if (Function == nullptr)
+		{
+			return;
+		}
+
+		uint32 FunctionId = 0;
+		ASSERT_THAT(IsTrue(
+			RequireJitEntries(
+				*TestRunner,
+				*AotEngine,
+				Function,
+				TEXT("object-last native constructor"),
+				FunctionId),
+			TEXT("StaticJIT.AOT object-last function should expose every generated entry")));
+
+		AngelscriptStaticJITAotFixture::ResetObjectLastNativeObservation();
+		FStaticJITDiagnostics::ResetEntryCounters();
+		asIScriptContext* const Context =
+			AotEngine->GetScriptEngine()->CreateContext();
+		ASSERT_THAT(IsNotNull(
+			Context,
+			TEXT("StaticJIT.AOT object-last test should create an execution context")));
+		if (Context == nullptr)
+		{
+			return;
+		}
+		ON_SCOPE_EXIT
+		{
+			Context->Release();
+		};
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asSUCCESS),
+			Context->Prepare(Function),
+			TEXT("StaticJIT.AOT object-last test should prepare its generated function")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asEXECUTION_FINISHED),
+			Context->Execute(),
+			TEXT("StaticJIT.AOT object-last test should execute generated code")));
+		ASSERT_THAT(AreEqual(
+			AngelscriptStaticJITAotFixture::GetExpectedObjectLastNativeResult(),
+			static_cast<int32>(Context->GetReturnDWord()),
+			TEXT("StaticJIT.AOT object-last test should preserve the constructed object result")));
+		ASSERT_THAT(AreEqual(
+			1,
+			AngelscriptStaticJITAotFixture::GetObjectLastNativeCallCount(),
+			TEXT("StaticJIT.AOT object-last native constructor should execute exactly once")));
+		ASSERT_THAT(AreEqual(
+			39,
+			AngelscriptStaticJITAotFixture::GetObjectLastNativeLeftSentinel(),
+			TEXT("StaticJIT.AOT object-last constructor should receive the first explicit argument")));
+		ASSERT_THAT(AreEqual(
+			97,
+			AngelscriptStaticJITAotFixture::GetObjectLastNativeRightSentinel(),
+			TEXT("StaticJIT.AOT object-last constructor should receive the final explicit argument")));
+		ASSERT_THAT(AreEqual(
+			AngelscriptStaticJITAotFixture::GetExpectedObjectLastNativeResult(),
+			AngelscriptStaticJITAotFixture::GetObjectLastNativeObjectValue(),
+			TEXT("StaticJIT.AOT object-last constructor should receive destination storage after explicit arguments")));
+		ASSERT_THAT(AreEqual(
+			1,
+			FStaticJITDiagnostics::GetEntryCount(FunctionId),
+			TEXT("StaticJIT.AOT object-last scenario should execute its generated entry exactly once")));
 	}
 };
 

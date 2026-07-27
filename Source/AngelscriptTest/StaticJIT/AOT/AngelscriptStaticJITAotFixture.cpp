@@ -1,5 +1,8 @@
 #include "StaticJIT/AOT/AngelscriptStaticJITAotFixture.h"
 
+#include "AngelscriptTestMacros.h"
+#include "Core/FunctionCallers.h"
+#include "Core/angelscript.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
 
@@ -7,6 +10,34 @@ namespace AngelscriptStaticJITAotFixture
 {
 	namespace
 	{
+		struct FObjectLastNativeProbe
+		{
+			int32 Value = 0;
+		};
+
+		struct FObjectLastNativeObservation
+		{
+			int32 CallCount = 0;
+			int32 Left = INDEX_NONE;
+			int32 Right = INDEX_NONE;
+			int32 ObjectValue = INDEX_NONE;
+		};
+
+		FObjectLastNativeObservation ObjectLastNativeObservation;
+
+		void ConstructObjectLastNativeProbe(
+			const int32 Left,
+			const int32 Right,
+			FObjectLastNativeProbe* Address)
+		{
+			new (Address) FObjectLastNativeProbe();
+			Address->Value = Left * 1000 + Right;
+			ObjectLastNativeObservation.CallCount++;
+			ObjectLastNativeObservation.Left = Left;
+			ObjectLastNativeObservation.Right = Right;
+			ObjectLastNativeObservation.ObjectValue = Address->Value;
+		}
+
 		bool SetGeneratedOutputError(FString* OutError, const FString& Detail)
 		{
 			if (OutError != nullptr)
@@ -34,57 +65,76 @@ namespace AngelscriptStaticJITAotFixture
 
 	const FString& GetScriptSource()
 	{
-		static const FString ScriptSource =
-			TEXT("int AddForAOT(int Value)\n")
-			TEXT("{\n")
-			TEXT("\treturn Value + 7;\n")
-			TEXT("}\n")
-			TEXT("\n")
-			TEXT("int Entry()\n")
-			TEXT("{\n")
-			TEXT("\treturn AddForAOT(35);\n")
-			TEXT("}\n")
-			TEXT("\n")
-			TEXT("UCLASS()\n")
-			TEXT("class UStaticJITAotFunctionCarrier : UObject\n")
-			TEXT("{\n")
-			TEXT("\tUPROPERTY()\n")
-			TEXT("\tint StoredValue = 0;\n")
-			TEXT("\n")
-			TEXT("\tUFUNCTION()\n")
-			TEXT("\tvoid StorePrimitiveArg(int Value)\n")
-			TEXT("\t{\n")
-			TEXT("\t\tStoredValue = Value + 3;\n")
-			TEXT("\t}\n")
-			TEXT("\n")
-			TEXT("\tUFUNCTION()\n")
-			TEXT("\tint ReturnPrimitive()\n")
-			TEXT("\t{\n")
-			TEXT("\t\treturn 61;\n")
-			TEXT("\t}\n")
-			TEXT("\n")
-			TEXT("\tUFUNCTION()\n")
-			TEXT("\tint BumpReference(int& Value)\n")
-			TEXT("\t{\n")
-			TEXT("\t\tValue += 5;\n")
-			TEXT("\t\tStoredValue = Value;\n")
-			TEXT("\t\treturn Value;\n")
-			TEXT("\t}\n")
-			TEXT("\n")
-			TEXT("\tUFUNCTION()\n")
-			TEXT("\tUObject ReturnSelfObject()\n")
-			TEXT("\t{\n")
-			TEXT("\t\treturn this;\n")
-			TEXT("\t}\n")
-			TEXT("}\n")
-			TEXT("\n")
-			TEXT("UFUNCTION(BlueprintCallable, meta = (WorldContext = \"WorldContextObject\"))\n")
-			TEXT("int StaticWorldContextCheck(UObject WorldContextObject, int Value)\n")
-			TEXT("{\n")
-			TEXT("\tif (__WorldContext() != WorldContextObject)\n")
-			TEXT("\t\treturn -1;\n")
-			TEXT("\treturn Value + 2;\n")
-			TEXT("}\n");
+		static const FString ScriptSource = ASTEST_AS(R"AS(
+			int AddForAOT(int Value)
+			{
+				return Value + 7;
+			}
+
+			int Entry()
+			{
+				return AddForAOT(35);
+			}
+
+			int64 DoubleToInt64ForAOT(double Value)
+			{
+				return int64(Value);
+			}
+
+			uint64 DoubleToUint64ForAOT(double Value)
+			{
+				return uint64(Value);
+			}
+
+			int ObjectLastNativeForAOT()
+			{
+				FAotObjectLastProbe Value(39, 97);
+				return Value.Value;
+			}
+
+			UCLASS()
+			class UStaticJITAotFunctionCarrier : UObject
+			{
+				UPROPERTY()
+				int StoredValue = 0;
+
+				UFUNCTION()
+				void StorePrimitiveArg(int Value)
+				{
+					StoredValue = Value + 3;
+				}
+
+				UFUNCTION()
+				int ReturnPrimitive()
+				{
+					return 61;
+				}
+
+				UFUNCTION()
+				int BumpReference(int& Value)
+				{
+					Value += 5;
+					StoredValue = Value;
+					return Value;
+				}
+
+				UFUNCTION()
+				UObject ReturnSelfObject()
+				{
+					return this;
+				}
+			}
+
+			UFUNCTION(BlueprintCallable, meta = (WorldContext = "WorldContextObject"))
+			int StaticWorldContextCheck(UObject WorldContextObject, int Value)
+			{
+				if (__WorldContext() != WorldContextObject)
+				{
+					return -1;
+				}
+				return Value + 2;
+			}
+			)AS");
 		return ScriptSource;
 	}
 
@@ -98,6 +148,24 @@ namespace AngelscriptStaticJITAotFixture
 	{
 		static const FString EntryDeclaration(TEXT("int Entry()"));
 		return EntryDeclaration;
+	}
+
+	const FString& GetDoubleToInt64Declaration()
+	{
+		static const FString Declaration(TEXT("int64 DoubleToInt64ForAOT(double)"));
+		return Declaration;
+	}
+
+	const FString& GetDoubleToUint64Declaration()
+	{
+		static const FString Declaration(TEXT("uint64 DoubleToUint64ForAOT(double)"));
+		return Declaration;
+	}
+
+	const FString& GetObjectLastNativeEntryDeclaration()
+	{
+		static const FString Declaration(TEXT("int ObjectLastNativeForAOT()"));
+		return Declaration;
 	}
 
 	const FString& GetMethodPrimitiveArgDeclaration()
@@ -159,6 +227,65 @@ namespace AngelscriptStaticJITAotFixture
 	int32 GetExpectedStaticWorldContextResult()
 	{
 		return 33;
+	}
+
+	int32 GetExpectedObjectLastNativeResult()
+	{
+		return 39097;
+	}
+
+	bool RegisterObjectLastNativeSurface(asIScriptEngine& ScriptEngine)
+	{
+		if (ScriptEngine.GetTypeInfoByDecl("FAotObjectLastProbe") != nullptr)
+		{
+			return true;
+		}
+
+		const ASAutoCaller::FunctionCaller ConstructorCaller =
+			ASAutoCaller::MakeFunctionCaller(ConstructObjectLastNativeProbe);
+		return ScriptEngine.RegisterObjectType(
+				"FAotObjectLastProbe",
+				sizeof(FObjectLastNativeProbe),
+				asOBJ_VALUE
+					| asOBJ_POD
+					| asGetTypeTraits<FObjectLastNativeProbe>()
+					| asOBJ_APP_CLASS_ALLINTS) >= 0
+			&& ScriptEngine.RegisterObjectBehaviour(
+				"FAotObjectLastProbe",
+				asBEHAVE_CONSTRUCT,
+				"void f(int Left, int Right)",
+				asFUNCTION(ConstructObjectLastNativeProbe),
+				asCALL_CDECL_OBJLAST,
+				*(asFunctionCaller*)&ConstructorCaller) >= 0
+			&& ScriptEngine.RegisterObjectProperty(
+				"FAotObjectLastProbe",
+				"int Value",
+				asOFFSET(FObjectLastNativeProbe, Value)) >= 0;
+	}
+
+	void ResetObjectLastNativeObservation()
+	{
+		ObjectLastNativeObservation = FObjectLastNativeObservation();
+	}
+
+	int32 GetObjectLastNativeCallCount()
+	{
+		return ObjectLastNativeObservation.CallCount;
+	}
+
+	int32 GetObjectLastNativeLeftSentinel()
+	{
+		return ObjectLastNativeObservation.Left;
+	}
+
+	int32 GetObjectLastNativeRightSentinel()
+	{
+		return ObjectLastNativeObservation.Right;
+	}
+
+	int32 GetObjectLastNativeObjectValue()
+	{
+		return ObjectLastNativeObservation.ObjectValue;
 	}
 
 	FString GetGeneratedDirectory()

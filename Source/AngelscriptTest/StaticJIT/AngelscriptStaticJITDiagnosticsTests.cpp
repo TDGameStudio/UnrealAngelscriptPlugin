@@ -37,6 +37,14 @@ private:
 
 	static bool LoadAotFixtureForDiagnosticsTest(FAutomationTestBase& Test, FAngelscriptEngine& Engine)
 	{
+		if (!Test.TestTrue(
+				TEXT("StaticJIT diagnostics should register the object-last native fixture surface before loading"),
+				AngelscriptStaticJITAotFixture::RegisterObjectLastNativeSurface(
+					*Engine.GetScriptEngine())))
+		{
+			return false;
+		}
+
 		FString AvailabilityError;
 		if (!Test.TestTrue(TEXT("StaticJIT diagnostics should have generated AOT fixture output"), AngelscriptStaticJITAotFixture::IsGeneratedOutputAvailable(&AvailabilityError)))
 		{

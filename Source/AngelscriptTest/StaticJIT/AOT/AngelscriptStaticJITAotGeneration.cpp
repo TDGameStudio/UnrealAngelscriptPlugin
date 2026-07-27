@@ -20,6 +20,13 @@ namespace AngelscriptStaticJITAotGeneration
 	{
 		bool CompileFixture(FAngelscriptEngine& Engine, FStaticJITAotGenerationResult& Result)
 		{
+			if (!AngelscriptStaticJITAotFixture::RegisterObjectLastNativeSurface(
+					*Engine.GetScriptEngine()))
+			{
+				Result.Error = TEXT("StaticJIT AOT fixture failed to register its object-last native surface.");
+				return false;
+			}
+
 			const bool bCompiled = CompileAnnotatedModuleFromMemory(
 				&Engine,
 				AngelscriptStaticJITAotFixture::GetModuleName(),
@@ -275,7 +282,10 @@ namespace AngelscriptStaticJITAotGeneration
 			const TArray<FString> RequiredFunctions =
 			{
 				TEXT("AddForAOT"),
+				TEXT("DoubleToInt64ForAOT"),
+				TEXT("DoubleToUint64ForAOT"),
 				TEXT("Entry"),
+				TEXT("ObjectLastNativeForAOT"),
 				TEXT("StaticWorldContextCheck"),
 			};
 
