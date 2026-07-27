@@ -4,6 +4,9 @@
 
 asITypeInfo* asIScriptObject::GetObjectType() const
 {
+	if (asITypeInfo* RawScriptType = UASClass::GetRawScriptObjectType(this))
+		return RawScriptType;
+
 	if (asITypeInfo* ScriptStructType = UASStruct::GetScriptTypeFromValue(this))
 		return ScriptStructType;
 

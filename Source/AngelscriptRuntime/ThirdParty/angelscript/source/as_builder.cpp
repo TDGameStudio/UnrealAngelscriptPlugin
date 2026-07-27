@@ -928,6 +928,12 @@ void asCBuilder::CreateDefaultDestructors()
 				if (prop->byteOffset < ParentOffset)
 					continue;
 
+				if (prop->type.IsObjectHandle() || prop->type.IsFuncdef())
+				{
+					bNeedDestruct = true;
+					break;
+				}
+
 				if (!prop->type.IsObject() || prop->type.IsReference() || prop->type.IsObjectHandle())
 					continue;
 

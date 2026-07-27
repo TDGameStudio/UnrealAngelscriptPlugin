@@ -119,12 +119,29 @@ struct asSSystemFunctionInterface
 		short op;          // clean up operation: 0 = release, 1 = free, 2 = destruct then free
 		short off;         // argument offset on the stack
 	};
+	asCArray<SClean>     cleanArgs;
 
-	asSSystemFunctionInterface() : func(0), method(0), baseOffset(0), callConv(ICC_GENERIC_FUNC), scriptReturnSize(0), paramSize(0), passFirstParamMetaData(asEFirstParamMetaData::None) {}
+	asSSystemFunctionInterface()
+	{
+		Clear();
+	}
 
 	asSSystemFunctionInterface(const asSSystemFunctionInterface &in)
 	{
 		*this = in;
+	}
+
+	void Clear()
+	{
+		func = 0;
+		method = 0;
+		baseOffset = 0;
+		callConv = ICC_GENERIC_FUNC;
+		scriptReturnSize = 0;
+		paramSize = 0;
+		passFirstParamMetaData = asEFirstParamMetaData::None;
+		caller = nullptr;
+		cleanArgs.SetLength(0);
 	}
 
 	asSSystemFunctionInterface &operator=(const asSSystemFunctionInterface &in)
@@ -137,6 +154,7 @@ struct asSSystemFunctionInterface
 		paramSize           = in.paramSize;
 		passFirstParamMetaData = in.passFirstParamMetaData;
 		caller = in.caller;
+		cleanArgs = in.cleanArgs;
 		return *this;
 	}
 };

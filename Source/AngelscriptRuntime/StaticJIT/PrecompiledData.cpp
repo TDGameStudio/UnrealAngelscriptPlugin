@@ -215,6 +215,8 @@ struct FAngelscriptBytecodeReferencer
 			case asBC_CopyScript:
 			case asBC_FinConstruct:
 			case asBC_FREE:
+			case asBC_REFCPY:
+			case asBC_RefCpyV:
 			case asBC_DestructScript:
 			case asBC_OBJTYPE:
 				StoreTypeInfo(asBC_PTRARG(bc));
@@ -300,6 +302,8 @@ struct FAngelscriptBytecodeReferencer
 			case asBC_CopyScript:
 			case asBC_FinConstruct:
 			case asBC_FREE:
+			case asBC_REFCPY:
+			case asBC_RefCpyV:
 			case asBC_DestructScript:
 			case asBC_OBJTYPE:
 				LoadTypeInfo(asBC_PTRARG(bc));

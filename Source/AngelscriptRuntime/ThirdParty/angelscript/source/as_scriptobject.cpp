@@ -488,6 +488,63 @@ int asCScriptObject::Release() const
 	return r;
 }*/
 
+static void DestroyScriptObjectMembersAfterException(
+	asCScriptObject* object,
+	asCObjectType* objType)
+{
+	if (object == nullptr || objType == nullptr)
+		return;
+
+	// The generated destructor normally emits these calls after the user body.
+	// If the body raises an exception, the interpreter leaves the function
+	// before reaching that suffix. Clean the still-live members here so an
+	// exception from a script destructor cannot leak embedded native values.
+	int parentOffset = 0;
+	if (objType->derivedFrom != nullptr)
+		parentOffset = objType->derivedFrom->size;
+	else if (objType->shadowType != nullptr || objType->basePropertyOffset != 0)
+		parentOffset = objType->basePropertyOffset;
+
+	for (int index = (int)objType->properties.GetLength() - 1;
+		index >= 0;
+		--index)
+	{
+		asCObjectProperty* const property = objType->properties[index];
+		if (property->byteOffset < parentOffset)
+			continue;
+		if (!property->type.IsObject()
+			|| property->type.IsReference()
+			|| property->type.IsObjectHandle())
+		{
+			continue;
+		}
+
+		auto* const memberType =
+			(asCObjectType*)property->type.GetTypeInfo();
+		if (memberType == nullptr || memberType->beh.destruct == 0)
+			continue;
+
+		void* const memberAddress =
+			((asBYTE*)object) + property->byteOffset;
+		if ((memberType->flags & asOBJ_SCRIPT_OBJECT) != 0)
+		{
+			((asCScriptObject*)memberAddress)->CallDestructor(memberType);
+		}
+		else
+		{
+			objType->engine->CallObjectMethod(
+				memberAddress,
+				memberType->beh.destruct);
+		}
+	}
+
+	if (objType->derivedFrom != nullptr
+		&& objType->derivedFrom->beh.destruct != 0)
+	{
+		object->CallDestructor(objType->derivedFrom);
+	}
+}
+
 void asIScriptObject::CallDestructor(class asCObjectType* objType)
 {
 	asIScriptContext *ctx = 0;
@@ -536,6 +593,13 @@ void asIScriptObject::CallDestructor(class asCObjectType* objType)
 				// If the script tries to suspend itself just restart it
 				if( r != asEXECUTION_SUSPENDED )
 					break;
+			}
+
+			if (r == asEXECUTION_EXCEPTION)
+			{
+				DestroyScriptObjectMembersAfterException(
+					(asCScriptObject*)this,
+					objType);
 			}
 
 			// Exceptions in the destructor will be ignored, as there is not much

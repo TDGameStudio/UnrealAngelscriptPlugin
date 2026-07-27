@@ -53,6 +53,7 @@
 #include "as_debug.h"
 
 #include "AngelscriptEngine.h"
+#include "ClassGenerator/ASClass.h"
 
 #include <stdlib.h>
 
@@ -787,6 +788,7 @@ asCScriptEngine::asCScriptEngine()
 		ep.memberInitMode                = 1;
 		ep.boolConversionMode            = 0;
 		ep.foreachSupport                = true;
+		ep.typeCheckSwitchEnums          = false;
 		ep.floatIsFloat64       = true;
 		ep.allowDoubleType       = false;
 		ep.warnOnFloatConstantsForDoubles       = false;
@@ -887,6 +889,11 @@ asCScriptEngine::~asCScriptEngine()
 	// TODO: clean-up: Clean up redundant code
 
 	inDestructor = true;
+	// [UE++] Standalone raw-SDK script objects can use the process-wide
+	// allocator hook. Their type lookup registrations must not retain this
+	// engine's type-info pointers after the engine tears its types down.
+	UASClass::UnregisterRawScriptObjectsForEngine(this);
+	// [UE--]
 
 	asASSERT(refCount.get() == 0);
 
@@ -4774,11 +4781,77 @@ void asCScriptEngine::FinishConstructObject(asIScriptObject* obj, asITypeInfo* t
 
 void asCScriptEngine::CallFree(void *obj) const
 {
+	UASClass::UnregisterRawScriptObject(obj);
+
 #ifndef WIP_16BYTE_ALIGN
 	FMemory::Free(obj);
 #else
 	FMemory::Free(obj);
 #endif
+}
+
+bool asCScriptEngine::AddRawScriptObjectReference(
+	const void *obj,
+	asCObjectType *objType) const
+{
+	asCObjectType *registeredType =
+		static_cast<asCObjectType*>(UASClass::GetRawScriptObjectType(obj));
+	if( registeredType == 0 ||
+		(registeredType != objType &&
+		 !registeredType->DerivesFrom(objType) &&
+		 !registeredType->Implements(objType)) )
+	{
+		return false;
+	}
+
+	// The bytecode owns a reference through the statically known type. A
+	// derived object stored in a base or interface slot must still retain the
+	// registration for its dynamic type. Keep the public wrong-TypeInfo guard,
+	// but perform the actual reference transition against that dynamic type.
+	return UASClass::AddRawScriptObjectReference(obj, registeredType);
+}
+
+bool asCScriptEngine::ReleaseRawScriptObject(
+	void *obj,
+	asCObjectType *objType) const
+{
+	asCObjectType *registeredType =
+		static_cast<asCObjectType*>(UASClass::GetRawScriptObjectType(obj));
+	if( registeredType == 0 ||
+		(registeredType != objType &&
+		 !registeredType->DerivesFrom(objType) &&
+		 !registeredType->Implements(objType)) )
+	{
+		return false;
+	}
+
+	bool bRunDestructor = false;
+	bool bFreeWithoutDestructor = false;
+	if (!UASClass::BeginReleaseRawScriptObjectReference(
+		obj,
+		registeredType,
+		bRunDestructor,
+		bFreeWithoutDestructor))
+	{
+		return false;
+	}
+
+	if (bRunDestructor)
+	{
+		((asCScriptObject*)obj)->CallDestructor(registeredType);
+		if (UASClass::FinishReleaseRawScriptObjectReference(
+			obj,
+			registeredType))
+		{
+			CallFree(obj);
+		}
+	}
+	else if (bFreeWithoutDestructor)
+	{
+		CallFree(obj);
+	}
+
+	return true;
 }
 
 // interface
@@ -4797,6 +4870,13 @@ int asCScriptEngine::GetObjectInGC(asUINT idx, asUINT *seqNbr, void **obj, asITy
 int asCScriptEngine::GarbageCollect(asDWORD flags, asUINT iterations)
 {
 	int r = gc.GarbageCollect(flags, iterations);
+
+	if( r == 0 )
+	{
+		// Delete any modules that have been discarded previously but not
+		// removed due to being referred to by objects in the garbage collector
+		DeleteDiscardedModules();
+	}
 
 	return r;
 }
@@ -5405,6 +5485,17 @@ void asCScriptEngine::AddRefScriptObject(void *obj, const asITypeInfo *type)
 	else
 	{
 		asCObjectType *objType = CastToObjectType(const_cast<asCTypeInfo*>(ti));
+		if (objType
+			&& (objType->flags & asOBJ_SCRIPT_OBJECT)
+			&& objType->GetUserData() == 0
+			&& AddRawScriptObjectReference(obj, objType))
+		{
+			// [UE++] Raw standalone-SDK script classes deliberately retain the
+			// fork's no-count behaviours, but objects created through the public
+			// engine API still need balanced application ownership.
+			return;
+			// [UE--]
+		}
 		if (objType && objType->beh.addref)
 		{
 			// Call the addref behaviour
@@ -5427,6 +5518,17 @@ void asCScriptEngine::ReleaseScriptObject(void *obj, const asITypeInfo *type)
 	else
 	{
 		asCObjectType *objType = CastToObjectType(const_cast<asCTypeInfo*>(ti));
+		if (objType
+			&& (objType->flags & asOBJ_SCRIPT_OBJECT)
+			&& objType->GetUserData() == 0
+			&& ReleaseRawScriptObject(obj, objType))
+		{
+			// [UE++] Match the VM's raw-object ownership path for objects created
+			// and retained through the public SDK. The shared helper keeps the
+			// type registration alive while the generated destructor executes.
+			return;
+			// [UE--]
+		}
 		if (objType && objType->flags & asOBJ_REF)
 		{
 			asASSERT((objType->flags & asOBJ_NOCOUNT) || objType->beh.release);

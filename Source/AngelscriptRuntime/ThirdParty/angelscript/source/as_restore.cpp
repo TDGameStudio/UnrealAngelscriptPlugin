@@ -99,13 +99,16 @@ static asCScriptFunction *GetCalledFunctionOrNull(asCScriptFunction *func, asUIN
 	asDWORD *byteCode = func->scriptData->byteCode.AddressOf();
 	asBYTE bc = *(asBYTE*)&byteCode[programPos];
 	if( bc == asBC_CALL ||
-		bc == asBC_CALLSYS ||
-		bc == asBC_Thiscall1 ||
 		bc == asBC_CALLINTF )
 	{
 		int funcId = asBC_INTARG(&byteCode[programPos]);
 		if( funcId > 0 && asUINT(funcId) < func->engine->scriptFunctions.GetLength() )
 			return func->engine->scriptFunctions[funcId];
+	}
+	else if( bc == asBC_CALLSYS ||
+			 bc == asBC_Thiscall1 )
+	{
+		return (asCScriptFunction*)asBC_PTRARG(&byteCode[programPos]);
 	}
 	else if( bc == asBC_ALLOC )
 	{
@@ -166,8 +169,71 @@ static bool IsVariadicFunction(const asCScriptFunction *)
 }
 //[UE--]
 
+// The fork intentionally leaves several default $obj behaviours unregistered
+// because script objects are no-counted. Preserve reference ownership for the
+// behaviours that do exist, but do not dereference a zero behaviour id while
+// restoring a serialized script class.
+static void AddRefDefaultScriptTypeBehaviour(asCScriptEngine *engine, int behaviour)
+{
+	if( behaviour )
+		engine->scriptFunctions[behaviour]->AddRefInternal();
+}
+
 //[UE++]: The APV2 runtime still consumes legacy objVariable* metadata in as_context/as_scriptfunction,
 // while this restore path serializes the newer variables[] representation. Rebuild the legacy arrays after load.
+// variables[].onHeap describes source-level allocation metadata and cannot recover compiler-created object temporaries.
+// Reconstruct heap ownership from typed bytecode operands so frame entry clears every automatic-reference slot.
+static void AddLegacyHeapObjectVariable(
+	asCScriptFunction *func,
+	int offset,
+	asCTypeInfo *type)
+{
+	if( func == 0 || func->scriptData == 0 || offset <= 0 || type == 0 )
+		return;
+
+	for( asUINT index = 0; index < func->scriptData->objVariablePos.GetLength(); ++index )
+	{
+		if( func->scriptData->objVariablePos[index] == offset )
+			return;
+	}
+
+	func->scriptData->objVariableTypes.PushLast(type);
+	func->scriptData->objVariablePos.PushLast(offset);
+}
+
+static bool IsLegacyHeapObjectVariable(
+	const asCScriptFunction *func,
+	int offset)
+{
+	if( func == 0 || func->scriptData == 0 )
+		return false;
+
+	return func->scriptData->objVariablePos.IndexOf(offset) >= 0;
+}
+
+static void SortLegacyHeapObjectVariables(asCScriptFunction *func)
+{
+	if( func == 0 || func->scriptData == 0 )
+		return;
+
+	for( asUINT index = 1; index < func->scriptData->objVariablePos.GetLength(); ++index )
+	{
+		for( asUINT previous = index; previous > 0; --previous )
+		{
+			if( func->scriptData->objVariablePos[previous - 1] <= func->scriptData->objVariablePos[previous] )
+				break;
+
+			int offset = func->scriptData->objVariablePos[previous - 1];
+			func->scriptData->objVariablePos[previous - 1] = func->scriptData->objVariablePos[previous];
+			func->scriptData->objVariablePos[previous] = offset;
+
+			asCTypeInfo *type = func->scriptData->objVariableTypes[previous - 1];
+			func->scriptData->objVariableTypes[previous - 1] = func->scriptData->objVariableTypes[previous];
+			func->scriptData->objVariableTypes[previous] = type;
+		}
+	}
+}
+
 static void RebuildLegacyObjectVariableMetadata(asCScriptFunction *func)
 {
 	if( func == 0 || func->scriptData == 0 )
@@ -176,20 +242,48 @@ static void RebuildLegacyObjectVariableMetadata(asCScriptFunction *func)
 	func->scriptData->objVariableTypes.SetLength(0);
 	func->scriptData->objVariablePos.SetLength(0);
 
-	for( asUINT index = 0; index < func->scriptData->variables.GetLength(); ++index )
+	asCArray<asCTypeInfo *> objectTypeOperands;
+	asDWORD *byteCode = func->scriptData->byteCode.AddressOf();
+	for( asUINT position = 0; position < func->scriptData->byteCode.GetLength(); )
 	{
-		asSScriptVariable *var = func->scriptData->variables[index];
-		if( var == 0 || var->stackOffset <= 0 )
-			continue;
-		if( !(var->type.IsObject() || var->type.IsFuncdef()) || var->type.IsReference() )
-			continue;
-		if( !var->onHeap )
-			continue;
+		asBYTE instruction = *(asBYTE*)&byteCode[position];
+		asUINT instructionSize = asBCTypeSize[asBCInfo[instruction].type];
+		if( instructionSize == 0 || position + instructionSize > func->scriptData->byteCode.GetLength() )
+			break;
 
-		func->scriptData->objVariableTypes.PushLast(var->type.GetTypeInfo());
-		func->scriptData->objVariablePos.PushLast(var->stackOffset);
+		if( instruction == asBC_REFCPY ||
+			instruction == asBC_RefCpyV ||
+			instruction == asBC_OBJTYPE ||
+			instruction == asBC_ALLOC )
+		{
+			asCTypeInfo *type = (asCTypeInfo*)asBC_PTRARG(&byteCode[position]);
+			if( type && objectTypeOperands.IndexOf(type) < 0 )
+				objectTypeOperands.PushLast(type);
+		}
+
+		if( instruction == asBC_RefCpyV )
+		{
+			AddLegacyHeapObjectVariable(
+				func,
+				asBC_SWORDARG0(&byteCode[position]),
+				(asCTypeInfo*)asBC_PTRARG(&byteCode[position]));
+		}
+		else if( instruction == asBC_FREE )
+		{
+			asCTypeInfo *type = (asCTypeInfo*)asBC_PTRARG(&byteCode[position]);
+			if( objectTypeOperands.IndexOf(type) >= 0 )
+			{
+				AddLegacyHeapObjectVariable(
+					func,
+					asBC_SWORDARG0(&byteCode[position]),
+					type);
+			}
+		}
+
+		position += instructionSize;
 	}
 
+	SortLegacyHeapObjectVariables(func);
 	func->scriptData->objVariablesOnHeap = func->scriptData->objVariablePos.GetLength();
 
 	for( asUINT index = 0; index < func->scriptData->variables.GetLength(); ++index )
@@ -199,10 +293,15 @@ static void RebuildLegacyObjectVariableMetadata(asCScriptFunction *func)
 			continue;
 		if( !(var->type.IsObject() || var->type.IsFuncdef()) || var->type.IsReference() )
 			continue;
-		if( var->onHeap )
+		if( IsLegacyHeapObjectVariable(func, var->stackOffset) )
+			continue;
+		asCTypeInfo *type = var->type.GetTypeInfo();
+		if( type == 0 )
+			continue;
+		if( type->flags & asOBJ_REF )
 			continue;
 
-		func->scriptData->objVariableTypes.PushLast(var->type.GetTypeInfo());
+		func->scriptData->objVariableTypes.PushLast(type);
 		func->scriptData->objVariablePos.PushLast(var->stackOffset);
 	}
 }
@@ -216,6 +315,13 @@ static bool IsExplicitTrait(const asCScriptFunction *func)
 // Macros for doing endianess agnostic bitmask serialization
 #define SAVE_TO_BIT(dst, val, bit) ((dst) |= ((val) << (bit)))
 #define LOAD_FROM_BIT(dst, val, bit) ((dst) = ((val) >> (bit)) & 1)
+
+// Version two serializes every script-object type operand as a usedTypes index,
+// including REFCPY, RefCpyV, OBJTYPE, FinConstruct, DestructScript, and
+// CopyScript. Version one may carry process-local object addresses for the
+// latter three opcodes, so it must not be interpreted as a version-two stream.
+static const asBYTE AS_BYTECODE_STREAM_MAGIC = 0xE3;
+static const asBYTE AS_BYTECODE_STREAM_VERSION = 2;
 
 asCReader::asCReader(asCModule* _module, asIBinaryStream* _stream, asCScriptEngine* _engine)
 	: module(_module), stream(_stream), engine(_engine), error(false), bytesRead(0), lastCompositeProp(0)
@@ -247,8 +353,20 @@ int asCReader::Read(bool *wasDebugInfoStripped)
 	// any existing resources have been freed
 	module->InternalReset();
 
-	// Call the inner method to do the actual loading
-	int r = ReadInner();
+	// Reject the old unframed payload before interpreting any of its bytecode.
+	// Its first byte was the encoded debug-info flag (0 or 1), so it cannot
+	// collide with the dedicated stream marker.
+	asBYTE streamMagic = 0;
+	asBYTE streamVersion = 0;
+	int r = ReadData(&streamMagic, 1);
+	if( r >= 0 && streamMagic != AS_BYTECODE_STREAM_MAGIC )
+		r = Error(TXT_INVALID_BYTECODE_d);
+	if( r >= 0 )
+		r = ReadData(&streamVersion, 1);
+	if( r >= 0 && streamVersion != AS_BYTECODE_STREAM_VERSION )
+		r = Error(TXT_INVALID_BYTECODE_d);
+	if( r >= 0 )
+		r = ReadInner();
 	if( r < 0 )
 	{
 		// Something went wrong while loading the bytecode, so we need
@@ -563,6 +681,9 @@ int asCReader::ReadInner()
 		if( !module->m_classTypes[i]->IsInterface() )
 			ReadTypeDeclaration(module->m_classTypes[i], 3);
 	}
+
+	if( !error )
+		RebuildRestoredScriptClassLayouts();
 
 	if( error ) return asERROR;
 
@@ -1025,7 +1146,8 @@ void asCReader::ReadUsedFunctions()
 								{
 									if ((*(asBYTE*)bc) == asBC_CALLSYS)
 									{
-										id = asBC_INTARG(bc);
+										asCScriptFunction *called = (asCScriptFunction*)asBC_PTRARG(bc);
+										id = called ? asUINT(called->id) : 0;
 										break;
 									}
 									bc += asBCTypeSize[asBCInfo[*(asBYTE*)bc].type];
@@ -1395,6 +1517,10 @@ asCScriptFunction *asCReader::ReadFunction(bool &isNew, bool addToModule, bool a
 		func->DestroyHalfCreated();
 		return 0;
 	}
+
+	// The serialized signature does not include the derived ABI layout. Rebuild
+	// it before loading script bytecode so calls preserve their argument slots.
+	func->CalculateParameterOffsets();
 
 	if( func->funcType == asFUNC_SCRIPT )
 	{
@@ -1766,16 +1892,16 @@ void asCReader::ReadTypeDeclaration(asCTypeInfo *type, int phase, bool *isExtern
 			ot->beh.factory = 0;
 			ot->beh.constructors.PopLast(); // These will be read from the file
 			ot->beh.factories.PopLast(); // These will be read from the file
-			engine->scriptFunctions[ot->beh.addref]->AddRefInternal();
-			engine->scriptFunctions[ot->beh.release]->AddRefInternal();
-			engine->scriptFunctions[ot->beh.gcEnumReferences]->AddRefInternal();
-			engine->scriptFunctions[ot->beh.gcGetFlag]->AddRefInternal();
-			engine->scriptFunctions[ot->beh.gcGetRefCount]->AddRefInternal();
-			engine->scriptFunctions[ot->beh.gcReleaseAllReferences]->AddRefInternal();
-			engine->scriptFunctions[ot->beh.gcSetFlag]->AddRefInternal();
-			engine->scriptFunctions[ot->beh.copy]->AddRefInternal();
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.addref);
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.release);
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.gcEnumReferences);
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.gcGetFlag);
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.gcGetRefCount);
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.gcReleaseAllReferences);
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.gcSetFlag);
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.copy);
 			// TODO: weak: Should not do this if the class has been declared with 'noweak'
-			engine->scriptFunctions[ot->beh.getWeakRefFlag]->AddRefInternal();
+			AddRefDefaultScriptTypeBehaviour(engine, ot->beh.getWeakRefFlag);
 		}
 
 		// external shared flag
@@ -2385,6 +2511,32 @@ void asCReader::ReadGlobalProperty()
 	}
 }
 
+static bool IsRestoredBaseProperty(
+	const asCObjectType *objectType,
+	const asCString &name,
+	const asCDataType &type,
+	bool isPrivate,
+	bool isProtected)
+{
+	for( const asCObjectType *baseType = objectType->derivedFrom;
+		baseType != 0;
+		baseType = baseType->derivedFrom )
+	{
+		for( asUINT propertyIndex = 0; propertyIndex < baseType->properties.GetLength(); ++propertyIndex )
+		{
+			const asCObjectProperty *baseProperty = baseType->properties[propertyIndex];
+			if( baseProperty != 0 &&
+				baseProperty->name == name &&
+				baseProperty->type == type &&
+				baseProperty->isPrivate == isPrivate &&
+				baseProperty->isProtected == isProtected )
+				return true;
+		}
+	}
+
+	return false;
+}
+
 void asCReader::ReadObjectProperty(asCObjectType *ot)
 {
 	asCString name;
@@ -2396,10 +2548,146 @@ void asCReader::ReadObjectProperty(asCObjectType *ot)
 	bool isProtected = (flags & 2) ? true : false;
 	bool isInherited = (flags & 4) ? true : false;
 
+	// The current fork appends base-class property pointers after local properties
+	// during compilation. Those pointers retain the base property's local flag, so
+	// older streams do not identify them as inherited. A valid derived declaration
+	// cannot introduce an identical property, therefore the restored base contract
+	// is the authoritative ownership classification.
+	if( !isInherited && IsRestoredBaseProperty(ot, name, dt, isPrivate, isProtected) )
+		isInherited = true;
+
 	// TODO: shared: If the type is shared and pre-existing, we should just
 	//               validate that the loaded methods match the original
 	if( !existingShared.MoveTo(0, ot) )
 		ot->AddPropertyToClass(name, dt, isPrivate, isProtected, isInherited);
+}
+
+void asCReader::RebuildRestoredScriptClassLayouts()
+{
+	asCArray<asCObjectType*> layoutingTypes;
+	asCArray<asCObjectType*> layoutedTypes;
+	for( asUINT typeIndex = 0; typeIndex < module->m_classTypes.GetLength() && !error; ++typeIndex )
+		RebuildRestoredScriptClassLayout(module->m_classTypes[typeIndex], layoutingTypes, layoutedTypes);
+}
+
+bool asCReader::RebuildRestoredScriptClassLayout(
+	asCObjectType *ot,
+	asCArray<asCObjectType*> &layoutingTypes,
+	asCArray<asCObjectType*> &layoutedTypes)
+{
+	if( ot == 0 ||
+		!(ot->flags & asOBJ_SCRIPT_OBJECT) ||
+		ot->module != module ||
+		layoutedTypes.Exists(ot) )
+		return true;
+
+	if( layoutingTypes.Exists(ot) )
+	{
+		Error(TXT_INVALID_BYTECODE_d);
+		return false;
+	}
+
+	layoutingTypes.PushLast(ot);
+	if( ot->derivedFrom != 0 &&
+		!RebuildRestoredScriptClassLayout(ot->derivedFrom, layoutingTypes, layoutedTypes) )
+	{
+		layoutingTypes.PopLast();
+		return false;
+	}
+
+	if( ot->derivedFrom != 0 )
+	{
+		ot->size = ot->derivedFrom->size;
+		if( ot->derivedFrom->alignment > ot->alignment )
+			ot->alignment = ot->derivedFrom->alignment;
+	}
+	else if( ot->shadowType != 0 )
+	{
+		ot->size = ot->basePropertyOffset;
+		if( ot->shadowType->alignment > ot->alignment )
+			ot->alignment = ot->shadowType->alignment;
+	}
+	else if( ot->basePropertyOffset != 0 )
+		ot->size = ot->basePropertyOffset;
+	else
+		ot->size = 0;
+
+	for( asUINT propertyIndex = 0; propertyIndex < ot->properties.GetLength(); ++propertyIndex )
+	{
+		asCObjectProperty *property = ot->properties[propertyIndex];
+		if( property == 0 )
+		{
+			Error(TXT_INVALID_BYTECODE_d);
+			layoutingTypes.PopLast();
+			return false;
+		}
+
+		if( property->isInherited )
+		{
+			asCObjectProperty *baseProperty = 0;
+			for( asUINT basePropertyIndex = 0;
+				ot->derivedFrom != 0 && basePropertyIndex < ot->derivedFrom->properties.GetLength();
+				++basePropertyIndex )
+			{
+				asCObjectProperty *candidate = ot->derivedFrom->properties[basePropertyIndex];
+				if( candidate != 0 &&
+					candidate->name == property->name &&
+					candidate->type == property->type &&
+					candidate->isPrivate == property->isPrivate &&
+					candidate->isProtected == property->isProtected )
+				{
+					baseProperty = candidate;
+					break;
+				}
+			}
+
+			if( baseProperty == 0 || baseProperty->byteOffset < 0 )
+			{
+				Error(TXT_INVALID_BYTECODE_d);
+				layoutingTypes.PopLast();
+				return false;
+			}
+
+			property->byteOffset = baseProperty->byteOffset;
+			continue;
+		}
+
+		asCTypeInfo *typeInfo = property->type.GetTypeInfo();
+		if( typeInfo != 0 &&
+			(typeInfo->flags & asOBJ_VALUE) &&
+			(typeInfo->flags & (asOBJ_SCRIPT_OBJECT | asOBJ_TEMPLATE_SUBTYPE_DETERMINES_SIZE)) &&
+			!RebuildRestoredScriptClassLayout(CastToObjectType(typeInfo), layoutingTypes, layoutedTypes) )
+		{
+			layoutingTypes.PopLast();
+			return false;
+		}
+
+		int propertySize;
+		if( property->type.IsObject() )
+		{
+			if( property->type.GetTypeInfo()->flags & asOBJ_VALUE )
+				propertySize = property->type.GetSizeInMemoryBytes();
+			else
+				propertySize = property->type.GetSizeOnStackDWords()*4;
+		}
+		else
+			propertySize = property->type.GetSizeInMemoryBytes();
+
+		asUINT propertyAlignment = property->type.GetAlignment();
+		asUINT alignmentDifference = ot->size & (propertyAlignment-1);
+		if( alignmentDifference != 0 )
+			ot->size += propertyAlignment - alignmentDifference;
+
+		property->byteOffset = ot->size;
+		ot->size += propertySize;
+	}
+
+	if( ot->alignment != 1 )
+		ot->size = (ot->size + ot->alignment - 1) & ~(ot->alignment - 1);
+
+	layoutingTypes.PopLast();
+	layoutedTypes.PushLast(ot);
+	return true;
 }
 
 void asCReader::ReadDataType(asCDataType *dt)
@@ -2758,6 +3046,7 @@ void asCReader::ReadByteCode(asCScriptFunction *func)
 		case asBCTYPE_wW_rW_ARG:
 		case asBCTYPE_rW_rW_ARG:
 		case asBCTYPE_wW_W_ARG:
+		case asBCTYPE_W_rW_ARG:
 			{
 				*(asBYTE*)(bc) = b;
 
@@ -3054,7 +3343,10 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 		int c = *(asBYTE*)&bc[n];
 		if( c == asBC_REFCPY ||
 			c == asBC_RefCpyV ||
-			c == asBC_OBJTYPE )
+			c == asBC_OBJTYPE ||
+			c == asBC_FinConstruct ||
+			c == asBC_DestructScript ||
+			c == asBC_CopyScript )
 		{
 			// Translate the index to the true object type
 			asPWORD *ot = (asPWORD*)&bc[n+1];
@@ -3131,15 +3423,27 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 			asBC_WORDARG0(&bc[n]) = dw;
 		}
 		else if( c == asBC_CALL ||
-				 c == asBC_CALLINTF ||
-				 c == asBC_CALLSYS ||
-				 c == asBC_Thiscall1 )
+				 c == asBC_CALLINTF )
 		{
 			// Translate the index to the func id
 			int *fid = (int*)&bc[n+1];
 			asCScriptFunction *f = FindFunction(*fid);
 			if( f )
 				*fid = f->id;
+			else
+			{
+				Error(TXT_INVALID_BYTECODE_d);
+				return;
+			}
+		}
+		else if( c == asBC_CALLSYS ||
+				 c == asBC_Thiscall1 )
+		{
+			// Translate the serialized function index back to the native bytecode pointer.
+			asPWORD *fid = (asPWORD*)&bc[n+1];
+			asCScriptFunction *f = FindFunction(int(*fid));
+			if( f )
+				*fid = (asPWORD)f;
 			else
 			{
 				Error(TXT_INVALID_BYTECODE_d);
@@ -3357,6 +3661,12 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 		case asBCTYPE_rW_rW_ARG:
 			{
 				asBC_SWORDARG0(&bc[n]) = (short)AdjustStackPosition(asBC_SWORDARG0(&bc[n]));
+				asBC_SWORDARG1(&bc[n]) = (short)AdjustStackPosition(asBC_SWORDARG1(&bc[n]));
+			}
+			break;
+
+		case asBCTYPE_W_rW_ARG:
+			{
 				asBC_SWORDARG1(&bc[n]) = (short)AdjustStackPosition(asBC_SWORDARG1(&bc[n]));
 			}
 			break;
@@ -4109,6 +4419,9 @@ int asCWriter::Write()
 	// TODO: Should be possible to skip saving the enum values. They are usually not needed after the script is compiled anyway
 	// TODO: Should be possible to skip saving the typedefs. They are usually not needed after the script is compiled anyway
 	// TODO: Should be possible to skip saving constants. They are usually not needed after the script is compiled anyway
+
+	WriteData(&AS_BYTECODE_STREAM_MAGIC, 1);
+	WriteData(&AS_BYTECODE_STREAM_VERSION, 1);
 
 	// Write the flag as 1byte even on platforms with 4byte booleans
 	WriteEncodedInt64(stripDebugInfo ? 1 : 0);
@@ -5133,13 +5446,17 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 	{
 		asBYTE bc = *(asBYTE*)&func->scriptData->byteCode[n];
 		if( bc == asBC_CALL ||
-			bc == asBC_CALLSYS ||
-			bc == asBC_Thiscall1 ||
 			bc == asBC_CALLINTF )
 		{
 			// Find the function from the function id in bytecode
 			int funcId = asBC_INTARG(&func->scriptData->byteCode[n]);
 			calledFunc = engine->scriptFunctions[funcId];
+			break;
+		}
+		else if( bc == asBC_CALLSYS ||
+				 bc == asBC_Thiscall1 )
+		{
+			calledFunc = (asCScriptFunction*)asBC_PTRARG(&func->scriptData->byteCode[n]);
 			break;
 		}
 		else if( bc == asBC_ALLOC )
@@ -5318,9 +5635,12 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 				*(int*)&tmpBC[1+AS_PTR_SIZE] = 1+FindFunctionIndex(engine->scriptFunctions[*(int*)&tmpBC[1+AS_PTR_SIZE]]);
 			}
 		}
-		else if( c == asBC_REFCPY  || // PTR_ARG
-				 c == asBC_RefCpyV || // wW_PTR_ARG
-				 c == asBC_OBJTYPE )  // PTR_ARG
+		else if( c == asBC_REFCPY         || // PTR_ARG
+				 c == asBC_RefCpyV        || // wW_PTR_ARG
+				 c == asBC_OBJTYPE        || // PTR_ARG
+				 c == asBC_FinConstruct   || // PTR_ARG
+				 c == asBC_DestructScript || // rW_PTR_ARG
+				 c == asBC_CopyScript )     // PTR_ARG
 		{
 			// Translate object type pointers into indices
 			*(asPWORD*)(tmpBC+1) = FindTypeInfoIdx(*(asCObjectType**)(tmpBC+1));
@@ -5378,12 +5698,16 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 			asBC_WORDARG0(tmpBC) = 0;
 		}
 		else if( c == asBC_CALL ||     // DW_ARG
-				 c == asBC_CALLINTF || // DW_ARG
-				 c == asBC_CALLSYS ||  // DW_ARG
-				 c == asBC_Thiscall1 ) // DW_ARG
+				 c == asBC_CALLINTF )  // DW_ARG
 		{
 			// Translate the function id
 			*(int*)(tmpBC+1) = FindFunctionIndex(engine->scriptFunctions[*(int*)(tmpBC+1)]);
+		}
+		else if( c == asBC_CALLSYS ||  // PTR_ARG
+				 c == asBC_Thiscall1 ) // PTR_ARG
+		{
+			// Translate the native bytecode function pointer into a serialized index.
+			*(asPWORD*)(tmpBC+1) = FindFunctionIndex(*(asCScriptFunction**)(tmpBC+1));
 		}
 		else if( c == asBC_FuncPtr ) // PTR_ARG
 		{
@@ -5451,7 +5775,7 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 			// Set the offset in number of instructions
 			*(int*)(tmpBC+1) = targetBcSeqNum - bcSeqNum;
 		}
-		else if( c == asBC_GETOBJ ||    // W_ARG
+		else if( c == asBC_GETOBJ ||    // W_rW_ARG
 			     c == asBC_GETOBJREF ||
 			     c == asBC_GETREF ||
 			     c == asBC_ChkNullS )
@@ -5533,6 +5857,12 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 		case asBCTYPE_rW_rW_ARG:
 			{
 				asBC_SWORDARG0(tmpBC) = (short)AdjustStackPosition(asBC_SWORDARG0(tmpBC));
+				asBC_SWORDARG1(tmpBC) = (short)AdjustStackPosition(asBC_SWORDARG1(tmpBC));
+			}
+			break;
+
+		case asBCTYPE_W_rW_ARG:
+			{
 				asBC_SWORDARG1(tmpBC) = (short)AdjustStackPosition(asBC_SWORDARG1(tmpBC));
 			}
 			break;
@@ -5637,6 +5967,7 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 		case asBCTYPE_wW_rW_ARG:
 		case asBCTYPE_rW_rW_ARG:
 		case asBCTYPE_wW_W_ARG:
+		case asBCTYPE_W_rW_ARG:
 			{
 				// Write the instruction code
 				asBYTE b = (asBYTE)c;

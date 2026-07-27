@@ -6608,12 +6608,12 @@ bool MakePathRelativeTo_IgnoreCase( FString& InPath, const TCHAR* InRelativeTo )
 	return true;
 }
 
-double asStringScanDouble(const char *string)
+ANGELSCRIPTRUNTIME_API double asStringScanDouble(const char *string)
 {
 	return FCStringAnsi::Atod(string);
 }
 
-float asStringScanFloat(const char *string)
+ANGELSCRIPTRUNTIME_API float asStringScanFloat(const char *string)
 {
 	return FCStringAnsi::Atof(string);
 }

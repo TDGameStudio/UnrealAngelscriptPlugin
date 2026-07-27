@@ -1177,6 +1177,8 @@ void asCScriptFunction::AddReferences()
 			// Object types
 			case asBC_OBJTYPE:
 			case asBC_FREE:
+			case asBC_REFCPY:
+			case asBC_RefCpyV:
 				{
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
 					asASSERT( objType );
@@ -1325,6 +1327,8 @@ void asCScriptFunction::ReleaseReferences()
 			// Object types
 			case asBC_OBJTYPE:
 			case asBC_FREE:
+			case asBC_REFCPY:
+			case asBC_RefCpyV:
 				{
 					asCObjectType *objType = (asCObjectType*)asBC_PTRARG(&bc[n]);
 					if( objType )

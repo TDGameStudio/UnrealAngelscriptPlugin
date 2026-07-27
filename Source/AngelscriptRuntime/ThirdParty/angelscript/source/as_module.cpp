@@ -2834,6 +2834,8 @@ void asCModule::UpdateReferencesInScriptBytecode(const asModuleReferenceUpdateMa
 			// Object types
 			case asBC_OBJTYPE:
 			case asBC_FREE:
+			case asBC_REFCPY:
+			case asBC_RefCpyV:
 				UpdateReferenceInTypeInfo(UpdateMap, (asCTypeInfo*&)asBC_PTRARG(&bc[n]), true);
 			break;
 

@@ -10,6 +10,184 @@
 static TArray<FObjectInitializer> CurrentObjectInitializers;
 bool GConstructASObjectWithoutDefaults = false;
 
+namespace
+{
+	struct FRawScriptObjectType
+	{
+		asITypeInfo* ScriptType = nullptr;
+		asIScriptEngine* ScriptEngine = nullptr;
+		int32 ReferenceCount = 0;
+		bool bDestructorCalled = false;
+		bool bDestructionInProgress = false;
+	};
+
+	FRWLock GRawScriptObjectTypeLock;
+	TMap<const void*, FRawScriptObjectType> GRawScriptObjectTypes;
+}
+
+void UASClass::RegisterRawScriptObject(void* ScriptObject, asITypeInfo* ScriptType)
+{
+	if (ScriptObject == nullptr || ScriptType == nullptr)
+	{
+		return;
+	}
+
+	FWriteScopeLock Lock(GRawScriptObjectTypeLock);
+	GRawScriptObjectTypes.Add(
+		ScriptObject,
+		{ ScriptType, ScriptType->GetEngine(), 1 });
+}
+
+bool UASClass::AddRawScriptObjectReference(
+	const void* ScriptObject,
+	asITypeInfo* ExpectedScriptType)
+{
+	if (ScriptObject == nullptr || ExpectedScriptType == nullptr)
+	{
+		return false;
+	}
+
+	FWriteScopeLock Lock(GRawScriptObjectTypeLock);
+	FRawScriptObjectType* const Registration =
+		GRawScriptObjectTypes.Find(ScriptObject);
+	if (Registration == nullptr
+		|| Registration->ScriptType != ExpectedScriptType
+		|| Registration->ReferenceCount <= 0)
+	{
+		return false;
+	}
+
+	if (!ensureMsgf(
+		Registration->ReferenceCount < MAX_int32,
+		TEXT("Raw AngelScript object reference count overflow")))
+	{
+		return true;
+	}
+	++Registration->ReferenceCount;
+	return true;
+}
+
+bool UASClass::BeginReleaseRawScriptObjectReference(
+	const void* ScriptObject,
+	asITypeInfo* ExpectedScriptType,
+	bool& bOutRunDestructor,
+	bool& bOutFreeWithoutDestructor)
+{
+	bOutRunDestructor = false;
+	bOutFreeWithoutDestructor = false;
+	if (ScriptObject == nullptr || ExpectedScriptType == nullptr)
+	{
+		return false;
+	}
+
+	FWriteScopeLock Lock(GRawScriptObjectTypeLock);
+	FRawScriptObjectType* const Registration =
+		GRawScriptObjectTypes.Find(ScriptObject);
+	if (Registration == nullptr
+		|| Registration->ScriptType != ExpectedScriptType
+		|| Registration->ReferenceCount <= 0)
+	{
+		return false;
+	}
+
+	if (Registration->ReferenceCount > 1)
+	{
+		--Registration->ReferenceCount;
+		return true;
+	}
+
+	if (Registration->bDestructionInProgress)
+	{
+		// A second final release cannot retire storage while the generated
+		// destructor is still using it. Treat it as handled and let the release
+		// that began destruction complete the ownership transition.
+		return true;
+	}
+
+	if (!Registration->bDestructorCalled)
+	{
+		Registration->bDestructorCalled = true;
+		Registration->bDestructionInProgress = true;
+		bOutRunDestructor = true;
+		return true;
+	}
+
+	--Registration->ReferenceCount;
+	bOutFreeWithoutDestructor = Registration->ReferenceCount == 0;
+	return true;
+}
+
+bool UASClass::FinishReleaseRawScriptObjectReference(
+	const void* ScriptObject,
+	asITypeInfo* ExpectedScriptType)
+{
+	if (ScriptObject == nullptr || ExpectedScriptType == nullptr)
+	{
+		return false;
+	}
+
+	FWriteScopeLock Lock(GRawScriptObjectTypeLock);
+	FRawScriptObjectType* const Registration =
+		GRawScriptObjectTypes.Find(ScriptObject);
+	if (Registration == nullptr
+		|| Registration->ScriptType != ExpectedScriptType
+		|| !Registration->bDestructionInProgress
+		|| Registration->ReferenceCount <= 0)
+	{
+		return false;
+	}
+
+	Registration->bDestructionInProgress = false;
+	--Registration->ReferenceCount;
+	return Registration->ReferenceCount == 0;
+}
+
+void UASClass::UnregisterRawScriptObject(const void* ScriptObject)
+{
+	if (ScriptObject == nullptr)
+	{
+		return;
+	}
+
+	FWriteScopeLock Lock(GRawScriptObjectTypeLock);
+	GRawScriptObjectTypes.Remove(ScriptObject);
+}
+
+void UASClass::UnregisterRawScriptObjectsForEngine(
+	const asIScriptEngine* ScriptEngine)
+{
+	if (ScriptEngine == nullptr)
+	{
+		return;
+	}
+
+	FWriteScopeLock Lock(GRawScriptObjectTypeLock);
+	for (auto It = GRawScriptObjectTypes.CreateIterator(); It; ++It)
+	{
+		if (It.Value().ScriptEngine == ScriptEngine)
+		{
+			It.RemoveCurrent();
+		}
+	}
+}
+
+asITypeInfo* UASClass::GetRawScriptObjectType(const void* ScriptObject)
+{
+	if (ScriptObject == nullptr)
+	{
+		return nullptr;
+	}
+
+	FReadScopeLock Lock(GRawScriptObjectTypeLock);
+	if (const FRawScriptObjectType* const Registration =
+		GRawScriptObjectTypes.Find(ScriptObject))
+	{
+		return Registration->ScriptType;
+	}
+
+	return nullptr;
+}
+
 UObject* UASClass::GetConstructingASObject()
 {
 	if (UASClass::OverrideConstructingObject != nullptr)
@@ -50,6 +228,11 @@ UObject* UASClass::GetDefaultConstructorOuter()
 
 void* UASClass::AllocScriptObject(class asITypeInfo* ScriptType, size_t Size)
 {
+	if (ScriptType == nullptr)
+	{
+		return nullptr;
+	}
+
 	if (ScriptType->GetFlags() & asOBJ_VALUE)
 	{
 		void* Mem = FMemory::Malloc(Size, ScriptType->alignment);
@@ -58,6 +241,18 @@ void* UASClass::AllocScriptObject(class asITypeInfo* ScriptType, size_t Size)
 	}
 
 	UASClass* Class = (UASClass*)ScriptType->GetUserData();
+	if (Class == nullptr)
+	{
+		// The allocator hook is process-global, so a standalone raw SDK engine
+		// reaches this callback even though its script types have not been turned
+		// into UASClass instances. Preserve native AngelScript allocation for that
+		// public-SDK path instead of entering the UObject construction route.
+		void* Mem = FMemory::Malloc(Size, ScriptType->alignment);
+		FMemory::Memzero(Mem, Size);
+		RegisterRawScriptObject(Mem, ScriptType);
+		return Mem;
+	}
+
 	/*
 	
 		This code comes from StaticConstructObject_Internal.
@@ -170,6 +365,13 @@ static FORCEINLINE_DEBUGGABLE void ExecuteConstructFunction(UObject* Object, UAS
 
 void UASClass::FinishConstructObject(class asIScriptObject* ScriptObject, class asITypeInfo* ScriptType)
 {
+	if (ScriptType == nullptr || ScriptType->GetUserData() == nullptr)
+	{
+		// See AllocScriptObject: raw SDK script types do not own a UASClass and
+		// must not be converted to UObject during the generic construction finish.
+		return;
+	}
+
 	UObject* Object = FAngelscriptEngine::AngelscriptToUObject(ScriptObject);
 	const bool bIsScriptAllocation = CurrentObjectInitializers.Num() != 0 && CurrentObjectInitializers.Last().GetObj() == Object;
 

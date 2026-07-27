@@ -796,6 +796,18 @@ void asCByteCode::OptimizeLocally(const asCArray<int> &tempVariableOffsets)
 			{
 				instr = GoForward(DeleteInstruction(instr));
 			}
+			// PshNull, RefCpyV, PopPtr -> FREE. RefCpyV retains the typed
+			// operand so the replacement can release counted reference types.
+			else if( instr && instr->op == asBC_RefCpyV &&
+					 instr->prev && instr->prev->op == asBC_PshNull )
+			{
+				DeleteInstruction(curr);
+				DeleteInstruction(instr->prev);
+				instr->op = asBC_FREE;
+				instr->size = asBCTypeSize[asBCInfo[asBC_FREE].type];
+				instr->stackInc = asBCInfo[asBC_FREE].stackInc;
+				instr = GoForward(instr);
+			}
 			// PshVPtr y, PopPtr -> nothing
 			// PSF y    , PopPtr -> nothing
 			// VAR y    , PopPtr -> nothing
@@ -959,51 +971,15 @@ void asCByteCode::OptimizeLocally(const asCArray<int> &tempVariableOffsets)
 		}
 		else if( currOp == asBC_REFCPY )
 		{
-			// PshNull, PSF x, REFCPY, PopPtr -> FreeNullV8
-			if( instr && instr->op == asBC_RefCpyV &&
-					 instr->prev && instr->prev->op == asBC_PshNull )
+			// PSF x, REFCPY -> RefCpyV x. Keep the following PopPtr: the
+			// typed optimized form has the same stack effect as REFCPY.
+			if( instr && instr->op == asBC_PSF )
 			{
-				DeleteInstruction(curr);
-				DeleteInstruction(instr->prev);
-				instr->op = asBC_FreeNullV8;
-				instr->stackInc = asBCInfo[asBC_FreeNullV8].stackInc;
-				instr = GoForward(instr);
-			}
-			else if( instr && instr->op == asBC_PSF && curr->next && curr->next->op == asBC_PopPtr )
-			{
-				if (instr->prev && instr->prev->op == asBC_PshNull)
-				{
-					// PshNull, PSF x, REFCPY, PopPtr -> FreeNullV8 x
-					curr->op = asBC_FreeNullV8;
-					curr->wArg[0] = instr->wArg[0];
-					curr->stackInc = asBCInfo[asBC_FreeNullV8].stackInc;
-					DeleteInstruction(curr->next);
-					DeleteInstruction(instr->prev);
-					DeleteInstruction(instr);
-					instr = GoForward(curr);
-				}
-				else
-				{
-					// PSF x, REFCPY, PopPtr -> RefCpyV x
-					curr->op = asBC_RefCpyV;
-					curr->wArg[0] = instr->wArg[0];
-					curr->stackInc = asBCInfo[asBC_RefCpyV].stackInc;
-					DeleteInstruction(curr->next);
-					DeleteInstruction(instr);
-					instr = GoForward(curr);
-				}
-			}
-		}
-		else if( currOp == asBC_STOREOBJ )
-		{
-			// STOREOBJ x, PshVPtr x, RefCpyV y -> STOREOBJ y
-			if (curr->next && curr->next->op == asBC_PshVPtr
-				&& curr->next->next && curr->next->next->op == asBC_RefCpyV
-				&& curr->next->wArg[0] == curr->wArg[0])
-			{
-				curr->wArg[0] = curr->next->next->wArg[0];
-				DeleteInstruction(curr->next->next);
-				DeleteInstruction(curr->next);
+				curr->op = asBC_RefCpyV;
+				curr->size = asBCTypeSize[asBCInfo[asBC_RefCpyV].type];
+				curr->wArg[0] = instr->wArg[0];
+				curr->stackInc = asBCInfo[asBC_RefCpyV].stackInc;
+				DeleteInstruction(instr);
 				instr = GoForward(curr);
 			}
 		}
@@ -1115,8 +1091,9 @@ void asCByteCode::OptimizeLocally(const asCArray<int> &tempVariableOffsets)
 		//                         that matter, is being called?
 		if( instr && instr->op == asBC_Block )
 		{
-			// We expect a sequence PshVPtr, RefCpyV just before the clean up block
+			// We expect a sequence PshVPtr, RefCpyV, PopPtr just before the clean up block
 			instr = instr->prev;
+			if( instr && instr->op == asBC_PopPtr ) instr = instr->prev;
 			if( instr && instr->op == asBC_RefCpyV && instr->wArg[0] == tempVar ) instr = instr->prev;
 			if( instr && instr->op == asBC_PshVPtr && freedVars.Exists(instr->wArg[0]) )
 			{
@@ -1126,6 +1103,7 @@ void asCByteCode::OptimizeLocally(const asCArray<int> &tempVariableOffsets)
 
 				// Remove the copy of the local variable into the temp
 				DeleteInstruction(instr->next); // deletes RefCpyV
+				DeleteInstruction(instr->next); // deletes PopPtr
 				DeleteInstruction(instr);       // deletes PshVPtr
 
 				// Find and remove the FREE instruction for the local variable too
@@ -2386,7 +2364,10 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 				break;
 
 			case asBC_REFCPY:
-				fprintf(file, "   %-8s\n", asBCInfo[instr->op].name);
+				{
+					asCObjectType *ot = *(asCObjectType**)ARG_DW(instr->arg);
+					fprintf(file, "   %-8s 0x%x           (type:%s)\n", asBCInfo[instr->op].name, (asUINT)*ARG_DW(instr->arg), ot->GetName());
+				}
 				break;
 
 			case asBC_JMP:
@@ -2411,6 +2392,13 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 			switch( instr->op )
 			{
 			case asBC_OBJTYPE:
+				{
+					asCObjectType *ot = *(asCObjectType**)ARG_QW(instr->arg);
+					fprintf(file, "   %-8s 0x%x          (type:%s)\n", asBCInfo[instr->op].name, (asUINT)*ARG_QW(instr->arg), ot->GetName());
+				}
+				break;
+
+			case asBC_REFCPY:
 				{
 					asCObjectType *ot = *(asCObjectType**)ARG_QW(instr->arg);
 					fprintf(file, "   %-8s 0x%x          (type:%s)\n", asBCInfo[instr->op].name, (asUINT)*ARG_QW(instr->arg), ot->GetName());
@@ -2446,7 +2434,8 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 			case asBC_RefCpyV:
 			case asBC_FREE:
 				{
-					fprintf(file, "   %-8s v%d\n", asBCInfo[instr->op].name, instr->wArg[0]);
+					asCObjectType *ot = *(asCObjectType**)ARG_QW(instr->arg);
+					fprintf(file, "   %-8s v%d, 0x%x          (type:%s)\n", asBCInfo[instr->op].name, instr->wArg[0], (asUINT)*ARG_QW(instr->arg), ot->GetName());
 				}
 				break;
 
@@ -2518,7 +2507,12 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 		case asBCTYPE_rW_DW_ARG:
 		case asBCTYPE_wW_DW_ARG:
 		case asBCTYPE_W_DW_ARG:
-			if( instr->op == asBC_SetV1 )
+			if( instr->op == asBC_RefCpyV || instr->op == asBC_FREE )
+			{
+				asCObjectType *ot = *(asCObjectType**)ARG_DW(instr->arg);
+				fprintf(file, "   %-8s v%d, 0x%x          (type:%s)\n", asBCInfo[instr->op].name, instr->wArg[0], (asUINT)*ARG_DW(instr->arg), ot->GetName());
+			}
+			else if( instr->op == asBC_SetV1 )
 				fprintf(file, "   %-8s v%d, 0x%x\n", asBCInfo[instr->op].name, instr->wArg[0], *(asBYTE*)ARG_DW(instr->arg));
 			else if( instr->op == asBC_SetV2 )
 				fprintf(file, "   %-8s v%d, 0x%x\n", asBCInfo[instr->op].name, instr->wArg[0], *(asWORD*)ARG_DW(instr->arg));

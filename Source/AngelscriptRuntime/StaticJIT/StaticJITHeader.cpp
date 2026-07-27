@@ -221,16 +221,24 @@ void FStaticJITFunction::ScriptCallNative(FScriptExecution& Execution, asCScript
 		void* FunctionArgs[32];
 		void* ReturnAddress;
 		unsigned int ArgIndex = 0;
+		const bool bPassObjectArgumentLast =
+			sysFunc->callConv == ICC_CDECL_OBJLAST
+			|| sysFunc->callConv == ICC_CDECL_OBJLAST_RETURNINMEM;
+		void* ObjectArgument = nullptr;
 
 		// Verify the object pointer if it is a class method
-		void *currentObject = 0;
 		if( sysFunc->callConv >= ICC_THISCALL )
 		{
 			// The object pointer should be popped from the context stack
-			FunctionArgs[ArgIndex] = *(void**)&StackArgs[0];
+			ObjectArgument = *(void**)&StackArgs[0];
 
-			// Skip object pointer
-			ArgIndex++;
+			// The VM always stores the object before explicit script parameters.
+			// CDECL_OBJLAST is the exception at the native call boundary.
+			if (!bPassObjectArgumentLast)
+			{
+				FunctionArgs[ArgIndex] = ObjectArgument;
+				ArgIndex++;
+			}
 		}
 
 		// Some system functions want to know the script function that is being called
@@ -289,6 +297,12 @@ void FStaticJITFunction::ScriptCallNative(FScriptExecution& Execution, asCScript
 			}
 
 			++ArgIndex;
+		}
+
+		if (bPassObjectArgumentLast)
+		{
+			FunctionArgs[ArgIndex] = ObjectArgument;
+			ArgIndex++;
 		}
 
 		auto* tld = Execution.tld;

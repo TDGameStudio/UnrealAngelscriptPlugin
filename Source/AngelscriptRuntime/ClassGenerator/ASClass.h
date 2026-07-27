@@ -108,6 +108,21 @@ public:
 	static UObject* GetDefaultConstructorOuter();
 	static void* AllocScriptObject(class asITypeInfo* ScriptType, size_t Size);
 	static void FinishConstructObject(class asIScriptObject* ScriptObject, class asITypeInfo* ScriptType);
+	static void RegisterRawScriptObject(void* ScriptObject, class asITypeInfo* ScriptType);
+	static bool AddRawScriptObjectReference(
+		const void* ScriptObject,
+		class asITypeInfo* ExpectedScriptType);
+	static bool BeginReleaseRawScriptObjectReference(
+		const void* ScriptObject,
+		class asITypeInfo* ExpectedScriptType,
+		bool& bOutRunDestructor,
+		bool& bOutFreeWithoutDestructor);
+	static bool FinishReleaseRawScriptObjectReference(
+		const void* ScriptObject,
+		class asITypeInfo* ExpectedScriptType);
+	static void UnregisterRawScriptObject(const void* ScriptObject);
+	static void UnregisterRawScriptObjectsForEngine(const class asIScriptEngine* ScriptEngine);
+	static class asITypeInfo* GetRawScriptObjectType(const void* ScriptObject);
 
 	static void StaticActorConstructor(const FObjectInitializer& Initializer);
 	static void StaticComponentConstructor(const FObjectInitializer& Initializer);

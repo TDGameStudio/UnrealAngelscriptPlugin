@@ -55,7 +55,7 @@ BEGIN_AS_NAMESPACE
 
 int DetectCallingConvention(bool isMethod, const asSFuncPtr &ptr, int callConv, void *auxiliary, asFunctionCaller caller, asSSystemFunctionInterface *internal)
 {
-	memset(internal, 0, sizeof(asSSystemFunctionInterface));
+	internal->Clear();
 
 	internal->func      = ptr.ptr.f.func;
 	internal->method = ptr.ptr.m.mthd;
@@ -156,6 +156,53 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 
 	// Calculate the size needed for the parameters
 	internal->paramSize = func->GetSpaceNeededForArguments();
+
+	// [UE++]: The compiler moves an object passed by value into the native
+	// call stack. The generic path must retire that transferred ownership,
+	// just like the native FunctionCaller path. This is the narrow 2.38
+	// compatibility behavior needed by raw SDK generic registrations.
+	internal->cleanArgs.SetLength(0);
+	int offset = 0;
+	for (asUINT n = 0; n < func->parameterTypes.GetLength(); ++n)
+	{
+		asCDataType& dt = func->parameterTypes[n];
+		const bool bIsImplicitHandle =
+			dt.IsObjectHandle()
+			&& dt.GetTypeInfo() != nullptr
+			&& (dt.GetTypeInfo()->GetFlags()
+				& asOBJ_IMPLICIT_HANDLE) != 0;
+		const bool bIsNoCountReference =
+			dt.GetTypeInfo() != nullptr
+			&& (dt.GetTypeInfo()->GetFlags() & asOBJ_REF) != 0
+			&& (dt.GetTypeInfo()->GetFlags() & asOBJ_NOCOUNT) != 0;
+		if ((dt.IsObject() || dt.IsFuncdef())
+			&& !dt.IsReference()
+			// MoveArgsToStack emits GETOBJ for all by-value object
+			// parameters, including a bare implicit-handle type. The latter is
+			// represented as an object handle in the data type, but its unique
+			// temporary ownership is still moved into the generic callee slot.
+			&& (!dt.IsObjectHandle() || bIsImplicitHandle)
+			// A no-count implicit handle transfers no ref-count ownership. Adding
+			// it to cleanArgs would later dispatch a release behaviour that the
+			// type intentionally does not register.
+			&& !bIsNoCountReference)
+		{
+			asSSystemFunctionInterface::SClean clean;
+			clean.ot = CastToObjectType(dt.GetTypeInfo());
+			clean.off = short(offset);
+			if (dt.IsFuncdef()
+				|| (dt.GetTypeInfo()->flags & asOBJ_REF))
+			{
+				clean.op = 0;
+			}
+			else
+			{
+				clean.op = clean.ot->beh.destruct ? 2 : 1;
+			}
+			internal->cleanArgs.PushLast(clean);
+		}
+		offset += dt.GetSizeOnStackDWords();
+	}
 
 	return 0;
 }

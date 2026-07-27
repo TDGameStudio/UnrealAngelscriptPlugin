@@ -176,7 +176,7 @@ struct FAngelscriptPrecompiledFunction
 	void InitFrom(FAngelscriptPrecompiledData& Context, class asCModule* Module, class asCScriptFunction* Function);
 
 	asCScriptFunction* Create(FAngelscriptPrecompiledData& Context, class asCModule* Module) const;
-	void Process(FAngelscriptPrecompiledData& Context, asCScriptFunction* Function) const;
+	ANGELSCRIPTRUNTIME_API void Process(FAngelscriptPrecompiledData& Context, asCScriptFunction* Function) const;
 
 	TSharedPtr<FAngelscriptFunctionDesc> MakeDesc() const;
 };

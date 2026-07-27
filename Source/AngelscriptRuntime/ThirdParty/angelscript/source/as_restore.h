@@ -72,6 +72,8 @@ protected:
 	void               ReadFunctionSignature(asCScriptFunction *func, asCObjectType **parentClass = 0);
 	void               ReadGlobalProperty();
 	void               ReadObjectProperty(asCObjectType *ot);
+	void               RebuildRestoredScriptClassLayouts();
+	bool               RebuildRestoredScriptClassLayout(asCObjectType *ot, asCArray<asCObjectType*> &layoutingTypes, asCArray<asCObjectType*> &layoutedTypes);
 	void               ReadDataType(asCDataType *dt);
 	asCTypeInfo       *ReadTypeInfo();
 	void               ReadTypeDeclaration(asCTypeInfo *ot, int phase, bool *isExternal = 0);

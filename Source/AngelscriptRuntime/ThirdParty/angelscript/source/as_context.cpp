@@ -2549,9 +2549,27 @@ void asCContext::ExecuteNext()
 				l_sp = m_regs.stackPointer;
 				l_fp = m_regs.stackFramePointer;
 
-				// If status isn't active anymore then we must stop
+				// If status isn't active anymore then construction did not publish an
+				// initialized object. A standalone raw SDK script class is allocated
+				// by the process-global hook but has no UASClass user data. It therefore
+				// has no UObject owner that can retire the partially initialized storage.
+				// Run its generated destructor while the context registers still describe
+				// the allocation, then free its raw storage before preserving the exception.
+				// UASClass-backed objects retain their existing UObject ownership path.
 				if( m_status != asEXECUTION_ACTIVE )
+				{
+					if( objType->GetUserData() == 0 )
+					{
+						m_regs.programPointer    = l_bc;
+						m_regs.stackPointer      = l_sp;
+						m_regs.stackFramePointer = l_fp;
+
+						((asCScriptObject*)mem)->CallDestructor(objType);
+						m_engine->CallFree(mem);
+						if( a ) *a = 0;
+					}
 					return;
+				}
 			}
 			else
 			{
@@ -2605,17 +2623,30 @@ void asCContext::ExecuteNext()
 				asCObjectType *objType = (asCObjectType*)asBC_PTRARG(l_bc);
 				asSTypeBehaviour *beh = &objType->beh;
 
-				if( objType->flags & asOBJ_REF )
+				// The release/destructor can inspect the active context through the
+				// debug interface, so publish the local registers before the call.
+				m_regs.programPointer    = l_bc;
+				m_regs.stackPointer      = l_sp;
+				m_regs.stackFramePointer = l_fp;
+
+				if( (objType->flags & asOBJ_SCRIPT_OBJECT) && objType->GetUserData() == 0 )
 				{
+					// Standalone raw SDK script references are no-count VM handles, but
+					// their raw allocations still need a last-owner retirement rule.
+					// Keep the registration alive through generated destruction so any
+					// nested virtual dispatch can still recover its dynamic type.
+					m_engine->ReleaseRawScriptObject(
+						(void*)(asPWORD)*a,
+						objType);
+				}
+				else if( objType->flags & asOBJ_REF )
+				{
+					asASSERT( (objType->flags & asOBJ_NOCOUNT) || beh->release );
+					if( beh->release )
+						m_engine->CallObjectMethod((void*)(asPWORD)*a, beh->release);
 				}
 				else if (objType->flags & asOBJ_SCRIPT_OBJECT)
 				{
-					// Need to move the values back to the context as the called functions
-					// may use the debug interface to inspect the registers
-					m_regs.programPointer    = l_bc;
-					m_regs.stackPointer      = l_sp;
-					m_regs.stackFramePointer = l_fp;
-
 					asASSERT( (objType->flags & asOBJ_VALUE) );
 					((asCScriptObject*)*a)->CallDestructor(objType);
 
@@ -2623,12 +2654,6 @@ void asCContext::ExecuteNext()
 				}
 				else
 				{
-					// Need to move the values back to the context as the called functions
-					// may use the debug interface to inspect the registers
-					m_regs.programPointer    = l_bc;
-					m_regs.stackPointer      = l_sp;
-					m_regs.stackFramePointer = l_fp;
-
 					if( beh->destruct )
 						m_engine->CallObjectMethod((void*)(asPWORD)*a, beh->destruct);
 					else if( objType->flags & asOBJ_LIST_PATTERN )
@@ -2677,6 +2702,9 @@ void asCContext::ExecuteNext()
 
 	case asBC_REFCPY:
 		{
+			asCObjectType *objType = (asCObjectType*)asBC_PTRARG(l_bc);
+			asSTypeBehaviour *beh = &objType->beh;
+
 			// Pop address of destination pointer from the stack
 			void **d = (void**)*(asPWORD*)l_sp;
 			l_sp += AS_PTR_SIZE;
@@ -2684,10 +2712,33 @@ void asCContext::ExecuteNext()
 			// Read wanted pointer from the stack
 			void *s = (void*)*(asPWORD*)l_sp;
 
+			// The ownership behaviours may inspect the active execution context.
+			m_regs.programPointer    = l_bc;
+			m_regs.stackPointer      = l_sp;
+			m_regs.stackFramePointer = l_fp;
+
+			// Assigning a handle to itself must not release its last ownership
+			// before retaining the same address.
+			if( *d != s && (objType->flags & asOBJ_SCRIPT_OBJECT) && objType->GetUserData() == 0 )
+			{
+				if( *d != 0 )
+					m_engine->ReleaseRawScriptObject(*d, objType);
+				if( s != 0 )
+					m_engine->AddRawScriptObjectReference(s, objType);
+			}
+			else if( *d != s && !(objType->flags & (asOBJ_NOCOUNT | asOBJ_VALUE)) )
+			{
+				if( *d != 0 && beh->release )
+					m_engine->CallObjectMethod(*d, beh->release);
+				if( s != 0 && beh->addref )
+					m_engine->CallObjectMethod(s, beh->addref);
+			}
+
 			// Set the new object in the destination
-			*d = s;
+			if( *d != s )
+				*d = s;
 		}
-		l_bc += 1;
+		l_bc += 1+AS_PTR_SIZE;
 		break;
 
 	case asBC_CHKREF:
@@ -3397,8 +3448,8 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_dTOi64:
-		*(asINT64*)(l_fp - asBC_SWORDARG0(l_bc)) = asINT64(*(double*)(l_fp - asBC_SWORDARG0(l_bc)));
-		l_bc++;
+		*(asINT64*)(l_fp - asBC_SWORDARG0(l_bc)) = asINT64(*(double*)(l_fp - asBC_SWORDARG1(l_bc)));
+		l_bc += 2;
 		break;
 
 	case asBC_fTOu64:
@@ -3407,8 +3458,8 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_dTOu64:
-		*(asQWORD*)(l_fp - asBC_SWORDARG0(l_bc)) = asQWORD(asINT64(*(double*)(l_fp - asBC_SWORDARG0(l_bc))));
-		l_bc++;
+		*(asQWORD*)(l_fp - asBC_SWORDARG0(l_bc)) = asQWORD(asINT64(*(double*)(l_fp - asBC_SWORDARG1(l_bc))));
+		l_bc += 2;
 		break;
 
 	case asBC_i64TOf:
@@ -3891,21 +3942,44 @@ void asCContext::ExecuteNext()
 		break;
 
 	case asBC_RefCpyV:
-		// Same as PSF v, REFCPY, PopPtr
+		// Same as PSF v, REFCPY
 		{
+			asCObjectType *objType = (asCObjectType*)asBC_PTRARG(l_bc);
+			asSTypeBehaviour *beh = &objType->beh;
+
 			// Determine destination from argument
 			void **d = (void**)asPWORD(l_fp - asBC_SWORDARG0(l_bc));
 
 			// Read wanted pointer from the stack
 			void *s = (void*)*(asPWORD*)l_sp;
 
-			// Set the new object in the destination
-			*d = s;
+			// The ownership behaviours may inspect the active execution context.
+			m_regs.programPointer    = l_bc;
+			m_regs.stackPointer      = l_sp;
+			m_regs.stackFramePointer = l_fp;
 
-			// Pop the pointer from the stack
-			l_sp += AS_PTR_SIZE;
+			// Assigning a handle to itself must not release its last ownership
+			// before retaining the same address.
+			if( *d != s && (objType->flags & asOBJ_SCRIPT_OBJECT) && objType->GetUserData() == 0 )
+			{
+				if( *d != 0 )
+					m_engine->ReleaseRawScriptObject(*d, objType);
+				if( s != 0 )
+					m_engine->AddRawScriptObjectReference(s, objType);
+			}
+			else if( *d != s && !(objType->flags & (asOBJ_NOCOUNT | asOBJ_VALUE)) )
+			{
+				if( *d != 0 && beh->release )
+					m_engine->CallObjectMethod(*d, beh->release);
+				if( s != 0 && beh->addref )
+					m_engine->CallObjectMethod(s, beh->addref);
+			}
+
+			// Set the new object in the destination
+			if( *d != s )
+				*d = s;
 		}
-		l_bc += 1;
+		l_bc += 1+AS_PTR_SIZE;
 		break;
 
 	case asBC_JLowZ:
@@ -4466,7 +4540,41 @@ void asCContext::CleanReturnObject()
 		return;
 	}
 
-	m_regs.objectRegister = 0;
+	if( m_regs.objectRegister != 0 )
+	{
+		asASSERT( m_regs.objectType != 0 );
+
+		if( m_regs.objectType )
+		{
+			if( m_regs.objectType->GetFlags() & asOBJ_FUNCDEF )
+			{
+				// Release the function pointer
+				reinterpret_cast<asIScriptFunction*>(m_regs.objectRegister)->Release();
+				m_regs.objectRegister = 0;
+			}
+			else
+			{
+				asSTypeBehaviour *beh = &(CastToObjectType(reinterpret_cast<asCTypeInfo*>(m_regs.objectType))->beh);
+				if( m_regs.objectType->GetFlags() & asOBJ_REF )
+				{
+					asASSERT(beh->release || (m_regs.objectType->GetFlags() & asOBJ_NOCOUNT));
+
+					if( beh->release )
+						m_engine->CallObjectMethod(m_regs.objectRegister, beh->release);
+
+					m_regs.objectRegister = 0;
+				}
+				else
+				{
+					if( beh->destruct )
+						m_engine->CallObjectMethod(m_regs.objectRegister, beh->destruct);
+
+					m_engine->CallFree(m_regs.objectRegister);
+					m_regs.objectRegister = 0;
+				}
+			}
+		}
+	}
 	m_returnIsExternal = false;
 }
 
@@ -4771,8 +4879,18 @@ void asCContext::CleanArgsOnStack()
 				{
 					(*(asCScriptFunction**)&m_regs.stackPointer[offset])->Release();
 				}
+				else if( (func->parameterTypes[n].GetTypeInfo()->flags & asOBJ_SCRIPT_OBJECT) &&
+					func->parameterTypes[n].GetTypeInfo()->GetUserData() == 0 )
+				{
+					auto* objType = CastToObjectType(func->parameterTypes[n].GetTypeInfo());
+					auto* scriptObj = *(asCScriptObject**)&m_regs.stackPointer[offset];
+					m_engine->ReleaseRawScriptObject(scriptObj, objType);
+				}
 				else if( func->parameterTypes[n].GetTypeInfo()->flags & asOBJ_REF )
 				{
+					asASSERT( (func->parameterTypes[n].GetTypeInfo()->flags & asOBJ_NOCOUNT) || beh->release );
+					if( beh->release )
+						m_engine->CallObjectMethod((void*)*(asPWORD*)&m_regs.stackPointer[offset], beh->release);
 				}
 				else if( func->parameterTypes[n].GetTypeInfo()->flags & asOBJ_SCRIPT_OBJECT )
 				{
@@ -4872,7 +4990,13 @@ bool asCContext::CleanStackFrame(bool catchException)
 		asCArray<int> liveObjects;
 		DetermineLiveObjects(liveObjects, 0);
 
-		for( asUINT n = 0; n < m_currentFunction->scriptData->objVariablePos.GetLength(); n++ )
+		// Exception unwinding must release live locals in reverse declaration
+		// order, matching the normal compiler-emitted scope cleanup. Forward
+		// traversal destroys an earlier member before its later sibling and
+		// violates the language lifetime rule for embedded values.
+		for( int n = (int)m_currentFunction->scriptData->objVariablePos.GetLength() - 1;
+			n >= 0;
+			--n )
 		{
 			int pos = m_currentFunction->scriptData->objVariablePos[n];
 			if( exceptionCaught )
@@ -4901,7 +5025,7 @@ bool asCContext::CleanStackFrame(bool catchException)
 					continue;
 			}
 
-			if( n < m_currentFunction->scriptData->objVariablesOnHeap )
+			if( n < (int)m_currentFunction->scriptData->objVariablesOnHeap )
 			{
 				// Check if the pointer is initialized
 				if( *(asPWORD*)&m_regs.stackFramePointer[-pos] )
@@ -4911,14 +5035,22 @@ bool asCContext::CleanStackFrame(bool catchException)
 					{
 						(*(asCScriptFunction**)&m_regs.stackFramePointer[-pos])->Release();
 					}
-					else if( m_currentFunction->scriptData->objVariableTypes[n]->flags & asOBJ_REF )
-					{
-					}
-					else if( m_currentFunction->scriptData->objVariableTypes[n]->flags & asOBJ_SCRIPT_OBJECT )
+					else if( (m_currentFunction->scriptData->objVariableTypes[n]->flags & asOBJ_SCRIPT_OBJECT) &&
+						m_currentFunction->scriptData->objVariableTypes[n]->GetUserData() == 0 )
 					{
 						auto* objType = m_currentFunction->scriptData->objVariableTypes[n];
 						auto* scriptObj = *(asCScriptObject**)&m_regs.stackFramePointer[-pos];
-						scriptObj->CallDestructor((asCObjectType*)objType);
+						m_engine->ReleaseRawScriptObject(
+							scriptObj,
+							(asCObjectType*)objType);
+					}
+					else if( m_currentFunction->scriptData->objVariableTypes[n]->flags & asOBJ_REF )
+					{
+						asCObjectType *objType = CastToObjectType(m_currentFunction->scriptData->objVariableTypes[n]);
+						asSTypeBehaviour *beh = &objType->beh;
+						asASSERT( (objType->flags & asOBJ_NOCOUNT) || beh->release );
+						if( beh->release )
+							m_engine->CallObjectMethod((void*)*(asPWORD*)&m_regs.stackFramePointer[-pos], beh->release);
 					}
 					else
 					{
@@ -4989,8 +5121,18 @@ bool asCContext::CleanStackFrame(bool catchException)
 				{
 					(*(asCScriptFunction**)&m_regs.stackFramePointer[offset])->Release();
 				}
+				else if( (m_currentFunction->parameterTypes[n].GetTypeInfo()->flags & asOBJ_SCRIPT_OBJECT) &&
+					m_currentFunction->parameterTypes[n].GetTypeInfo()->GetUserData() == 0 )
+				{
+					auto* objType = CastToObjectType(m_currentFunction->parameterTypes[n].GetTypeInfo());
+					auto* scriptObj = *(asCScriptObject**)&m_regs.stackFramePointer[offset];
+					m_engine->ReleaseRawScriptObject(scriptObj, objType);
+				}
 				else if( m_currentFunction->parameterTypes[n].GetTypeInfo()->flags & asOBJ_REF )
 				{
+					asASSERT( (m_currentFunction->parameterTypes[n].GetTypeInfo()->flags & asOBJ_NOCOUNT) || beh->release );
+					if( beh->release )
+						m_engine->CallObjectMethod((void*)*(asPWORD*)&m_regs.stackFramePointer[offset], beh->release);
 				}
 				else if( m_currentFunction->parameterTypes[n].GetTypeInfo()->flags & asOBJ_SCRIPT_OBJECT )
 				{
@@ -5169,6 +5311,7 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	void (*func)(asIScriptGeneric*) = (void (*)(asIScriptGeneric*))sysFunc->func;
 	int popSize = sysFunc->paramSize;
 	asDWORD *args = m_regs.stackPointer;
+	asDWORD *cleanArgs = args;
 
 	// Verify the object pointer if it is a class method
 	void *currentObject = 0;
@@ -5187,12 +5330,14 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 		}
 
 		asASSERT( sysFunc->baseOffset == 0 );
+		cleanArgs += AS_PTR_SIZE;
 	}
 
 	if( descr->DoesReturnOnStack() )
 	{
 		// Skip the address where the return value will be stored
 		popSize += AS_PTR_SIZE;
+		cleanArgs += AS_PTR_SIZE;
 	}
 
 	asCGeneric gen(m_engine, descr, currentObject, args);
@@ -5224,6 +5369,42 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	m_regs.objectRegister = gen.objectRegister;
 	m_regs.objectType = descr->returnType.GetTypeInfo();
 
+	// [UE++]: A generic by-value object parameter is moved to the call stack
+	// by the compiler. Retire it after the callback, matching the native
+	// FunctionCaller cleanup path and the selected 2.38 behavior.
+	for (asUINT n = 0; n < sysFunc->cleanArgs.GetLength(); ++n)
+	{
+		asSSystemFunctionInterface::SClean& clean =
+			sysFunc->cleanArgs[n];
+		void** address = reinterpret_cast<void**>(
+			&cleanArgs[clean.off]);
+		if (*address == nullptr)
+		{
+			continue;
+		}
+		if (clean.op == 0)
+		{
+			// Counted handles retain the normal release path. A malformed or
+			// legacy cleanup entry for a no-count reference must still retire
+			// the moved VM slot without calling function id zero.
+			if (clean.ot->beh.release)
+				m_engine->CallObjectMethod(
+					*address,
+					clean.ot->beh.release);
+			*address = nullptr;
+		}
+		else
+		{
+			asASSERT(clean.op == 1 || clean.op == 2);
+			if (clean.op == 2)
+				m_engine->CallObjectMethod(
+					*address,
+					clean.ot->beh.destruct);
+			m_engine->CallFree(*address);
+			*address = nullptr;
+		}
+	}
+
 	// Return how much should be popped from the stack
 	return popSize;
 }
@@ -5239,6 +5420,10 @@ int asCContext::CallFunctionCaller(asCScriptFunction* descr)
 	void* FunctionArgs[32];
 	void* ReturnAddress;
 	unsigned int ArgIndex = 0;
+	const bool bPassObjectArgumentLast =
+		sysFunc->callConv == ICC_CDECL_OBJLAST
+		|| sysFunc->callConv == ICC_CDECL_OBJLAST_RETURNINMEM;
+	void* ObjectArgument = nullptr;
 
 #if WITH_EDITOR
 	if (descr->traits.GetTrait(asTRAIT_USES_WORLDCONTEXT))
@@ -5260,20 +5445,24 @@ int asCContext::CallFunctionCaller(asCScriptFunction* descr)
 #endif
 
 	// Verify the object pointer if it is a class method
-	void *currentObject = 0;
 	if( sysFunc->callConv >= ICC_THISCALL )
 	{
 		// The object pointer should be popped from the context stack
-		FunctionArgs[ArgIndex] = *(void**)&StackArgs[0];
+		ObjectArgument = *(void**)&StackArgs[0];
 
-		if( FunctionArgs[ArgIndex] == nullptr )
+		if( ObjectArgument == nullptr )
 		{
 			SetInternalException(TXT_NULL_POINTER_ACCESS);
 			return 0;
 		}
 
-		// Skip object pointer
-		ArgIndex++;
+		// The VM always stores the object before explicit script parameters.
+		// CDECL_OBJLAST is the exception at the native call boundary.
+		if (!bPassObjectArgumentLast)
+		{
+			FunctionArgs[ArgIndex] = ObjectArgument;
+			ArgIndex++;
+		}
 	}
 
 	// Some system functions want to know the script function that is being called
@@ -5331,6 +5520,12 @@ int asCContext::CallFunctionCaller(asCScriptFunction* descr)
 		}
 
 		++ArgIndex;
+	}
+
+	if (bPassObjectArgumentLast)
+	{
+		FunctionArgs[ArgIndex] = ObjectArgument;
+		ArgIndex++;
 	}
 
 	auto* tld = m_regs.tld;

@@ -3938,10 +3938,28 @@ IMPL_BYTECODE_BEGIN(asBC_FREE)
 		check(Context.VArg_Type(0) == FStaticJITContext::EVariableType::Pointer);
 		asCObjectType *objType = (asCObjectType*)asBC_PTRARG(Context.BC);
 
-		if ((objType->flags & asOBJ_REF) != 0)
+		if ((objType->flags & asOBJ_SCRIPT_OBJECT) != 0 && objType->GetUserData() == nullptr)
 		{
-			// We don't implement refcounting here
-			check((objType->flags & asOBJ_NOCOUNT) != 0);
+			Context.Line("{");
+			Context.Line("  void* obj = (void*){0};", Context.VArg_Var(0));
+			Context.Line("  if (obj != nullptr)");
+			Context.Line("  {");
+			Context.Line("    asCObjectType* objType = (asCObjectType*){0};", Context.ReferenceTypeInfo(objType));
+			Context.Line("    SCRIPT_ENGINE->ReleaseRawScriptObject(obj, objType);");
+			Context.Line("  }");
+			Context.Line("}");
+		}
+		else if ((objType->flags & asOBJ_REF) != 0)
+		{
+			Context.Line("{");
+			Context.Line("  void* obj = (void*){0};", Context.VArg_Var(0));
+			Context.Line("  if (obj != nullptr)");
+			Context.Line("  {");
+			Context.Line("    asCObjectType* objType = (asCObjectType*){0};", Context.ReferenceTypeInfo(objType));
+			Context.Line("    if ((objType->flags & asOBJ_NOCOUNT) == 0 && objType->beh.release != 0)");
+			Context.Line("      SCRIPT_ENGINE->CallObjectMethod(obj, objType->beh.release);");
+			Context.Line("  }");
+			Context.Line("}");
 		}
 		else
 		{
@@ -3954,7 +3972,7 @@ IMPL_BYTECODE_BEGIN(asBC_FREE)
 			FDestructorCall DestructorCall(objType);
 			DestructorCall.CallDestroy(Context, TEXT("obj"));
 
-			Context.Line("    SCRIPT_ENGINE->CallFree(*a);");
+			Context.Line("    SCRIPT_ENGINE->CallFree(obj);");
 			Context.Line("  }");
 			Context.Line("}");
 		}
@@ -4048,11 +4066,38 @@ IMPL_BYTECODE_BEGIN(asBC_REFCPY)
 {
 	bool Implement(FStaticJITContext& Context) const override
 	{
+		asCObjectType* objType = (asCObjectType*)asBC_PTRARG(Context.BC);
+		const bool bRawScriptReference =
+			(objType->flags & asOBJ_SCRIPT_OBJECT) != 0
+			&& objType->GetUserData() == nullptr;
+
 		Context.Line("{");
 		Context.Line("  asPWORD* d = (asPWORD*){0};", Context.StackValue_At(0, 2));
 		Context.Pop(2);
 		Context.Line("  asPWORD s = (asPWORD){0};", Context.StackValue_At(0, 2));
-		Context.Line("  *d = s;");
+		Context.Line("  asCObjectType* objType = (asCObjectType*){0};", Context.ReferenceTypeInfo(objType));
+		Context.Line("  if (*d != s)");
+		Context.Line("  {");
+		if (bRawScriptReference)
+		{
+			Context.Line("    if (*d != 0)");
+			Context.Line("      SCRIPT_ENGINE->ReleaseRawScriptObject((void*)*d, objType);");
+			Context.Line("    if (s != 0)");
+			Context.Line("      SCRIPT_ENGINE->AddRawScriptObjectReference((void*)s, objType);");
+		}
+		else
+		{
+			Context.Line("    if ((objType->flags & (asOBJ_NOCOUNT | asOBJ_VALUE)) == 0)");
+			Context.Line("    {");
+			Context.Line("      if (*d != 0 && objType->beh.release != 0)");
+			Context.Line("        SCRIPT_ENGINE->CallObjectMethod((void*)*d, objType->beh.release);");
+			Context.Line("      if (s != 0 && objType->beh.addref != 0)");
+			Context.Line("        SCRIPT_ENGINE->CallObjectMethod((void*)s, objType->beh.addref);");
+			Context.Line("    }");
+		}
+		Context.Line("  }");
+		Context.Line("  if (*d != s)");
+		Context.Line("    *d = s;");
 		Context.Line("}");
 		return true;
 	}
@@ -6313,15 +6358,45 @@ IMPL_BYTECODE_BEGIN(asBC_RefCpyV)
 {
 	bool Implement(FStaticJITContext& Context) const override
 	{
+		asCObjectType* objType = (asCObjectType*)asBC_PTRARG(Context.BC);
+		const bool bRawScriptReference =
+			(objType->flags & asOBJ_SCRIPT_OBJECT) != 0
+			&& objType->GetUserData() == nullptr;
+
 		check(Context.VArg_Type(0) == FStaticJITContext::EVariableType::Pointer);
-		Context.Line("{0} = ({1}){2};", Context.VArg_Var(0), Context.VArg_LiteralTypename(0), Context.StackValue_At(0, 2));
-		Context.Pop(2);
+		Context.Line("{");
+		Context.Line("  asPWORD* d = (asPWORD*){0};", Context.VArg_Address(0));
+		Context.Line("  asPWORD s = (asPWORD){0};", Context.StackValue_At(0, 2));
+		Context.Line("  asCObjectType* objType = (asCObjectType*){0};", Context.ReferenceTypeInfo(objType));
+		Context.Line("  if (*d != s)");
+		Context.Line("  {");
+		if (bRawScriptReference)
+		{
+			Context.Line("    if (*d != 0)");
+			Context.Line("      SCRIPT_ENGINE->ReleaseRawScriptObject((void*)*d, objType);");
+			Context.Line("    if (s != 0)");
+			Context.Line("      SCRIPT_ENGINE->AddRawScriptObjectReference((void*)s, objType);");
+		}
+		else
+		{
+			Context.Line("    if ((objType->flags & (asOBJ_NOCOUNT | asOBJ_VALUE)) == 0)");
+			Context.Line("    {");
+			Context.Line("      if (*d != 0 && objType->beh.release != 0)");
+			Context.Line("        SCRIPT_ENGINE->CallObjectMethod((void*)*d, objType->beh.release);");
+			Context.Line("      if (s != 0 && objType->beh.addref != 0)");
+			Context.Line("        SCRIPT_ENGINE->CallObjectMethod((void*)s, objType->beh.addref);");
+			Context.Line("    }");
+		}
+		Context.Line("  }");
+		Context.Line("  if (*d != s)");
+		Context.Line("    *d = s;");
+		Context.Line("}");
 		return true;
 	}
 
 	virtual int32 GetStackSizeChange(FStaticJITContext& Context) const
 	{
-		return -2;
+		return 0;
 	};
 };
 IMPL_BYTECODE_END(asBC_RefCpyV)
@@ -6665,6 +6740,7 @@ FString FAngelscriptBytecode::GetInstrDebugString(asDWORD* BC)
 	break;
 	}
 
+	Out.TrimEndInline();
 	return Out;
 }
 

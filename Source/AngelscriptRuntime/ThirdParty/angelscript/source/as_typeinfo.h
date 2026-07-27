@@ -150,6 +150,11 @@ public:
 	virtual int AddRefInternal();
 	virtual int ReleaseInternal();
 
+	asDWORD GetInternalReferenceCountForTesting() const
+	{
+		return internalRefCount.get();
+	}
+
 	virtual void DestroyInternal() {}
 
 	void CleanUserData();

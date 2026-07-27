@@ -230,6 +230,12 @@ public:
 
 	void *CallAlloc(const asCObjectType *objType) const;
 	void  CallFree(void *obj) const;
+	bool  AddRawScriptObjectReference(
+		const void *obj,
+		asCObjectType *objType) const;
+	bool  ReleaseRawScriptObject(
+		void *obj,
+		asCObjectType *objType) const;
 
 	void *AllocScriptObject(const asCObjectType *objType) const;
 	void FinishConstructObject(asIScriptObject* obj, asITypeInfo* type) const;
