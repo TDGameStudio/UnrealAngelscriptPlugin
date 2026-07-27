@@ -4,48 +4,46 @@
 #include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
-
-
-namespace AngelscriptBuilderEditorOnlyTest
-{
-	static sClassDeclaration* FindClassDeclarationByNameInAnyList(asCBuilder& Builder, const char* Name)
-	{
-		if (sClassDeclaration* ClassDeclaration = AngelscriptBuilderTestSupport::FindClassDeclarationByName(Builder, Name))
-		{
-			return ClassDeclaration;
-		}
-		return AngelscriptBuilderTestSupport::FindNamedTypeDeclarationByName(Builder, Name);
-	}
-}
 
 TEST_CLASS_WITH_FLAGS(FBuilderEditorOnlyTests,
 	"Angelscript.TestModule.AngelScriptSDK.Compiler.Builder.EditorOnly",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+private:
+	static sClassDeclaration* FindClassDeclarationByNameInAnyList(
+		asCBuilder& Builder,
+		const char* Name)
+	{
+		if (sClassDeclaration* const ClassDeclaration =
+			AngelscriptBuilderTestSupport::FindClassDeclarationByName(Builder, Name))
+		{
+			return ClassDeclaration;
+		}
+		return AngelscriptBuilderTestSupport::FindNamedTypeDeclarationByName(
+			Builder,
+			Name);
+	}
+
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
+	TEST_METHOD(EditorOnlyModesClassifyDeclarationsAndIsolateSections)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
-	}
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
-
-	TEST_METHOD(LineBlocksClassifyTopLevelDeclarations)
-	{
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_PRODUCT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Isolation);
 
 #if WITH_EDITOR
 		asIScriptEngine* ScriptEngine = Engine.Get();
@@ -56,24 +54,35 @@ public:
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder editor-only line block test should create a module")));
 
 		const std::string Source = ASTEST_AS_ANSI(R"AS(
-class RuntimeCarrier
-{
-}
+			class RuntimeCarrier
+			{
+			}
 
-class EditorCarrier
-{
-}
+			class EditorCarrier
+			{
+			}
 
-int RuntimeEntry()
-{
-	return 1;
-}
+			int RuntimeEntry()
+			{
+				return 1;
+			}
 
-int EditorEntry()
-{
-	return 2;
-}
-)AS");
+			int EditorEntry()
+			{
+				return 2;
+			}
+		)AS");
+		const FString ReviewSource(UTF8_TO_TCHAR(Source.c_str()));
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION-CLASS-LINE-BLOCK-OWNING"),
+			TEXT("BuilderEditorOnlyLineBlock"),
+			ReviewSource);
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION-FUNCTION-LINE-BLOCK-OWNING"),
+			TEXT("BuilderEditorOnlyLineBlock"),
+			ReviewSource);
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*TestRunner, *Module, "BuilderEditorOnlyLineBlocks.as", Source.c_str(), TEXT("EditorOnlyLineBlocks.AddSection")),
 			TEXT("Builder editor-only line block test should add the script section")));
 
@@ -93,9 +102,9 @@ int EditorEntry()
 		});
 
 		asCScriptCode* Script = Builder->scripts[0];
-		sClassDeclaration* RuntimeClass = AngelscriptBuilderEditorOnlyTest::FindClassDeclarationByNameInAnyList(*Builder, "RuntimeCarrier");
+		sClassDeclaration* RuntimeClass = FindClassDeclarationByNameInAnyList(*Builder, "RuntimeCarrier");
 		ASSERT_THAT(IsNotNull(RuntimeClass, TEXT("Builder editor-only line block test should find RuntimeCarrier declaration")));
-		sClassDeclaration* EditorClass = AngelscriptBuilderEditorOnlyTest::FindClassDeclarationByNameInAnyList(*Builder, "EditorCarrier");
+		sClassDeclaration* EditorClass = FindClassDeclarationByNameInAnyList(*Builder, "EditorCarrier");
 		ASSERT_THAT(IsNotNull(EditorClass, TEXT("Builder editor-only line block test should find EditorCarrier declaration")));
 		sFunctionDescription* RuntimeFunction = FindFunctionDescriptionByName(*Builder, "RuntimeEntry");
 		ASSERT_THAT(IsNotNull(RuntimeFunction, TEXT("Builder editor-only line block test should find RuntimeEntry declaration")));
@@ -111,14 +120,26 @@ int EditorEntry()
 		ASSERT_THAT(IsTrue(Builder->IsNodeInEditorOnlyCode(Script, EditorFunction->node),
 			TEXT("Builder editor-only line block test should classify EditorEntry inside editor-only code")));
 #else
-		ASSERT_THAT(IsTrue(true, TEXT("Builder editor-only line block test is editor-only")));
+		TestRunner->AddError(
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION requires WITH_EDITOR"));
 #endif
 	}
 
 	TEST_METHOD(EditorOnlyModuleClassifiesEveryParsedNodeAsEditorOnly)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"Whole-module class/function classification supplies cells owned by COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION.");
 
 #if WITH_EDITOR
 		asIScriptEngine* ScriptEngine = Engine.Get();
@@ -129,15 +150,26 @@ int EditorEntry()
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder editor-only module test should create a module")));
 
 		const std::string Source = ASTEST_AS_ANSI(R"AS(
-class RuntimeNamedCarrier
-{
-}
+			class RuntimeNamedCarrier
+			{
+			}
 
-int RuntimeNamedEntry()
-{
-	return 3;
-}
-)AS");
+			int RuntimeNamedEntry()
+			{
+				return 3;
+			}
+		)AS");
+		const FString ReviewSource(UTF8_TO_TCHAR(Source.c_str()));
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION-CLASS-WHOLE-MODULE-OWNING"),
+			TEXT("BuilderEditorOnlyWholeModule"),
+			ReviewSource);
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION-FUNCTION-WHOLE-MODULE-OWNING"),
+			TEXT("BuilderEditorOnlyWholeModule"),
+			ReviewSource);
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*TestRunner, *Module, "BuilderEditorOnlyWholeModule.as", Source.c_str(), TEXT("EditorOnlyWholeModule.AddSection")),
 			TEXT("Builder editor-only module test should add the script section")));
 
@@ -154,7 +186,7 @@ int RuntimeNamedEntry()
 		ASSERT_THAT(IsTrue(Builder->scripts.GetLength() > 0, TEXT("Builder editor-only module test should retain script code")));
 
 		asCScriptCode* Script = Builder->scripts[0];
-		sClassDeclaration* RuntimeClass = AngelscriptBuilderEditorOnlyTest::FindClassDeclarationByNameInAnyList(*Builder, "RuntimeNamedCarrier");
+		sClassDeclaration* RuntimeClass = FindClassDeclarationByNameInAnyList(*Builder, "RuntimeNamedCarrier");
 		ASSERT_THAT(IsNotNull(RuntimeClass, TEXT("Builder editor-only module test should find RuntimeNamedCarrier declaration")));
 		sFunctionDescription* RuntimeFunction = FindFunctionDescriptionByName(*Builder, "RuntimeNamedEntry");
 		ASSERT_THAT(IsNotNull(RuntimeFunction, TEXT("Builder editor-only module test should find RuntimeNamedEntry declaration")));
@@ -164,14 +196,26 @@ int RuntimeNamedEntry()
 		ASSERT_THAT(IsTrue(Builder->IsNodeInEditorOnlyCode(Script, RuntimeFunction->node),
 			TEXT("Builder editor-only module test should classify function node as editor-only when module flag is set")));
 #else
-		ASSERT_THAT(IsTrue(true, TEXT("Builder editor-only whole-module test is editor-only")));
+		TestRunner->AddError(
+			TEXT("Whole-module editor-only classification requires WITH_EDITOR"));
 #endif
 	}
 
 	TEST_METHOD(LineBlocksIgnoreNodesFromOtherScriptSections)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"Cross-section line-range isolation supplies cells owned by COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION.");
 
 #if WITH_EDITOR
 		asIScriptEngine* ScriptEngine = Engine.Get();
@@ -182,15 +226,45 @@ int RuntimeNamedEntry()
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder editor-only section isolation test should create a module")));
 
 		const std::string FirstSource = ASTEST_AS_ANSI(R"AS(
-class FirstSectionEditorCarrier
-{
-}
-)AS");
+			class FirstSectionEditorCarrier
+			{
+			}
+		)AS");
 		const std::string SecondSource = ASTEST_AS_ANSI(R"AS(
-class SecondSectionCarrier
-{
-}
-)AS");
+			class SecondSectionCarrier
+			{
+			}
+
+			int SecondSectionEntry()
+			{
+				return 2;
+			}
+		)AS");
+		const FString FirstReviewSource(UTF8_TO_TCHAR(FirstSource.c_str()));
+		const FString SecondReviewSource(UTF8_TO_TCHAR(SecondSource.c_str()));
+		FString CombinedReviewSource;
+		AppendGeneratedAsLine(CombinedReviewSource, FirstReviewSource);
+		AppendGeneratedAsLine(CombinedReviewSource, SecondReviewSource);
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION-CLASS-LINE-BLOCK-OTHER"),
+			TEXT("BuilderEditorOnlyOtherSection"),
+			SecondReviewSource);
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION-FUNCTION-LINE-BLOCK-OTHER"),
+			TEXT("BuilderEditorOnlyOtherSection"),
+			SecondReviewSource);
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION-CLASS-WHOLE-MODULE-OTHER"),
+			TEXT("BuilderEditorOnlyWholeModuleRelation"),
+			CombinedReviewSource);
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-EDITOR-ONLY-CLASSIFICATION-FUNCTION-WHOLE-MODULE-OTHER"),
+			TEXT("BuilderEditorOnlyWholeModuleRelation"),
+			CombinedReviewSource);
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*TestRunner, *Module, "BuilderEditorOnlyFirst.as", FirstSource.c_str(), TEXT("EditorOnlySectionIsolation.AddFirstSection")),
 			TEXT("Builder editor-only section isolation test should add first section")));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*TestRunner, *Module, "BuilderEditorOnlySecond.as", SecondSource.c_str(), TEXT("EditorOnlySectionIsolation.AddSecondSection")),
@@ -202,23 +276,48 @@ class SecondSectionCarrier
 			TEXT("Builder editor-only section isolation test should parse both sections")));
 		ASSERT_THAT(IsTrue(RunBuilderStage(*TestRunner, *Builder, TEXT("EditorOnlySectionIsolation.BuildGenerateTypes"), &asCBuilder::BuildGenerateTypes, Module),
 			TEXT("Builder editor-only section isolation test should generate type declarations")));
+		ASSERT_THAT(IsTrue(
+			RunBuilderStage(
+				*TestRunner,
+				*Builder,
+				TEXT("EditorOnlySectionIsolation.BuildGenerateFunctions"),
+				&asCBuilder::BuildGenerateFunctions,
+				Module),
+			TEXT("Builder editor-only section isolation test should generate function descriptions")));
 		ASSERT_THAT(IsTrue(Builder->scripts.GetLength() >= 2, TEXT("Builder editor-only section isolation test should retain both script sections")));
 
 		Builder->SetEditorOnlyBlockLinePositions({ TPair<int32, int32>(1, 3) });
 
 		asCScriptCode* FirstScript = Builder->scripts[0];
 		asCScriptCode* SecondScript = Builder->scripts[1];
-		sClassDeclaration* FirstClass = AngelscriptBuilderEditorOnlyTest::FindClassDeclarationByNameInAnyList(*Builder, "FirstSectionEditorCarrier");
+		sClassDeclaration* FirstClass = FindClassDeclarationByNameInAnyList(*Builder, "FirstSectionEditorCarrier");
 		ASSERT_THAT(IsNotNull(FirstClass, TEXT("Builder editor-only section isolation test should find first-section class")));
-		sClassDeclaration* SecondClass = AngelscriptBuilderEditorOnlyTest::FindClassDeclarationByNameInAnyList(*Builder, "SecondSectionCarrier");
+		sClassDeclaration* SecondClass = FindClassDeclarationByNameInAnyList(*Builder, "SecondSectionCarrier");
 		ASSERT_THAT(IsNotNull(SecondClass, TEXT("Builder editor-only section isolation test should find second-section class")));
+		sFunctionDescription* SecondFunction =
+			FindFunctionDescriptionByName(*Builder, "SecondSectionEntry");
+		ASSERT_THAT(IsNotNull(
+			SecondFunction,
+			TEXT("Builder editor-only section isolation test should find second-section function")));
 
 		ASSERT_THAT(IsTrue(Builder->IsNodeInEditorOnlyCode(FirstScript, FirstClass->node),
 			TEXT("Builder editor-only section isolation test should classify first-section node inside editor-only block")));
 		ASSERT_THAT(IsFalse(Builder->IsNodeInEditorOnlyCode(SecondScript, SecondClass->node),
 			TEXT("Builder editor-only section isolation test should ignore matching lines from non-primary sections")));
+		ASSERT_THAT(IsFalse(
+			Builder->IsNodeInEditorOnlyCode(SecondScript, SecondFunction->node),
+			TEXT("Builder editor-only section isolation test should isolate function rows from non-primary sections")));
+
+		Builder->isEditorOnlyModule = true;
+		ASSERT_THAT(IsTrue(
+			Builder->IsNodeInEditorOnlyCode(SecondScript, SecondClass->node),
+			TEXT("Whole-module mode should classify a class from the other retained section")));
+		ASSERT_THAT(IsTrue(
+			Builder->IsNodeInEditorOnlyCode(SecondScript, SecondFunction->node),
+			TEXT("Whole-module mode should classify a function from the other retained section")));
 #else
-		ASSERT_THAT(IsTrue(true, TEXT("Builder editor-only section isolation test is editor-only")));
+		TestRunner->AddError(
+			TEXT("Editor-only section isolation requires WITH_EDITOR"));
 #endif
 	}
 };

@@ -1,4 +1,6 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
+#include "../Support/AngelscriptNativeLanguageCaseTestSupport.h"
 
 // Bytecode opcode-emission coverage.
 #include "CQTest.h"
@@ -22,6 +24,9 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained push-emitter smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns every published opcode descriptor and COMPILER-BYTECODE-MUTATION owns linked-container emission and serialization.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesPush");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -44,6 +49,9 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained load-emitter smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns every published opcode descriptor and COMPILER-BYTECODE-MUTATION owns linked-container invariants.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesLoad");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -65,6 +73,9 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 	TEST_METHOD(Call_CALL_CALLSYS_CALLINTF)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained call-opcode smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns every published call descriptor and COMPILER-BYTECODE-SHAPE owns compiled call evidence.");
 
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesCall");
 		if (!Fixture.IsValid(*TestRunner))
@@ -90,6 +101,9 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 	TEST_METHOD(BranchOps_JZ_JNZ_JLowZ_JLowNZ)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained branch-emitter smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns every published branch descriptor and COMPILER-BYTECODE-SHAPE owns compiled branching evidence.");
 
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesBranch");
 		if (!Fixture.IsValid(*TestRunner))
@@ -118,6 +132,9 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained metadata-opcode smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns the complete descriptor table and COMPILER-BYTECODE-OPTIMIZATION owns compiled debug metadata evidence.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesMisc");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -140,6 +157,9 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained return-emitter smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns the RET descriptor and COMPILER-BYTECODE-SHAPE owns executable return paths.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesRet");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -160,6 +180,9 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 	TEST_METHOD(MathOps_AddInt_SubInt_MulInt_Float)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained arithmetic-emitter smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns every arithmetic descriptor and COMPILER-BYTECODE-SHAPE owns compiled arithmetic runtime evidence.");
 
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesMath");
 		if (!Fixture.IsValid(*TestRunner))
@@ -186,6 +209,9 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained comparison-emitter smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns every comparison descriptor and COMPILER-BYTECODE-SHAPE owns compiled conditional evidence.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesCompare");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -207,6 +233,11 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 
 	TEST_METHOD(InstrSizeMatchesInfoTable)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained representative serialization smoke; COMPILER-BYTECODE-OPCODE-DESCRIPTORS owns descriptor-to-size validity for the complete published table and COMPILER-BYTECODE-MUTATION owns serialized-size invariants.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOpcodesSize");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -229,19 +260,56 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 			TEXT("Instruction sizes should match the bytecode info table when serialized")));
 	}
 
-	TEST_METHOD(OpcodeCountsAcrossEachAsEBCType)
+	TEST_METHOD(PublishedOpcodesExposeCompleteDescriptors)
 	{
-		int32 CoveredTypes = 0;
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_PRODUCT("COMPILER-BYTECODE-OPCODE-DESCRIPTORS",
+			ENativeEvidence::Metadata
+			| ENativeEvidence::Bytecode
+			| ENativeEvidence::Diagnostic
+			| ENativeEvidence::Isolation);
+
+		FString ReviewSource;
+		AppendGeneratedAsLine(ReviewSource, TEXT("// Published AngelScript bytecode descriptor table"));
+
 		TSet<int32> SeenTypes;
+		int32 PublishedOpcodeCount = 0;
 		for (int32 OpcodeIndex = 0; OpcodeIndex <= static_cast<int32>(asBC_MAXBYTECODE); ++OpcodeIndex)
 		{
 			const asEBCInstr Opcode = static_cast<asEBCInstr>(OpcodeIndex);
-			if (asBCInfo[Opcode].type != asBCTYPE_INFO)
-			{
-				SeenTypes.Add(static_cast<int32>(asBCInfo[Opcode].type));
-			}
+			const asSBCInfo& Info = asBCInfo[Opcode];
+			const FString CaseContext = FString::Printf(
+				TEXT("opcode=%d name=%hs type=%d size=%d stack=%d"),
+				OpcodeIndex,
+				Info.name != nullptr ? Info.name : "<null>",
+				static_cast<int32>(Info.type),
+				Info.type != asBCTYPE_INFO ? asBCTypeSize[Info.type] : 0,
+				Info.stackInc);
+			AppendGeneratedAsLine(ReviewSource, FString::Printf(TEXT("// %s"), *CaseContext));
+
+			ASSERT_THAT(AreEqual(OpcodeIndex, static_cast<int32>(Info.bc),
+				*FString::Printf(TEXT("Published opcode descriptor should retain its enum index: %s"), *CaseContext)));
+			ASSERT_THAT(IsNotNull(Info.name,
+				*FString::Printf(TEXT("Published opcode descriptor should expose a name: %s"), *CaseContext)));
+			ASSERT_THAT(IsTrue(Info.name != nullptr && Info.name[0] != '\0',
+				*FString::Printf(TEXT("Published opcode descriptor name should be non-empty: %s"), *CaseContext)));
+			ASSERT_THAT(IsTrue(Info.type >= asBCTYPE_NO_ARG && Info.type <= asBCTYPE_W_rW_ARG,
+				*FString::Printf(TEXT("Published opcode descriptor should use a concrete encoding: %s"), *CaseContext)));
+			ASSERT_THAT(IsTrue(asBCTypeSize[Info.type] > 0,
+				*FString::Printf(TEXT("Published opcode encoding should occupy at least one DWORD: %s"), *CaseContext)));
+
+			SeenTypes.Add(static_cast<int32>(Info.type));
+			++PublishedOpcodeCount;
 		}
 
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BYTECODE-OPCODE-DESCRIPTORS-PUBLISHED"),
+			TEXT("CompilerBytecodeOpcodeDescriptors"),
+			ReviewSource);
+
+		int32 CoveredTypes = 0;
 		for (int32 TypeIndex = static_cast<int32>(asBCTYPE_NO_ARG); TypeIndex <= static_cast<int32>(asBCTYPE_W_rW_ARG); ++TypeIndex)
 		{
 			if (SeenTypes.Contains(TypeIndex))
@@ -250,8 +318,10 @@ TEST_CLASS_WITH_FLAGS(FBytecodeOpcodeTests,
 			}
 		}
 
+		ASSERT_THAT(AreEqual(static_cast<int32>(asBC_MAXBYTECODE) + 1, PublishedOpcodeCount,
+			TEXT("Opcode descriptor product should inspect every published opcode")));
 		ASSERT_THAT(IsTrue(CoveredTypes >= 18,
-			TEXT("Opcode info table should cover many concrete asEBCType buckets")));
+			TEXT("Opcode descriptor table should cover every encoding family used by this fork")));
 		ASSERT_THAT(IsTrue(SeenTypes.Contains(static_cast<int32>(asBCTYPE_NO_ARG)),
 			TEXT("Opcode info table should include no-arg opcodes")));
 		ASSERT_THAT(IsTrue(SeenTypes.Contains(static_cast<int32>(asBCTYPE_DW_ARG)),

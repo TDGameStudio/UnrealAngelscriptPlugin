@@ -1,4 +1,5 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeLanguageCaseTestSupport.h"
 
 #include "AngelscriptTestMacros.h"
 #include "CQTest.h"
@@ -145,9 +146,342 @@ private:
 	}
 
 public:
+	TEST_METHOD(InstructionContainersBySeedMutationAndPayload)
+	{
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_PRODUCT("COMPILER-BYTECODE-CONTAINER-OPERATIONS",
+			ENativeEvidence::Bytecode
+			| ENativeEvidence::Metadata
+			| ENativeEvidence::Cleanup
+			| ENativeEvidence::Isolation);
+
+		struct FSeedCase
+		{
+			const TCHAR* Id;
+			int32 Count;
+		};
+		struct FMutationCase
+		{
+			const TCHAR* Id;
+			int32 Kind;
+		};
+		struct FPayloadCase
+		{
+			const TCHAR* Id;
+			int32 Value;
+		};
+
+		const FSeedCase Seeds[] =
+		{
+			{ TEXT("empty"), 0 },
+			{ TEXT("one"), 1 },
+			{ TEXT("two"), 2 },
+			{ TEXT("four"), 4 },
+		};
+		const FMutationCase Mutations[] =
+		{
+			{ TEXT("append"), 0 },
+			{ TEXT("prepend"), 1 },
+			{ TEXT("remove"), 2 },
+			{ TEXT("clear_reappend"), 3 },
+			{ TEXT("jump_resolve"), 4 },
+		};
+		const FPayloadCase Payloads[] =
+		{
+			{ TEXT("zero"), 0 },
+			{ TEXT("positive"), 42 },
+			{ TEXT("maximum"), MAX_int32 },
+		};
+
+		int32 ObservedCaseCount = 0;
+		for (const FSeedCase& Seed : Seeds)
+		{
+			for (const FMutationCase& Mutation : Mutations)
+			{
+				for (const FPayloadCase& Payload : Payloads)
+				{
+					const FString CaseId = MakeNativeCaseId(
+						"COMPILER-BYTECODE-CONTAINER-OPERATIONS",
+						{ Seed.Id, Mutation.Id, Payload.Id });
+					FString ReviewSource;
+					AppendGeneratedAsLine(
+						ReviewSource,
+						FString::Printf(
+							TEXT("// seed=%d mutation=%s payload=%d"),
+							Seed.Count,
+							Mutation.Id,
+							Payload.Value));
+					const int32 SelectedRemovalSeedIndex = Mutation.Kind == 2 && Seed.Count > 0
+						? (Payload.Value == 0 ? 0 : Payload.Value == MAX_int32 ? Seed.Count - 1 : Seed.Count / 2)
+						: INDEX_NONE;
+					if (Mutation.Kind == 2)
+					{
+						AppendGeneratedAsLine(
+							ReviewSource,
+							FString::Printf(
+								TEXT("// remove_seed_index=%d (payload selects the logical node removed from the tail)"),
+								SelectedRemovalSeedIndex));
+					}
+					PrintGeneratedAsSource(
+						*TestRunner,
+						CaseId,
+						TEXT("CompilerBytecodeContainerOperations"),
+						ReviewSource);
+
+					FBytecodeFixture Fixture(TCHAR_TO_UTF8(*CaseId));
+					if (!Fixture.IsValid(*TestRunner))
+					{
+						continue;
+					}
+
+					TArray<int32> ExpectedPayloads;
+					int32 RemovalSeedIndex = INDEX_NONE;
+					if (Mutation.Kind == 2 && Seed.Count > 0)
+					{
+						// RemoveLastInstr is the public removal primitive in this fork. Rotate
+						// the seed sequence so Payload selects which logical seed is the tail;
+						// the post-removal sequence then proves that selection was effective.
+						RemovalSeedIndex = SelectedRemovalSeedIndex;
+						for (int32 Offset = 0; Offset < Seed.Count; ++Offset)
+						{
+							const int32 SeedIndex = (RemovalSeedIndex + 1 + Offset) % Seed.Count;
+							const int32 SeedPayload = SeedIndex + 1;
+							Fixture.ByteCode->InstrDWORD(asBC_PshC4, static_cast<asDWORD>(SeedPayload));
+							ExpectedPayloads.Add(SeedPayload);
+						}
+					}
+					else
+					{
+						for (int32 SeedIndex = 0; SeedIndex < Seed.Count; ++SeedIndex)
+						{
+							Fixture.ByteCode->InstrDWORD(
+								asBC_PshC4,
+								static_cast<asDWORD>(SeedIndex + 1));
+						}
+					}
+
+					int32 ExpectedInstructionCount = Seed.Count;
+					switch (Mutation.Kind)
+					{
+					case 0:
+						Fixture.ByteCode->InstrDWORD(
+							asBC_PshC4,
+							static_cast<asDWORD>(Payload.Value));
+						ExpectedInstructionCount = Seed.Count + 1;
+						break;
+					case 1:
+						Fixture.ByteCode->InsertFirstInstrDWORD(
+							asBC_PshC4,
+							static_cast<asDWORD>(Payload.Value));
+						ExpectedInstructionCount = Seed.Count + 1;
+						break;
+					case 2:
+						if (Seed.Count == 0)
+						{
+							ASSERT_THAT(IsTrue(
+								Fixture.ByteCode->RemoveLastInstr() < 0,
+								*FString::Printf(TEXT("%s should reject removing an empty tail"), *CaseId)));
+							// There is no seed node to select in the empty case. Still exercise
+							// the Payload axis through a transient node, observe its payload and
+							// serialized representation, then remove it and restore emptiness.
+							Fixture.ByteCode->InstrDWORD(
+								asBC_PshC4,
+								static_cast<asDWORD>(Payload.Value));
+							ASSERT_THAT(AreEqual(
+								Payload.Value,
+								static_cast<int32>(Fixture.ByteCode->GetLastInstrValueDW()),
+								*FString::Printf(TEXT("%s should retain the empty-case probe payload"), *CaseId)));
+							const TArray<asDWORD> ProbeBuffer = EmitToBuffer(*Fixture.ByteCode);
+							ASSERT_THAT(IsTrue(
+								ProbeBuffer.Num() >= 2,
+								*FString::Printf(TEXT("%s should serialize the empty-case probe"), *CaseId)));
+							if (ProbeBuffer.Num() >= 2)
+							{
+								ASSERT_THAT(AreEqual(
+									Payload.Value,
+									static_cast<int32>(ProbeBuffer[1]),
+									*FString::Printf(TEXT("%s should serialize the selected empty-case probe payload"), *CaseId)));
+							}
+							ASSERT_THAT(AreEqual(
+								0,
+								Fixture.ByteCode->RemoveLastInstr(),
+								*FString::Printf(TEXT("%s should remove the empty-case probe"), *CaseId)));
+							ExpectedInstructionCount = 0;
+						}
+						else
+						{
+							const asCByteInstruction* LastBeforeRemoval = Fixture.ByteCode->GetFirstInstr();
+							while (LastBeforeRemoval != nullptr && LastBeforeRemoval->next != nullptr)
+							{
+								LastBeforeRemoval = LastBeforeRemoval->next;
+							}
+							ASSERT_THAT(IsNotNull(
+								LastBeforeRemoval,
+								*FString::Printf(TEXT("%s should expose the selected tail before removal"), *CaseId)));
+							if (LastBeforeRemoval != nullptr)
+							{
+								ASSERT_THAT(AreEqual(
+									RemovalSeedIndex + 1,
+									static_cast<int32>(LastBeforeRemoval->arg),
+									*FString::Printf(TEXT("%s should place the payload-selected seed at the removable tail"), *CaseId)));
+							}
+							ASSERT_THAT(AreEqual(
+								0,
+								Fixture.ByteCode->RemoveLastInstr(),
+								*FString::Printf(TEXT("%s should remove the existing tail"), *CaseId)));
+							ASSERT_THAT(AreEqual(
+								RemovalSeedIndex + 1,
+								ExpectedPayloads.Last(),
+								*FString::Printf(TEXT("%s should remove the payload-selected seed"), *CaseId)));
+							ExpectedPayloads.Pop();
+							ExpectedInstructionCount = Seed.Count - 1;
+						}
+						break;
+					case 3:
+						Fixture.ByteCode->ClearAll();
+						Fixture.ByteCode->InstrDWORD(
+							asBC_PshC4,
+							static_cast<asDWORD>(Payload.Value));
+						ExpectedInstructionCount = 1;
+						break;
+					default:
+						Fixture.ByteCode->InstrDWORD(asBC_JMP, 100);
+						Fixture.ByteCode->InstrDWORD(
+							asBC_PshC4,
+							static_cast<asDWORD>(Payload.Value));
+						Fixture.ByteCode->Label(100);
+						ASSERT_THAT(AreEqual(
+							0,
+							Fixture.ByteCode->ResolveJumpAddresses(),
+							*FString::Printf(TEXT("%s should resolve its generated jump label"), *CaseId)));
+						// LABEL is a zero-size linked pseudo-instruction. It is
+						// intentionally counted by linked traversal but omitted
+						// from GetSize and serialized output.
+						ExpectedInstructionCount = Seed.Count + 3;
+						break;
+					}
+
+					const TArray<asDWORD> Buffer = EmitToBuffer(*Fixture.ByteCode);
+					ASSERT_THAT(AreEqual(
+						ExpectedInstructionCount,
+						CountInstructions(*Fixture.ByteCode),
+						*FString::Printf(TEXT("%s should preserve linked instruction count"), *CaseId)));
+					ASSERT_THAT(AreEqual(
+						Fixture.ByteCode->GetSize(),
+						Buffer.Num(),
+						*FString::Printf(TEXT("%s should serialize exactly GetSize dwords"), *CaseId)));
+					ASSERT_THAT(AreEqual(
+						ExpectedInstructionCount == 0,
+						Fixture.ByteCode->GetFirstInstr() == nullptr,
+						*FString::Printf(TEXT("%s should preserve empty/non-empty head state"), *CaseId)));
+					ASSERT_THAT(AreEqual(
+						ExpectedInstructionCount == 0,
+						Fixture.ByteCode->GetLastInstr() < 0,
+						*FString::Printf(TEXT("%s should preserve empty/non-empty tail state"), *CaseId)));
+
+					if (Mutation.Kind == 0 || Mutation.Kind == 3)
+					{
+						ASSERT_THAT(AreEqual(
+							Payload.Value,
+							static_cast<int32>(Fixture.ByteCode->GetLastInstrValueDW()),
+							*FString::Printf(TEXT("%s should preserve the appended payload"), *CaseId)));
+					}
+					else if (Mutation.Kind == 1)
+					{
+						ASSERT_THAT(AreEqual(
+							static_cast<int32>(asBC_PshC4),
+							static_cast<int32>(Fixture.ByteCode->GetFirstInstr()->op),
+							*FString::Printf(TEXT("%s should prepend the selected opcode"), *CaseId)));
+						ASSERT_THAT(AreEqual(
+							Payload.Value,
+							static_cast<int32>(Fixture.ByteCode->GetFirstInstr()->arg),
+							*FString::Printf(TEXT("%s should preserve the prepended payload"), *CaseId)));
+					}
+					else if (Mutation.Kind == 2)
+					{
+						int32 ObservedPayloadCount = 0;
+						for (const asCByteInstruction* Instruction = Fixture.ByteCode->GetFirstInstr();
+							Instruction != nullptr;
+							Instruction = Instruction->next)
+						{
+							ASSERT_THAT(AreEqual(
+								static_cast<int32>(asBC_PshC4),
+								static_cast<int32>(Instruction->op),
+								*FString::Printf(TEXT("%s should retain PshC4 at remaining sequence index %d"), *CaseId, ObservedPayloadCount)));
+							if (ExpectedPayloads.IsValidIndex(ObservedPayloadCount))
+							{
+								ASSERT_THAT(AreEqual(
+									ExpectedPayloads[ObservedPayloadCount],
+									static_cast<int32>(Instruction->arg),
+									*FString::Printf(TEXT("%s should retain the remaining payload sequence at index %d"), *CaseId, ObservedPayloadCount)));
+							}
+							++ObservedPayloadCount;
+						}
+						ASSERT_THAT(AreEqual(
+							ExpectedPayloads.Num(),
+							ObservedPayloadCount,
+							*FString::Printf(TEXT("%s should retain exactly the expected number of remaining payloads"), *CaseId)));
+
+						const int32 SerializedInstructionSize = asBCTypeSize[asBCInfo[asBC_PshC4].type];
+						ASSERT_THAT(AreEqual(
+							2,
+							SerializedInstructionSize,
+							*FString::Printf(TEXT("%s should use the two-dword PshC4 encoding"), *CaseId)));
+						ASSERT_THAT(AreEqual(
+							ExpectedPayloads.Num() * SerializedInstructionSize,
+							Buffer.Num(),
+							*FString::Printf(TEXT("%s should serialize the remaining payload sequence without gaps"), *CaseId)));
+						for (int32 PayloadIndex = 0; PayloadIndex < ExpectedPayloads.Num(); ++PayloadIndex)
+						{
+							const int32 SerializedIndex = PayloadIndex * SerializedInstructionSize;
+							if (Buffer.IsValidIndex(SerializedIndex + 1))
+							{
+								ASSERT_THAT(AreEqual(
+									static_cast<int32>(asBC_PshC4),
+									ReadOpcodeAt(Buffer, SerializedIndex),
+									*FString::Printf(TEXT("%s should serialize PshC4 at remaining sequence index %d"), *CaseId, PayloadIndex)));
+								ASSERT_THAT(AreEqual(
+									ExpectedPayloads[PayloadIndex],
+									static_cast<int32>(Buffer[SerializedIndex + 1]),
+									*FString::Printf(TEXT("%s should serialize the remaining payload at index %d"), *CaseId, PayloadIndex)));
+							}
+						}
+					}
+					else if (Mutation.Kind == 4)
+					{
+						const asCByteInstruction* const Jump = FindInstruction(
+							*Fixture.ByteCode,
+							asBC_JMP);
+						ASSERT_THAT(IsNotNull(
+							Jump,
+							*FString::Printf(TEXT("%s should retain the resolved jump"), *CaseId)));
+						if (Jump != nullptr)
+						{
+							ASSERT_THAT(IsTrue(
+								static_cast<int32>(*reinterpret_cast<const int*>(&Jump->arg)) > 0,
+								*FString::Printf(TEXT("%s should rewrite the label to a forward offset"), *CaseId)));
+						}
+					}
+
+					++ObservedCaseCount;
+				}
+			}
+		}
+
+		ASSERT_THAT(AreEqual(
+			60,
+			ObservedCaseCount,
+			TEXT("Seed count × mutation × payload should execute every bytecode-container cell")));
+	}
+
 	TEST_METHOD(InstructionSequence)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained representative instruction-sequence smoke; COMPILER-BYTECODE-CONTAINER-OPERATIONS owns seed, mutation, and payload combinations.");
 
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeInstructionSequence");
 		if (!Fixture.IsValid(*TestRunner))
@@ -176,6 +510,10 @@ public:
 	TEST_METHOD(ByteInstructionAppend)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained append smoke; COMPILER-BYTECODE-CONTAINER-OPERATIONS owns append across seed and payload combinations.");
 
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeAppend");
 		if (!Fixture.IsValid(*TestRunner))
@@ -208,6 +546,10 @@ public:
 
 	TEST_METHOD(ByteInstructionJumpResolution)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained forward-jump smoke; COMPILER-BYTECODE-CONTAINER-OPERATIONS and COMPILER-BYTECODE-MUTATION own generated jump resolution and linked invariants.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeJumpResolution");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -234,6 +576,10 @@ public:
 
 	TEST_METHOD(ByteInstructionOutput)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained repeated-output smoke; COMPILER-BYTECODE-CONTAINER-OPERATIONS owns serialization parity across generated container states.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeOutput");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -257,6 +603,10 @@ public:
 
 	TEST_METHOD(EmptyBytecodeState)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained empty-state smoke; COMPILER-BYTECODE-CONTAINER-OPERATIONS owns empty and populated container states.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeEmptyState");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -276,6 +626,10 @@ public:
 	TEST_METHOD(InsertFirstInstructionPrependsSequence)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained prepend smoke; COMPILER-BYTECODE-CONTAINER-OPERATIONS owns prepend across seed and payload combinations.");
 
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeInsertFirst");
 		if (!Fixture.IsValid(*TestRunner))
@@ -301,6 +655,10 @@ public:
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained remove-tail smoke; COMPILER-BYTECODE-CONTAINER-OPERATIONS owns empty and populated removal states.");
+
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeRemoveLast");
 		if (!Fixture.IsValid(*TestRunner))
 		{
@@ -324,6 +682,10 @@ public:
 	TEST_METHOD(ClearAllResetsInstructionList)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained clear/reuse smoke; COMPILER-BYTECODE-CONTAINER-OPERATIONS owns clear-and-reappend across seed and payload combinations.");
 
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeClearAll");
 		if (!Fixture.IsValid(*TestRunner))
@@ -352,6 +714,10 @@ public:
 	TEST_METHOD(LineInstructionSerializesDebugMarker)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained LINE-marker smoke; COMPILER-BYTECODE-OPTIMIZATION owns compiled debug metadata and this method preserves the direct marker regression.");
 
 		AngelscriptNativeTestSupport::FBytecodeFixture Fixture("BytecodeLineInstruction");
 		if (!Fixture.IsValid(*TestRunner))

@@ -1,8 +1,8 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 // Script-node shape coverage.
 #include "CQTest.h"
-#include "Misc/ScopeExit.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_builder.h"
@@ -91,9 +91,22 @@ private:
 public:
 	TEST_METHOD(FunctionNodeChildrenLayout)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained function-child layout smoke; FRONTEND-PARSER-FUNCTION-PARAMETER-BODY-LINE-ENDINGS owns function, parameter, and body links across combinations.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseShapeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeFunction", "int Add(int A, int B) { return A + B; }", [&](const asCScriptNode& Root)
 		{
@@ -112,9 +125,22 @@ public:
 
 	TEST_METHOD(ParameterListNodeShape)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained parameter-list layout smoke; FRONTEND-PARSER-FUNCTION-PARAMETER-BODY-LINE-ENDINGS owns parameter shapes and AST links.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseShapeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeParameters", "void Visit(int A, float B, const string& in Name) { }", [&](const asCScriptNode& Root)
 		{
@@ -133,9 +159,22 @@ public:
 
 	TEST_METHOD(StatementBlockHoldsStatements)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained statement-block layout smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns statement roots and child families.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeStatementBlock", "{ int A = 1; A += 2; return; }", [&](const asCScriptNode& Root)
 		{
@@ -164,9 +203,22 @@ public:
 
 	TEST_METHOD(ReturnNodeHasOptionalExpression)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained return-node layout smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns statement roots and optional expression children.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeReturn", "return 42;", [&](const asCScriptNode& Root)
 		{
@@ -185,9 +237,22 @@ public:
 
 	TEST_METHOD(BreakAndContinueAreLeafNodes)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained break/continue leaf smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns control-flow statement families.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeBreak", "break;", [&](const asCScriptNode& Root)
 		{
@@ -220,9 +285,22 @@ public:
 
 	TEST_METHOD(ScriptNodeShapeDoWhileShape)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained do-while layout smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns control-flow statement roots and child families.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeDoWhile", "do { continue; } while (true);", [&](const asCScriptNode& Root)
 		{
@@ -246,9 +324,22 @@ public:
 
 	TEST_METHOD(SwitchAndCaseShape)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained switch/case layout smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns control-flow statement roots and child families.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseStatement(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeSwitch", "switch (Value) { case 1: break; default: break; }", [&](const asCScriptNode& Root)
 		{
@@ -272,9 +363,22 @@ public:
 
 	TEST_METHOD(EnumNodeAndEnumValueChildren)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained enum-child layout smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns enum declaration nodes and links.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseShapeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeEnum", "enum EMode { Idle = 0, Run = 1, Jump }", [&](const asCScriptNode& Root)
 		{
@@ -293,11 +397,24 @@ public:
 
 	TEST_METHOD(InterfaceNodeShape)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained interface layout smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns interface and class declaration nodes.");
+
 		using namespace AngelscriptNativeTestSupport;
 
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeInterface");
 		asCBuilder Builder(BareEngine, Module);
@@ -311,9 +428,22 @@ public:
 
 	TEST_METHOD(ScriptNodeShapeImportNodeShape)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained import layout smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns import declaration classification.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseShapeScript(*TestRunner, this->Assert, BareEngine, "ScriptNodeShapeImport", "import int SharedValue() from \"OtherModule\";", [&](const asCScriptNode& Root)
 		{
@@ -332,11 +462,24 @@ public:
 
 	TEST_METHOD(FuncDefNodeShape)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained funcdef layout smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns funcdef declaration classification.");
+
 		using namespace AngelscriptNativeTestSupport;
 
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeFuncDef");
 		asCBuilder Builder(BareEngine, Module);
@@ -350,11 +493,24 @@ public:
 
 	TEST_METHOD(TypedefNodeShape)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained typedef layout smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns typedef declaration classification.");
+
 		using namespace AngelscriptNativeTestSupport;
 
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		asCModule* Module = CreateSdkModule(BareEngine, "ScriptNodeShapeTypedef");
 		asCBuilder Builder(BareEngine, Module);
@@ -368,11 +524,24 @@ public:
 
 	TEST_METHOD(VirtualPropertyNodeShape)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained virtual-property layout smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns class-member declaration classification.");
+
 		using namespace AngelscriptNativeTestSupport;
 
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode shape test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		// Virtual-property syntax `int X { get { ... } set { } }` was removed by the
 		// autoaccessor refactor (see openspec/changes/archive/2026-05-22-refactor-as-remove-autoaccessor).

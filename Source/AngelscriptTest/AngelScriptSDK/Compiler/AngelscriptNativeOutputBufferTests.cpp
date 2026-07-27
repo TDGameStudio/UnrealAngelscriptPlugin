@@ -3,6 +3,7 @@
 // Automation IDs: Angelscript.TestModule.AngelScriptSDK.Compiler.OutputBuffer.*
 
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -11,26 +12,20 @@
 
 TEST_CLASS_WITH_FLAGS(FOutputBufferTests, "Angelscript.TestModule.AngelScriptSDK.Compiler.OutputBuffer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
-
 	TEST_METHOD(OutputBufferErrorCapture)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained public message-collector integration smoke; COMPILER-BUILDER-SHAPE-FAILURE owns exact compile rejection, diagnostics, publication exclusion, cleanup, and isolation.");
 
 		asIScriptEngine* const SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
@@ -38,7 +33,13 @@ TEST_CLASS_WITH_FLAGS(FOutputBufferTests, "Angelscript.TestModule.AngelScriptSDK
 		// Compile invalid code - should produce error messages
 		Engine.ResetMessages();
 		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BadCode");
-		asIScriptModule* M = BuildNativeModule(SE, "BadCode", "int Entry() { return undeclared_var; }\n");
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			int Entry()
+			{
+				return undeclared_var;
+			}
+			)AS");
+		asIScriptModule* M = BuildNativeModule(SE, "BadCode", ScriptSource);
 		ASSERT_THAT(IsNull(M, TEXT("Invalid code should fail to compile")));
 
 		// Verify error was captured
@@ -57,24 +58,49 @@ TEST_CLASS_WITH_FLAGS(FOutputBufferTests, "Angelscript.TestModule.AngelScriptSDK
 
 	TEST_METHOD(OutputBufferWarningCapture)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"Infrastructure",
+			"Retained non-warning public-build control for message logging; COMPILER-DIAGNOSTIC-WARNING-POLICY owns deterministic warning generation, severity policy, diagnostics, publication, and cleanup.");
 
 		asIScriptEngine* const SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
-		// Code that compiles but may produce warnings (unused variable)
+		// This source is a non-warning control. Warning generation is owned by
+		// COMPILER-DIAGNOSTIC-WARNING-POLICY with deterministic overload input.
 		Engine.ResetMessages();
 		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "WarnCode");
-		asIScriptModule* M = BuildNativeModule(SE, "WarnCode",
-			"int Entry() { int unused = 42; return 1; }\n");
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			int Entry()
+			{
+				int unused = 42;
+				return 1;
+			}
+			)AS");
+		asIScriptModule* M = BuildNativeModule(SE, "WarnCode", ScriptSource);
+		ASSERT_THAT(IsNotNull(M, TEXT("Non-warning output-buffer control should compile")));
+		ASSERT_THAT(IsNotNull(
+			M != nullptr ? M->GetFunctionByDecl("int Entry()") : nullptr,
+			TEXT("Non-warning output-buffer control should publish its exact entry declaration")));
 
-		// Whether or not there are warnings depends on engine config.
-		// The key assertion is that message callback works and does not crash.
+		bool bHasError = false;
 		TestRunner->AddInfo(FString::Printf(TEXT("Messages captured: %d"), Engine.GetMessages().Entries.Num()));
 		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
 			TestRunner->AddInfo(FString::Printf(TEXT("  [%s] %s"), *FString(ToMessageTypeString(Entry.Type)), *Entry.Message));
+			bHasError |= Entry.Type == asMSGTYPE_ERROR;
 		}
+		ASSERT_THAT(IsFalse(
+			bHasError,
+			TEXT("Non-warning output-buffer control should not publish an error diagnostic")));
 	}
 };
 

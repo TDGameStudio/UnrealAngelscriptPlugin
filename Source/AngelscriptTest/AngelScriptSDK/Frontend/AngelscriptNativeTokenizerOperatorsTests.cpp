@@ -1,4 +1,5 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 // Tokenizer operator behavior coverage.
 #include "CQTest.h"
@@ -52,6 +53,9 @@ private:
 public:
 	TEST_METHOD(ArithmeticOps_PlusMinusStarSlashPercent)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained arithmetic-operator smoke; FRONTEND-TOKEN-LONGEST-MATCH-OPERATORS and FRONTEND-TOKEN-OPERATOR-OPERAND-SPACING own complete spellings and contexts.");
+
 		const FTokenCase Cases[] = {
 			{ "+", ttPlus, 1, TEXT("Plus operator") },
 			{ "-", ttMinus, 1, TEXT("Minus operator") },
@@ -65,6 +69,9 @@ public:
 
 	TEST_METHOD(BitwiseOps_AndOrXorNotShifts)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained bitwise-operator smoke; FRONTEND-TOKEN-LONGEST-MATCH-OPERATORS and FRONTEND-TOKEN-OPERATOR-OPERAND-SPACING own complete spellings and contexts.");
+
 		const FTokenCase Cases[] = {
 			{ "&", ttAmp, 1, TEXT("Bitwise and operator") },
 			{ "|", ttBitOr, 1, TEXT("Bitwise or operator") },
@@ -79,6 +86,9 @@ public:
 
 	TEST_METHOD(ComparisonOps_EqNeLtLeGtGe)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained comparison-operator smoke; FRONTEND-TOKEN-LONGEST-MATCH-OPERATORS and FRONTEND-TOKEN-OPERATOR-OPERAND-SPACING own prefixes and adjacent boundaries.");
+
 		const FTokenCase Cases[] = {
 			{ "==", ttEqual, 2, TEXT("Equality operator") },
 			{ "!=", ttNotEqual, 2, TEXT("Inequality operator") },
@@ -92,6 +102,9 @@ public:
 
 	TEST_METHOD(LogicalOps_AndOrNot)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained logical-operator smoke; FRONTEND-TOKEN-LONGEST-MATCH-OPERATORS and FRONTEND-TOKEN-OPERATOR-OPERAND-SPACING own prefixes and adjacent boundaries.");
+
 		const FTokenCase Cases[] = {
 			{ "&&", ttAnd, 2, TEXT("Logical and operator") },
 			{ "||", ttOr, 2, TEXT("Logical or operator") },
@@ -102,6 +115,9 @@ public:
 
 	TEST_METHOD(AssignmentOps_PlainAndCompound)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained assignment-operator smoke; FRONTEND-TOKEN-LONGEST-MATCH-OPERATORS owns every compound spelling and longest-match boundary.");
+
 		const FTokenCase Cases[] = {
 			{ "=", ttAssignment, 1, TEXT("Plain assignment operator") },
 			{ "+=", ttAddAssign, 2, TEXT("Add assignment operator") },
@@ -122,6 +138,9 @@ public:
 
 	TEST_METHOD(IncrementDecrement)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained increment/decrement smoke; FRONTEND-TOKEN-LONGEST-MATCH-OPERATORS owns prefix competition and termination.");
+
 		const FTokenCase Cases[] = {
 			{ "++", ttInc, 2, TEXT("Increment operator") },
 			{ "--", ttDec, 2, TEXT("Decrement operator") },
@@ -131,6 +150,9 @@ public:
 
 	TEST_METHOD(Ternary_Question_Colon)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained ternary punctuation smoke; FRONTEND-TOKEN-OPERATOR-OPERAND-SPACING owns operator and adjacent-operand contexts.");
+
 		const FTokenCase Cases[] = {
 			{ "?", ttQuestion, 1, TEXT("Ternary question token") },
 			{ ":", ttColon, 1, TEXT("Ternary colon token") },
@@ -140,6 +162,9 @@ public:
 
 	TEST_METHOD(ScopeColonColonAndDot)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained scope/member punctuation smoke; FRONTEND-TOKEN-LONGEST-MATCH-OPERATORS owns prefix and trailing-boundary behavior.");
+
 		const FTokenCase Cases[] = {
 			{ "::", ttScope, 2, TEXT("Scope operator") },
 			{ ".", ttDot, 1, TEXT("Dot operator") },
@@ -149,6 +174,9 @@ public:
 
 	TEST_METHOD(TokenizerOperatorsHandleOpAt)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained current-fork at-sign rejection smoke; FRONTEND-TOKEN-OPERATOR-MALFORMED-RECOVERY owns malformed prefixes and following-token recovery.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken("@", 1, &TokenLength);
@@ -161,6 +189,9 @@ public:
 
 	TEST_METHOD(LongestMatchPrefersShiftRAOverShiftR)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained arithmetic-shift longest-match regression; FRONTEND-TOKEN-LONGEST-MATCH-OPERATORS owns all operator prefix and suffix boundaries.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 

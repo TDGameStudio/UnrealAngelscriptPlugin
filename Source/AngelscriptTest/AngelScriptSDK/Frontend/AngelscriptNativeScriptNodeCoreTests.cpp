@@ -1,4 +1,5 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 // Core script-node behavior coverage.
 #include "AngelscriptTestMacros.h"
@@ -53,6 +54,9 @@ private:
 public:
 	TEST_METHOD(ScriptNodeCoreTypes)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained representative node-kind smoke; FRONTEND-PARSER-DECLARATION-FAMILIES and FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES own declaration and statement node families.");
+
 		// Enum smoke test: these values are consumed by parser/tree walkers.
 		ASSERT_THAT(AreEqual(1, static_cast<int32>(snScript),
 			TEXT("snScript should remain the root script node enum value")));
@@ -66,13 +70,22 @@ public:
 
 	TEST_METHOD(ScriptNodeCoreTraversal)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(TestRunner);
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained recursive traversal smoke; FRONTEND-NODE-TRAVERSAL-COPY owns parent, sibling, histogram, depth, and ordering traversal evidence.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode traversal should use the case-owned raw SDK engine")));
 		if (BareEngine == nullptr)
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		asCModule* Module = CreateScriptNodeModule(BareEngine, "ScriptNodeTraversal");
 		ASSERT_THAT(IsNotNull(Module,
@@ -115,13 +128,22 @@ public:
 
 	TEST_METHOD(ScriptNodeCoreCopy)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(TestRunner);
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained representative CreateCopy smoke; FRONTEND-NODE-TRAVERSAL-COPY and FRONTEND-NODE-DEEP-NESTING-COPY own structural copy products.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("ScriptNode copy should use the case-owned raw SDK engine")));
 		if (BareEngine == nullptr)
 		{
 			return;
 		}
-
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 
 		asCModule* Module = CreateScriptNodeModule(BareEngine, "ScriptNodeCopy");
 		ASSERT_THAT(IsNotNull(Module,

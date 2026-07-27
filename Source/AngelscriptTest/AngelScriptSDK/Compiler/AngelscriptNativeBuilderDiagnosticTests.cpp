@@ -4,6 +4,7 @@
 #include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -13,28 +14,22 @@ TEST_CLASS_WITH_FLAGS(FBuilderDiagnosticTests,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
-
 	TEST_METHOD(CompilerMessageCollectorCanMatchWarnings)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"Infrastructure",
+			"Retained synthetic matcher self-check; COMPILER-DIAGNOSTIC-WARNING-POLICY owns real compiler warning generation, location, severity, publication, and cleanup.");
 
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		AngelscriptNativeTestSupport::FNativeMessageEntry Warning;
@@ -54,8 +49,18 @@ public:
 
 	TEST_METHOD(ParseErrorReportsSectionAndDoesNotPublishDeclarations)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained exact parse-diagnostic smoke; COMPILER-BUILDER-SHAPE-FAILURE owns syntax rejection across source shapes and publication stages.");
 		using namespace AngelscriptSDKTestSupport;
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
@@ -98,8 +103,18 @@ public:
 
 	TEST_METHOD(DuplicateClassFailsDuringTypeGenerationWithoutFunctionLeak)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained duplicate-class diagnostic smoke; COMPILER-BUILDER-SHAPE-FAILURE owns type-generation rejection, executable-publication exclusion, and cleanup across source shapes.");
 		using namespace AngelscriptSDKTestSupport;
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
@@ -154,8 +169,18 @@ public:
 
 	TEST_METHOD(UnknownTypeReportsFunctionSectionAndKeepsBytecodeEmpty)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained unknown-type diagnostic smoke; COMPILER-BUILDER-SHAPE-FAILURE owns missing-type rejection, diagnostic retention, and empty executable publication.");
 		using namespace AngelscriptSDKTestSupport;
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
@@ -198,16 +223,42 @@ public:
 
 	TEST_METHOD(WarningReportsSectionRowAndDoesNotFailByDefault)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
-		asIScriptEngine* ScriptEngine = Engine.Get();
+		AS_NATIVE_PRODUCT(
+			"COMPILER-DIAGNOSTIC-WARNING-POLICY",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Bytecode
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder warning diagnostic test should create a standalone SDK engine")));
+		if (ScriptEngine == nullptr)
+		{
+			return;
+		}
+		const asPWORD CompilerWarningsBefore =
+			ScriptEngine->GetEngineProperty(asEP_COMPILER_WARNINGS);
 
 		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagWarningDefault");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder warning diagnostic test should create a module")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		const std::string Source = ASTEST_AS_ANSI(R"AS(
 			class WarningCarrier
@@ -229,11 +280,20 @@ public:
 				return Carrier.Pick(41, 1);
 			}
 			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-DIAGNOSTIC-WARNING-POLICY"),
+			TEXT("BuilderDiagWarningDefault"),
+			UTF8_TO_TCHAR(Source.c_str()));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*TestRunner, *Module, "BuilderDiagWarningDefault.as", Source.c_str(), TEXT("WarningDefault.AddSection")),
 			TEXT("Builder warning diagnostic test should add the warning section")));
 
 		asCBuilder* Builder = Module->builder;
 		ASSERT_THAT(IsNotNull(Builder, TEXT("Builder warning diagnostic test should create a builder")));
+		if (Builder == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(RunBuilderPipelineThroughLayout(*TestRunner, *Builder, Module),
 			TEXT("Builder warning diagnostic test should build through layout with a non-fatal warning")));
 
@@ -254,16 +314,46 @@ public:
 		asIScriptFunction* EntryFunction = Module->GetFunctionByDecl("int Entry()");
 		ASSERT_THAT(IsNotNull(EntryFunction, TEXT("Builder warning diagnostic test should expose Entry metadata")));
 		ASSERT_THAT(IsTrue(HasBytecode(EntryFunction), TEXT("Builder warning diagnostic test should produce Entry bytecode despite the warning")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asSUCCESS),
+			ScriptEngine->DiscardModule(ModuleScope.Get()),
+			TEXT("Builder warning diagnostic test should discard its isolated module")));
+		ASSERT_THAT(IsNull(
+			ScriptEngine->GetModule(ModuleScope.Get(), asGM_ONLY_IF_EXISTS),
+			TEXT("Builder warning diagnostic test should observe module cleanup")));
+		ASSERT_THAT(AreEqual(
+			CompilerWarningsBefore,
+			ScriptEngine->GetEngineProperty(asEP_COMPILER_WARNINGS),
+			TEXT("Builder warning diagnostic test should not mutate the engine warning policy")));
 	}
 
 	TEST_METHOD(WarningsAsErrorsFailBuildAndPreserveWarningDiagnostic)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
-		asIScriptEngine* ScriptEngine = Engine.Get();
+		AS_NATIVE_PRODUCT(
+			"COMPILER-DIAGNOSTIC-WARNING-PROMOTION",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder warnings-as-errors diagnostic test should create a standalone SDK engine")));
+		if (ScriptEngine == nullptr)
+		{
+			return;
+		}
 
 		const asPWORD PreviousCompilerWarnings = ScriptEngine->GetEngineProperty(asEP_COMPILER_WARNINGS);
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), ScriptEngine->SetEngineProperty(asEP_COMPILER_WARNINGS, 2),
@@ -276,6 +366,10 @@ public:
 		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagWarningsAsErrors");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder warnings-as-errors diagnostic test should create a module")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
 		const std::string Source = ASTEST_AS_ANSI(R"AS(
 			class WarningCarrier
@@ -297,11 +391,20 @@ public:
 				return Carrier.Pick(41, 1);
 			}
 			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-DIAGNOSTIC-WARNING-PROMOTION"),
+			TEXT("BuilderDiagWarningsAsErrors"),
+			UTF8_TO_TCHAR(Source.c_str()));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*TestRunner, *Module, "BuilderDiagWarningsAsErrors.as", Source.c_str(), TEXT("WarningsAsErrors.AddSection")),
 			TEXT("Builder warnings-as-errors diagnostic test should add the warning section")));
 
 		asCBuilder* Builder = Module->builder;
 		ASSERT_THAT(IsNotNull(Builder, TEXT("Builder warnings-as-errors diagnostic test should create a builder")));
+		if (Builder == nullptr)
+		{
+			return;
+		}
 		ASSERT_THAT(IsTrue(RunBuilderPipelineThroughLayout(*TestRunner, *Builder, Module),
 			TEXT("Builder warnings-as-errors diagnostic test should build through layout before final warning promotion")));
 
@@ -322,12 +425,54 @@ public:
 			Engine.GetMessages(),
 			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT(""), 0, TEXT("Warnings are treated as errors")),
 			TEXT("warnings-as-errors should add the promotion error"))));
+		asIScriptFunction* const EntryFunction =
+			Module->GetFunctionByDecl("int Entry()");
+		ASSERT_THAT(IsNotNull(
+			EntryFunction,
+			TEXT("Warnings-as-errors should retain Entry metadata for rejection inspection")));
+		ASSERT_THAT(IsTrue(
+			HasBytecode(EntryFunction),
+			TEXT("Current fork should promote warnings only after emitting Entry bytecode")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asSUCCESS),
+			ScriptEngine->DiscardModule(ModuleScope.Get()),
+			TEXT("Warnings-as-errors should discard its isolated module")));
+		ASSERT_THAT(IsNull(
+			ScriptEngine->GetModule(ModuleScope.Get(), asGM_ONLY_IF_EXISTS),
+			TEXT("Warnings-as-errors should observe module cleanup")));
+
+		FNativeTestEngine ControlEngine;
+		ControlEngine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			ControlEngine.Destroy();
+		};
+		asIScriptEngine* const ControlScriptEngine = ControlEngine.Get();
+		ASSERT_THAT(IsNotNull(
+			ControlScriptEngine,
+			TEXT("Warnings-as-errors should create an independent control engine")));
+		ASSERT_THAT(AreEqual(
+			PreviousCompilerWarnings,
+			ControlScriptEngine != nullptr
+				? ControlScriptEngine->GetEngineProperty(asEP_COMPILER_WARNINGS)
+				: static_cast<asPWORD>(-1),
+			TEXT("Warnings-as-errors should not promote warnings on an independent control engine")));
 	}
 
 	TEST_METHOD(MultiSectionErrorReportsOwningSectionOnly)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained multi-section ownership smoke; COMPILER-BUILDER-SHAPE-FAILURE owns staged rejection and COMPILER-BUILDER-REBUILD-RECOVERY owns isolation after rejected sections.");
 		using namespace AngelscriptSDKTestSupport;
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
@@ -393,8 +538,18 @@ public:
 
 	TEST_METHOD(GlobalInitializerErrorDoesNotMarkGlobalCompiled)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained global-initializer diagnostic smoke; COMPILER-BUILDER-SHAPE-FAILURE owns staged publication rejection and executable-bytecode exclusion.");
 		using namespace AngelscriptSDKTestSupport;
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
@@ -452,19 +607,44 @@ public:
 
 	TEST_METHOD(CompileFunctionWarningUsesLineOffset)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
-		asIScriptEngine* ScriptEngine = Engine.Get();
+		AS_NATIVE_PRODUCT(
+			"COMPILER-BUILDER-COMPILE-FUNCTION-WARNING-OFFSET",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder CompileFunction warning diagnostic test should create a standalone SDK engine")));
+		if (ScriptEngine == nullptr)
+		{
+			return;
+		}
 
 		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderDiagCompileFunctionWarning");
 		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Builder CompileFunction warning diagnostic test should create a module")));
+		if (Module == nullptr)
+		{
+			return;
+		}
 
-		asCBuilder Builder(static_cast<asCScriptEngine*>(ScriptEngine), Module);
-		LogBuilderState(*TestRunner, TEXT("CompileFunctionWarning.initial"), Builder, Module, true, false);
+		TUniquePtr<asCBuilder> Builder = MakeUnique<asCBuilder>(
+			static_cast<asCScriptEngine*>(ScriptEngine),
+			Module);
+		LogBuilderState(*TestRunner, TEXT("CompileFunctionWarning.initial"), *Builder, Module, true, false);
 		asCScriptFunction* Function = nullptr;
 		const std::string Source = ASTEST_AS_ANSI(R"AS(
 			int Entry()
@@ -473,21 +653,32 @@ public:
 				return Value;
 			}
 			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-COMPILE-FUNCTION-WARNING-OFFSET"),
+			TEXT("BuilderDiagCompileFunctionWarning"),
+			UTF8_TO_TCHAR(Source.c_str()));
 		LogBuilderSectionInput(*TestRunner, TEXT("CompileFunctionWarning.input"), "BuilderDiagCompileFunctionWarning.as", Source.c_str());
-		const int CompileResult = Builder.CompileFunction("BuilderDiagCompileFunctionWarning.as", Source.c_str(), 20, asCOMP_ADD_TO_MODULE, &Function);
-		LogBuilderStageResult(*TestRunner, TEXT("CompileFunctionWarning.CompileFunction"), CompileResult, Builder, Module, false);
+		const int CompileResult = Builder->CompileFunction("BuilderDiagCompileFunctionWarning.as", Source.c_str(), 20, asCOMP_ADD_TO_MODULE, &Function);
+		LogBuilderStageResult(*TestRunner, TEXT("CompileFunctionWarning.CompileFunction"), CompileResult, *Builder, Module, false);
 		ReportBuilderFailureDiagnostics(*TestRunner, Engine);
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), CompileResult,
 			TEXT("Builder CompileFunction warning diagnostic test should compile despite the warning")));
 		ASSERT_THAT(IsNotNull(Function, TEXT("Builder CompileFunction warning diagnostic test should return the compiled function")));
-		ASSERT_THAT(IsTrue(Builder.numWarnings > 0, TEXT("Builder CompileFunction warning diagnostic test should increment warning count")));
+		if (Function == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(Builder->numWarnings > 0, TEXT("Builder CompileFunction warning diagnostic test should increment warning count")));
 		bool bMatchedOffsetWarning = false;
+		bool bHasErrorDiagnostic = false;
 		for (const AngelscriptNativeTestSupport::FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
+			bHasErrorDiagnostic |= Entry.Type == asMSGTYPE_ERROR;
 			if (Entry.Type == asMSGTYPE_WARNING &&
 				Entry.Section == TEXT("BuilderDiagCompileFunctionWarning.as") &&
-				Entry.Row > 20 &&
+				Entry.Row == 23 &&
 				Entry.Message.Contains(TEXT("exact")))
 			{
 				bMatchedOffsetWarning = true;
@@ -496,12 +687,108 @@ public:
 		}
 		ASSERT_THAT(IsTrue(bMatchedOffsetWarning,
 			TEXT("Builder CompileFunction warning diagnostic test should apply the provided line offset to the warning row")));
+		ASSERT_THAT(IsFalse(
+			bHasErrorDiagnostic,
+			TEXT("Builder CompileFunction warning diagnostic test should not emit an error diagnostic")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("BuilderDiagCompileFunctionWarning.as")),
+			FString(UTF8_TO_TCHAR(Function->GetScriptSectionName())),
+			TEXT("Builder CompileFunction warning diagnostic test should preserve the provided section")));
+		ASSERT_THAT(AreEqual(
+			static_cast<asIScriptFunction*>(Function),
+			GetNativeFunctionByDecl(Module, "int Entry()"),
+			TEXT("Builder CompileFunction warning diagnostic test should publish the exact returned function")));
+		Builder.Reset();
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asSUCCESS),
+			ScriptEngine->DiscardModule(ModuleScope.Get()),
+			TEXT("Builder CompileFunction warning diagnostic test should discard its isolated module")));
+		ASSERT_THAT(IsNull(
+			ScriptEngine->GetModule(ModuleScope.Get(), asGM_ONLY_IF_EXISTS),
+			TEXT("Builder CompileFunction warning diagnostic test should observe module cleanup")));
+
+		const int32 MessageCountBeforeControl =
+			Engine.GetMessages().Entries.Num();
+		{
+			FScopedNativeModuleName ControlModuleScope(
+				Engine,
+				"BuilderDiagCompileFunctionWarningControl");
+			asCModule* const ControlModule =
+				CreateBuilderModule(ScriptEngine, ControlModuleScope.Get());
+			ASSERT_THAT(IsNotNull(
+				ControlModule,
+				TEXT("Builder CompileFunction warning diagnostic test should create an independent control module")));
+			if (ControlModule == nullptr)
+			{
+				return;
+			}
+
+			asCBuilder ControlBuilder(
+				static_cast<asCScriptEngine*>(ScriptEngine),
+				ControlModule);
+			asCScriptFunction* ControlFunction = nullptr;
+			const std::string ControlSource = ASTEST_AS_ANSI(R"AS(
+				int ControlEntry()
+				{
+					return 7;
+				}
+				)AS");
+			LogBuilderSectionInput(
+				*TestRunner,
+				TEXT("CompileFunctionWarning.control.input"),
+				"BuilderDiagCompileFunctionWarningControl.as",
+				ControlSource.c_str());
+			const int ControlCompileResult = ControlBuilder.CompileFunction(
+				"BuilderDiagCompileFunctionWarningControl.as",
+				ControlSource.c_str(),
+				0,
+				asCOMP_ADD_TO_MODULE,
+				&ControlFunction);
+			LogBuilderStageResult(
+				*TestRunner,
+				TEXT("CompileFunctionWarning.control.CompileFunction"),
+				ControlCompileResult,
+				ControlBuilder,
+				ControlModule,
+				false);
+
+			ASSERT_THAT(AreEqual(
+				static_cast<int32>(asSUCCESS),
+				ControlCompileResult,
+				TEXT("Builder CompileFunction warning diagnostic test should compile a clean independent control function")));
+			ASSERT_THAT(IsNotNull(
+				ControlFunction,
+				TEXT("Builder CompileFunction warning diagnostic test should return the independent control function")));
+			ASSERT_THAT(AreEqual(
+				static_cast<asIScriptFunction*>(ControlFunction),
+				GetNativeFunctionByDecl(ControlModule, "int ControlEntry()"),
+				TEXT("Builder CompileFunction warning diagnostic test should publish only the independent control function")));
+			ASSERT_THAT(AreEqual(
+				MessageCountBeforeControl,
+				Engine.GetMessages().Entries.Num(),
+				TEXT("Builder CompileFunction warning diagnostic should not leak into the independent control compile")));
+		}
+		ASSERT_THAT(IsNull(
+			ScriptEngine->GetModule(
+				"BuilderDiagCompileFunctionWarningControl",
+				asGM_ONLY_IF_EXISTS),
+			TEXT("Builder CompileFunction warning diagnostic test should discard the independent control module")));
 	}
 
 	TEST_METHOD(DuplicateFunctionDiagnosticReportsFunctionSection)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained duplicate-function diagnostic smoke; COMPILER-BUILDER-SHAPE-FAILURE owns declaration-stage rejection and diagnostic publication across source shapes.");
 		using namespace AngelscriptSDKTestSupport;
 
 		asIScriptEngine* ScriptEngine = Engine.Get();

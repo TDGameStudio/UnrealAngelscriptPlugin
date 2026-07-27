@@ -1,4 +1,5 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 #include "AngelscriptTestMacros.h"
 #include "CQTest.h"
@@ -147,10 +148,17 @@ private:
 public:
 	TEST_METHOD(CompiledFunctionExposesExecutableBytecode)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained constant-return bytecode smoke; COMPILER-BYTECODE-SHAPE owns generated source, representative opcode, runtime, cleanup, and isolation across executable shapes.");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiled bytecode test should create a native engine")));
-		ON_SCOPE_EXIT { AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine); };
+		ON_SCOPE_EXIT
+		{
+			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
+		};
 
 		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
 				int Entry()
@@ -182,10 +190,17 @@ public:
 
 	TEST_METHOD(CompiledControlFlowProducesBranchOpcode)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained two-arm branch smoke; COMPILER-BYTECODE-SHAPE owns conditional source, branch-family bytecode, exact runtime, cleanup, and isolation.");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiled branch bytecode test should create a native engine")));
-		ON_SCOPE_EXIT { AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine); };
+		ON_SCOPE_EXIT
+		{
+			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
+		};
 
 		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
 				int PickValue(int Input)
@@ -231,10 +246,17 @@ public:
 
 	TEST_METHOD(CompiledLoopProducesBackwardJump)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained loop jump-family smoke; COMPILER-BYTECODE-SHAPE owns loop runtime/opcode evidence and COMPILER-BYTECODE-JUMP-RESOLUTION owns actual signed backward offsets.");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiled loop bytecode test should create a native engine")));
-		ON_SCOPE_EXIT { AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine); };
+		ON_SCOPE_EXIT
+		{
+			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
+		};
 
 		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
 				int Entry()
@@ -273,10 +295,17 @@ public:
 
 	TEST_METHOD(CompiledArithmeticBytecodeDiffersFromConstantReturn)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained raw-buffer difference smoke; COMPILER-BYTECODE-SHAPE owns stable arithmetic opcode and runtime evidence without depending on whole-buffer inequality.");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = AngelscriptNativeTestSupport::CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiled arithmetic bytecode test should create a native engine")));
-		ON_SCOPE_EXIT { AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine); };
+		ON_SCOPE_EXIT
+		{
+			AngelscriptNativeTestSupport::DestroyNativeEngine(ScriptEngine);
+		};
 
 		const std::string ConstantSource = ASTEST_AS_ANSI(R"AS(
 				int Entry()

@@ -1,7 +1,9 @@
 #include "Support/AngelscriptNativeExecutionTestSupport.h"
+#include "../Support/AngelscriptNativeLanguageCaseTestSupport.h"
 
 // Raw SDK engine lifecycle coverage.
 
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -14,6 +16,15 @@ TEST_CLASS_WITH_FLAGS(FEngineLifecycleTests,
 {
 	TEST_METHOD(CreatesAndShutsDownRawEngine)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_PRODUCT("ENG-LIFECYCLE-CROSS-ENGINE-MESSAGE-CALLBACK",
+			ENativeEvidence::Runtime
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Lifecycle
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
 		AngelscriptNativeTestSupport::FSDKBufferedOutStream BufferedOutStream;
 		asIScriptEngine* PrimaryEngine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		ASSERT_THAT(IsNotNull(PrimaryEngine, TEXT("SDK engine-create test should create the primary engine")));
@@ -67,6 +78,9 @@ TEST_CLASS_WITH_FLAGS(FEngineLifecycleTests,
 
 	TEST_METHOD(EngineLifecyclePropertyGetSet)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"ENG-PROPERTY-ISOLATION and ENG-PROPERTY-PROFILE supersede this single-property round trip with defaults, profile application, restoration, and cross-engine isolation");
+
 		asIScriptEngine* Engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		ASSERT_THAT(IsNotNull(Engine, TEXT("SDK engine property test should create an engine")));
 
@@ -93,6 +107,13 @@ TEST_CLASS_WITH_FLAGS(FEngineLifecycleTests,
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_PRODUCT("ENG-LIFECYCLE-MODULE-ENUMERATION",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Lifecycle
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* Engine = CreateNativeEngine(&Messages);
 		ASSERT_THAT(IsNotNull(Engine, TEXT("SDK engine module-enumeration test should create an engine")));
@@ -107,9 +128,28 @@ TEST_CLASS_WITH_FLAGS(FEngineLifecycleTests,
 		ASSERT_THAT(AreEqual(0, static_cast<int32>(InitialCount),
 			TEXT("SDK engine module-enumeration test should start with zero modules")));
 
+		const std::string ModuleASource = ASTEST_AS_ANSI(R"AS(
+			const int A = 1;
+			)AS");
+		const std::string ModuleBSource = ASTEST_AS_ANSI(R"AS(
+			const int B = 2;
+			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("ENG-LIFECYCLE-MODULE-ENUMERATION-FIRST"),
+			TEXT("ModEnumA"),
+			UTF8_TO_TCHAR(ModuleASource.c_str()));
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("ENG-LIFECYCLE-MODULE-ENUMERATION-SECOND"),
+			TEXT("ModEnumB"),
+			UTF8_TO_TCHAR(ModuleBSource.c_str()));
+
 		// Build two modules.
-		asIScriptModule* M1 = BuildNativeModule(Engine, "ModEnumA", "const int a = 1;");
-		asIScriptModule* M2 = BuildNativeModule(Engine, "ModEnumB", "const int b = 2;");
+		asIScriptModule* M1 =
+			BuildNativeModule(Engine, "ModEnumA", ModuleASource);
+		asIScriptModule* M2 =
+			BuildNativeModule(Engine, "ModEnumB", ModuleBSource);
 		if (!this->Assert.IsNotNull(M1, TEXT("SDK engine module-enumeration test should compile ModEnumA")) ||
 			!this->Assert.IsNotNull(M2, TEXT("SDK engine module-enumeration test should compile ModEnumB")))
 		{
@@ -136,10 +176,50 @@ TEST_CLASS_WITH_FLAGS(FEngineLifecycleTests,
 
 		ASSERT_THAT(IsTrue(bFoundA, TEXT("SDK engine module-enumeration test should find ModEnumA via GetModuleByIndex")));
 		ASSERT_THAT(IsTrue(bFoundB, TEXT("SDK engine module-enumeration test should find ModEnumB via GetModuleByIndex")));
+		ASSERT_THAT(IsNull(
+			Engine->GetModuleByIndex(PostBuildCount),
+			TEXT("Module enumeration should return null one index past the published inventory")));
+		ASSERT_THAT(AreEqual(
+			asSUCCESS,
+			Engine->DiscardModule("ModEnumA"),
+			TEXT("Module enumeration should explicitly discard its first module")));
+		ASSERT_THAT(AreEqual(
+			asSUCCESS,
+			Engine->DiscardModule("ModEnumB"),
+			TEXT("Module enumeration should explicitly discard its second module")));
+		ASSERT_THAT(AreEqual(
+			PostBuildCount,
+			Engine->GetModuleCount(),
+			TEXT("Current fork should retain discarded modules in the indexed inventory until engine shutdown")));
+		ASSERT_THAT(IsNotNull(
+			Engine->GetModuleByIndex(0),
+			TEXT("Current fork should retain the first discarded module in indexed storage")));
+		ASSERT_THAT(IsNotNull(
+			Engine->GetModuleByIndex(1),
+			TEXT("Current fork should retain the second discarded module in indexed storage")));
+		ASSERT_THAT(IsNull(
+			Engine->GetModule("ModEnumA", asGM_ONLY_IF_EXISTS),
+			TEXT("First enumerated module should be absent after cleanup")));
+		ASSERT_THAT(IsNull(
+			Engine->GetModule("ModEnumB", asGM_ONLY_IF_EXISTS),
+			TEXT("Second enumerated module should be absent after cleanup")));
+		TestRunner->AddInfo(TEXT(
+			"[AS-FORK-LIMITATION] DiscardModule removes name lookup publication but "
+			"GetModuleCount/GetModuleByIndex retain discarded modules until shutdown; "
+			"DeleteDiscardedModules is not reachable from the ordinary public lifecycle."));
 	}
 
 	TEST_METHOD(GarbageCollectCycle)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_PRODUCT("ENG-LIFECYCLE-EMPTY-GC-MODES",
+			ENativeEvidence::Runtime
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Lifecycle
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
 		asIScriptEngine* Engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
 		ASSERT_THAT(IsNotNull(Engine, TEXT("SDK engine GC test should create an engine")));
 
@@ -151,15 +231,51 @@ TEST_CLASS_WITH_FLAGS(FEngineLifecycleTests,
 			}
 		};
 
-		// GC calls should succeed even with no objects in the engine.
-		const int FullResult = Engine->GarbageCollect();
-		ASSERT_THAT(IsTrue(FullResult >= 0,
-			TEXT("SDK engine GC test should run a full GC cycle without error")));
+		asUINT CurrentSize = 1;
+		asUINT TotalDestroyed = 1;
+		asUINT TotalDetected = 1;
+		Engine->GetGCStatistics(
+			&CurrentSize,
+			&TotalDestroyed,
+			&TotalDetected);
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(CurrentSize),
+			TEXT("Fresh raw engine should start with an empty GC inventory")));
+
+		ASSERT_THAT(AreEqual(
+			0,
+			Engine->GarbageCollect(),
+			TEXT("SDK engine GC test should run the default full cycle")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Engine->GarbageCollect(
+				asGC_FULL_CYCLE | asGC_DETECT_GARBAGE,
+				1),
+			TEXT("SDK engine GC test should run a detecting full cycle")));
 
 		// Incremental step (asGC_ONE_STEP) should also succeed.
-		const int StepResult = Engine->GarbageCollect(asGC_ONE_STEP);
-		ASSERT_THAT(IsTrue(StepResult >= 0,
-			TEXT("SDK engine GC test should run an incremental GC step without error")));
+		ASSERT_THAT(AreEqual(
+			1,
+			Engine->GarbageCollect(asGC_ONE_STEP),
+			TEXT("SDK engine GC test should report that one incremental step does not finish a full cycle")));
+
+		Engine->GetGCStatistics(
+			&CurrentSize,
+			&TotalDestroyed,
+			&TotalDetected);
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(CurrentSize),
+			TEXT("Empty GC modes should leave the current inventory empty")));
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(TotalDestroyed),
+			TEXT("Empty GC modes should destroy no objects")));
+		ASSERT_THAT(AreEqual(
+			0,
+			static_cast<int32>(TotalDetected),
+			TEXT("Empty GC modes should detect no garbage")));
 	}
 };
 

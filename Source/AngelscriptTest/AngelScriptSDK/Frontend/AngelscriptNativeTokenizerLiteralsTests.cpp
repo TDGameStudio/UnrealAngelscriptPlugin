@@ -1,4 +1,5 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 // Tokenizer literal behavior coverage.
 #include "CQTest.h"
@@ -29,6 +30,9 @@ private:
 public:
 	TEST_METHOD(HexIntegerLiteral)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained single-cell radix smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns the complete radix, suffix, exponent, and malformed-tail contract.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("0x2A", ttBitsConstant, TokenLength),
 			TEXT("Hex integer literal should use the expected token type")));
@@ -37,6 +41,9 @@ public:
 
 	TEST_METHOD(HexUppercaseAndLowercase)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained mixed-case hexadecimal smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns the complete radix and termination contract.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("0XfF", ttBitsConstant, TokenLength),
 			TEXT("Mixed-case hex integer literal should use the expected token type")));
@@ -45,6 +52,9 @@ public:
 
 	TEST_METHOD(OctalLiteralTokenizesAsBitsConstant)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained octal smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns all supported radix forms and token lengths.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("0o755", ttBitsConstant, TokenLength),
 			TEXT("Octal radix literal should use the expected token type")));
@@ -53,6 +63,9 @@ public:
 
 	TEST_METHOD(BinaryLiteralTokenizesAsBitsConstant)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained binary smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns all supported radix forms and token lengths.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("0b1010", ttBitsConstant, TokenLength),
 			TEXT("Binary radix literal should use the expected token type")));
@@ -61,6 +74,9 @@ public:
 
 	TEST_METHOD(DecimalIntegerVarieties)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained representative decimal values; FRONTEND-TOKEN-NUMERIC-SIGN-TERMINATION owns numeric spelling, sign, and termination combinations.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("0", ttIntConstant, TokenLength),
 			TEXT("Zero integer literal should use the expected token type")));
@@ -75,6 +91,9 @@ public:
 
 	TEST_METHOD(Float64WithoutSuffix)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained unsuffixed floating smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns floating suffix, exponent, and boundary forms.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("1.25", ttFloat64Constant, TokenLength),
 			TEXT("Float64 literal without suffix should use the expected token type")));
@@ -83,6 +102,9 @@ public:
 
 	TEST_METHOD(Float32WithFSuffix)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained float32 suffix smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns floating suffix, exponent, and boundary forms.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("1.25f", ttFloat32Constant, TokenLength),
 			TEXT("Float32 literal with f suffix should use the expected token type")));
@@ -91,6 +113,9 @@ public:
 
 	TEST_METHOD(Float64WithDSuffix)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained current-fork d-suffix termination smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns suffix and malformed-tail behavior.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("1.25d", ttFloat64Constant, TokenLength),
 			TEXT("Float64 literal leaves d suffix for the next token should use the expected token type")));
@@ -99,6 +124,9 @@ public:
 
 	TEST_METHOD(FloatExponentPositive)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained positive-exponent smoke; FRONTEND-TOKEN-NUMERIC-SIGN-TERMINATION owns sign, exponent, and trailing-boundary combinations.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("1e+10", ttFloat64Constant, TokenLength),
 			TEXT("Float exponent with positive sign should use the expected token type")));
@@ -107,6 +135,9 @@ public:
 
 	TEST_METHOD(FloatExponentNegative)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained negative-exponent smoke; FRONTEND-TOKEN-NUMERIC-SIGN-TERMINATION owns sign, exponent, and trailing-boundary combinations.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("1e-10", ttFloat64Constant, TokenLength),
 			TEXT("Float exponent with negative sign should use the expected token type")));
@@ -115,6 +146,9 @@ public:
 
 	TEST_METHOD(TokenizerLiteralsFloatLeadingDot)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained leading-dot smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns leading and trailing decimal-point forms.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType(".5", ttFloat64Constant, TokenLength),
 			TEXT("Float literal with leading dot should use the expected token type")));
@@ -123,6 +157,9 @@ public:
 
 	TEST_METHOD(FloatTrailingDot)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained trailing-dot smoke; FRONTEND-TOKEN-NUMERIC-BOUNDARIES owns leading and trailing decimal-point forms.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("5.", ttFloat64Constant, TokenLength),
 			TEXT("Float literal with trailing dot should use the expected token type")));
@@ -131,6 +168,9 @@ public:
 
 	TEST_METHOD(StringEscape_NTRBackslashQuote)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained common escape smoke; FRONTEND-TOKEN-TEXT-ESCAPE-LINE-ENDINGS owns escape family and line-ending combinations.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("\"\\n\\t\\r\\\\\\\"\"", ttStringConstant, TokenLength),
 			TEXT("Escaped newline tab carriage-return backslash and quote should use the expected token type")));
@@ -139,6 +179,9 @@ public:
 
 	TEST_METHOD(StringEscape_HexByte_xNN)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained hexadecimal escape smoke; FRONTEND-TOKEN-TEXT-ESCAPE-LINE-ENDINGS owns escape family and line-ending combinations.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("\"\\x41\"", ttStringConstant, TokenLength),
 			TEXT("Hex byte escape sequence should use the expected token type")));
@@ -147,6 +190,9 @@ public:
 
 	TEST_METHOD(StringEscape_Unicode_uNNNN)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained Unicode escape smoke; FRONTEND-TOKEN-TEXT-ESCAPE-LINE-ENDINGS owns escape family and line-ending combinations.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("\"\\u0041\"", ttStringConstant, TokenLength),
 			TEXT("Unicode escape sequence should use the expected token type")));
@@ -155,6 +201,9 @@ public:
 
 	TEST_METHOD(HeredocStringIfEnabled)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained heredoc smoke; FRONTEND-TOKEN-TEXT-COMMENT-WHITESPACE-BOUNDARIES owns delimited text token boundaries.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("\"\"\"line\ntext\"\"\"", ttHeredocStringConstant, TokenLength),
 			TEXT("Heredoc string literal should use the expected token type")));
@@ -163,6 +212,9 @@ public:
 
 	TEST_METHOD(CharLiteralBasic)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained character-literal smoke; FRONTEND-TOKEN-TEXT-ESCAPE-LINE-ENDINGS owns character delimiters, escapes, and line endings.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("'a'", ttStringConstant, TokenLength),
 			TEXT("Character literal token should use the expected token type")));
@@ -171,6 +223,9 @@ public:
 
 	TEST_METHOD(CharLiteralEscape)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained escaped-character smoke; FRONTEND-TOKEN-TEXT-ESCAPE-LINE-ENDINGS owns character delimiters, escapes, and line endings.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("'\\n'", ttStringConstant, TokenLength),
 			TEXT("Escaped character literal token should use the expected token type")));
@@ -179,6 +234,9 @@ public:
 
 	TEST_METHOD(EmptyStringLiteral)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained empty-string smoke; FRONTEND-TOKEN-TEXT-COMMENT-WHITESPACE-BOUNDARIES owns string-length and delimiter boundaries.");
+
 		int32 TokenLength = 0;
 		ASSERT_THAT(IsTrue(ExpectTokenType("\"\"", ttStringConstant, TokenLength),
 			TEXT("Empty string literal should use the expected token type")));
@@ -187,6 +245,9 @@ public:
 
 	TEST_METHOD(AdjacentStringConcatNotMerged)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained adjacent-string token separation smoke; FRONTEND-TOKEN-TEXT-COMMENT-WHITESPACE-BOUNDARIES owns trailing-boundary classification.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Input = "\"a\"\"b\"";
 		size_t TokenLength = 0;

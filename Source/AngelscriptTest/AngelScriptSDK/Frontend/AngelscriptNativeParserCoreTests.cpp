@@ -1,4 +1,5 @@
 #include "AngelscriptTestMacros.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
 
 // Core parser behavior coverage.
@@ -47,14 +48,22 @@ private:
 public:
 	TEST_METHOD(ParserCoreDeclarations)
 	{
-		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained cross-declaration parser smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns declaration node families and structural links.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser core should use the case-owned raw SDK engine")));
 		if (BareEngine == nullptr)
 		{
-			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
 			return;
 		}
-
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserDeclarations");
 		ASSERT_THAT(IsNotNull(Module,
 			TEXT("Parser declaration test should create a backing module")));
@@ -82,14 +91,22 @@ public:
 
 	TEST_METHOD(ParserCoreExpressionAst)
 	{
-		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained arithmetic-expression AST smoke; FRONTEND-PARSER-EXPRESSION-OPERATOR-GROUPING owns operator and grouping combinations.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser core should use the case-owned raw SDK engine")));
 		if (BareEngine == nullptr)
 		{
-			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
 			return;
 		}
-
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserExpressions");
 		ASSERT_THAT(IsNotNull(Module,
 			TEXT("Parser expression test should create a backing module")));
@@ -111,14 +128,22 @@ public:
 
 	TEST_METHOD(ParserCoreControlFlow)
 	{
-		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained nested control-flow AST smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns control-flow roots and child families.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser core should use the case-owned raw SDK engine")));
 		if (BareEngine == nullptr)
 		{
-			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
 			return;
 		}
-
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserControlFlow");
 		ASSERT_THAT(IsNotNull(Module,
 			TEXT("Parser control-flow test should create a backing module")));
@@ -144,14 +169,22 @@ public:
 
 	TEST_METHOD(ParserCoreSyntaxErrors)
 	{
-		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained parser-core syntax-error smoke; FRONTEND-PARSER-MALFORMED-STAGE-CLASSIFICATION and FRONTEND-PARSER-DIAGNOSTIC-LINE-ENDINGS own malformed shapes and diagnostic outcomes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser core should use the case-owned raw SDK engine")));
 		if (BareEngine == nullptr)
 		{
-			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
 			return;
 		}
-
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserSyntaxErrors");
 		ASSERT_THAT(IsNotNull(Module,
 			TEXT("Parser syntax-error test should create a backing module")));
@@ -169,14 +202,22 @@ public:
 
 	TEST_METHOD(ReuseAfterSyntaxError)
 	{
-		asCScriptEngine* BareEngine = reinterpret_cast<asCScriptEngine*>(ASTEST_CREATE_ENGINE_NATIVE());
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained parser-core reuse smoke; FRONTEND-PARSER-RESET-RECOVERY owns malformed shape and same-parser versus fresh-parser recovery combinations.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser core should use the case-owned raw SDK engine")));
 		if (BareEngine == nullptr)
 		{
-			TestRunner->AddError(TEXT("Failed to create bare AngelScript SDK engine"));
 			return;
 		}
-
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
 		asCModule* Module = CreateParserModule(BareEngine, "ParserReuseAfterSyntaxError");
 		ASSERT_THAT(IsNotNull(Module,
 			TEXT("Parser reuse-after-error test should create a backing module")));

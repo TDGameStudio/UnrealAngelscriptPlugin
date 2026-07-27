@@ -1,8 +1,8 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 // Parser declaration behavior coverage.
 #include "CQTest.h"
-#include "Misc/ScopeExit.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_builder.h"
@@ -102,9 +102,22 @@ private:
 public:
 	TEST_METHOD(FunctionWithDefaultParam)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained single default-parameter AST smoke; FRONTEND-PARSER-FUNCTION-PARAMETER-BODY-LINE-ENDINGS owns the parameter-shape, body-shape, and line-ending combinations.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclDefaultParam", "int Add(int A, int B = 2) { return A + B; }", [&](const asCScriptNode& Root)
 		{
@@ -117,9 +130,22 @@ public:
 
 	TEST_METHOD(FunctionWithInOutInoutRefs)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained reference-direction AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES and FRONTEND-PARSER-FUNCTION-PARAMETER-BODY-LINE-ENDINGS own declaration and parameter combinations.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclRefParams", "void Mutate(int& in A, int& out B, int& inout C) { }", [&](const asCScriptNode& Root)
 		{
@@ -132,9 +158,22 @@ public:
 
 	TEST_METHOD(ClassWithInheritance)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained inheritance AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns the declaration-family node contract.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclInheritance", "class FBase { } class FDerived : FBase { }", [&](const asCScriptNode& Root)
 		{
@@ -145,9 +184,22 @@ public:
 
 	TEST_METHOD(ClassImplementsInterface)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained interface-list AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns class and interface declaration-family nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		const int ParseResult = ParseDeclScriptWithResult(BareEngine, "ParserDeclInterfaceImpl", "interface IThing { void Run(); } class FThing : IThing { void Run() { } }");
 		ASSERT_THAT(IsTrue(ParseResult < 0,
@@ -156,9 +208,22 @@ public:
 
 	TEST_METHOD(ClassFinalAbstract)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained class-modifier AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns class declaration-family nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclClassModifiers", "class FFinal { } class FAbstract { }", [&](const asCScriptNode& Root)
 		{
@@ -169,9 +234,22 @@ public:
 
 	TEST_METHOD(MixinClassDeclaration)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained mixin-class AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns class declaration-family nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclMixin", "mixin void SharedUtility() { }", [&](const asCScriptNode& Root)
 		{
@@ -182,9 +260,22 @@ public:
 
 	TEST_METHOD(NamespaceDeclaration)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained namespace AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns namespace declaration-family nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclNamespace", "namespace Gameplay { int Value = 1; }", [&](const asCScriptNode& Root)
 		{
@@ -197,9 +288,22 @@ public:
 
 	TEST_METHOD(ParserDeclarationsNestedNamespace)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained nested-namespace AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns namespace declaration-family nodes and links.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclNestedNamespace", "namespace Gameplay::AI { void Tick() { } }", [&](const asCScriptNode& Root)
 		{
@@ -212,9 +316,22 @@ public:
 
 	TEST_METHOD(EnumTypedAndUntyped)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained enum-form AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns enum declaration-family nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclEnum", "enum EMode { Idle = 0, Run = 1 } enum EOther { One }", [&](const asCScriptNode& Root)
 		{
@@ -225,9 +342,22 @@ public:
 
 	TEST_METHOD(EnumScopedRequireEnumScope)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained scoped-enum parser smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns enum declaration-family nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclScopedEnum", "enum EMode { Idle, Run }", [&](const asCScriptNode& Root)
 		{
@@ -244,9 +374,22 @@ public:
 
 	TEST_METHOD(TypedefDeclaration)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained typedef AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns declaration-family node classification.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		const int ParseResult = ParseDeclScriptWithResult(BareEngine, "ParserDeclTypedef", "typedef int32 FScore;");
 		ASSERT_THAT(IsTrue(ParseResult < 0,
@@ -255,9 +398,22 @@ public:
 
 	TEST_METHOD(FuncdefDeclaration)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained funcdef AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns declaration-family node classification.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		const int ParseResult = ParseDeclScriptWithResult(BareEngine, "ParserDeclFuncdef", "funcdef void FCallback(int Value);");
 		ASSERT_THAT(IsTrue(ParseResult < 0,
@@ -266,9 +422,22 @@ public:
 
 	TEST_METHOD(ImportFromDeclaration)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained import AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns declaration-family node classification.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclImport", "import int SharedValue() from \"OtherModule\";", [&](const asCScriptNode& Root)
 		{
@@ -279,9 +448,22 @@ public:
 
 	TEST_METHOD(PropertyAccessorGetSet)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained virtual-property AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns class-member declaration-family nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		// Virtual-property syntax `int X { get { ... } set { } }` was removed by the
 		// autoaccessor refactor (see openspec/changes/archive/2026-05-22-refactor-as-remove-autoaccessor).
@@ -293,9 +475,22 @@ public:
 
 	TEST_METHOD(OperatorOverloadParse)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained operator-method declaration smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns function and class-member declaration nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclOperator", "class FNumber { FNumber opAdd(const FNumber& in Other) const { return this; } }", [&](const asCScriptNode& Root)
 		{
@@ -308,9 +503,22 @@ public:
 
 	TEST_METHOD(GlobalConstDeclaration)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained global-const AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns const-global declaration-family nodes.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseDeclScript(*TestRunner, this->Assert, BareEngine, "ParserDeclGlobalConst", "const int GlobalValue = 7;", [&](const asCScriptNode& Root)
 		{
@@ -321,9 +529,22 @@ public:
 
 	TEST_METHOD(ArrayTypeAndHandleType)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained array and handle datatype AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns declaration-family datatype links.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		if (!RegisterArrayTemplate(this->Assert, BareEngine, TEXT("Array/handle declaration parse")))
 		{
@@ -345,9 +566,22 @@ public:
 
 	TEST_METHOD(TemplateInstantiationDeclaration)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained template-instantiation AST smoke; FRONTEND-PARSER-DECLARATION-FAMILIES owns declaration-family datatype links.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser declaration test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		if (!RegisterArrayTemplate(this->Assert, BareEngine, TEXT("Template declaration parse")))
 		{

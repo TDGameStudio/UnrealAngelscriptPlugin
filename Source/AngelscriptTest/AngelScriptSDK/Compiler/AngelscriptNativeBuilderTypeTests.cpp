@@ -3,6 +3,7 @@
 #include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -64,7 +65,7 @@ private:
 		AddInfo(FString::Printf(TEXT("[Builder][%s] executed %s => %d"), *Stage, *ToTestString(Declaration), Result));
 	}
 
-	void ReportBuilderFailureDiagnostics() const
+	void ReportBuilderFailureDiagnostics(const AngelscriptNativeTestSupport::FNativeTestEngine& Engine) const
 	{
 		const FString Messages = Engine.GetMessagesText();
 		if (!Messages.IsEmpty())
@@ -133,29 +134,75 @@ private:
 		return RunBuilderStage(Builder, TEXT("BuildLayoutFunctions"), &asCBuilder::BuildLayoutFunctions, Module);
 	}
 
+	static bool BuildAndExecuteReplacement(
+		FAutomationTestBase& Test,
+		asIScriptEngine& ScriptEngine,
+		const char* ModuleName,
+		const char* SectionName,
+		const char* Source,
+		int32 ExpectedValue)
+	{
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		FNoDiscardAsserter Assert(Test);
+		asIScriptModule* const Module =
+			ScriptEngine.GetModule(ModuleName, asGM_ALWAYS_CREATE);
+		if (!Assert.IsNotNull(
+				Module,
+				TEXT("Declaration recovery should create a replacement module")))
+		{
+			return false;
+		}
+
+		bool bSuccess = Assert.AreEqual(
+			asSUCCESS,
+			Module->AddScriptSection(SectionName, Source),
+			TEXT("Declaration recovery should add corrected source"));
+		bSuccess &= Assert.AreEqual(
+			asSUCCESS,
+			Module->Build(),
+			TEXT("Declaration recovery should build corrected source"));
+		asIScriptFunction* const Entry = Module->GetFunctionByDecl("int Entry()");
+		bSuccess &= Assert.IsNotNull(
+			Entry,
+			TEXT("Declaration recovery should publish exact Entry metadata"));
+		bSuccess &= Assert.IsTrue(
+			HasBytecode(Entry),
+			TEXT("Declaration recovery should publish Entry bytecode"));
+
+		int32 Result = 0;
+		bSuccess &= ExecuteScriptFunction<int32>(
+			Test,
+			&ScriptEngine,
+			Module,
+			"int Entry()",
+			Result);
+		bSuccess &= Assert.AreEqual(
+			ExpectedValue,
+			Result,
+			TEXT("Declaration recovery should execute without rejected-state residue"));
+		ScriptEngine.DiscardModule(ModuleName);
+		return bSuccess;
+	}
+
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
-
 	TEST_METHOD(GenerateTypesRegistersDeclarations)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"COMPILER-BUILDER-DECLARATION-PUBLICATION owns the complete staged declaration-family table; this method retains focused type-stage AST/typeInfo support.");
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder type-generation test should create a standalone SDK engine")));
@@ -188,6 +235,11 @@ public:
 				}
 			}
 			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-DECLARATION-PUBLICATION-TYPE-STAGE-SUPPORT"),
+			TEXT("BuilderTypeStageSupport"),
+			FString(UTF8_TO_TCHAR(TypeDeclarationsSource.c_str())));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*Module, "BuilderTypes", TypeDeclarationsSource.c_str(), TEXT("GenerateTypesRegistersDeclarations.AddTypes")),
 			TEXT("Builder test should add a script section")));
 
@@ -197,7 +249,7 @@ public:
 		if (!this->Assert.IsTrue(RunBuilderStage(*Builder, TEXT("GenerateTypesRegistersDeclarations.BuildParallelParseScripts"), &asCBuilder::BuildParallelParseScripts, Module), TEXT("Builder type-generation test should parse scripts")) ||
 			!this->Assert.IsTrue(RunBuilderStage(*Builder, TEXT("GenerateTypesRegistersDeclarations.BuildGenerateTypes"), &asCBuilder::BuildGenerateTypes, Module), TEXT("Builder type-generation test should generate types")))
 		{
-			ReportBuilderFailureDiagnostics();
+			ReportBuilderFailureDiagnostics(Engine);
 			return;
 		}
 
@@ -243,9 +295,20 @@ public:
 	}
 	TEST_METHOD(ClassInheritanceResolvesBaseTypesAndInheritedCalls)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"COMPILER-BUILDER-CLASS-LAYOUT owns inheritance/property/method layout; this method retains focused base identity and bytecode support without claiming inherited-call runtime.");
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder inheritance test should create a standalone SDK engine")));
@@ -286,6 +349,11 @@ public:
 				return 42;
 			}
 			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-CLASS-LAYOUT-INHERITANCE-SUPPORT"),
+			TEXT("BuilderInheritanceLayoutSupport"),
+			FString(UTF8_TO_TCHAR(InheritanceSource.c_str())));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*Module, "BuilderClassInheritance", InheritanceSource.c_str(), TEXT("ClassInheritanceResolvesBaseTypesAndInheritedCalls.AddInheritanceSection")),
 			TEXT("Builder inheritance test should add the script section")));
 
@@ -295,7 +363,7 @@ public:
 		if (!this->Assert.IsTrue(RunBuilderPipelineThroughLayout(*Builder, Module), TEXT("Builder inheritance test should build through layout")) ||
 			!this->Assert.IsTrue(RunBuilderStage(*Builder, TEXT("ClassInheritanceResolvesBaseTypesAndInheritedCalls.BuildCompileCode"), &asCBuilder::BuildCompileCode, Module), TEXT("Builder inheritance test should compile bytecode")))
 		{
-			ReportBuilderFailureDiagnostics();
+			ReportBuilderFailureDiagnostics(Engine);
 			return;
 		}
 
@@ -345,11 +413,26 @@ public:
 		LogScriptExecutionResult(TEXT("ClassInheritanceResolvesBaseTypesAndInheritedCalls.Entry"), "int Entry()", Result);
 		ASSERT_THAT(AreEqual(42, Result, TEXT("Builder inheritance test should execute independent compiled bytecode")));
 	}
-	TEST_METHOD(ScriptInterfaceDeclarationFailsWithoutLeakingState)
+	TEST_METHOD(ForkDeclarationRejectionsRemainAtomicAndRecover)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT("COMPILER-BUILDER-FORK-DECLARATION-REJECTION",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Runtime
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder interface-boundary test should create a standalone SDK engine")));
@@ -376,6 +459,34 @@ public:
 				return 42;
 			}
 			)AS");
+		const std::string RecoverySource = ASTEST_AS_ANSI(R"AS(
+			const int ReplacementValue = 42;
+
+			int Entry()
+			{
+				return ReplacementValue;
+			}
+			)AS");
+		for (const TCHAR* RecoveryId : { TEXT("same_engine"), TEXT("fresh_module") })
+		{
+			FString ReviewSource;
+			AppendGeneratedAsLine(
+				ReviewSource,
+				FString(UTF8_TO_TCHAR(InterfaceSource.c_str())));
+			AppendGeneratedAsLine(
+				ReviewSource,
+				TEXT("// corrected replacement"));
+			AppendGeneratedAsLine(
+				ReviewSource,
+				FString(UTF8_TO_TCHAR(RecoverySource.c_str())));
+			PrintGeneratedAsSource(
+				*TestRunner,
+				MakeNativeCaseId(
+					"COMPILER-BUILDER-FORK-DECLARATION-REJECTION",
+					{ TEXT("script_interface"), RecoveryId }),
+				TEXT("BuilderScriptInterfaceRejection"),
+				ReviewSource);
+		}
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*Module, "BuilderScriptInterfaceBoundary", InterfaceSource.c_str(), TEXT("ScriptInterfaceDeclarationFailsWithoutLeakingState.AddInterfaceSection")),
 			TEXT("Builder interface-boundary test should add the script section")));
 
@@ -385,7 +496,7 @@ public:
 		LogBuilderState(TEXT("ScriptInterfaceDeclarationFailsWithoutLeakingState.BuildParallelParseScripts.before"), *Builder, Module, true, false);
 		const int ParseResult = Builder->BuildParallelParseScripts();
 		LogBuilderStageResult(TEXT("ScriptInterfaceDeclarationFailsWithoutLeakingState.BuildParallelParseScripts.after"), ParseResult, *Builder, Module);
-		ReportBuilderFailureDiagnostics();
+		ReportBuilderFailureDiagnostics(Engine);
 		ASSERT_THAT(IsTrue(ParseResult < 0,
 			TEXT("Builder interface-boundary test should reject script-level interface declarations at parse time")));
 		ASSERT_THAT(IsTrue(Builder->numErrors > 0,
@@ -416,12 +527,171 @@ public:
 			TEXT("Builder interface-boundary test should report a positive diagnostic row")));
 		ASSERT_THAT(IsTrue(InterfaceMessage != nullptr && InterfaceMessage->Column > 0,
 			TEXT("Builder interface-boundary test should report a positive diagnostic column")));
+
+		ASSERT_THAT(AreEqual(
+			asSUCCESS,
+			ScriptEngine->DiscardModule(ModuleScope.Get()),
+			TEXT("Interface rejection recovery should discard the failed module")));
+		Engine.ResetMessages();
+		ASSERT_THAT(IsTrue(
+			BuildAndExecuteReplacement(
+				*TestRunner,
+				*ScriptEngine,
+				"BuilderScriptInterfaceBoundary",
+				"BuilderScriptInterfaceSameEngineRecovery.as",
+				RecoverySource.c_str(),
+				42),
+			TEXT("Interface rejection should recover through a corrected same-name module on the same engine")));
+		ASSERT_THAT(IsTrue(
+			BuildAndExecuteReplacement(
+				*TestRunner,
+				*ScriptEngine,
+				"BuilderScriptInterfaceFreshRecovery",
+				"BuilderScriptInterfaceFreshRecovery.as",
+				RecoverySource.c_str(),
+				42),
+			TEXT("Interface rejection should recover through a fresh module")));
+
+		const std::string MutableGlobalSource = ASTEST_AS_ANSI(R"AS(
+			int MutableCounter = 1;
+
+			int Entry()
+			{
+				return MutableCounter;
+			}
+			)AS");
+		for (const TCHAR* RecoveryId : { TEXT("same_engine"), TEXT("fresh_module") })
+		{
+			FString ReviewSource;
+			AppendGeneratedAsLine(
+				ReviewSource,
+				FString(UTF8_TO_TCHAR(MutableGlobalSource.c_str())));
+			AppendGeneratedAsLine(
+				ReviewSource,
+				TEXT("// corrected replacement"));
+			AppendGeneratedAsLine(
+				ReviewSource,
+				FString(UTF8_TO_TCHAR(RecoverySource.c_str())));
+			PrintGeneratedAsSource(
+				*TestRunner,
+				MakeNativeCaseId(
+					"COMPILER-BUILDER-FORK-DECLARATION-REJECTION",
+					{ TEXT("mutable_global"), RecoveryId }),
+				TEXT("BuilderMutableGlobalRejection"),
+				ReviewSource);
+		}
+
+		FScopedNativeModuleName MutableModuleScope(
+			Engine,
+			"BuilderMutableGlobalBoundary");
+		asCModule* const MutableModule =
+			CreateBuilderModule(ScriptEngine, MutableModuleScope.Get());
+		ASSERT_THAT(IsNotNull(
+			MutableModule,
+			TEXT("Mutable-global rejection should create an isolated builder module")));
+		ASSERT_THAT(IsTrue(
+			AddBuilderSectionWithLog(
+				*MutableModule,
+				"BuilderMutableGlobalBoundary.as",
+				MutableGlobalSource.c_str(),
+				TEXT("ForkDeclarationRejections.MutableGlobal.AddSection")),
+			TEXT("Mutable-global rejection should add its source")));
+		asCBuilder* const MutableBuilder =
+			MutableModule != nullptr ? MutableModule->builder : nullptr;
+		ASSERT_THAT(IsNotNull(
+			MutableBuilder,
+			TEXT("Mutable-global rejection should create a builder")));
+		if (MutableBuilder == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(
+			RunBuilderStage(
+				*MutableBuilder,
+				TEXT("ForkDeclarationRejections.MutableGlobal.Parse"),
+				&asCBuilder::BuildParallelParseScripts,
+				MutableModule),
+			TEXT("Mutable-global rejection source should parse")));
+		ASSERT_THAT(IsTrue(
+			RunBuilderStage(
+				*MutableBuilder,
+				TEXT("ForkDeclarationRejections.MutableGlobal.Types"),
+				&asCBuilder::BuildGenerateTypes,
+				MutableModule),
+			TEXT("Mutable-global rejection should reach function/global generation")));
+		Engine.ResetMessages();
+		const bool bMutableFunctionsGenerated = RunBuilderStage(
+			*MutableBuilder,
+			TEXT("ForkDeclarationRejections.MutableGlobal.Functions"),
+			&asCBuilder::BuildGenerateFunctions,
+			MutableModule);
+		ReportBuilderFailureDiagnostics(Engine);
+		ASSERT_THAT(IsFalse(
+			bMutableFunctionsGenerated,
+			TEXT("Current fork should reject mutable globals during function/global generation")));
+		ASSERT_THAT(IsTrue(
+			AssertBuilderDiagnostic(
+				*TestRunner,
+				Engine.GetMessages(),
+				FExpectedBuilderDiagnostic::Error(
+					TEXT("BuilderMutableGlobalBoundary.as"),
+					INDEX_NONE,
+					TEXT("Mutable global variables are not supported")),
+				TEXT("ForkDeclarationRejections.MutableGlobal.Diagnostic")),
+			TEXT("Mutable-global rejection should retain its exact fork diagnostic")));
+		asIScriptFunction* const RejectedEntry =
+			MutableModule->GetFunctionByDecl("int Entry()");
+		ASSERT_THAT(IsNotNull(
+			RejectedEntry,
+			TEXT("Mutable-global rejection should retain declaration metadata for diagnostics")));
+		ASSERT_THAT(IsFalse(
+			HasBytecode(RejectedEntry),
+			TEXT("Mutable-global rejection should not publish executable Entry bytecode")));
+
+		ASSERT_THAT(AreEqual(
+			asSUCCESS,
+			ScriptEngine->DiscardModule(MutableModuleScope.Get()),
+			TEXT("Mutable-global recovery should discard the failed module")));
+		Engine.ResetMessages();
+		ASSERT_THAT(IsTrue(
+			BuildAndExecuteReplacement(
+				*TestRunner,
+				*ScriptEngine,
+				"BuilderMutableGlobalBoundary",
+				"BuilderMutableGlobalSameEngineRecovery.as",
+				RecoverySource.c_str(),
+				42),
+			TEXT("Mutable-global rejection should recover through a corrected same-name module on the same engine")));
+		ASSERT_THAT(IsTrue(
+			BuildAndExecuteReplacement(
+				*TestRunner,
+				*ScriptEngine,
+				"BuilderMutableGlobalFreshRecovery",
+				"BuilderMutableGlobalFreshRecovery.as",
+				RecoverySource.c_str(),
+				42),
+			TEXT("Mutable-global rejection should recover through a fresh module")));
 	}
-	TEST_METHOD(DuplicateDeclarationsFailWithoutLeakingModuleState)
+	TEST_METHOD(DeclarationCollisionsFailAtomicallyAndRecover)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT("COMPILER-BUILDER-DECLARATION-COLLISION",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Runtime
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder duplicate-declaration test should create a standalone SDK engine")));
@@ -444,6 +714,11 @@ public:
 				return 42;
 			}
 			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-DECLARATION-COLLISION-CLASS-CLASS-SAME-NAME-REPLACEMENT"),
+			TEXT("BuilderClassCollision"),
+			FString(UTF8_TO_TCHAR(DuplicateDeclarationsSource.c_str())));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*Module, "BuilderDuplicateDeclarations", DuplicateDeclarationsSource.c_str(), TEXT("DuplicateDeclarationsFailWithoutLeakingModuleState.AddDuplicateSection")),
 			TEXT("Builder duplicate-declaration test should add the script section")));
 
@@ -458,7 +733,7 @@ public:
 		LogBuilderState(TEXT("DuplicateDeclarationsFailWithoutLeakingModuleState.BuildGenerateTypes.before"), *Builder, Module, true, false);
 		const int GenerateTypesResult = Builder->BuildGenerateTypes();
 		LogBuilderStageResult(TEXT("DuplicateDeclarationsFailWithoutLeakingModuleState.BuildGenerateTypes.after"), GenerateTypesResult, *Builder, Module);
-		ReportBuilderFailureDiagnostics();
+		ReportBuilderFailureDiagnostics(Engine);
 		ASSERT_THAT(IsTrue(GenerateTypesResult < 0,
 			TEXT("Builder duplicate-declaration test should reject duplicate class declarations during type generation")));
 		ASSERT_THAT(IsTrue(Builder->numErrors > 0,
@@ -481,6 +756,167 @@ public:
 			TEXT("Builder duplicate-declaration test should report a positive diagnostic row")));
 		ASSERT_THAT(IsTrue(DuplicateMessage != nullptr && DuplicateMessage->Column > 0,
 			TEXT("Builder duplicate-declaration test should report a positive diagnostic column")));
+
+		const std::string ReplacementSource = ASTEST_AS_ANSI(R"AS(
+			const int ReplacementValue = 42;
+
+			int Entry()
+			{
+				return ReplacementValue;
+			}
+			)AS");
+		ASSERT_THAT(AreEqual(
+			asSUCCESS,
+			ScriptEngine->DiscardModule(ModuleScope.Get()),
+			TEXT("Class collision recovery should discard the failed module")));
+		Engine.ResetMessages();
+		ASSERT_THAT(IsTrue(
+			BuildAndExecuteReplacement(
+				*TestRunner,
+				*ScriptEngine,
+				"BuilderDuplicateDeclarations",
+				"BuilderClassCollisionReplacement.as",
+				ReplacementSource.c_str(),
+				42),
+			TEXT("Class collision should accept a corrected same-name replacement")));
+
+		struct FCollisionCase
+		{
+			const TCHAR* PairId;
+			const char* ModuleName;
+			const char* SectionName;
+			const char* Source;
+			const TCHAR* DiagnosticContains;
+		};
+		const std::string FunctionCollisionSource = ASTEST_AS_ANSI(R"AS(
+			int DuplicateFunction(int Value)
+			{
+				return Value;
+			}
+
+			int DuplicateFunction(int Value)
+			{
+				return Value + 1;
+			}
+
+			int Entry()
+			{
+				return 42;
+			}
+			)AS");
+		const std::string GlobalCollisionSource = ASTEST_AS_ANSI(R"AS(
+			const int DuplicateGlobal = 1;
+			const int DuplicateGlobal = 2;
+
+			int Entry()
+			{
+				return 42;
+			}
+			)AS");
+		const FCollisionCase AdditionalCases[] =
+		{
+			{
+				TEXT("function_function"),
+				"BuilderFunctionCollision",
+				"BuilderFunctionCollision.as",
+				FunctionCollisionSource.c_str(),
+				TEXT("same name and parameters")
+			},
+			{
+				TEXT("global_global"),
+				"BuilderGlobalCollision",
+				"BuilderGlobalCollision.as",
+				GlobalCollisionSource.c_str(),
+				TEXT("Name conflict")
+			},
+		};
+		for (const FCollisionCase& Case : AdditionalCases)
+		{
+			PrintGeneratedAsSource(
+				*TestRunner,
+				MakeNativeCaseId(
+					"COMPILER-BUILDER-DECLARATION-COLLISION",
+					{ Case.PairId, TEXT("same_name_replacement") }),
+				TEXT("BuilderDeclarationCollision"),
+				FString(UTF8_TO_TCHAR(Case.Source)));
+
+			FScopedNativeModuleName CollisionModuleScope(Engine, Case.ModuleName);
+			asCModule* const CollisionModule =
+				CreateBuilderModule(ScriptEngine, CollisionModuleScope.Get());
+			ASSERT_THAT(IsNotNull(
+				CollisionModule,
+				TEXT("Declaration collision should create an isolated builder module")));
+			ASSERT_THAT(IsTrue(
+				AddBuilderSectionWithLog(
+					*CollisionModule,
+					Case.SectionName,
+					Case.Source,
+					TEXT("DeclarationCollisions.AddSection")),
+				TEXT("Declaration collision should add its source")));
+			asCBuilder* const CollisionBuilder =
+				CollisionModule != nullptr ? CollisionModule->builder : nullptr;
+			ASSERT_THAT(IsNotNull(
+				CollisionBuilder,
+				TEXT("Declaration collision should create a builder")));
+			if (CollisionBuilder == nullptr)
+			{
+				return;
+			}
+			ASSERT_THAT(IsTrue(
+				RunBuilderStage(
+					*CollisionBuilder,
+					TEXT("DeclarationCollisions.Parse"),
+					&asCBuilder::BuildParallelParseScripts,
+					CollisionModule),
+				TEXT("Duplicate functions/globals should remain syntactically parseable")));
+			ASSERT_THAT(IsTrue(
+				RunBuilderStage(
+					*CollisionBuilder,
+					TEXT("DeclarationCollisions.Types"),
+					&asCBuilder::BuildGenerateTypes,
+					CollisionModule),
+				TEXT("Duplicate functions/globals should reach function/global publication")));
+			Engine.ResetMessages();
+			const bool bGeneratedFunctions = RunBuilderStage(
+				*CollisionBuilder,
+				TEXT("DeclarationCollisions.Functions"),
+				&asCBuilder::BuildGenerateFunctions,
+				CollisionModule);
+			ReportBuilderFailureDiagnostics(Engine);
+			ASSERT_THAT(IsFalse(
+				bGeneratedFunctions,
+				TEXT("Duplicate functions/globals should fail atomically during function/global publication")));
+			ASSERT_THAT(IsTrue(
+				AssertBuilderDiagnostic(
+					*TestRunner,
+					Engine.GetMessages(),
+					FExpectedBuilderDiagnostic::Error(
+						UTF8_TO_TCHAR(Case.SectionName),
+						INDEX_NONE,
+						Case.DiagnosticContains),
+					TEXT("DeclarationCollisions.Diagnostic")),
+				TEXT("Declaration collision should report its owning section and symbol conflict")));
+			asIScriptFunction* const CollisionEntry =
+				CollisionModule->GetFunctionByDecl("int Entry()");
+			ASSERT_THAT(IsTrue(
+				CollisionEntry == nullptr || !HasBytecode(CollisionEntry),
+				TEXT("Declaration collision should publish no executable downstream Entry")));
+
+			ASSERT_THAT(AreEqual(
+				asSUCCESS,
+				ScriptEngine->DiscardModule(CollisionModuleScope.Get()),
+				TEXT("Declaration collision recovery should discard the failed module")));
+			Engine.ResetMessages();
+			ASSERT_THAT(IsTrue(
+				BuildAndExecuteReplacement(
+					*TestRunner,
+					*ScriptEngine,
+					Case.ModuleName,
+					"BuilderDeclarationCollisionReplacement.as",
+					ReplacementSource.c_str(),
+					42),
+				TEXT("Declaration collision should accept a corrected same-name replacement")));
+		}
 	}
 };
 

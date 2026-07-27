@@ -1,7 +1,9 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 // Core tokenizer behavior coverage.
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_tokenizer.h"
@@ -18,6 +20,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerCoreTests,
 {
 	TEST_METHOD(TokenizerCoreBasicTokens)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained cross-family tokenizer smoke; the FRONTEND-TOKEN-NUMERIC, TEXT, OPERATOR, and TAXONOMY products own complete family contracts.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -25,6 +30,32 @@ TEST_CLASS_WITH_FLAGS(FTokenizerCoreTests,
 			TEXT("Identifier token type should be recognized")));
 		ASSERT_THAT(AreEqual(13, static_cast<int32>(TokenLength),
 			TEXT("Identifier token length should be returned")));
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+		asIScriptEngine* const ScriptEngine = Engine.Get();
+		ASSERT_THAT(IsNotNull(
+			ScriptEngine,
+			TEXT("Public tokenizer contract should create a raw SDK engine")));
+		if (ScriptEngine != nullptr)
+		{
+			asUINT PublicTokenLength = 0;
+			ASSERT_THAT(AreEqual(
+				static_cast<int32>(asTC_IDENTIFIER),
+				static_cast<int32>(ScriptEngine->ParseToken(
+					"Identifier123",
+					13,
+					&PublicTokenLength)),
+				TEXT("asIScriptEngine ParseToken should publish the identifier token class")));
+			ASSERT_THAT(AreEqual(
+				13,
+				static_cast<int32>(PublicTokenLength),
+				TEXT("asIScriptEngine ParseToken should publish the exact consumed length")));
+		}
 
 		ASSERT_THAT(AreEqual(static_cast<int32>(ttIntConstant), static_cast<int32>(Tokenizer.GetToken("12345", 5, &TokenLength)),
 			TEXT("Integer literal token type should be recognized")));
@@ -44,6 +75,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerCoreTests,
 
 	TEST_METHOD(TokenizerCoreKeywords)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained representative keyword smoke; FRONTEND-TOKEN-TAXONOMY-ACTIVE-KEYWORDS owns all active keyword spellings and identifier boundaries.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -59,6 +93,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerCoreTests,
 
 	TEST_METHOD(CommentsAndStrings)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained comment/string smoke; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF and FRONTEND-TOKEN-TEXT-ESCAPE-LINE-ENDINGS own complete boundaries.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -72,6 +109,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerCoreTests,
 
 	TEST_METHOD(TokenizerCoreErrorRecovery)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained error token smoke; FRONTEND-TOKEN-TEXT-COMMENT-WHITESPACE-BOUNDARIES and malformed-recovery products own located token recovery.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -83,6 +123,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerCoreTests,
 
 	TEST_METHOD(ErrorRecoveryAdvancesAndContinues)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained invalid-character continuation smoke; FRONTEND-TOKEN-OPERATOR-MALFORMED-RECOVERY owns malformed prefix and following-token recovery.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const char* Input = "`class";
@@ -106,6 +149,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerCoreTests,
 
 	TEST_METHOD(LiteralAndPunctuationTokensHaveExpectedKinds)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained representative literal/punctuation smoke; numeric, text, operator, and token-definition products own complete published kinds.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -139,6 +185,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerCoreTests,
 
 	TEST_METHOD(UnterminatedBlockCommentAndEscapes)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained comment/string boundary smoke; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF and FRONTEND-TOKEN-TEXT-ESCAPE-LINE-ENDINGS own full termination and escape contracts.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 

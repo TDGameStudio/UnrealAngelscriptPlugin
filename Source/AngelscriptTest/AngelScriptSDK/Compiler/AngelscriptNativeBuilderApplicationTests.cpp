@@ -1,9 +1,11 @@
 #include "Support/AngelscriptNativeBuilderTestSupport.h"
+#include "Support/AngelscriptNativeLanguageCaseTestSupport.h"
 
 // Builder application-interface coverage.
 #include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_scriptfunction.h"
@@ -43,84 +45,350 @@ namespace AngelscriptBuilderAppInterfaceTest
 	};
 }
 
-TEST_CLASS_WITH_FLAGS(FBuilderApplicationTests,
-	"Angelscript.TestModule.AngelScriptSDK.Compiler.Builder.AppInterface",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+template <typename TDerived, typename TAsserter>
+class TBuilderApplicationTestSupport : public TTest<TDerived, TAsserter>
 {
-public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
+protected:
+	struct FScalarTypeCase
 	{
-		Engine.Create(*TestRunner);
-	}
+		const TCHAR* Id;
+		const ANSICHAR* Declaration;
+		int32 TypeId;
+	};
 
-	AFTER_ALL()
+	struct FParameterShapeCase
 	{
-		Engine.Destroy();
-	}
+		const TCHAR* Id;
+		const ANSICHAR* Declaration;
+		int32 ParameterCount;
+		int32 DefaultParameterIndex;
+		const ANSICHAR* DefaultArgument;
+	};
 
-	BEFORE_EACH()
+	struct FNamespaceCase
 	{
-		Engine.ResetMessages();
-	}
+		const TCHAR* Id;
+		const ANSICHAR* Name;
+	};
 
-	TEST_METHOD(ParseDataTypeResolvesPrimitiveAndScriptClass)
+	struct FQualifierCase
+	{
+		const TCHAR* Id;
+		const ANSICHAR* Prefix;
+		bool bReadOnly;
+	};
+
+	template <typename FCellBody>
+	static bool RunIsolatedBuilderModuleCell(
+		FAutomationTestBase& Test,
+		AngelscriptNativeTestSupport::FNativeTestEngine& CaseEngine,
+		AngelscriptNativeTestSupport::FNativeTestEngine& ControlEngine,
+		const FString& CaseId,
+		const ANSICHAR* ModuleName,
+		FCellBody CellBody)
 	{
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 
-		asIScriptEngine* ScriptEngine = Engine.Get();
-		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface data type test should create a standalone SDK engine")));
+		FNoDiscardAsserter Assertions(Test);
+		asIScriptEngine* const ScriptEngine = CaseEngine.Get();
+		asIScriptEngine* const ControlScriptEngine = ControlEngine.Get();
+		if (!Assertions.IsNotNull(
+				ScriptEngine,
+				*FString::Printf(TEXT("%s should retain its raw SDK engine"), *CaseId))
+			|| !Assertions.IsNotNull(
+				ControlScriptEngine,
+				*FString::Printf(TEXT("%s should retain its independent control engine"), *CaseId)))
+		{
+			return false;
+		}
 
-		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceDataType");
-		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
-		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface data type test should create a module")));
+		(void)Assertions.IsNull(
+			ScriptEngine->GetModule(ModuleName, asGM_ONLY_IF_EXISTS),
+			*FString::Printf(TEXT("%s should begin without a stale case module"), *CaseId));
+		(void)Assertions.IsNull(
+			ControlScriptEngine->GetModule(ModuleName, asGM_ONLY_IF_EXISTS),
+			*FString::Printf(TEXT("%s should begin without a stale control module"), *CaseId));
 
-		const std::string Source = ASTEST_AS_ANSI(R"AS(
-			namespace BuilderApp
+		asCModule* const ControlModule = CreateBuilderModule(
+			ControlScriptEngine,
+			ModuleName);
+		asCModule* const Module = CreateBuilderModule(
+			ScriptEngine,
+			ModuleName);
+		const bool bControlModuleValid = Assertions.IsNotNull(
+			ControlModule,
+			*FString::Printf(TEXT("%s should create its independent control module"), *CaseId));
+		const bool bModuleValid = Assertions.IsNotNull(
+			Module,
+			*FString::Printf(TEXT("%s should create its case module"), *CaseId));
+		(void)Assertions.IsTrue(
+			Module != ControlModule,
+			*FString::Printf(TEXT("%s should keep case and control module identities independent"), *CaseId));
+
+		if (bControlModuleValid && bModuleValid)
+		{
+			CellBody(ScriptEngine, Module);
+			(void)Assertions.IsTrue(
+				ControlScriptEngine->GetModule(ModuleName, asGM_ONLY_IF_EXISTS)
+					== ControlModule,
+				*FString::Printf(TEXT("%s should not replace its independent control module"), *CaseId));
+		}
+
+		(void)Assertions.IsTrue(
+			ScriptEngine->DiscardModule(ModuleName) == asSUCCESS,
+			*FString::Printf(TEXT("%s should explicitly discard its case module"), *CaseId));
+		(void)Assertions.IsNull(
+			ScriptEngine->GetModule(ModuleName, asGM_ONLY_IF_EXISTS),
+			*FString::Printf(TEXT("%s should leave no case module after discard"), *CaseId));
+		(void)Assertions.IsTrue(
+			ControlScriptEngine->DiscardModule(ModuleName) == asSUCCESS,
+			*FString::Printf(TEXT("%s should explicitly discard its control module"), *CaseId));
+		(void)Assertions.IsNull(
+			ControlScriptEngine->GetModule(ModuleName, asGM_ONLY_IF_EXISTS),
+			*FString::Printf(TEXT("%s should leave no control module after discard"), *CaseId));
+		return bControlModuleValid && bModuleValid;
+	}
+};
+
+TEST_CLASS_WITH_BASE_AND_FLAGS(FBuilderApplicationTests,
+	"Angelscript.TestModule.AngelScriptSDK.Compiler.Builder.AppInterface",
+	TBuilderApplicationTestSupport,
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+public:
+	TEST_METHOD(FunctionDeclarationsByReturnParameterTraitAndNamespace)
+	{
+		AngelscriptNativeTestSupport::FNativeTestEngine ControlEngine;
+		ControlEngine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			ControlEngine.Destroy();
+		};
+
+		using namespace AngelscriptBuilderTestSupport;
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_PRODUCT("COMPILER-BUILDER-FUNCTION-DECLARATION",
+			ENativeEvidence::Compile
+			| ENativeEvidence::Metadata
+			| ENativeEvidence::Cleanup
+			| ENativeEvidence::Isolation);
+
+		const FScalarTypeCase ReturnTypes[] =
+		{
+			{ TEXT("int"), "int", asTYPEID_INT32 },
+			{ TEXT("bool"), "bool", asTYPEID_BOOL },
+			{ TEXT("float64"), "float64", asTYPEID_FLOAT64 },
+		};
+		const FParameterShapeCase ParameterShapes[] =
+		{
+			{ TEXT("none"), "()", 0, INDEX_NONE, nullptr },
+			{ TEXT("single"), "(int A)", 1, INDEX_NONE, nullptr },
+			{ TEXT("default"), "(const int A, int B = 7)", 2, 1, "7" },
+			{ TEXT("directions"), "(int& in A, int& out B, int& inout C)", 3, INDEX_NONE, nullptr },
+		};
+		const FQualifierCase Traits[] =
+		{
+			{ TEXT("plain"), "", false },
+			{ TEXT("no_discard"), " no_discard", true },
+		};
+		const FNamespaceCase Namespaces[] =
+		{
+			{ TEXT("global"), "" },
+			{ TEXT("named"), "BuilderFunctionDepth" },
+		};
+
+		FNativeTestEngine CaseEngine;
+		CaseEngine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			CaseEngine.Destroy();
+		};
+		int32 ObservedCaseCount = 0;
+		for (const FScalarTypeCase& ReturnType : ReturnTypes)
+		{
+			for (const FParameterShapeCase& Parameters : ParameterShapes)
 			{
-				class Carrier
+				for (const FQualifierCase& Trait : Traits)
 				{
-					int Value;
+					for (const FNamespaceCase& NamespaceCase : Namespaces)
+					{
+						const FString CaseId = MakeNativeCaseId(
+							"COMPILER-BUILDER-FUNCTION-DECLARATION",
+							{ ReturnType.Id, Parameters.Id, Trait.Id, NamespaceCase.Id });
+						const FString Declaration = FString::Printf(
+							TEXT("%hs Probe%hs%hs"),
+							ReturnType.Declaration,
+							Parameters.Declaration,
+							Trait.Prefix);
+						FString ReviewSource;
+						AppendGeneratedAsLine(
+							ReviewSource,
+							NamespaceCase.Name[0] != '\0'
+								? FString::Printf(TEXT("namespace %hs"), NamespaceCase.Name)
+								: TEXT("// global namespace"));
+						if (NamespaceCase.Name[0] != '\0')
+						{
+							AppendGeneratedAsLine(ReviewSource, TEXT("{"));
+							AppendGeneratedAsLine(
+								ReviewSource,
+								FString::Printf(TEXT("\t%s;"), *Declaration));
+							AppendGeneratedAsLine(ReviewSource, TEXT("}"));
+						}
+						else
+						{
+							AppendGeneratedAsLine(
+								ReviewSource,
+								FString::Printf(TEXT("%s;"), *Declaration));
+						}
+						PrintGeneratedAsSource(
+							*TestRunner,
+							CaseId,
+							TEXT("CompilerBuilderFunctionDeclarationDepth"),
+							ReviewSource);
+
+						bool bCellObserved = false;
+						const bool bCellExecuted = RunIsolatedBuilderModuleCell(
+							*TestRunner,
+							CaseEngine,
+							ControlEngine,
+							CaseId,
+							"CompilerBuilderFunctionDeclarationDepth",
+							[&](asIScriptEngine* ScriptEngine, asCModule* Module)
+							{
+								asCBuilder Builder(
+									static_cast<asCScriptEngine*>(ScriptEngine),
+									Module);
+								asSNameSpace* const Namespace = NamespaceCase.Name[0] != '\0'
+									? static_cast<asCScriptEngine*>(ScriptEngine)->AddNameSpace(NamespaceCase.Name)
+									: Module->defaultNamespace;
+								ASSERT_THAT(IsNotNull(
+									Namespace,
+									*FString::Printf(TEXT("%s should resolve its declaration namespace"), *CaseId)));
+
+								AngelscriptBuilderAppInterfaceTest::FScopedScriptFunction Function(
+									static_cast<asCScriptEngine*>(ScriptEngine),
+									Module);
+								const FTCHARToUTF8 DeclarationUtf8(*Declaration);
+								const int32 ParseResult = Builder.ParseFunctionDeclaration(
+									nullptr,
+									DeclarationUtf8.Get(),
+									Function.Get(),
+									false,
+									nullptr,
+									nullptr,
+									Namespace);
+								ASSERT_THAT(AreEqual(
+									0,
+									ParseResult,
+									*FString::Printf(TEXT("%s should parse the complete function declaration"), *CaseId)));
+								if (ParseResult < 0)
+								{
+									const FString Diagnostics = CaseEngine.GetMessagesText();
+									if (!Diagnostics.IsEmpty())
+									{
+										TestRunner->AddInfo(FString::Printf(
+											TEXT("%s diagnostics:\n%s"),
+											*CaseId,
+											*Diagnostics));
+									}
+									return;
+								}
+
+								ASSERT_THAT(AreEqual(
+									ReturnType.TypeId,
+									Function.Get()->GetReturnTypeId(),
+									*FString::Printf(TEXT("%s should preserve the return type"), *CaseId)));
+								ASSERT_THAT(AreEqual(
+									Parameters.ParameterCount,
+									static_cast<int32>(Function.Get()->GetParamCount()),
+									*FString::Printf(TEXT("%s should preserve the parameter count"), *CaseId)));
+								ASSERT_THAT(AreEqual(
+									Trait.bReadOnly,
+									Function.Get()->traits.GetTrait(asTRAIT_NODISCARD),
+									*FString::Printf(TEXT("%s should preserve the no_discard trait state"), *CaseId)));
+								ASSERT_THAT(AreEqual(
+									FString(UTF8_TO_TCHAR(NamespaceCase.Name)),
+									FString(UTF8_TO_TCHAR(Function.Get()->GetNamespace())),
+									*FString::Printf(TEXT("%s should preserve the namespace"), *CaseId)));
+
+								for (int32 ParameterIndex = 0;
+									ParameterIndex < Parameters.ParameterCount;
+									++ParameterIndex)
+								{
+									int32 TypeId = asINVALID_TYPE;
+									asDWORD Flags = 0;
+									const char* Name = nullptr;
+									const char* DefaultArgument = nullptr;
+									ASSERT_THAT(AreEqual(
+										0,
+										Function.Get()->GetParam(
+											static_cast<asUINT>(ParameterIndex),
+											&TypeId,
+											&Flags,
+											&Name,
+											&DefaultArgument),
+										*FString::Printf(
+											TEXT("%s should expose parameter %d"),
+											*CaseId,
+											ParameterIndex)));
+									ASSERT_THAT(AreEqual(
+										asTYPEID_INT32,
+										TypeId,
+										*FString::Printf(
+											TEXT("%s should retain int parameter %d"),
+											*CaseId,
+											ParameterIndex)));
+									if (ParameterIndex == Parameters.DefaultParameterIndex)
+									{
+										ASSERT_THAT(AreEqual(
+											FString(UTF8_TO_TCHAR(Parameters.DefaultArgument)),
+											FString(UTF8_TO_TCHAR(DefaultArgument)),
+											*FString::Printf(
+												TEXT("%s should preserve the default argument"),
+												*CaseId)));
+									}
+									else
+									{
+										ASSERT_THAT(IsNull(
+											DefaultArgument,
+											*FString::Printf(
+												TEXT("%s should not synthesize a default argument for parameter %d"),
+												*CaseId,
+												ParameterIndex)));
+									}
+								}
+								bCellObserved = true;
+							});
+
+						ObservedCaseCount += bCellExecuted && bCellObserved ? 1 : 0;
+					}
 				}
 			}
-			)AS");
-		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*TestRunner, *Module, "BuilderAppInterfaceDataType.as", Source.c_str(), TEXT("AppInterfaceDataType.AddSection")),
-			TEXT("Builder app-interface data type test should add the script section")));
-		ASSERT_THAT(IsNotNull(Module->builder, TEXT("Builder app-interface data type test should create a builder")));
-		ASSERT_THAT(IsTrue(RunBuilderStage(*TestRunner, *Module->builder, TEXT("AppInterfaceDataType.BuildParallelParseScripts"), &asCBuilder::BuildParallelParseScripts, Module),
-			TEXT("Builder app-interface data type test should parse the class section")));
-		ASSERT_THAT(IsTrue(RunBuilderStage(*TestRunner, *Module->builder, TEXT("AppInterfaceDataType.BuildGenerateTypes"), &asCBuilder::BuildGenerateTypes, Module),
-			TEXT("Builder app-interface data type test should generate class type metadata")));
+		}
 
-		asCBuilder StandaloneBuilder(static_cast<asCScriptEngine*>(ScriptEngine), Module);
-
-		asCDataType IntType;
-		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS),
-			StandaloneBuilder.ParseDataType("const int", &IntType, Module->defaultNamespace),
-			TEXT("Builder app-interface data type test should parse const int")));
-		ASSERT_THAT(IsTrue(IntType.IsIntegerType(), TEXT("Builder app-interface data type test should resolve int as integer")));
-		ASSERT_THAT(IsTrue(IntType.IsReadOnly(), TEXT("Builder app-interface data type test should preserve const on primitive type")));
-		ASSERT_THAT(AreEqual(asTYPEID_INT32, static_cast<asCScriptEngine*>(ScriptEngine)->GetTypeIdFromDataType(IntType),
-			TEXT("Builder app-interface data type test should map int to the engine int32 type id")));
-
-		asCDataType ClassType;
-		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS),
-			StandaloneBuilder.ParseDataType("BuilderApp::Carrier", &ClassType, Module->defaultNamespace),
-			TEXT("Builder app-interface data type test should parse namespaced script class")));
-		ASSERT_THAT(IsTrue(ClassType.IsObject(), TEXT("Builder app-interface data type test should resolve script class as object type")));
-		ASSERT_THAT(IsNotNull(ClassType.GetTypeInfo(), TEXT("Builder app-interface data type test should attach script class type info")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Carrier")), FString(UTF8_TO_TCHAR(ClassType.GetTypeInfo()->GetName())),
-			TEXT("Builder app-interface data type test should resolve the expected class name")));
-		ASSERT_THAT(AreEqual(FString(TEXT("BuilderApp")), FString(UTF8_TO_TCHAR(ClassType.GetTypeInfo()->GetNamespace())),
-			TEXT("Builder app-interface data type test should resolve the expected namespace")));
+		ASSERT_THAT(AreEqual(
+			48,
+			ObservedCaseCount,
+			TEXT("Return type × parameter shape × trait × namespace should execute every function-declaration cell")));
 	}
 
 	TEST_METHOD(ParseFunctionDeclarationPreservesParamsDefaultsAndTraits)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"Retained representative function-declaration smoke; COMPILER-BUILDER-FUNCTION-DECLARATION owns return, parameter, trait, and namespace combinations.");
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface function test should create a standalone SDK engine")));
@@ -174,110 +442,6 @@ public:
 			TEXT("Builder app-interface function test should preserve second parameter name")));
 		ASSERT_THAT(AreEqual(FString(TEXT("7")), FString(UTF8_TO_TCHAR(SecondDefaultArg)),
 			TEXT("Builder app-interface function test should preserve cleaned default argument")));
-	}
-
-	TEST_METHOD(ParseVariableDeclarationExtractsNamespaceNameAndType)
-	{
-		using namespace AngelscriptBuilderTestSupport;
-		using namespace AngelscriptNativeTestSupport;
-
-		asIScriptEngine* ScriptEngine = Engine.Get();
-		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface variable test should create a standalone SDK engine")));
-
-		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceVariable");
-		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
-		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface variable test should create a module")));
-
-		asCBuilder Builder(static_cast<asCScriptEngine*>(ScriptEngine), Module);
-		asSNameSpace* BuilderNamespace = static_cast<asCScriptEngine*>(ScriptEngine)->AddNameSpace("BuilderVars");
-		ASSERT_THAT(IsNotNull(BuilderNamespace, TEXT("Builder app-interface variable test should create implicit namespace")));
-		asCString Name;
-		asSNameSpace* Namespace = nullptr;
-		asCDataType Type;
-
-		const int ParseResult = Builder.ParseVariableDeclaration("const int Value", BuilderNamespace, Name, Namespace, Type);
-		ASSERT_THAT(AreEqual(0, ParseResult, TEXT("Builder app-interface variable test should parse namespaced variable declaration")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Value")), FString(UTF8_TO_TCHAR(Name.AddressOf())),
-			TEXT("Builder app-interface variable test should extract variable name")));
-		ASSERT_THAT(IsNotNull(Namespace, TEXT("Builder app-interface variable test should resolve variable namespace")));
-		ASSERT_THAT(AreEqual(FString(TEXT("BuilderVars")), FString(UTF8_TO_TCHAR(Namespace->name.AddressOf())),
-			TEXT("Builder app-interface variable test should extract namespace")));
-		ASSERT_THAT(IsTrue(Type.IsIntegerType(), TEXT("Builder app-interface variable test should resolve int variable type")));
-		ASSERT_THAT(IsTrue(Type.IsReadOnly(), TEXT("Builder app-interface variable test should preserve const variable type")));
-	}
-
-	TEST_METHOD(ParseTemplateDeclSplitsNameAndSubtypeIdentifiers)
-	{
-		using namespace AngelscriptBuilderTestSupport;
-		using namespace AngelscriptNativeTestSupport;
-
-		asIScriptEngine* ScriptEngine = Engine.Get();
-		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface template test should create a standalone SDK engine")));
-
-		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceTemplate");
-		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
-		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface template test should create a module")));
-
-		asCBuilder Builder(static_cast<asCScriptEngine*>(ScriptEngine), Module);
-		asCString TemplateName;
-		asCArray<asCString> SubtypeNames;
-
-		const int ParseResult = Builder.ParseTemplateDecl("map<KeyType, ValueType>", &TemplateName, SubtypeNames);
-		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), ParseResult, TEXT("Builder app-interface template test should parse template declaration")));
-		ASSERT_THAT(AreEqual(FString(TEXT("map")), FString(UTF8_TO_TCHAR(TemplateName.AddressOf())),
-			TEXT("Builder app-interface template test should extract template name")));
-		ASSERT_THAT(AreEqual(2, static_cast<int32>(SubtypeNames.GetLength()),
-			TEXT("Builder app-interface template test should extract subtype count")));
-		ASSERT_THAT(AreEqual(FString(TEXT("KeyType")), FString(UTF8_TO_TCHAR(SubtypeNames[0].AddressOf())),
-			TEXT("Builder app-interface template test should preserve first subtype text")));
-		ASSERT_THAT(AreEqual(FString(TEXT("ValueType")), FString(UTF8_TO_TCHAR(SubtypeNames[1].AddressOf())),
-			TEXT("Builder app-interface template test should preserve second subtype text")));
-	}
-
-	TEST_METHOD(VerifyPropertyAcceptsValidDeclarationAndRejectsNameConflict)
-	{
-		using namespace AngelscriptBuilderTestSupport;
-		using namespace AngelscriptNativeTestSupport;
-
-		asIScriptEngine* ScriptEngine = Engine.Get();
-		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder app-interface property test should create a standalone SDK engine")));
-
-		const int TypeResult = ScriptEngine->RegisterObjectType("BuilderNativeCarrier", 4, asOBJ_VALUE | asOBJ_POD | asOBJ_APP_PRIMITIVE);
-		ASSERT_THAT(IsTrue(TypeResult >= 0 || TypeResult == asALREADY_REGISTERED,
-			TEXT("Builder app-interface property test should register native carrier type")));
-		const int PropertyResult = ScriptEngine->RegisterObjectProperty("BuilderNativeCarrier", "int Existing", 0);
-		ASSERT_THAT(IsTrue(PropertyResult >= 0 || PropertyResult == asALREADY_REGISTERED,
-			TEXT("Builder app-interface property test should register existing property")));
-
-		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderAppInterfaceProperty");
-		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
-		ASSERT_THAT(IsNotNull(Module, TEXT("Builder app-interface property test should create a module")));
-
-		asCBuilder Builder(static_cast<asCScriptEngine*>(ScriptEngine), Module);
-		asCDataType ObjectType;
-		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS),
-			Builder.ParseDataType("BuilderNativeCarrier", &ObjectType, Module->defaultNamespace, false, true),
-			TEXT("Builder app-interface property test should parse native carrier type")));
-
-		asCString PropertyName;
-		asCDataType PropertyType;
-		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS),
-			Builder.VerifyProperty(&ObjectType, "const int Added", PropertyName, PropertyType, nullptr),
-			TEXT("Builder app-interface property test should accept a new property declaration")));
-		ASSERT_THAT(AreEqual(FString(TEXT("Added")), FString(UTF8_TO_TCHAR(PropertyName.AddressOf())),
-			TEXT("Builder app-interface property test should extract property name")));
-		ASSERT_THAT(IsTrue(PropertyType.IsIntegerType(), TEXT("Builder app-interface property test should resolve property type")));
-		ASSERT_THAT(IsTrue(PropertyType.IsReadOnly(), TEXT("Builder app-interface property test should preserve const property type")));
-
-		asCString ConflictingName;
-		asCDataType ConflictingType;
-		const int ConflictResult = Builder.VerifyProperty(&ObjectType, "int Existing", ConflictingName, ConflictingType, nullptr);
-		ASSERT_THAT(AreEqual(static_cast<int32>(asNAME_TAKEN), ConflictResult,
-			TEXT("Builder app-interface property test should reject a property name conflict")));
-		ASSERT_THAT(IsTrue(AssertBuilderDiagnostic(*TestRunner, Engine.GetMessages(),
-			AngelscriptBuilderTestSupport::FExpectedBuilderDiagnostic::Error(TEXT("Property"), INDEX_NONE, TEXT("Name conflict. 'Existing' is an object property.")),
-			TEXT("VerifyProperty.NameConflict")),
-			TEXT("Builder app-interface property test should report the property name conflict")));
 	}
 };
 

@@ -1,4 +1,5 @@
 #include "Support/AngelscriptNativeCoreTestSupport.h"
+#include "Support/AngelscriptNativeCaseTestSupport.h"
 
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
@@ -20,9 +21,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerDiagnosticTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained single syntax-error smoke; COMPILER-BUILDER-SHAPE-FAILURE owns syntax rejection, staged diagnostics, and executable-publication exclusion.");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
-		ON_SCOPE_EXIT { Engine.Destroy(); };
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiler diagnostic syntax-error test should create a standalone SDK engine")));
@@ -40,9 +47,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerDiagnosticTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained diagnostic rendering smoke; COMPILER-BUILDER-SHAPE-FAILURE owns generated malformed inputs and retained diagnostic evidence.");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
-		ON_SCOPE_EXIT { Engine.Destroy(); };
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiler diagnostic error-message test should create a standalone SDK engine")));
@@ -74,9 +87,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerDiagnosticTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained undefined-symbol error smoke; COMPILER-BUILDER-SHAPE-FAILURE owns missing-symbol rejection and diagnostic publication.");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
-		ON_SCOPE_EXIT { Engine.Destroy(); };
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiler diagnostic error test should create a standalone engine")));
 
@@ -90,9 +109,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerDiagnosticTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained multiple-error collector smoke; COMPILER-BUILDER-SHAPE-FAILURE owns staged rejection while this method remains a compatibility guard for collector multiplicity.");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
-		ON_SCOPE_EXIT { Engine.Destroy(); };
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiler multiple-errors test should create a standalone engine")));
 
@@ -106,9 +131,15 @@ TEST_CLASS_WITH_FLAGS(FCompilerDiagnosticTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained type-mismatch diagnostic smoke; COMPILER-BUILDER-SHAPE-FAILURE owns type-stage rejection and diagnostic retention.");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
-		ON_SCOPE_EXIT { Engine.Destroy(); };
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asIScriptEngine* const ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Compiler type-mismatch test should create a standalone engine")));
 		ASSERT_THAT(IsTrue(ScriptEngine->RegisterGlobalFunction("void DoNothing()", asFUNCTION(CompilerDiagnosticTest::VoidHelper), asCALL_CDECL) >= 0,

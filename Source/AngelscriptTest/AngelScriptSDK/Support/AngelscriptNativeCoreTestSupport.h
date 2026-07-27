@@ -127,6 +127,63 @@ namespace AngelscriptNativeTestSupport
 		return Result.IsEmpty() ? TEXT("<no functions>") : Result;
 	}
 
+	inline FString CollectGlobalFunctionDeclarations(asIScriptEngine* ScriptEngine)
+	{
+		if (ScriptEngine == nullptr)
+		{
+			return TEXT("<null engine>");
+		}
+
+		FString Result;
+		const asUINT FunctionCount = ScriptEngine->GetGlobalFunctionCount();
+		for (asUINT FunctionIndex = 0;
+			FunctionIndex < FunctionCount;
+			++FunctionIndex)
+		{
+			asIScriptFunction* const Function =
+				ScriptEngine->GetGlobalFunctionByIndex(FunctionIndex);
+			if (Function == nullptr)
+			{
+				continue;
+			}
+
+			if (!Result.IsEmpty())
+			{
+				Result += TEXT(", ");
+			}
+
+			Result += UTF8_TO_TCHAR(Function->GetDeclaration());
+		}
+
+		return Result.IsEmpty() ? TEXT("<no global functions>") : Result;
+	}
+
+	inline asIScriptFunction* GetNativeGlobalFunctionByPublishedDeclaration(
+		asIScriptEngine* ScriptEngine,
+		const ANSICHAR* Declaration)
+	{
+		if (ScriptEngine == nullptr || Declaration == nullptr)
+		{
+			return nullptr;
+		}
+
+		const asUINT FunctionCount = ScriptEngine->GetGlobalFunctionCount();
+		for (asUINT FunctionIndex = 0;
+			FunctionIndex < FunctionCount;
+			++FunctionIndex)
+		{
+			asIScriptFunction* const Function =
+				ScriptEngine->GetGlobalFunctionByIndex(FunctionIndex);
+			if (Function != nullptr
+				&& FCStringAnsi::Strcmp(Function->GetDeclaration(), Declaration) == 0)
+			{
+				return Function;
+			}
+		}
+
+		return nullptr;
+	}
+
 	class FMemoryBinaryStream final : public asIBinaryStream
 	{
 	public:
@@ -593,11 +650,7 @@ namespace AngelscriptNativeTestSupport
 
 		~FScopedNativeModule()
 		{
-			asIScriptEngine* const ScriptEngine = Engine.Get();
-			if (ScriptEngine != nullptr && !ModuleName.empty())
-			{
-				ScriptEngine->DiscardModule(ModuleName.c_str());
-			}
+			Discard();
 		}
 
 		FScopedNativeModule(const FScopedNativeModule&) = delete;
@@ -626,6 +679,27 @@ namespace AngelscriptNativeTestSupport
 		const char* GetModuleName() const
 		{
 			return ModuleName.c_str();
+		}
+
+		int Discard()
+		{
+			asIScriptEngine* const ScriptEngine = Engine.Get();
+			if (ScriptEngine == nullptr || ModuleName.empty())
+			{
+				return asERROR;
+			}
+
+			if (Module == nullptr)
+			{
+				return asSUCCESS;
+			}
+
+			const int Result = ScriptEngine->DiscardModule(ModuleName.c_str());
+			if (Result >= 0)
+			{
+				Module = nullptr;
+			}
+			return Result;
 		}
 
 	private:
@@ -687,7 +761,16 @@ namespace AngelscriptNativeTestSupport
 		for (asUINT FunctionIndex = 0; FunctionIndex < Module->GetFunctionCount(); ++FunctionIndex)
 		{
 			asIScriptFunction* const Candidate = Module->GetFunctionByIndex(FunctionIndex);
-			if (Candidate == nullptr || FCStringAnsi::Strcmp(Candidate->GetDeclaration(), Declaration) != 0)
+			if (Candidate == nullptr)
+			{
+				continue;
+			}
+
+			const bool bMatchesUnqualified =
+				FCStringAnsi::Strcmp(Candidate->GetDeclaration(), Declaration) == 0;
+			const bool bMatchesQualified =
+				FCStringAnsi::Strcmp(Candidate->GetDeclaration(true, true, false), Declaration) == 0;
+			if (!bMatchesUnqualified && !bMatchesQualified)
 			{
 				continue;
 			}
@@ -705,6 +788,55 @@ namespace AngelscriptNativeTestSupport
 	inline asIScriptFunction* GetNativeFunctionByExactDecl(asIScriptModule* Module, const char* Declaration)
 	{
 		return GetNativeFunctionByDecl(Module, Declaration);
+	}
+
+	inline asIScriptFunction* GetNativeMethodByDecl(asITypeInfo* Type, const char* Declaration)
+	{
+		if (Type == nullptr || Declaration == nullptr)
+		{
+			return nullptr;
+		}
+
+		// The fork's public method-declaration parser can reject the normalized
+		// const form returned by GetDeclaration(). Preserve exactness by comparing
+		// complete public declarations; never fall back to a method name or arity.
+		if (asIScriptFunction* Function = Type->GetMethodByDecl(Declaration))
+		{
+			return Function;
+		}
+
+		asIScriptFunction* ExactFunction = nullptr;
+		for (asUINT MethodIndex = 0; MethodIndex < Type->GetMethodCount(); ++MethodIndex)
+		{
+			asIScriptFunction* const Candidate = Type->GetMethodByIndex(MethodIndex);
+			if (Candidate == nullptr)
+			{
+				continue;
+			}
+
+			const bool bMatchesUnqualified =
+				FCStringAnsi::Strcmp(
+					Candidate->GetDeclaration(false, false, false),
+					Declaration)
+				== 0;
+			const bool bMatchesQualified =
+				FCStringAnsi::Strcmp(
+					Candidate->GetDeclaration(true, true, false),
+					Declaration)
+				== 0;
+			if (!bMatchesUnqualified && !bMatchesQualified)
+			{
+				continue;
+			}
+
+			if (ExactFunction != nullptr)
+			{
+				return nullptr;
+			}
+			ExactFunction = Candidate;
+		}
+
+		return ExactFunction;
 	}
 
 	inline TArray<asIScriptFunction*> FindNativeFunctionsByName(asIScriptModule* Module, const char* Name)

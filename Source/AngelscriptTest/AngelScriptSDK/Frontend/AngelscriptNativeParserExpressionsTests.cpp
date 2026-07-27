@@ -1,8 +1,8 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 // Parser expression behavior coverage.
 #include "CQTest.h"
-#include "Misc/ScopeExit.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_builder.h"
@@ -111,9 +111,22 @@ private:
 public:
 	TEST_METHOD(PrecedenceMulOverAdd)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained multiplication/addition precedence smoke; FRONTEND-PARSER-EXPRESSION-OPERATOR-GROUPING owns operator and grouping combinations.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprMulAdd", "1 + 2 * 3", [&](const asCScriptNode& Root)
 		{
@@ -124,9 +137,22 @@ public:
 
 	TEST_METHOD(PrecedenceShiftOverAdd)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained shift/addition precedence smoke; FRONTEND-PARSER-EXPRESSION-OPERATOR-GROUPING owns operator and grouping combinations.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprShiftAdd", "1 + 2 << 3", [&](const asCScriptNode& Root)
 		{
@@ -137,9 +163,22 @@ public:
 
 	TEST_METHOD(RightAssocAssignment)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained assignment-associativity AST smoke; FRONTEND-PARSER-EXPRESSION-OPERATOR-GROUPING owns expression operator grouping.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseAssignment(*TestRunner, this->Assert, BareEngine, "ParserExprAssign", "A = B = C", [&](const asCScriptNode& Root)
 		{
@@ -150,9 +189,22 @@ public:
 
 	TEST_METHOD(ParserExpressionsTernaryNesting)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained nested-ternary AST smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns ternary roots and child families.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseCondition(*TestRunner, this->Assert, BareEngine, "ParserExprTernary", "A ? B : (C ? D : E)", [&](const asCScriptNode& Root)
 		{
@@ -163,9 +215,22 @@ public:
 
 	TEST_METHOD(ParserExpressionsCastExpression)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained cast-expression AST smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns expression-family roots.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprCast", "Cast<int>(Value)", [&](const asCScriptNode& Root)
 		{
@@ -176,9 +241,22 @@ public:
 
 	TEST_METHOD(MemberAccessChain)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained member-chain AST smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns member-access roots and child families.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprMemberAccess", "Object.Component.Value", [&](const asCScriptNode& Root)
 		{
@@ -189,9 +267,22 @@ public:
 
 	TEST_METHOD(ParserExpressionsIndexExpression)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained index-expression AST smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns expression-family roots.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprIndex", "Values[Index + 1]", [&](const asCScriptNode& Root)
 		{
@@ -202,9 +293,22 @@ public:
 
 	TEST_METHOD(FunctionCallWithNamedArg)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained named-argument call AST smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns call-expression roots and child families.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprNamedArg", "DoWork(Value: 3)", [&](const asCScriptNode& Root)
 		{
@@ -217,9 +321,22 @@ public:
 
 	TEST_METHOD(AnonymousInitializerList)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained initializer-list AST smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns expression-family roots.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprInitList", "{ 1, 2, 3 }", [&](const asCScriptNode& Root)
 		{
@@ -230,9 +347,22 @@ public:
 
 	TEST_METHOD(AnonymousFunctionProducesCurrentParserShape)
 	{
-		asCScriptEngine* BareEngine = AngelscriptNativeTestSupport::CreateBareSdkEngine(&*TestRunner);
-		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should create a bare engine")));
-		ON_SCOPE_EXIT { BareEngine->ShutDownAndRelease(); };
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained current-fork anonymous-function AST smoke; FRONTEND-PARSER-EXPRESSION-STATEMENT-FAMILIES owns expression-family root and child classification.");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
+		asCScriptEngine* BareEngine = static_cast<asCScriptEngine*>(Engine.Get());
+		ASSERT_THAT(IsNotNull(BareEngine, TEXT("Parser expression test should use the case-owned raw SDK engine")));
+		if (BareEngine == nullptr)
+		{
+			return;
+		}
 
 		ParseExpression(*TestRunner, this->Assert, BareEngine, "ParserExprLambda", "function() { return 1; }", [&](const asCScriptNode& Root)
 		{

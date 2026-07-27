@@ -3,6 +3,7 @@
 #include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -64,7 +65,7 @@ private:
 		AddInfo(FString::Printf(TEXT("[Builder][%s] executed %s => %d"), *Stage, *ToTestString(Declaration), Result));
 	}
 
-	void ReportBuilderFailureDiagnostics() const
+	void ReportBuilderFailureDiagnostics(const AngelscriptNativeTestSupport::FNativeTestEngine& Engine) const
 	{
 		const FString Messages = Engine.GetMessagesText();
 		if (!Messages.IsEmpty())
@@ -134,104 +135,428 @@ private:
 	}
 
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
-
 	TEST_METHOD(CompileFunctionUsesProvidedSectionName)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
-		asIScriptEngine* ScriptEngine = Engine.Get();
-		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder CompileFunction section test should create a standalone SDK engine")));
+		AS_NATIVE_PRODUCT(
+			"COMPILER-BUILDER-COMPILE-FUNCTION-SUCCESS",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Bytecode
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
 
-		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderCompileFunctionSection");
-		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
-		ASSERT_THAT(IsNotNull(Module, TEXT("Builder CompileFunction section test should create a module")));
+		asIScriptEngine* const ScriptEngine = Engine.Get();
+		ASSERT_THAT(IsNotNull(
+			ScriptEngine,
+			TEXT("Builder CompileFunction section test should create a standalone SDK engine")));
+		if (ScriptEngine == nullptr)
+		{
+			return;
+		}
 
-		asCBuilder Builder(static_cast<asCScriptEngine*>(ScriptEngine), Module);
-		LogBuilderState(TEXT("CompileFunctionUsesProvidedSectionName.initial"), Builder, Module, true, false);
-		asCScriptFunction* Function = nullptr;
 		const std::string EntryFunctionSource = ASTEST_AS_ANSI(R"AS(
 			int Entry()
 			{
 				return 42;
 			}
 			)AS");
-		LogBuilderSectionInput(TEXT("CompileFunctionUsesProvidedSectionName.input"), "BuilderCompileFunctionSection_A", EntryFunctionSource.c_str());
-		const int CompileResult = Builder.CompileFunction("BuilderCompileFunctionSection_A", EntryFunctionSource.c_str(), 20, asCOMP_ADD_TO_MODULE, &Function);
-		LogBuilderStageResult(TEXT("CompileFunctionUsesProvidedSectionName.CompileFunction"), CompileResult, Builder, Module, false);
-		if (!this->Assert.AreEqual(static_cast<int32>(asSUCCESS), CompileResult, TEXT("Builder CompileFunction section test should compile one function")))
-		{
-			ReportBuilderFailureDiagnostics();
-			return;
-		}
-		ASSERT_THAT(IsNotNull(Function, TEXT("Builder CompileFunction section test should return the compiled function")));
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-COMPILE-FUNCTION-SUCCESS"),
+			TEXT("BuilderCompileFunctionSection"),
+			UTF8_TO_TCHAR(EntryFunctionSource.c_str()));
 
-		ASSERT_THAT(AreEqual(FString(TEXT("BuilderCompileFunctionSection_A")), FString(UTF8_TO_TCHAR(Function->GetScriptSectionName())),
-			TEXT("Builder CompileFunction section test should preserve the provided section name")));
-		ASSERT_THAT(AreEqual(1, static_cast<int32>(Module->GetFunctionCount()),
-			TEXT("Builder CompileFunction section test should add the function to the module")));
+		{
+			FScopedNativeModuleName ModuleScope(
+				Engine,
+				"BuilderCompileFunctionSection");
+			asCModule* const Module =
+				CreateBuilderModule(ScriptEngine, ModuleScope.Get());
+			ASSERT_THAT(IsNotNull(
+				Module,
+				TEXT("Builder CompileFunction section test should create a module")));
+			if (Module == nullptr)
+			{
+				return;
+			}
+
+			asCBuilder Builder(
+				static_cast<asCScriptEngine*>(ScriptEngine),
+				Module);
+			LogBuilderState(
+				TEXT("CompileFunctionUsesProvidedSectionName.initial"),
+				Builder,
+				Module,
+				true,
+				false);
+			asCScriptFunction* Function = nullptr;
+			LogBuilderSectionInput(
+				TEXT("CompileFunctionUsesProvidedSectionName.input"),
+				"BuilderCompileFunctionSection_A",
+				EntryFunctionSource.c_str());
+			const int CompileResult = Builder.CompileFunction(
+				"BuilderCompileFunctionSection_A",
+				EntryFunctionSource.c_str(),
+				20,
+				asCOMP_ADD_TO_MODULE,
+				&Function);
+			LogBuilderStageResult(
+				TEXT("CompileFunctionUsesProvidedSectionName.CompileFunction"),
+				CompileResult,
+				Builder,
+				Module,
+				false);
+			if (!this->Assert.AreEqual(
+					static_cast<int32>(asSUCCESS),
+					CompileResult,
+					TEXT("Builder CompileFunction section test should compile one function")))
+			{
+				ReportBuilderFailureDiagnostics(Engine);
+				return;
+			}
+			ASSERT_THAT(IsNotNull(
+				Function,
+				TEXT("Builder CompileFunction section test should return the compiled function")));
+			if (Function == nullptr)
+			{
+				return;
+			}
+
+			ASSERT_THAT(AreEqual(
+				FString(TEXT("BuilderCompileFunctionSection_A")),
+				FString(UTF8_TO_TCHAR(Function->GetScriptSectionName())),
+				TEXT("Builder CompileFunction section test should preserve the provided section name")));
+			ASSERT_THAT(AreEqual(
+				1,
+				static_cast<int32>(Module->GetFunctionCount()),
+				TEXT("Builder CompileFunction section test should add the function to the module")));
+			ASSERT_THAT(AreEqual(
+				Function,
+				static_cast<asCScriptFunction*>(
+					GetNativeFunctionByDecl(Module, "int Entry()")),
+				TEXT("Builder CompileFunction section test should publish the exact returned function once")));
+			ASSERT_THAT(IsTrue(
+				HasBytecode(Function),
+				TEXT("Builder CompileFunction section test should publish executable bytecode")));
+
+			bool bHasErrorDiagnostic = false;
+			for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
+			{
+				bHasErrorDiagnostic |= Entry.Type == asMSGTYPE_ERROR;
+			}
+			ASSERT_THAT(IsFalse(
+				bHasErrorDiagnostic,
+				TEXT("Builder CompileFunction section test should not emit an error diagnostic")));
+		}
+
+		ASSERT_THAT(IsNull(
+			ScriptEngine->GetModule(
+				"BuilderCompileFunctionSection",
+				asGM_ONLY_IF_EXISTS),
+			TEXT("Builder CompileFunction section test should discard its isolated module")));
+
+		const int32 MessageCountBeforeControl =
+			Engine.GetMessages().Entries.Num();
+		{
+			FScopedNativeModuleName ControlModuleScope(
+				Engine,
+				"BuilderCompileFunctionSectionControl");
+			asCModule* const ControlModule =
+				CreateBuilderModule(
+					ScriptEngine,
+					ControlModuleScope.Get());
+			ASSERT_THAT(IsNotNull(
+				ControlModule,
+				TEXT("Builder CompileFunction section test should create an independent control module")));
+			if (ControlModule == nullptr)
+			{
+				return;
+			}
+
+			const std::string ControlSource = ASTEST_AS_ANSI(R"AS(
+				int ControlEntry()
+				{
+					return 7;
+				}
+				)AS");
+			asCBuilder ControlBuilder(
+				static_cast<asCScriptEngine*>(ScriptEngine),
+				ControlModule);
+			asCScriptFunction* ControlFunction = nullptr;
+			LogBuilderSectionInput(
+				TEXT("CompileFunctionUsesProvidedSectionName.control.input"),
+				"BuilderCompileFunctionSectionControl_A",
+				ControlSource.c_str());
+			const int ControlCompileResult =
+				ControlBuilder.CompileFunction(
+					"BuilderCompileFunctionSectionControl_A",
+					ControlSource.c_str(),
+					0,
+					asCOMP_ADD_TO_MODULE,
+					&ControlFunction);
+			LogBuilderStageResult(
+				TEXT("CompileFunctionUsesProvidedSectionName.control.CompileFunction"),
+				ControlCompileResult,
+				ControlBuilder,
+				ControlModule,
+				false);
+
+			ASSERT_THAT(AreEqual(
+				static_cast<int32>(asSUCCESS),
+				ControlCompileResult,
+				TEXT("Builder CompileFunction section test should compile an independent control function")));
+			ASSERT_THAT(IsNotNull(
+				ControlFunction,
+				TEXT("Builder CompileFunction section test should return the independent control function")));
+			ASSERT_THAT(IsNull(
+				ControlModule->GetFunctionByDecl("int Entry()"),
+				TEXT("Builder CompileFunction section test should not leak Entry into the independent control module")));
+			ASSERT_THAT(AreEqual(
+				static_cast<asIScriptFunction*>(ControlFunction),
+				GetNativeFunctionByDecl(
+					ControlModule,
+					"int ControlEntry()"),
+				TEXT("Builder CompileFunction section test should publish the independent control function")));
+			ASSERT_THAT(AreEqual(
+				MessageCountBeforeControl,
+				Engine.GetMessages().Entries.Num(),
+				TEXT("Builder CompileFunction section test should not leak diagnostics into the independent control compile")));
+		}
+		ASSERT_THAT(IsNull(
+			ScriptEngine->GetModule(
+				"BuilderCompileFunctionSectionControl",
+				asGM_ONLY_IF_EXISTS),
+			TEXT("Builder CompileFunction section test should discard the independent control module")));
 	}
+
 	TEST_METHOD(CompileFunctionFailureDoesNotLeakFunction)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
-		asIScriptEngine* ScriptEngine = Engine.Get();
-		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder CompileFunction failure test should create a standalone SDK engine")));
+		AS_NATIVE_PRODUCT(
+			"COMPILER-BUILDER-COMPILE-FUNCTION-FAILURE",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
 
-		AngelscriptNativeTestSupport::FScopedNativeModuleName ModuleScope(Engine, "BuilderCompileFunctionFailure");
-		asCModule* Module = CreateBuilderModule(ScriptEngine, ModuleScope.Get());
-		ASSERT_THAT(IsNotNull(Module, TEXT("Builder CompileFunction failure test should create a module")));
+		asIScriptEngine* const ScriptEngine = Engine.Get();
+		ASSERT_THAT(IsNotNull(
+			ScriptEngine,
+			TEXT("Builder CompileFunction failure test should create a standalone SDK engine")));
+		if (ScriptEngine == nullptr)
+		{
+			return;
+		}
 
-		asCBuilder Builder(static_cast<asCScriptEngine*>(ScriptEngine), Module);
-		Builder.silent = true;
-		LogBuilderState(TEXT("CompileFunctionFailureDoesNotLeakFunction.initial"), Builder, Module, true, false);
-		asCScriptFunction* Function = nullptr;
 		const std::string BrokenEntryFunctionSource = ASTEST_AS_ANSI(R"AS(
 			int Entry(
 			{
 				return 42;
 			}
 			)AS");
-		LogBuilderSectionInput(TEXT("CompileFunctionFailureDoesNotLeakFunction.input"), "BuilderCompileFunctionFailure_A", BrokenEntryFunctionSource.c_str());
-		const int CompileResult = Builder.CompileFunction("BuilderCompileFunctionFailure_A", BrokenEntryFunctionSource.c_str(), 0, asCOMP_ADD_TO_MODULE, &Function);
-		LogBuilderStageResult(TEXT("CompileFunctionFailureDoesNotLeakFunction.CompileFunction"), CompileResult, Builder, Module, false);
-		ReportBuilderFailureDiagnostics();
-		ASSERT_THAT(IsTrue(CompileResult < 0, TEXT("Builder CompileFunction failure test should fail the invalid function")));
-		ASSERT_THAT(IsNull(Function, TEXT("Builder CompileFunction failure test should not return a function")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetFunctionCount()),
-			TEXT("Builder CompileFunction failure test should not leak a module function")));
-		ASSERT_THAT(IsNull(Module->GetFunctionByDecl("int Entry()"), TEXT("Builder CompileFunction failure test should not expose Entry")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetGlobalVarCount()),
-			TEXT("Builder CompileFunction failure test should not leak global variables")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetObjectTypeCount()),
-			TEXT("Builder CompileFunction failure test should not leak object types")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(Builder.functions.GetLength()),
-			TEXT("Builder CompileFunction failure test should not retain function descriptions")));
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-COMPILE-FUNCTION-FAILURE"),
+			TEXT("BuilderCompileFunctionFailure"),
+			UTF8_TO_TCHAR(BrokenEntryFunctionSource.c_str()));
+
+		{
+			FScopedNativeModuleName ModuleScope(
+				Engine,
+				"BuilderCompileFunctionFailure");
+			asCModule* const Module =
+				CreateBuilderModule(ScriptEngine, ModuleScope.Get());
+			ASSERT_THAT(IsNotNull(
+				Module,
+				TEXT("Builder CompileFunction failure test should create a module")));
+			if (Module == nullptr)
+			{
+				return;
+			}
+
+			asCBuilder Builder(
+				static_cast<asCScriptEngine*>(ScriptEngine),
+				Module);
+			LogBuilderState(
+				TEXT("CompileFunctionFailureDoesNotLeakFunction.initial"),
+				Builder,
+				Module,
+				true,
+				false);
+			asCScriptFunction* Function = nullptr;
+			LogBuilderSectionInput(
+				TEXT("CompileFunctionFailureDoesNotLeakFunction.input"),
+				"BuilderCompileFunctionFailure_A",
+				BrokenEntryFunctionSource.c_str());
+			const int CompileResult = Builder.CompileFunction(
+				"BuilderCompileFunctionFailure_A",
+				BrokenEntryFunctionSource.c_str(),
+				0,
+				asCOMP_ADD_TO_MODULE,
+				&Function);
+			LogBuilderStageResult(
+				TEXT("CompileFunctionFailureDoesNotLeakFunction.CompileFunction"),
+				CompileResult,
+				Builder,
+				Module,
+				false);
+			ReportBuilderFailureDiagnostics(Engine);
+			ASSERT_THAT(IsTrue(
+				CompileResult < 0,
+				TEXT("Builder CompileFunction failure test should fail the invalid function")));
+			ASSERT_THAT(IsNull(
+				Function,
+				TEXT("Builder CompileFunction failure test should not return a function")));
+			ASSERT_THAT(AreEqual(
+				0,
+				static_cast<int32>(Module->GetFunctionCount()),
+				TEXT("Builder CompileFunction failure test should not leak a module function")));
+			ASSERT_THAT(IsNull(
+				Module->GetFunctionByDecl("int Entry()"),
+				TEXT("Builder CompileFunction failure test should not expose Entry")));
+			ASSERT_THAT(AreEqual(
+				0,
+				static_cast<int32>(Module->GetGlobalVarCount()),
+				TEXT("Builder CompileFunction failure test should not leak global variables")));
+			ASSERT_THAT(AreEqual(
+				0,
+				static_cast<int32>(Module->GetObjectTypeCount()),
+				TEXT("Builder CompileFunction failure test should not leak object types")));
+			ASSERT_THAT(AreEqual(
+				0,
+				static_cast<int32>(Builder.functions.GetLength()),
+				TEXT("Builder CompileFunction failure test should not retain function descriptions")));
+
+			bool bHasLocatedError = false;
+			for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
+			{
+				bHasLocatedError |=
+					Entry.Type == asMSGTYPE_ERROR
+					&& Entry.Section
+						== TEXT("BuilderCompileFunctionFailure_A")
+					&& Entry.Row > 0;
+			}
+			ASSERT_THAT(IsTrue(
+				bHasLocatedError,
+				TEXT("Builder CompileFunction failure test should retain a located syntax diagnostic")));
+		}
+
+		ASSERT_THAT(IsNull(
+			ScriptEngine->GetModule(
+				"BuilderCompileFunctionFailure",
+				asGM_ONLY_IF_EXISTS),
+			TEXT("Builder CompileFunction failure test should discard its isolated module")));
+
+		const int32 MessageCountBeforeControl =
+			Engine.GetMessages().Entries.Num();
+		{
+			FScopedNativeModuleName ControlModuleScope(
+				Engine,
+				"BuilderCompileFunctionFailureControl");
+			asCModule* const ControlModule =
+				CreateBuilderModule(
+					ScriptEngine,
+					ControlModuleScope.Get());
+			ASSERT_THAT(IsNotNull(
+				ControlModule,
+				TEXT("Builder CompileFunction failure test should create an independent control module")));
+			if (ControlModule == nullptr)
+			{
+				return;
+			}
+
+			const std::string ControlSource = ASTEST_AS_ANSI(R"AS(
+				int Entry()
+				{
+					return 17;
+				}
+				)AS");
+			asCBuilder ControlBuilder(
+				static_cast<asCScriptEngine*>(ScriptEngine),
+				ControlModule);
+			asCScriptFunction* ControlFunction = nullptr;
+			LogBuilderSectionInput(
+				TEXT("CompileFunctionFailureDoesNotLeakFunction.control.input"),
+				"BuilderCompileFunctionFailureControl_A",
+				ControlSource.c_str());
+			const int ControlCompileResult =
+				ControlBuilder.CompileFunction(
+					"BuilderCompileFunctionFailureControl_A",
+					ControlSource.c_str(),
+					0,
+					asCOMP_ADD_TO_MODULE,
+					&ControlFunction);
+			LogBuilderStageResult(
+				TEXT("CompileFunctionFailureDoesNotLeakFunction.control.CompileFunction"),
+				ControlCompileResult,
+				ControlBuilder,
+				ControlModule,
+				false);
+
+			ASSERT_THAT(AreEqual(
+				static_cast<int32>(asSUCCESS),
+				ControlCompileResult,
+				TEXT("Builder CompileFunction failure test should not poison an independent control compile")));
+			ASSERT_THAT(IsNotNull(
+				ControlFunction,
+				TEXT("Builder CompileFunction failure test should return the independent control function")));
+			ASSERT_THAT(AreEqual(
+				static_cast<asIScriptFunction*>(ControlFunction),
+				GetNativeFunctionByDecl(ControlModule, "int Entry()"),
+				TEXT("Builder CompileFunction failure test should publish Entry only in the independent control module")));
+			ASSERT_THAT(IsTrue(
+				HasBytecode(ControlFunction),
+				TEXT("Builder CompileFunction failure test should emit bytecode for the independent control function")));
+			ASSERT_THAT(AreEqual(
+				MessageCountBeforeControl,
+				Engine.GetMessages().Entries.Num(),
+				TEXT("Builder CompileFunction failure diagnostics should not leak into the independent control compile")));
+		}
+		ASSERT_THAT(IsNull(
+			ScriptEngine->GetModule(
+				"BuilderCompileFunctionFailureControl",
+				asGM_ONLY_IF_EXISTS),
+			TEXT("Builder CompileFunction failure test should discard the independent control module")));
 	}
 	TEST_METHOD(GenerateFunctionsRegistersGlobalsAndFunctions)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"Retained staged function/global publication evidence; COMPILER-BUILDER-DECLARATION-PUBLICATION owns declaration families, stage barriers, scopes, overloads, bytecode, and runtime.");
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder function-generation test should create a standalone SDK engine")));
@@ -263,7 +588,7 @@ public:
 			!this->Assert.IsTrue(RunBuilderStage(*Builder, TEXT("GenerateFunctionsRegistersGlobalsAndFunctions.BuildGenerateTypes"), &asCBuilder::BuildGenerateTypes, Module), TEXT("Builder function-generation test should generate types")) ||
 			!this->Assert.IsTrue(RunBuilderStage(*Builder, TEXT("GenerateFunctionsRegistersGlobalsAndFunctions.BuildGenerateFunctions"), &asCBuilder::BuildGenerateFunctions, Module), TEXT("Builder function-generation test should generate functions")))
 		{
-			ReportBuilderFailureDiagnostics();
+			ReportBuilderFailureDiagnostics(Engine);
 			return;
 		}
 
@@ -303,9 +628,20 @@ public:
 	}
 	TEST_METHOD(OverloadedGlobalFunctionsRetainDistinctDescriptions)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"Retained arity-overload publication smoke; COMPILER-BUILDER-DECLARATION-PUBLICATION owns overload relation, exact metadata, stage publication, bytecode, runtime, and cleanup.");
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder global overload test should create a standalone SDK engine")));
@@ -339,7 +675,7 @@ public:
 		if (!this->Assert.IsTrue(RunBuilderPipelineThroughLayout(*Builder, Module), TEXT("Builder global overload test should build through layout")) ||
 			!this->Assert.IsTrue(RunBuilderStage(*Builder, TEXT("OverloadedGlobalFunctionsRetainDistinctDescriptions.BuildCompileCode"), &asCBuilder::BuildCompileCode, Module), TEXT("Builder global overload test should compile bytecode")))
 		{
-			ReportBuilderFailureDiagnostics();
+			ReportBuilderFailureDiagnostics(Engine);
 			return;
 		}
 

@@ -3,6 +3,7 @@
 #include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -64,7 +65,7 @@ private:
 		AddInfo(FString::Printf(TEXT("[Builder][%s] executed %s => %d"), *Stage, *ToTestString(Declaration), Result));
 	}
 
-	void ReportBuilderFailureDiagnostics() const
+	void ReportBuilderFailureDiagnostics(const AngelscriptNativeTestSupport::FNativeTestEngine& Engine) const
 	{
 		const FString Messages = Engine.GetMessagesText();
 		if (!Messages.IsEmpty())
@@ -134,28 +135,22 @@ private:
 	}
 
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
-
 	TEST_METHOD(NamespaceResolutionSeparatesTypesFunctionsAndGlobals)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"COMPILER-BUILDER-DECLARATION-PUBLICATION owns staged scoped publication; this test retains cross-section namespace-qualified runtime support.");
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder namespace test should create a standalone SDK engine")));
@@ -196,6 +191,16 @@ public:
 				return Inventory::ScoreBase();
 			}
 			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-DECLARATION-PUBLICATION-NAMESPACE-CROSS-SECTION-SUPPORT-TYPES"),
+			TEXT("BuilderNamespaceCrossSectionSupportTypes"),
+			FString(UTF8_TO_TCHAR(NamespaceTypesSource.c_str())));
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-DECLARATION-PUBLICATION-NAMESPACE-CROSS-SECTION-SUPPORT-ENTRY"),
+			TEXT("BuilderNamespaceCrossSectionSupportEntry"),
+			FString(UTF8_TO_TCHAR(NamespaceEntrySource.c_str())));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*Module, "BuilderNamespace_Types", NamespaceTypesSource.c_str(), TEXT("NamespaceResolutionSeparatesTypesFunctionsAndGlobals.AddTypes")),
 			TEXT("Builder namespace test should add the namespace type section")));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*Module, "BuilderNamespace_Entry", NamespaceEntrySource.c_str(), TEXT("NamespaceResolutionSeparatesTypesFunctionsAndGlobals.AddEntry")),
@@ -207,7 +212,7 @@ public:
 		if (!this->Assert.IsTrue(RunBuilderPipelineThroughLayout(*Builder, Module), TEXT("Builder namespace test should build through layout")) ||
 			!this->Assert.IsTrue(RunBuilderStage(*Builder, TEXT("NamespaceResolutionSeparatesTypesFunctionsAndGlobals.BuildCompileCode"), &asCBuilder::BuildCompileCode, Module), TEXT("Builder namespace test should compile bytecode")))
 		{
-			ReportBuilderFailureDiagnostics();
+			ReportBuilderFailureDiagnostics(Engine);
 			return;
 		}
 

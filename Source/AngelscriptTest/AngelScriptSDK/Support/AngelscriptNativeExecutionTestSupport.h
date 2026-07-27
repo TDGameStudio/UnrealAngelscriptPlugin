@@ -344,6 +344,33 @@ namespace AngelscriptSDKTestSupport
 
 		const int ExecuteResult = PrepareAndExecute(Context, Function);
 		OutValue = static_cast<int32>(Context->GetReturnDWord());
+		if (ExecuteResult != asEXECUTION_FINISHED)
+		{
+			const char* const ExceptionText = Context->GetExceptionString();
+			const char* ExceptionSection = nullptr;
+			int ExceptionColumn = 0;
+			const int ExceptionLine =
+				Context->GetExceptionLineNumber(
+					&ExceptionColumn,
+					&ExceptionSection);
+			asIScriptFunction* const ExceptionFunction =
+				Context->GetExceptionFunction();
+			Test.AddInfo(FString::Printf(
+				TEXT("Script execution failed: declaration='%s' result=%d exception='%s' function='%s' section='%s' line=%d column=%d"),
+				UTF8_TO_TCHAR(Declaration),
+				ExecuteResult,
+				UTF8_TO_TCHAR(ExceptionText != nullptr ? ExceptionText : ""),
+				UTF8_TO_TCHAR(
+					ExceptionFunction != nullptr
+						? ExceptionFunction->GetDeclaration()
+						: ""),
+				UTF8_TO_TCHAR(
+					ExceptionSection != nullptr
+						? ExceptionSection
+						: ""),
+				ExceptionLine,
+				ExceptionColumn));
+		}
 		Context->Release();
 
 		return Assert.AreEqual(

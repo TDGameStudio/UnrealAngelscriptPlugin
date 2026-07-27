@@ -1,4 +1,5 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 
 // Tokenizer whitespace and comment behavior coverage.
 #include "CQTest.h"
@@ -17,6 +18,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 {
 	TEST_METHOD(LineCommentEmpty)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained empty-line-comment smoke; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF owns comment form, payload, newline, and termination combinations.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -28,6 +32,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(BlockCommentNested_DocumentBehavior)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained first-close block-comment behavior; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF owns block-comment payload and termination combinations.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Input = "/* outer /* inner */ tail */";
 		size_t TokenLength = 0;
@@ -40,6 +47,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(UnterminatedBlockCommentReachesEOF)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained unterminated-comment smoke; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF owns terminated and EOF comment boundaries.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Input = "/* comment";
 		size_t TokenLength = 0;
@@ -52,6 +62,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(MixedCRLFWhitespace)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained mixed-whitespace smoke; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF owns whitespace forms and LF/CRLF boundaries.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char* Input = " \t\r\n  ";
 		size_t TokenLength = 0;
@@ -64,6 +77,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(BomAtStartOfSource)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained BOM smoke; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF owns BOM placement and following-token boundaries.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		const char Input[] = "\xEF\xBB\xBF" "class";
 		size_t TokenLength = 0;
@@ -76,6 +92,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(IdentifierLeadingUnderscore)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained identifier spelling smoke; FRONTEND-TOKEN-TAXONOMY-ACTIVE-KEYWORDS owns keyword versus identifier spelling boundaries.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -87,6 +106,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(IdentifierWithDigits)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained identifier suffix smoke; FRONTEND-TOKEN-TAXONOMY-ACTIVE-KEYWORDS owns keyword and identifier trailing-boundary behavior.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -98,6 +120,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(KeywordVsIdentifierBoundary)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained keyword-prefix identifier smoke; FRONTEND-TOKEN-TAXONOMY-ACTIVE-KEYWORDS owns every active keyword and identifier boundary.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 
@@ -109,6 +134,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(ZeroLengthInputReturnsEnd)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained zero-length sentinel smoke; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF owns EOF state and bounded token behavior.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const eTokenType TokenType = Tokenizer.GetToken("", 0, &TokenLength);
@@ -119,6 +147,9 @@ TEST_CLASS_WITH_FLAGS(FTokenizerWhitespaceTests,
 
 	TEST_METHOD(PastEofGracefulHandling)
 	{
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"Retained past-EOF sentinel smoke; FRONTEND-TOKEN-COMMENT-WHITESPACE-EOF owns EOF state and bounded token behavior.");
+
 		AngelscriptNativeTestSupport::FTokenizerAccessor Tokenizer;
 		size_t TokenLength = 0;
 		const char Input[] = "";

@@ -3,6 +3,7 @@
 #include "AngelscriptTestMacros.h"
 
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -64,7 +65,7 @@ private:
 		AddInfo(FString::Printf(TEXT("[Builder][%s] executed %s => %d"), *Stage, *ToTestString(Declaration), Result));
 	}
 
-	void ReportBuilderFailureDiagnostics() const
+	void ReportBuilderFailureDiagnostics(const AngelscriptNativeTestSupport::FNativeTestEngine& Engine) const
 	{
 		const FString Messages = Engine.GetMessagesText();
 		if (!Messages.IsEmpty())
@@ -134,28 +135,22 @@ private:
 	}
 
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
-
 	TEST_METHOD(PropertyInitializersAndMethodOverloadsCompile)
 	{
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		using namespace AngelscriptBuilderTestSupport;
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"COMPILER-BUILDER-CLASS-LAYOUT owns property initializer and method-overload publication; this retained test supplies combined layout compatibility support.");
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Builder initializer and overload test should create a standalone SDK engine")));
@@ -191,6 +186,11 @@ public:
 				return 40 + 2 + 5;
 			}
 			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("COMPILER-BUILDER-CLASS-LAYOUT-PROPERTY-OVERLOAD-SUPPORT"),
+			TEXT("BuilderPropertyOverloadSupport"),
+			FString(UTF8_TO_TCHAR(InitializersAndOverloadsSource.c_str())));
 		ASSERT_THAT(IsTrue(AddBuilderSectionWithLog(*Module, "BuilderInitializersAndOverloads", InitializersAndOverloadsSource.c_str(), TEXT("PropertyInitializersAndMethodOverloadsCompile.AddInitializersAndOverloads")),
 			TEXT("Builder initializer and overload test should add the script section")));
 
@@ -200,7 +200,7 @@ public:
 		if (!this->Assert.IsTrue(RunBuilderPipelineThroughLayout(*Builder, Module), TEXT("Builder initializer and overload test should build through layout")) ||
 			!this->Assert.IsTrue(RunBuilderStage(*Builder, TEXT("PropertyInitializersAndMethodOverloadsCompile.BuildCompileCode"), &asCBuilder::BuildCompileCode, Module), TEXT("Builder initializer and overload test should compile bytecode")))
 		{
-			ReportBuilderFailureDiagnostics();
+			ReportBuilderFailureDiagnostics(Engine);
 			return;
 		}
 
