@@ -3267,6 +3267,36 @@ public:
 		ASSERT_THAT(AreEqual(static_cast<int32>(HAlign_Center), static_cast<int32>(BorderProbe->GetHorizontalAlignment()), TEXT("BorderProbe should keep script-assigned horizontal alignment")));
 		ASSERT_THAT(AreEqual(static_cast<int32>(VAlign_Bottom), static_cast<int32>(BorderProbe->GetVerticalAlignment()), TEXT("BorderProbe should keep script-assigned vertical alignment")));
 	}
+
+	TEST_METHOD(WidgetAnimationAssetFreePlaybackBoundary)
+	{
+		UUserWidget* Widget = CreateWidgetFixture(*TestRunner, TEXT("CoverageWidgetAnimationBoundaryFixture"));
+		ASSERT_THAT(IsNotNull(Widget, TEXT("Widget animation boundary fixture should be created")));
+		if (Widget == nullptr)
+		{
+			return;
+		}
+		AngelscriptCoverageWidgetTest::FScopedRootedObject WidgetRoot(Widget);
+
+		UWidgetAnimation* Animation = NewObject<UWidgetAnimation>(GetTransientPackage(), TEXT("CoverageAssetFreeWidgetAnimation"));
+		ASSERT_THAT(IsNotNull(Animation, TEXT("Asset-free UWidgetAnimation should be constructible")));
+		if (Animation == nullptr)
+		{
+			return;
+		}
+		AngelscriptCoverageWidgetTest::FScopedRootedObject AnimationRoot(Animation);
+
+		FObjectProperty* MovieSceneProperty = FindFProperty<FObjectProperty>(UWidgetAnimation::StaticClass(), TEXT("MovieScene"));
+		ASSERT_THAT(IsNotNull(MovieSceneProperty, TEXT("UWidgetAnimation should expose its MovieScene property")));
+		if (MovieSceneProperty == nullptr)
+		{
+			return;
+		}
+
+		UObject* MovieScene = MovieSceneProperty->GetObjectPropertyValue_InContainer(Animation);
+		ASSERT_THAT(IsNull(MovieScene, TEXT("Asset-free UWidgetAnimation should not contain a playable MovieScene")));
+		TestRunner->AddInfo(TEXT("Headless Coverage records WidgetAnimation playback as an asset-backed ceiling; reflection surfaces remain covered separately."));
+	}
 };
 
 #endif // WITH_ANGELSCRIPT_UNITTESTS
