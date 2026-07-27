@@ -2,13 +2,14 @@
 // AngelscriptWorldCollisionFunctionLibraryTraceTests.cpp
 //
 // World collision trace function-library binding contract smoke. Physics
-// behavior matrices live in Coverage (`13-physics-collision`).
+// behavior coverage lives in Coverage (`13-physics-collision`).
 // ============================================================================
 
 #include "CQTest.h"
 #include "AngelscriptTestMacros.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptTestExecute.h"
+#include "AngelscriptTestModuleScope.h"
 #include "Bindings/AngelscriptWorldCollisionBindingsTestHelpers.h"
 
 #include "Components/ActorTestSpawner.h"

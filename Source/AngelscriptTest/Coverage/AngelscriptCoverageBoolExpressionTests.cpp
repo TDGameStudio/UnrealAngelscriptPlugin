@@ -4,6 +4,7 @@
 #include "AngelscriptTestModuleBuilder.h"
 #include "AngelscriptTestUtilities.h"
 #include "AngelscriptNativeScriptTestObject.h"
+#include "AngelscriptFunctionalTestUtils.h"
 
 #include "Containers/Map.h"
 #include "Misc/ScopeExit.h"
