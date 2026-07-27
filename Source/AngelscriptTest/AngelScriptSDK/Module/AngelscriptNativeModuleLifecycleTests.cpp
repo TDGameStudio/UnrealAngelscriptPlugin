@@ -175,27 +175,26 @@ private:
 	}
 
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
 
 	TEST_METHOD(ModuleLifecycleCreate)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT("MOD-LIFECYCLE-REBUILD-ISOLATION",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Runtime
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Lifecycle
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule create test should create a standalone SDK engine")));
@@ -234,11 +233,53 @@ public:
 		}
 		TestRunner->AddInfo(FString::Printf(TEXT("ScriptModule create execution: Entry()=%s"), bResult ? TEXT("true") : TEXT("false")));
 		ASSERT_THAT(IsTrue(bResult, TEXT("ScriptModule create test should execute the compiled entry function")));
+
+		const asUINT BeforeDiscardCount = ScriptEngine->GetModuleCount();
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), ScriptEngine->DiscardModule(ModuleScope.Get()),
+			TEXT("ScriptModule create test should explicitly discard the built module")));
+		ASSERT_THAT(IsNull(ScriptEngine->GetModule(ModuleScope.Get(), asGM_ONLY_IF_EXISTS),
+			TEXT("ScriptModule create test should remove the discarded module from name lookup")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(BeforeDiscardCount), static_cast<int32>(ScriptEngine->GetModuleCount()),
+			TEXT("Current fork should retain the discarded module in the indexed engine inventory")));
+		bool bFoundDiscardedModuleByIndex = false;
+		for (asUINT ModuleIndex = 0; ModuleIndex < ScriptEngine->GetModuleCount(); ++ModuleIndex)
+		{
+			bFoundDiscardedModuleByIndex |= ScriptEngine->GetModuleByIndex(ModuleIndex) == Module;
+		}
+		ASSERT_THAT(IsTrue(
+			bFoundDiscardedModuleByIndex,
+			TEXT("Current fork should retain the discarded module identity in indexed lookup")));
+		TestRunner->AddInfo(
+			TEXT("[AS-FORK-LIMITATION] DiscardModule removes name lookup but retains the module in indexed inventory until engine shutdown"));
+
+		AngelscriptNativeTestSupport::FNativeTestEngine IsolatedEngine;
+		IsolatedEngine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			IsolatedEngine.Destroy();
+		};
+		ASSERT_THAT(IsNotNull(IsolatedEngine.Get(), TEXT("ScriptModule create test should create an independent engine")));
+		if (IsolatedEngine.Get() == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(IsolatedEngine.Get() != ScriptEngine, TEXT("ScriptModule create test should isolate module state by engine")));
+		ASSERT_THAT(IsNull(IsolatedEngine.Get()->GetModule(ModuleScope.Get(), asGM_ONLY_IF_EXISTS),
+			TEXT("ScriptModule create test should not publish its module into an independent engine")));
 	}
 	TEST_METHOD(ModuleLifecycleDiscard)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-LIFECYCLE-REBUILD-ISOLATION", "discard_existing");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule discard test should create a standalone SDK engine")));
@@ -266,6 +307,7 @@ public:
 		ASSERT_THAT(AreEqual(100, Result, TEXT("ScriptModule discard test should execute the module before discard")));
 
 		const asUINT BeforeDiscardCount = ScriptEngine->GetModuleCount();
+		asIScriptModule* const ModuleIdentity = Module;
 		const int DiscardResult = ScriptEngine->DiscardModule("ScriptModuleDiscard");
 		const asUINT AfterDiscardCount = ScriptEngine->GetModuleCount();
 
@@ -278,9 +320,30 @@ public:
 			*FormatPointer(DiscardedModule)));
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), DiscardResult, TEXT("ScriptModule discard test should report success for an existing module")));
 		ASSERT_THAT(IsNull(DiscardedModule, TEXT("ScriptModule discard test should remove the module")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(BeforeDiscardCount), static_cast<int32>(AfterDiscardCount),
+			TEXT("Current fork should retain a discarded module in the indexed engine inventory")));
+		bool bFoundDiscardedModuleByIndex = false;
+		for (asUINT ModuleIndex = 0; ModuleIndex < AfterDiscardCount; ++ModuleIndex)
+		{
+			bFoundDiscardedModuleByIndex |= ScriptEngine->GetModuleByIndex(ModuleIndex) == ModuleIdentity;
+		}
+		ASSERT_THAT(IsTrue(
+			bFoundDiscardedModuleByIndex,
+			TEXT("Current fork should retain the discarded module identity in indexed lookup")));
+		TestRunner->AddInfo(
+			TEXT("[AS-FORK-LIMITATION] DiscardModule removes name lookup but retains the module in indexed inventory until engine shutdown"));
 	}
 	TEST_METHOD(DiscardMissingModuleReturnsNoModule)
 	{
+		AS_NATIVE_PRODUCT_PART("MOD-LIFECYCLE-REBUILD-ISOLATION", "discard_missing");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule missing-discard test should create a standalone SDK engine")));
 
@@ -299,6 +362,15 @@ public:
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-LIFECYCLE-REBUILD-ISOLATION", "parallel_name_isolation");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule multi-module test should create a standalone SDK engine")));
@@ -358,6 +430,15 @@ public:
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-LIFECYCLE-REBUILD-ISOLATION", "always_create_replacement");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule rebuild test should create a standalone SDK engine")));
@@ -423,6 +504,15 @@ public:
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-LIFECYCLE-REBUILD-ISOLATION", "discard_recompile");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule recompile test should create a standalone SDK engine")));
@@ -502,6 +592,15 @@ public:
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-LIFECYCLE-REBUILD-ISOLATION", "discard_rebuild_function_and_type_identity");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule typed rebuild test should create a standalone SDK engine")));

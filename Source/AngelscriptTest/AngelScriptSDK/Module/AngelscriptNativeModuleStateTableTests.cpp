@@ -175,27 +175,26 @@ private:
 	}
 
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
 
 	TEST_METHOD(RichModuleStoresTopLevelTablesAndExecutesEntry)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT("MOD-STATE-TABLE-REBUILD",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Runtime
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Lifecycle
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule rich storage test should create a standalone SDK engine")));
@@ -284,11 +283,40 @@ public:
 		}
 		TestRunner->AddInfo(FString::Printf(TEXT("ScriptModule rich storage execution: Entry()=%d"), EntryResult));
 		ASSERT_THAT(AreEqual(47, EntryResult, TEXT("ScriptModule rich storage test should execute namespaced Entry through stored declarations")));
+
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), static_cast<int32>(Module.Discard()),
+			TEXT("ScriptModule rich storage test should explicitly discard the owning module")));
+		ASSERT_THAT(IsNull(ScriptEngine->GetModule("ScriptModuleRichStorage", asGM_ONLY_IF_EXISTS),
+			TEXT("ScriptModule rich storage test should remove all top-level tables with the discarded module")));
+
+		AngelscriptNativeTestSupport::FNativeTestEngine IsolatedEngine;
+		IsolatedEngine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			IsolatedEngine.Destroy();
+		};
+		ASSERT_THAT(IsNotNull(IsolatedEngine.Get(), TEXT("ScriptModule rich storage test should create an independent engine")));
+		if (IsolatedEngine.Get() == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(IsolatedEngine.Get() != ScriptEngine, TEXT("ScriptModule rich storage test should isolate top-level tables by engine")));
+		ASSERT_THAT(IsNull(IsolatedEngine.Get()->GetModule("ScriptModuleRichStorage", asGM_ONLY_IF_EXISTS),
+			TEXT("ScriptModule rich storage test should not publish tables into an independent engine")));
 	}
 	TEST_METHOD(RebuildClearsPreviousTopLevelTables)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-STATE-TABLE-REBUILD", "rebuild_clears_previous_tables");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule table rebuild test should create a standalone SDK engine")));
@@ -319,6 +347,28 @@ public:
 		}
 		ASSERT_THAT(IsNotNull(ModuleV1, TEXT("ScriptModule table rebuild test should build version one")));
 		LogModuleState(*TestRunner, ScriptEngine, ModuleV1, TEXT("table-rebuild-v1-after-build"));
+		if (ModuleV1 == nullptr)
+		{
+			return;
+		}
+
+		asIScriptFunction* const FunctionV1 = ModuleV1->GetFunctionByDecl("int OldEntry()");
+		asITypeInfo* const ObjectTypeV1 = ModuleV1->GetTypeInfoByDecl("OldState");
+		asITypeInfo* const EnumTypeV1 = ModuleV1->GetTypeInfoByDecl("EOld");
+		const int32 OldGlobalIndex = FindGlobalVarIndexByName(ModuleV1, "OldValue");
+		ASSERT_THAT(IsNotNull(FunctionV1, TEXT("ScriptModule table rebuild test should publish the version-one function")));
+		ASSERT_THAT(IsNotNull(ObjectTypeV1, TEXT("ScriptModule table rebuild test should publish the version-one object type")));
+		ASSERT_THAT(IsNotNull(EnumTypeV1, TEXT("ScriptModule table rebuild test should publish the version-one enum")));
+		ASSERT_THAT(AreEqual(0, OldGlobalIndex, TEXT("ScriptModule table rebuild test should publish OldValue at index zero")));
+		if (OldGlobalIndex >= 0)
+		{
+			const int32* const OldGlobalValue = static_cast<const int32*>(ModuleV1->GetAddressOfGlobalVar(static_cast<asUINT>(OldGlobalIndex)));
+			ASSERT_THAT(IsNotNull(OldGlobalValue, TEXT("ScriptModule table rebuild test should expose OldValue storage")));
+			if (OldGlobalValue != nullptr)
+			{
+				ASSERT_THAT(AreEqual(100, *OldGlobalValue, TEXT("ScriptModule table rebuild test should initialize OldValue before replacement")));
+			}
+		}
 
 		int32 V1Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, ModuleV1, "int OldEntry()", V1Result))
@@ -352,6 +402,18 @@ public:
 		}
 		ASSERT_THAT(IsNotNull(ModuleV2, TEXT("ScriptModule table rebuild test should build version two")));
 		LogModuleState(*TestRunner, ScriptEngine, ModuleV2, TEXT("table-rebuild-v2-after-build"));
+		if (ModuleV2 == nullptr)
+		{
+			return;
+		}
+
+		asIScriptFunction* const FunctionV2 = ModuleV2->GetFunctionByDecl("int NewEntry()");
+		asITypeInfo* const ObjectTypeV2 = ModuleV2->GetTypeInfoByDecl("NewState");
+		asITypeInfo* const EnumTypeV2 = ModuleV2->GetTypeInfoByDecl("ENew");
+		ASSERT_THAT(AreNotEqual(ModuleV1, ModuleV2, TEXT("ScriptModule table rebuild test should allocate a replacement module")));
+		ASSERT_THAT(AreNotEqual(FunctionV1, FunctionV2, TEXT("ScriptModule table rebuild test should replace the function table identity")));
+		ASSERT_THAT(AreNotEqual(ObjectTypeV1, ObjectTypeV2, TEXT("ScriptModule table rebuild test should replace the object-type table identity")));
+		ASSERT_THAT(AreNotEqual(EnumTypeV1, EnumTypeV2, TEXT("ScriptModule table rebuild test should replace the enum table identity")));
 
 		int32 V2Result = 0;
 		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, ModuleV2, "int NewEntry()", V2Result))
@@ -363,14 +425,30 @@ public:
 		ASSERT_THAT(IsNull(ModuleV2->GetFunctionByDecl("int OldEntry()"), TEXT("ScriptModule table rebuild test should remove the old function declaration")));
 		ASSERT_THAT(IsNull(ModuleV2->GetTypeInfoByDecl("OldState"), TEXT("ScriptModule table rebuild test should remove the old class declaration")));
 		ASSERT_THAT(IsNull(ModuleV2->GetTypeInfoByDecl("EOld"), TEXT("ScriptModule table rebuild test should remove the old enum declaration")));
+		ASSERT_THAT(AreEqual(-1, FindGlobalVarIndexByName(ModuleV2, "OldValue"), TEXT("ScriptModule table rebuild test should remove the old global declaration")));
 		ASSERT_THAT(IsNotNull(ModuleV2->GetFunctionByDecl("int NewEntry()"), TEXT("ScriptModule table rebuild test should expose the new function declaration")));
 		ASSERT_THAT(IsNotNull(ModuleV2->GetTypeInfoByDecl("NewState"), TEXT("ScriptModule table rebuild test should expose the new class declaration")));
 		ASSERT_THAT(IsNotNull(ModuleV2->GetTypeInfoByDecl("ENew"), TEXT("ScriptModule table rebuild test should expose the new enum declaration")));
+		const int32 NewGlobalIndex = FindGlobalVarIndexByName(ModuleV2, "NewValue");
+		ASSERT_THAT(AreEqual(0, NewGlobalIndex, TEXT("ScriptModule table rebuild test should publish NewValue at index zero")));
+		if (NewGlobalIndex >= 0)
+		{
+			const int32* const NewGlobalValue = static_cast<const int32*>(ModuleV2->GetAddressOfGlobalVar(static_cast<asUINT>(NewGlobalIndex)));
+			ASSERT_THAT(IsNotNull(NewGlobalValue, TEXT("ScriptModule table rebuild test should expose NewValue storage")));
+			if (NewGlobalValue != nullptr)
+			{
+				ASSERT_THAT(AreEqual(200, *NewGlobalValue, TEXT("ScriptModule table rebuild test should initialize NewValue after replacement")));
+			}
+		}
 		ASSERT_THAT(AreEqual(1, static_cast<int32>(ModuleV2->GetFunctionCount()), TEXT("ScriptModule table rebuild test should keep one function after rebuild")));
 		ASSERT_THAT(AreEqual(1, static_cast<int32>(ModuleV2->GetGlobalVarCount()), TEXT("ScriptModule table rebuild test should keep one global after rebuild")));
 		ASSERT_THAT(AreEqual(1, static_cast<int32>(ModuleV2->GetObjectTypeCount()), TEXT("ScriptModule table rebuild test should keep one object type after rebuild")));
 		ASSERT_THAT(AreEqual(1, static_cast<int32>(ModuleV2->GetEnumCount()), TEXT("ScriptModule table rebuild test should keep one enum after rebuild")));
 		ASSERT_THAT(AreEqual(0, static_cast<int32>(ModuleV2->GetTypedefCount()), TEXT("ScriptModule table rebuild test should keep zero typedefs after rebuild")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), ScriptEngine->DiscardModule(ModuleScope.Get()),
+			TEXT("ScriptModule table rebuild test should explicitly discard the replacement module")));
+		ASSERT_THAT(IsNull(ScriptEngine->GetModule(ModuleScope.Get(), asGM_ONLY_IF_EXISTS),
+			TEXT("ScriptModule table rebuild test should remove the replacement tables from name lookup")));
 	}
 };
 

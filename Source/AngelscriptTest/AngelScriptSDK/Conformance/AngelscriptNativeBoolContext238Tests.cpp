@@ -15,6 +15,9 @@ TEST_CLASS_WITH_FLAGS_AND_TAGS(FBoolContext238Tests,
 	TEST_METHOD(BoolContextSelectsBranchAndLoopConditions)
 	{
 		using namespace AngelscriptNativeTestSupport;
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"V238-DESIRED-BEHAVIOR supersedes this focused Disabled predecessor with bool_context crossed across parse, compile, metadata, runtime, and cleanup evidence");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };

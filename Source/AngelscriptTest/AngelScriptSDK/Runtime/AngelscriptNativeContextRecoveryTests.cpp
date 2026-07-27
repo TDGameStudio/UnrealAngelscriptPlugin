@@ -1,4 +1,7 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
+#include "../Support/AngelscriptNativeLanguageCaseTestSupport.h"
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -38,31 +41,42 @@ private:
 public:
 	TEST_METHOD(ContextCanBeReusedAfterDeepStackException)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("AggregateSupport",
+			"The deep-stack recovery and one-argument successor are independent cells of RT-CTX-EXCEPTION-RECOVERY-SIGNATURE.");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;
-		if (!BuildContextModule(*TestRunner, "ReferenceContextDeepException", R"(
-int BlowStack(int Depth)
-{
-	if (Depth == 0)
-	{
-		int Zero = 0;
-		return 1 / Zero;
-	}
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			int BlowStack(int Depth)
+			{
+				if (Depth == 0)
+				{
+					int Zero = 0;
+					return 1 / Zero;
+				}
 
-	return BlowStack(Depth - 1) + Depth;
-}
+				return BlowStack(Depth - 1) + Depth;
+			}
 
-int Throwing()
-{
-	return BlowStack(24);
-}
+			int Throwing()
+			{
+				return BlowStack(24);
+			}
 
-int Safe(int Value)
-{
-	return Value + 2;
-}
-)",
+			int Safe(int Value)
+			{
+				return Value + 2;
+			}
+			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("RT-CTX-EXCEPTION-RECOVERY-SIGNATURE-DEEP-ONE-ARGUMENT"),
+			TEXT("ReferenceContextDeepException"),
+			UTF8_TO_TCHAR(ScriptSource.c_str()));
+		if (!BuildContextModule(*TestRunner, "ReferenceContextDeepException", ScriptSource.c_str(),
 			Messages,
 			ScriptEngine,
 			Module))
@@ -101,26 +115,37 @@ int Safe(int Value)
 
 	TEST_METHOD(ContextCanSwitchSignaturesAfterException)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_NON_PRODUCT("AggregateSupport",
+			"The zero-to-one-argument signature switch is an independent transition sequence of RT-CTX-EXCEPTION-RECOVERY-SIGNATURE.");
+
 		AngelscriptNativeTestSupport::FNativeMessageCollector Messages;
 		asIScriptEngine* ScriptEngine = nullptr;
 		asIScriptModule* Module = nullptr;
-		if (!BuildContextModule(*TestRunner, "ReferenceContextSignatureSwitch", R"(
-int Throwing()
-{
-	int Zero = 0;
-	return 1 / Zero;
-}
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			int Throwing()
+			{
+				int Zero = 0;
+				return 1 / Zero;
+			}
 
-int NoArg()
-{
-	return 11;
-}
+			int NoArg()
+			{
+				return 11;
+			}
 
-int OneArg(int Value)
-{
-	return Value * 2;
-}
-)",
+			int OneArg(int Value)
+			{
+				return Value * 2;
+			}
+			)AS");
+		PrintGeneratedAsSource(
+			*TestRunner,
+			TEXT("RT-CTX-EXCEPTION-RECOVERY-SIGNATURE-ZERO-TO-ONE-ARGUMENT"),
+			TEXT("ReferenceContextSignatureSwitch"),
+			UTF8_TO_TCHAR(ScriptSource.c_str()));
+		if (!BuildContextModule(*TestRunner, "ReferenceContextSignatureSwitch", ScriptSource.c_str(),
 			Messages,
 			ScriptEngine,
 			Module))

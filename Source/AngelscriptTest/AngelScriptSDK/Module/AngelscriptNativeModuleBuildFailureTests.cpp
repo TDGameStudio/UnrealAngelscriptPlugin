@@ -1,3 +1,4 @@
+#include "Support/AngelscriptNativeCaseTestSupport.h"
 #include "Support/AngelscriptNativeCoreTestSupport.h"
 #include "Support/AngelscriptNativeExecutionTestSupport.h"
 #include "AngelscriptTestMacros.h"
@@ -175,27 +176,27 @@ private:
 	}
 
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
 
 	TEST_METHOD(FailedBuildDoesNotPublishPartialModuleTablesAndCanRecover)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT("MOD-BUILD-FAILURE-RECOVERY",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Runtime
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Lifecycle
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule failed build recovery test should create a standalone SDK engine")));

@@ -1,4 +1,5 @@
 #include "Support/AngelscriptNativeExecutionTestSupport.h"
+#include "Support/AngelscriptNativeCaseTestSupport.h"
 
 #include "AngelscriptTestMacros.h"
 
@@ -45,6 +46,10 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-LOGICAL and LANG-CONV-BOOL-CONTEXT supersede this single boolean expression with complete boolean operand, context, lazy-evaluation, runtime, and rejection products");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
@@ -69,6 +74,10 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-INTEGRAL-BITWISE supersedes this one mask expression across every integral type, operator, operand pattern, result context, and exact rejection control");
 
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
@@ -105,6 +114,10 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES, LANG-CONV-NUMERIC, and EMBED-NATIVE-CALL-ABI-SHAPES supersede this one int8 callback/property round trip with independent storage, conversion, and native ABI products");
+
 		PrimitiveTypeTest::GInt8Value = 0;
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
@@ -139,6 +152,10 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-CONV-FLOAT-FINITE-SPECIAL and LANG-OP-COMPARISON-FLOAT supersede this single scientific-literal equality with finite/special/range conversion and comparison products");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
@@ -166,6 +183,10 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-VAR-INIT-STORAGE supersedes this compile-only auto smoke with initialization form, storage owner, runtime value, cleanup, and isolation evidence");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
@@ -175,7 +196,9 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 		FScopedNativeModule Module(*TestRunner, Engine, "PrimitiveTypeAuto", ASTEST_AS_ANSI(R"AS(
 			namespace A
 			{
-				class X {}
+				class X
+				{
+				}
 			}
 
 			int CreateAutoValue()
@@ -183,7 +206,7 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 				auto value = A::X();
 				return 1;
 			}
-			)AS"));
+		)AS"));
 		if (!Module.IsValid())
 		{
 			return;
@@ -197,6 +220,10 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-DATATYPE-QUALIFIER-CARTESIAN and LANG-CONV-NUMERIC supersede this extrema smoke with every primitive width, qualifier, size, alignment, formatting, and cross-type conversion product");
 
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
@@ -232,6 +259,10 @@ TEST_CLASS_WITH_FLAGS(FPrimitiveTypeTests,
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"LANG-OP-NUMERIC-BINARY and LANG-OP-ASSIGNMENT supersede this unsigned wrap sample across integral types, arithmetic operations, assignments, boundaries, and result contexts");
 
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);

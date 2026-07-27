@@ -15,6 +15,9 @@ TEST_CLASS_WITH_FLAGS_AND_TAGS(FMemberInitialization238Tests,
 	TEST_METHOD(MemberInitializationExpressionReportsMissingSymbol)
 	{
 		using namespace AngelscriptNativeTestSupport;
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"V238-DESIRED-BEHAVIOR owns selected member-initialization build and diagnostic evidence; this Disabled missing-symbol fixture remains a readable predecessor");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };
@@ -28,6 +31,9 @@ TEST_CLASS_WITH_FLAGS_AND_TAGS(FMemberInitialization238Tests,
 	TEST_METHOD(ConstructorMemberInitializerEvaluatesInDeclarationOrder)
 	{
 		using namespace AngelscriptNativeTestSupport;
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"V238-DESIRED-BEHAVIOR supersedes this focused Disabled predecessor with member_initialization crossed across five evidence layers");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };

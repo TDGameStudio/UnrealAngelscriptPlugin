@@ -175,27 +175,25 @@ private:
 	}
 
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
 
 	TEST_METHOD(EnumerateFunctions)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT("MOD-FUNCTION-INVENTORY-RUNTIME",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Runtime
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule enumerate test should create a standalone SDK engine")));
@@ -223,6 +221,22 @@ public:
 		}
 
 		ASSERT_THAT(AreEqual(3, static_cast<int32>(Module->GetFunctionCount()), TEXT("ScriptModule enumerate test should report three functions")));
+		asIScriptFunction* const IndexedAlpha = Module->GetFunctionByIndex(0);
+		asIScriptFunction* const IndexedBeta = Module->GetFunctionByIndex(1);
+		asIScriptFunction* const IndexedGamma = Module->GetFunctionByIndex(2);
+		ASSERT_THAT(IsNotNull(IndexedAlpha, TEXT("ScriptModule enumerate test should expose the first indexed function")));
+		ASSERT_THAT(IsNotNull(IndexedBeta, TEXT("ScriptModule enumerate test should expose the second indexed function")));
+		ASSERT_THAT(IsNotNull(IndexedGamma, TEXT("ScriptModule enumerate test should expose the third indexed function")));
+		if (IndexedAlpha == nullptr || IndexedBeta == nullptr || IndexedGamma == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(FString(TEXT("Alpha")), FString(UTF8_TO_TCHAR(IndexedAlpha->GetName())),
+			TEXT("ScriptModule enumerate test should preserve Alpha as the first function")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Beta")), FString(UTF8_TO_TCHAR(IndexedBeta->GetName())),
+			TEXT("ScriptModule enumerate test should preserve Beta as the second function")));
+		ASSERT_THAT(AreEqual(FString(TEXT("Gamma")), FString(UTF8_TO_TCHAR(IndexedGamma->GetName())),
+			TEXT("ScriptModule enumerate test should preserve Gamma as the third function")));
 		LogModuleState(*TestRunner, ScriptEngine, Module, TEXT("enumerate-after-build"));
 
 		bool bFoundBeta = false;
@@ -257,11 +271,60 @@ public:
 		ASSERT_THAT(AreEqual(1, AlphaResult, TEXT("ScriptModule enumerate test should execute Alpha")));
 		ASSERT_THAT(AreEqual(2, BetaResult, TEXT("ScriptModule enumerate test should execute Beta")));
 		ASSERT_THAT(AreEqual(3, GammaResult, TEXT("ScriptModule enumerate test should execute Gamma")));
+
+		asIScriptContext* Context = ScriptEngine->CreateContext();
+		ASSERT_THAT(IsNotNull(Context, TEXT("ScriptModule enumerate test should create an explicit execution context")));
+		if (Context != nullptr)
+		{
+			asIScriptFunction* BetaFunction = Module->GetFunctionByDecl("int Beta()");
+			ASSERT_THAT(IsNotNull(BetaFunction, TEXT("ScriptModule enumerate test should resolve Beta before preparing the explicit context")));
+			if (BetaFunction != nullptr)
+			{
+				ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), static_cast<int32>(Context->Prepare(BetaFunction)),
+					TEXT("ScriptModule enumerate test should prepare Beta on the explicit context")));
+				ASSERT_THAT(AreEqual(static_cast<int32>(asEXECUTION_FINISHED), static_cast<int32>(Context->Execute()),
+					TEXT("ScriptModule enumerate test should execute Beta on the explicit context")));
+				ASSERT_THAT(AreEqual(2, static_cast<int32>(Context->GetReturnDWord()),
+					TEXT("ScriptModule enumerate test should read Beta's exact return value from the explicit context")));
+				ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), static_cast<int32>(Context->Unprepare()),
+					TEXT("ScriptModule enumerate test should unprepare the explicit context before module cleanup")));
+			}
+			Context->Release();
+		}
+
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), static_cast<int32>(Module.Discard()),
+			TEXT("ScriptModule enumerate test should explicitly discard the owning module")));
+		ASSERT_THAT(IsNull(ScriptEngine->GetModule("ScriptModuleEnumerate", asGM_ONLY_IF_EXISTS),
+			TEXT("ScriptModule enumerate test should remove the discarded module from the engine")));
+
+		AngelscriptNativeTestSupport::FNativeTestEngine IsolatedEngine;
+		IsolatedEngine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			IsolatedEngine.Destroy();
+		};
+		ASSERT_THAT(IsNotNull(IsolatedEngine.Get(), TEXT("ScriptModule enumerate test should create an independent engine")));
+		if (IsolatedEngine.Get() == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(IsolatedEngine.Get() != ScriptEngine, TEXT("ScriptModule enumerate test should use a distinct engine for isolation")));
+		ASSERT_THAT(IsNull(IsolatedEngine.Get()->GetModule("ScriptModuleEnumerate", asGM_ONLY_IF_EXISTS),
+			TEXT("ScriptModule enumerate test should not publish the module into an independent engine")));
 	}
 	TEST_METHOD(ModuleFunctionsPreserveDeclaredReturnTypes)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-FUNCTION-INVENTORY-RUNTIME", "scalar_return_types");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule return-value coverage should create a standalone SDK engine")));
@@ -388,6 +451,15 @@ public:
 	}
 	TEST_METHOD(FunctionArgumentReturnRoundTripExecutesModuleFunctions)
 	{
+		AS_NATIVE_PRODUCT_PART("MOD-FUNCTION-INVENTORY-RUNTIME", "argument_return_round_trip");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule argument roundtrip test should create a standalone SDK engine")));
 

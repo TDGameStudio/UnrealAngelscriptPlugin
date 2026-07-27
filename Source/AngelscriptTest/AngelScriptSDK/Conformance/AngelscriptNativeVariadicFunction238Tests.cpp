@@ -15,6 +15,9 @@ TEST_CLASS_WITH_FLAGS_AND_TAGS(FVariadicFunction238Tests,
 	TEST_METHOD(VariadicFunctionAcceptsZeroAndMultipleTrailingArguments)
 	{
 		using namespace AngelscriptNativeTestSupport;
+		AS_NATIVE_NON_PRODUCT("LegacyCompatibility",
+			"V238-DESIRED-BEHAVIOR supersedes this focused Disabled predecessor with variadic_function crossed across parse, compile, metadata, runtime, and cleanup evidence");
+
 		FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
 		ON_SCOPE_EXIT { Engine.Destroy(); };

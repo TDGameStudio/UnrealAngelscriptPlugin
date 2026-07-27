@@ -1,4 +1,6 @@
 #include "Support/AngelscriptNativeExecutionTestSupport.h"
+#include "Support/AngelscriptNativeCaseTestSupport.h"
+#include "AngelscriptTestMacros.h"
 
 // Raw SDK global-property coverage.
 // AngelscriptSDKGlobalPropertyTests.cpp
@@ -6,6 +8,7 @@
 // Automation IDs: Angelscript.TestModule.AngelScriptSDK.TypeSystem.GlobalProperty.*
 
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "AngelscriptTestMacros.h"
 #include "CQTest.h"
 #include "Misc/ScopeExit.h"
 
@@ -83,17 +86,236 @@ public:
 		GTestBool = false;
 	}
 
+	TEST_METHOD(GlobalPropertiesByTypeAndAccess)
+	{
+		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT("TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Runtime
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		asIScriptEngine* const ScriptEngine = Engine.Get();
+		ASSERT_THAT(IsNotNull(
+			ScriptEngine,
+			TEXT("Global-property access product should create a raw SDK engine")));
+		if (ScriptEngine == nullptr)
+		{
+			return;
+		}
+
+		const TCHAR* Types[] =
+		{
+			TEXT("int"),
+			TEXT("double"),
+			TEXT("bool"),
+		};
+		const TCHAR* Accesses[] =
+		{
+			TEXT("read"),
+			TEXT("write"),
+			TEXT("read-modify-write"),
+		};
+
+		for (const TCHAR* Type : Types)
+		{
+			for (const TCHAR* Access : Accesses)
+			{
+				const FString CaseId = MakeNativeCaseId(
+					"TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES",
+					{ Type, Access });
+				const FString ModuleName =
+					TEXT("TypeGlobalProperty_")
+					+ CaseId.Replace(TEXT("-"), TEXT("_"));
+				FString Source;
+				int32 ExpectedReturn = 0;
+
+				if (FCString::Strcmp(Type, TEXT("int")) == 0)
+				{
+					GTestValue = 10;
+					if (FCString::Strcmp(Access, TEXT("read")) == 0)
+					{
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestValue;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+						ExpectedReturn = 10;
+					}
+					else if (FCString::Strcmp(Access, TEXT("write")) == 0)
+					{
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\tGTestValue = 99;"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestValue;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+						ExpectedReturn = 99;
+					}
+					else
+					{
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\tGTestValue += 5;"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestValue;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+						ExpectedReturn = 15;
+					}
+				}
+				else if (FCString::Strcmp(Type, TEXT("double")) == 0)
+				{
+					GTestDouble = 2.5;
+					if (FCString::Strcmp(Access, TEXT("read")) == 0)
+					{
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestDouble == 2.5 ? 1 : 0;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+					}
+					else if (FCString::Strcmp(Access, TEXT("write")) == 0)
+					{
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\tGTestDouble = 4.5;"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestDouble == 4.5 ? 1 : 0;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+					}
+					else
+					{
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\tGTestDouble = GTestDouble * 2.0 + 1.0;"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestDouble == 6.0 ? 1 : 0;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+					}
+					ExpectedReturn = 1;
+				}
+				else
+				{
+					GTestBool = false;
+					if (FCString::Strcmp(Access, TEXT("read")) == 0)
+					{
+						GTestBool = true;
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestBool ? 1 : 0;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+					}
+					else if (FCString::Strcmp(Access, TEXT("write")) == 0)
+					{
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\tGTestBool = true;"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestBool ? 1 : 0;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+					}
+					else
+					{
+						AppendGeneratedAsLine(Source, TEXT("int Entry()"));
+						AppendGeneratedAsLine(Source, TEXT("{"));
+						AppendGeneratedAsLine(Source, TEXT("\tGTestBool = !GTestBool;"));
+						AppendGeneratedAsLine(Source, TEXT("\treturn GTestBool ? 1 : 0;"));
+						AppendGeneratedAsLine(Source, TEXT("}"));
+					}
+					ExpectedReturn = 1;
+				}
+
+				PrintGeneratedAsSource(
+					*TestRunner,
+					CaseId,
+					ModuleName,
+					Source);
+				const FTCHARToUTF8 ModuleNameUtf8(*ModuleName);
+				const FTCHARToUTF8 SourceUtf8(*Source);
+				FScopedNativeModule Module(
+					*TestRunner,
+					Engine,
+					ModuleNameUtf8.Get(),
+					SourceUtf8.Get());
+				if (!Module.IsValid())
+				{
+					continue;
+				}
+
+				asIScriptFunction* const Entry =
+					GetNativeFunctionByExactDecl(Module, "int Entry()");
+				ASSERT_THAT(IsNotNull(
+					Entry,
+					*FString::Printf(
+						TEXT("%s should publish exact Entry metadata"),
+						*CaseId)));
+				if (Entry == nullptr)
+				{
+					continue;
+				}
+				ASSERT_THAT(AreEqual(
+					static_cast<int32>(asTYPEID_INT32),
+					Entry->GetReturnTypeId(),
+					*FString::Printf(
+						TEXT("%s should preserve the integer observation ABI"),
+						*CaseId)));
+
+				{
+					FSdkFunctionInvoker Invoker(
+						*TestRunner,
+						ScriptEngine,
+						Module,
+						"int Entry()");
+					ASSERT_THAT(IsTrue(
+						Invoker.IsValid(),
+						*FString::Printf(
+							TEXT("%s should prepare its exact entry"),
+							*CaseId)));
+					if (Invoker.IsValid())
+					{
+						ASSERT_THAT(AreEqual(
+							ExpectedReturn,
+							Invoker.CallAndReturn<int32>(INDEX_NONE),
+							*FString::Printf(
+								TEXT("%s should preserve native property storage and script access"),
+								*CaseId)));
+					}
+				}
+
+				ASSERT_THAT(AreEqual(
+					asSUCCESS,
+					Module.Discard(),
+					*FString::Printf(
+						TEXT("%s should explicitly discard its generated module"),
+						*CaseId)));
+				ASSERT_THAT(IsNull(
+					ScriptEngine->GetModule(
+						ModuleNameUtf8.Get(),
+						asGM_ONLY_IF_EXISTS),
+					*FString::Printf(
+						TEXT("%s module should be absent before the next independent cell"),
+						*CaseId)));
+			}
+		}
+	}
+
 	TEST_METHOD(GlobalPropertyScriptReads)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES supersedes this int-read smoke through the complete int/double/bool by read/write/read-modify-write product");
 
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestValue = 42;
 
-		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPRead", "int Entry() { return GTestValue; }\n");
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			int Entry()
+			{
+				return GTestValue;
+			}
+			)AS");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPRead", ScriptSource);
 		if (!M.IsValid()) return;
 
 		int32 Result = 0;
@@ -106,12 +328,22 @@ public:
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES supersedes this int-write smoke with exact type, metadata, runtime storage, cleanup, and isolation evidence");
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestValue = 0;
 
-		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPWrite", "void Entry() { GTestValue = 99; }\n");
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			void Entry()
+			{
+				GTestValue = 99;
+			}
+			)AS");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPWrite", ScriptSource);
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
@@ -123,13 +355,23 @@ public:
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"AggregateSupport",
+			"TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES owns each registered property independently; this two-int aggregate remains compatibility evidence");
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestA = 10;
 		GTestB = 20;
 
-		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPMulti", "int Entry() { return GTestA + GTestB; }\n");
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			int Entry()
+			{
+				return GTestA + GTestB;
+			}
+			)AS");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPMulti", ScriptSource);
 		if (!M.IsValid()) return;
 
 		int32 Result = 0;
@@ -142,6 +384,10 @@ public:
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES supersedes this scalar-only mutation with all three registered types and all three access shapes");
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
@@ -151,7 +397,13 @@ public:
 		// supported scalar floating declaration is `double` backed by a C++ double.
 		GTestDouble = 1.5;
 
-		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPFloat", "void Entry() { GScalar = GScalar * 2.0 + 1.0; }\n");
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			void Entry()
+			{
+				GScalar = GScalar * 2.0 + 1.0;
+			}
+			)AS");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPFloat", ScriptSource);
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");
@@ -164,12 +416,22 @@ public:
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES supersedes this double-read smoke with double read, write, and read-modify-write execution");
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestDouble = 2.5;
 
-		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPDouble", "double Entry() { return GTestDouble * 4.0; }\n");
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			double Entry()
+			{
+				return GTestDouble * 4.0;
+			}
+			)AS");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPDouble", ScriptSource);
 		if (!M.IsValid()) return;
 
 		double Result = 0.0;
@@ -183,12 +445,22 @@ public:
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
 
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-GLOBAL-PROPERTY-ACCESS-SHAPES supersedes this bool-toggle smoke with bool read, write, and read-modify-write execution");
+
 		asIScriptEngine* SE = Engine.Get();
 		ASSERT_THAT(IsNotNull(SE, TEXT("Should create engine")));
 
 		GTestBool = false;
 
-		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPBool", "void Entry() { GTestBool = !GTestBool; }\n");
+		const std::string ScriptSource = ASTEST_AS_ANSI(R"AS(
+			void Entry()
+			{
+				GTestBool = !GTestBool;
+			}
+			)AS");
+		AngelscriptNativeTestSupport::FScopedNativeModule M(*TestRunner, Engine, "GPBool", ScriptSource);
 		if (!M.IsValid()) return;
 
 		ExecuteScriptVoidFunction(*TestRunner, SE, M, "void Entry()");

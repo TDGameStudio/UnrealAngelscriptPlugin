@@ -175,26 +175,26 @@ private:
 	}
 
 public:
-	inline static AngelscriptNativeTestSupport::FNativeTestEngine Engine;
-
-	BEFORE_ALL()
-	{
-		Engine.Create(*TestRunner);
-	}
-
-	AFTER_ALL()
-	{
-		Engine.Destroy();
-	}
-
-	BEFORE_EACH()
-	{
-		Engine.ResetMessages();
-	}
 
 	TEST_METHOD(SyntaxErrorReportsSectionAndOffset)
 	{
 		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_PRODUCT("MOD-SECTION-BUILD-DIAGNOSTIC",
+			ENativeEvidence::Compile
+				| ENativeEvidence::Diagnostic
+				| ENativeEvidence::Runtime
+				| ENativeEvidence::Metadata
+				| ENativeEvidence::Cleanup
+				| ENativeEvidence::Isolation);
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Section diagnostic test should create a standalone SDK engine")));
 		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleSectionDiagnostic");
@@ -208,31 +208,80 @@ public:
 			)AS");
 		ASSERT_THAT(IsTrue(Module->AddScriptSection("SectionDiagnostic.as", Source.c_str(), Source.length(), 17) >= 0, TEXT("Section diagnostic test should add its source")));
 		ASSERT_THAT(IsTrue(Module->Build() < 0, TEXT("Malformed section should fail to build")));
-		bool bSectionReported = false;
-		bool bOffsetReported = false;
+		bool bExactLocationReported = false;
 		for (const FNativeMessageEntry& Entry : Engine.GetMessages().Entries)
 		{
-			bSectionReported |= Entry.Section.Contains(TEXT("SectionDiagnostic.as"));
-			bOffsetReported |= Entry.Row >= 17;
+			bExactLocationReported |= Entry.Section == TEXT("SectionDiagnostic.as") && Entry.Row == 20;
 		}
-		ASSERT_THAT(IsTrue(bSectionReported, TEXT("Syntax diagnostics should retain the declaring section name")));
-		ASSERT_THAT(IsTrue(bOffsetReported, TEXT("Syntax diagnostics should retain the supplied line offset")));
+		ASSERT_THAT(IsTrue(bExactLocationReported,
+			TEXT("Syntax diagnostics should report SectionDiagnostic.as line 20 (source line 3 plus the supplied offset 17)")));
+		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetFunctionCount()),
+			TEXT("A failed section build should publish no functions")));
+		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetGlobalVarCount()),
+			TEXT("A failed section build should publish no globals")));
+		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetObjectTypeCount()),
+			TEXT("A failed section build should publish no object types")));
+		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetEnumCount()),
+			TEXT("A failed section build should publish no enums")));
+		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetTypedefCount()),
+			TEXT("A failed section build should publish no typedefs")));
+		ASSERT_THAT(AreEqual(0, static_cast<int32>(Module->GetImportedFunctionCount()),
+			TEXT("A failed section build should publish no imported functions")));
+
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), ScriptEngine->DiscardModule(ModuleScope.Get()),
+			TEXT("Section diagnostic test should explicitly discard the failed module")));
+		ASSERT_THAT(IsNull(ScriptEngine->GetModule(ModuleScope.Get(), asGM_ONLY_IF_EXISTS),
+			TEXT("Section diagnostic test should remove the failed module from name lookup")));
+
+		AngelscriptNativeTestSupport::FNativeTestEngine IsolatedEngine;
+		IsolatedEngine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			IsolatedEngine.Destroy();
+		};
+		ASSERT_THAT(IsNotNull(IsolatedEngine.Get(), TEXT("Section diagnostic test should create an independent engine")));
+		if (IsolatedEngine.Get() == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(IsolatedEngine.Get() != ScriptEngine, TEXT("Section diagnostic test should isolate diagnostics and module state by engine")));
+		ASSERT_THAT(IsNull(IsolatedEngine.Get()->GetModule(ModuleScope.Get(), asGM_ONLY_IF_EXISTS),
+			TEXT("Section diagnostic test should not publish the failed module into an independent engine")));
+		ASSERT_THAT(AreEqual(0, IsolatedEngine.GetMessages().Entries.Num(),
+			TEXT("Section diagnostic test should not leak diagnostics into an independent engine")));
 	}
 
 	TEST_METHOD(CrossSectionFunctionKeepsDeclaringSection)
 	{
 		using namespace AngelscriptNativeTestSupport;
+		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-SECTION-BUILD-DIAGNOSTIC", "declaring_section_metadata");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
+
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Declaring-section test should create a standalone SDK engine")));
 		FScopedNativeModuleName ModuleScope(Engine, "ScriptModuleDeclaringSection");
 		asIScriptModule* Module = CreateScriptModule(ScriptEngine, ModuleScope.Get());
 		ASSERT_THAT(IsNotNull(Module, TEXT("Declaring-section test should create a module")));
 		const std::string Helpers = ASTEST_AS_ANSI(R"AS(
-			int Helper() { return 40; }
-			)AS");
+			int Helper()
+			{
+				return 40;
+			}
+		)AS");
 		const std::string Entry = ASTEST_AS_ANSI(R"AS(
-			int Entry() { return Helper() + 2; }
-			)AS");
+			int Entry()
+			{
+				return Helper() + 2;
+			}
+		)AS");
 		ASSERT_THAT(IsTrue(Module->AddScriptSection("Helpers.as", Helpers.c_str(), Helpers.length(), 0) >= 0, TEXT("Declaring-section test should add helper section")));
 		ASSERT_THAT(IsTrue(Module->AddScriptSection("Entry.as", Entry.c_str(), Entry.length(), 0) >= 0, TEXT("Declaring-section test should add entry section")));
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), Module->Build(), TEXT("Declaring-section test should build both sections")));
@@ -242,12 +291,27 @@ public:
 		ASSERT_THAT(IsNotNull(EntryFunction, TEXT("Entry function should resolve")));
 		ASSERT_THAT(AreEqual(FString(TEXT("Helpers.as")), FString(UTF8_TO_TCHAR(Helper->GetScriptSectionName())), TEXT("Helper should retain its own declaring section")));
 		ASSERT_THAT(AreEqual(FString(TEXT("Entry.as")), FString(UTF8_TO_TCHAR(EntryFunction->GetScriptSectionName())), TEXT("Entry should retain its own declaring section")));
+		int32 Result = 0;
+		if (!ExecuteScriptFunction(*TestRunner, ScriptEngine, Module, "int Entry()", Result))
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(42, Result, TEXT("Declaring-section test should execute the cross-section call after metadata lookup")));
 	}
 
 	TEST_METHOD(SingleModulePipeline)
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-SECTION-BUILD-DIAGNOSTIC", "single_section_pipeline");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule single-module test should create a standalone SDK engine")));
@@ -279,6 +343,15 @@ public:
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-SECTION-BUILD-DIAGNOSTIC", "multi_section_call");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule multi-section test should create a standalone SDK engine")));
@@ -322,6 +395,15 @@ public:
 	{
 		using namespace AngelscriptNativeTestSupport;
 		using namespace AngelscriptSDKTestSupport;
+
+		AS_NATIVE_PRODUCT_PART("MOD-SECTION-BUILD-DIAGNOSTIC", "cross_section_symbol");
+
+		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
+		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 
 		asIScriptEngine* ScriptEngine = Engine.Get();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("ScriptModule cross-section symbol test should create a standalone SDK engine")));

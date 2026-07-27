@@ -1,5 +1,7 @@
 #include "../Support/AngelscriptNativeCoreTestSupport.h"
+#include "../Support/AngelscriptNativeCaseTestSupport.h"
 #include "CQTest.h"
+#include "Misc/ScopeExit.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_datatype.h"
@@ -14,6 +16,10 @@ TEST_CLASS_WITH_FLAGS(FDataTypeTests,
 {
 	TEST_METHOD(DataTypePrimitives)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-DATATYPE-QUALIFIER-CARTESIAN supersedes this five-type smoke with eleven primitive types crossed by four qualifier states, exact format, size, alignment, comparison, compilation, execution, discard, and isolation");
+
 		asCDataType IntType = asCDataType::CreatePrimitive(ttInt, false);
 		asCDataType FloatType = asCDataType::CreatePrimitive(ttFloat32, false);
 		asCDataType BoolType = asCDataType::CreatePrimitive(ttBool, false);
@@ -34,6 +40,10 @@ TEST_CLASS_WITH_FLAGS(FDataTypeTests,
 
 	TEST_METHOD(DataTypeComparisons)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-DATATYPE-QUALIFIER-CARTESIAN supersedes these three comparison checks for every primitive and mutable/const/reference/const-reference state");
+
 		asCDataType MutableInt = asCDataType::CreatePrimitive(ttInt, false);
 		asCDataType ConstInt = asCDataType::CreatePrimitive(ttInt, true);
 		asCDataType RefInt = asCDataType::CreatePrimitive(ttInt, false);
@@ -51,8 +61,17 @@ TEST_CLASS_WITH_FLAGS(FDataTypeTests,
 
 	TEST_METHOD(HandleQualifiersPreserveConstAndReferenceFlags)
 	{
+		using namespace AngelscriptNativeTestSupport;
+
+		AS_NATIVE_PRODUCT("TYPE-DATATYPE-HANDLE-CONTRACT",
+			ENativeEvidence::Metadata);
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(Engine.Get());
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("Data-type handle qualifier test should create a raw SDK engine")));
@@ -76,6 +95,31 @@ TEST_CLASS_WITH_FLAGS(FDataTypeTests,
 		RefConstObjectHandleType.MakeReference(true);
 		asCDataType NullHandleType = asCDataType::CreateNullHandle();
 
+		const struct
+		{
+			const TCHAR* Id;
+			const TCHAR* Declaration;
+			const TCHAR* Expected;
+		} ReviewCases[] =
+		{
+			{ TEXT("object-value"), TEXT("TestObject"), TEXT("object kind with handle support") },
+			{ TEXT("mutable-handle"), TEXT("TestObject@"), TEXT("typed mutable handle") },
+			{ TEXT("const-handle"), TEXT("const TestObject@"), TEXT("typed const handle") },
+			{ TEXT("const-reference-handle"), TEXT("const TestObject@&"), TEXT("const and reference flags preserved") },
+			{ TEXT("null-handle"), TEXT("<null handle>"), TEXT("untyped null-handle sentinel") },
+		};
+		for (const auto& ReviewCase : ReviewCases)
+		{
+			FString Source;
+			AppendGeneratedAsLine(Source, FString::Printf(TEXT("// Declaration: %s"), ReviewCase.Declaration));
+			AppendGeneratedAsLine(Source, FString::Printf(TEXT("// Expected: %s"), ReviewCase.Expected));
+			PrintGeneratedAsSource(
+				*TestRunner,
+				MakeNativeCaseId("TYPE-DATATYPE-HANDLE-CONTRACT", { ReviewCase.Id }),
+				TEXT("TypeDataTypeHandleNativeReview"),
+				Source);
+		}
+
 		ASSERT_THAT(IsTrue(ObjectHandleType.GetTypeInfo() == ObjectType,
 			TEXT("Object handle should preserve the target type info")));
 		ASSERT_THAT(IsFalse(ObjectHandleType == ConstObjectHandleType,
@@ -90,12 +134,36 @@ TEST_CLASS_WITH_FLAGS(FDataTypeTests,
 			TEXT("Null handle should still report object-handle semantics")));
 		ASSERT_THAT(IsTrue(ObjectValueType.IsObject() && ObjectHandleType.IsObjectHandle(),
 			TEXT("Value type and object handle should keep different kind semantics")));
+		ASSERT_THAT(IsTrue(ObjectValueType.SupportHandles(),
+			TEXT("Registered reference object value type should advertise handle support")));
+		ASSERT_THAT(IsTrue(ObjectHandleType.CanBeInstantiated(),
+			TEXT("Typed object-handle slot should remain instantiable")));
+		ASSERT_THAT(AreEqual(
+			0,
+			ObjectHandleType.GetSizeInMemoryBytes(),
+			TEXT("Current fork should report the registered zero-size reference object metadata from GetSizeInMemoryBytes")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(sizeof(void*)),
+			ObjectHandleType.GetSizeOfVariableBytes(),
+			TEXT("Typed object-handle variable should occupy one native pointer despite zero object metadata size")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(alignof(void*)),
+			ObjectHandleType.GetAlignment(),
+			TEXT("Typed object handle should retain native pointer alignment")));
 	}
 
 	TEST_METHOD(DataTypeObjectHandles)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-DATATYPE-HANDLE-CONTRACT supersedes this two-predicate smoke with exact value/mutable/const/reference/null handle identity, comparison, size, alignment, and instantiation metadata; independent object-type ownership and cleanup belong to the dedicated release products");
+
 		AngelscriptNativeTestSupport::FNativeTestEngine Engine;
 		Engine.Create(*TestRunner);
+		ON_SCOPE_EXIT
+		{
+			Engine.Destroy();
+		};
 		asCScriptEngine* ScriptEngine = static_cast<asCScriptEngine*>(Engine.Get());
 		ASSERT_THAT(IsNotNull(ScriptEngine,
 			TEXT("Data-type object-handle test should create a raw SDK engine")));
@@ -127,6 +195,10 @@ TEST_CLASS_WITH_FLAGS(FDataTypeTests,
 
 	TEST_METHOD(SizeAndAlignment)
 	{
+		AS_NATIVE_NON_PRODUCT(
+			"LegacyCompatibility",
+			"TYPE-DATATYPE-QUALIFIER-CARTESIAN supersedes these three size checks with exact byte, dword, and alignment evidence for every primitive and qualifier state");
+
 		asCDataType IntType = asCDataType::CreatePrimitive(ttInt, false);
 		asCDataType Float64Type = asCDataType::CreatePrimitive(ttFloat64, false);
 		asCDataType BoolType = asCDataType::CreatePrimitive(ttBool, false);
