@@ -40,6 +40,7 @@
 #define ANGELSCRIPT_H
 
 #include "CoreMinimal.h"
+#include "UnrealAngelscriptVersion.h"
 #include <stddef.h>
 #include "FunctionCallers.h"
 #ifndef _MSC_VER
@@ -63,10 +64,10 @@
 
 BEGIN_AS_NAMESPACE
 
-// AngelScript version
+// Unreal AngelScript product version
 
-#define ANGELSCRIPT_VERSION        23300
-#define ANGELSCRIPT_VERSION_STRING "2.33.0 WIP"
+#define ANGELSCRIPT_VERSION        UNREAL_ANGELSCRIPT_VERSION
+#define ANGELSCRIPT_VERSION_STRING UNREAL_ANGELSCRIPT_PRODUCT_VERSION_STRING
 
 // Data types
 
@@ -625,6 +626,7 @@ extern "C"
 	// Engine
 	AS_API asIScriptEngine *asCreateScriptEngine(asDWORD version = ANGELSCRIPT_VERSION);
 	AS_API const char      *asGetLibraryVersion();
+	AS_API const char      *asGetLibraryUpstreamVersion();
 	AS_API const char      *asGetLibraryOptions();
 
 	// Context

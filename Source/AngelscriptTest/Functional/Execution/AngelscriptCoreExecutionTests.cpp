@@ -294,7 +294,7 @@ asIScriptEngine* ScriptEngineB = LocalEngineB->GetScriptEngine();
 TestNotNull(TEXT("Core.CreateEngine should create the first asIScriptEngine for the returned wrapper"), ScriptEngineA);
 TestNotNull(TEXT("Core.CreateEngine should create the second asIScriptEngine for the returned wrapper"), ScriptEngineB);
 
-TestEqual(TEXT("Core.CreateEngine should preserve the embedded AngelScript version"), ANGELSCRIPT_VERSION, 23300);
+TestEqual(TEXT("Core.CreateEngine should preserve the Unreal AngelScript product version"), ANGELSCRIPT_VERSION, 10000);
 return ScriptEngineA != nullptr && ScriptEngineB != nullptr;
 }
 

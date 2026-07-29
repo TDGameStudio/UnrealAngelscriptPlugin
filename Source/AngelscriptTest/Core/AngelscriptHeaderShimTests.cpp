@@ -101,7 +101,7 @@ struct FScopedAsEngineRelease
 public:
 	TEST_METHOD(RawAngelscriptApiRoundTrip)
 	{
-const ANSICHAR* RawLibraryVersion = asGetLibraryVersion();
+		const ANSICHAR* RawLibraryVersion = asGetLibraryVersion();
 		ASSERT_THAT(IsNotNull(RawLibraryVersion, TEXT("HeaderShim native API test should expose a library version string")));
 
 		const FString LibraryVersion = ANSI_TO_TCHAR(RawLibraryVersion);

@@ -1,6 +1,20 @@
-# Unreal Angelscript Plugin
+# Unreal AngelScript 1.0.0
 
-UnrealAngelscriptPlugin is a source Unreal Engine plugin that integrates AngelScript as a first-class scripting option for Unreal Engine projects.
+Unreal AngelScript is a source Unreal Engine plugin that integrates AngelScript as a first-class scripting option for Unreal Engine projects.
+
+## Version and source lineage
+
+- Product version: `Unreal AngelScript 1.0.0` (`10000` in the public encoded version contract).
+- Upstream source lineage: `AngelScript 2.33.0 WIP lineage + selective 2.38 backports`.
+- Compatibility: an older 1.x header may use a newer compatible 1.x runtime; breaking public C API or ABI changes require a new major version.
+
+The upstream lineage is provenance, not the plugin version. Vanilla AngelScript 2.33 headers pass `23300` to `asCreateScriptEngine()` and are intentionally rejected. Consumers must compile against the `angelscript.h` shipped with this plugin.
+
+Before packaging or publishing a release, validate the public header and plugin descriptor:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\ValidateVersion.ps1
+```
 
 This repository is imported from `TDGameStudio/AngelscriptProject` as a clean plugin snapshot. The plugin directory name remains `Angelscript`, so install it under:
 

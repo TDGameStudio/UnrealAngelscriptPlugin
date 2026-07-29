@@ -76,8 +76,18 @@ public:
 
 	TEST_METHOD(HeaderCompatibility)
 	{
-ASSERT_THAT(AreEqual(23300, ANGELSCRIPT_VERSION, TEXT("Embedded Angelscript version should remain pinned to 2.33.0 until the 2.38 upgrade resumes")));
-		ASSERT_THAT(AreEqual(FString(TEXT("2.33.0 WIP")), FString(ANSI_TO_TCHAR(ANGELSCRIPT_VERSION_STRING)), TEXT("Embedded Angelscript version string should report 2.33.0 WIP")));
+		ASSERT_THAT(AreEqual(
+			10000,
+			ANGELSCRIPT_VERSION,
+			TEXT("Embedded runtime should use the Unreal AngelScript 1.0.0 product version")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("Unreal AngelScript 1.0.0")),
+			FString(ANSI_TO_TCHAR(ANGELSCRIPT_VERSION_STRING)),
+			TEXT("Embedded runtime should report the owned Unreal AngelScript product identity")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("2.33.0 WIP")),
+			FString(ANSI_TO_TCHAR(UNREAL_ANGELSCRIPT_UPSTREAM_BASE_VERSION_STRING)),
+			TEXT("Upgrade coverage should preserve the upstream source baseline separately")));
 
 		ASSERT_THAT(AreEqual(29, static_cast<int32>(asEP_INIT_STACK_SIZE), TEXT("Stock 2.38 init stack size property id should remain available")));
 		ASSERT_THAT(AreEqual(30, static_cast<int32>(asEP_INIT_CALL_STACK_SIZE), TEXT("Stock 2.38 init call stack size property id should remain available")));

@@ -81,6 +81,12 @@ AS_API const char * asGetLibraryVersion()
 #endif
 }
 
+//[UE++]: Report upstream source lineage separately from the owned Unreal AngelScript product version.
+AS_API const char * asGetLibraryUpstreamVersion()
+{
+	return UNREAL_ANGELSCRIPT_UPSTREAM_LINEAGE_STRING;
+}
+
 AS_API const char * asGetLibraryOptions()
 {
 	const char *string = " "
@@ -236,14 +242,8 @@ AS_API const char * asGetLibraryOptions()
 
 AS_API asIScriptEngine *asCreateScriptEngine(asDWORD version)
 {
-	// Verify the version that the application expects
-	if( (version/10000) != (ANGELSCRIPT_VERSION/10000) )
-		return 0;
-
-	if( (version/100)%100 != (ANGELSCRIPT_VERSION/100)%100 )
-		return 0;
-
-	if( (version%100) > (ANGELSCRIPT_VERSION%100) )
+	//[UE++]: Enforce the owned product's SemVer compatibility contract. Legacy 2.33 headers are intentionally rejected.
+	if( !UnrealAngelscriptVersion::IsCompatible(version, ANGELSCRIPT_VERSION) )
 		return 0;
 
 	// Verify the size of the types
