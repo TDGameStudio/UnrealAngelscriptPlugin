@@ -48,6 +48,7 @@ namespace UnrealBuildTool.Rules
 				"Json",
 				"JsonUtilities",
 				"CQTest",
+				"AutomationController",
             });
 		}
 	}

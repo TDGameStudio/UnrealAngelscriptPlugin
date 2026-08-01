@@ -44,10 +44,6 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = Tests)
 	bool bEnableTestDiscovery = true;
 
-	/** Where integration test maps are stored. */
-	UPROPERTY(EditAnywhere, config, Category = IntegrationTests)
-	FString IntegrationTestMapRoot;
-
 	/**
 	 * Force garbage collection every N tests.
 	 * This will also perform test execution in batches when hot reloading.
@@ -57,12 +53,8 @@ public:
 	 * This allows the editor to refresh between batches and prevents a lock because of PhysX issues.
 	 * Set to 0 to disable.
 	*/
-	UPROPERTY(EditAnywhere, config, Category = UnitTests)
+	UPROPERTY(EditAnywhere, config, Category = Tests)
 	int GarbageCollectEveryNTests;
-
-	/** The game instance class to use for unit tests. */
-	UPROPERTY(EditAnywhere, config, Category = UnitTests)
-	const TSoftClassPtr<UGameInstance> UnitTestGameInstanceClass;
 
 	/** Turn on code coverage measurements. Reports are written to Saved/CodeCoverage/. */
 	UPROPERTY(EditAnywhere, config, Category = CodeCoverage, Meta = (ConfigRestartRequired = true))
@@ -86,40 +78,4 @@ public:
 	UPROPERTY(EditAnywhere, config, Category = Debugging)
 	bool bEnableDebugBreaksInTests;
 
-	/** Module paths containing IntegrationTests must match the following wildcard pattern */
-	UPROPERTY(EditAnywhere, config, Category = IntegrationTests)
-	FString IntegrationTestNamingConvention;
-
-	/** Module paths containing UnitTests must match the following wildcard pattern */
-	UPROPERTY(EditAnywhere, config, Category = IntegrationTests)
-	FString UnitTestNamingConvention;
-	FString UnitTestNamingConventionRegex;
-
-	/** Whether tests that use client/server should apply any network emulation. */
-	UPROPERTY(EditAnywhere, config, Category = Tests)
-	bool bEnableNetworkEmulation;
-
-	/** The minimum latency of incoming packets. */
-	UPROPERTY(EditAnywhere, config, Category = Tests)
-	int InPacketsMinLatency;
-
-	/** The maximum latency of incoming packets. */
-	UPROPERTY(EditAnywhere, config, Category = Tests)
-	int InPacketsMaxLatency;
-
-	/** The packet loss percentage of incoming packets. */
-	UPROPERTY(EditAnywhere, config, Category = Tests)
-	int InPacketsPacketLossPercentage;
-	
-	/** The minimum latency of outgoing packets. */
-	UPROPERTY(EditAnywhere, config, Category = Tests)
-	int OutPacketsMinLatency;
-
-	/** The maximum latency of outgoing packets. */
-	UPROPERTY(EditAnywhere, config, Category = Tests)
-	int OutPacketsMaxLatency;
-
-	/** The packet loss percentage of outgoing packets. */
-	UPROPERTY(EditAnywhere, config, Category = Tests)
-	int OutPacketsPacketLossPercentage;
 };

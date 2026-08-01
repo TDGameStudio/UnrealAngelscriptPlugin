@@ -45,7 +45,7 @@ struct FAngelscriptTypeDatabase;
 struct FAngelscriptBindState;
 struct FToStringType;
 
-class FHotReloadTestRunner;
+class FAngelscriptScriptTestHotReloadRunner;
 class FBlueprintEventSignatureRegistry;
 struct FAngelscriptEngineLifetimeToken;
 struct FAngelscriptEngineContextStack;
@@ -320,6 +320,16 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 
 	static bool IsSimulatingCookedForCurrentContext();
 	static bool IsTestingErrorsForCurrentContext();
+
+#if WITH_DEV_AUTOMATION_TESTS
+	void EnsureScriptTestHotReloadRunnerForTesting();
+
+	FAngelscriptScriptTestHotReloadRunner*
+		GetScriptTestHotReloadRunnerForTesting() const
+	{
+		return ScriptTestHotReloadRunner;
+	}
+#endif
 	static bool IsHotReloadingForCurrentContext();
 	static bool IsForcingPreprocessEditorCodeForCurrentContext();
 	static bool IsScriptDevelopmentModeForCurrentContext();
@@ -571,8 +581,9 @@ private:
 
 	volatile bool bWaitingForHotReloadResults = false;
 
-	/* Prepares and holds the execution status of unit tests on hot reload. */
-	FHotReloadTestRunner* HotReloadTestRunner = nullptr;
+	/* Asynchronous reflected script-test work selected after hot reload. */
+	FAngelscriptScriptTestHotReloadRunner*
+		ScriptTestHotReloadRunner = nullptr;
 
 	/* Files that we tried to reload before, but failed to compile, that we should retry later. */
 	TSet<FFilenamePair> PreviouslyFailedReloadFiles;
@@ -1460,23 +1471,6 @@ struct FAngelscriptDelegateDesc
 	int32 LineNumber = 1;
 };
 
-// Stores either a :
-// - UnitTest_
-// - ComplexUnitTest_
-// - IntegrationTest_
-// - ComplexIntegrationTest_
-// 
-// UnitTest_ and IntegrationTest_ functions always generate exactly one test case.
-// ComplexUnitTest_ and ComplexIntegrationTest_ functions may generate more, in that case you will have multiple
-// instances of this struct with different test case names and arguments, but pointing to the same function.
-// If bIsComplexTest is true it's a complex test, and in that case the ComplexTestParam should be passed to the function.
-struct FAngelscriptTestDesc
-{
-	asIScriptFunction* Function;
-	bool bIsComplexTest;
-	FString ComplexTestParam;
-};
-
 /**
  * Description of a script module during preprocessing.
  */
@@ -1538,12 +1532,6 @@ struct FAngelscriptModuleDesc
 	bool bLoadedPrecompiledCode = false;
 	bool bModuleSwapInError = false;
 
-	/* All unit tests in this module. Maps function name -> function description struct. */
-	TMap<FString, FAngelscriptTestDesc> UnitTestFunctions;
-
-	/* All integration tests in this module. Maps function name -> function description struct. */
-	TMap<FString, FAngelscriptTestDesc> IntegrationTestFunctions;
-
 	// Find the class descriptor by name in this module
 	TSharedPtr<FAngelscriptClassDesc> GetClass(const FString& ClassName)
 	{
@@ -1582,27 +1570,6 @@ struct FAngelscriptModuleDesc
 		return nullptr;
 	}
 
-	// TestFunctions are all functions in a module which match the signature 
-	// void Test_<name>(FUnitTest& t).
-	FAngelscriptTestDesc* GetUnitTestFunction(const FString& TestFunctionName)
-	{
-		FAngelscriptTestDesc* FunctionDesc = UnitTestFunctions.Find(TestFunctionName);
-		if (FunctionDesc == nullptr)
-		{
-			return nullptr;
-		}
-		return FunctionDesc;
-	}
-
-	FAngelscriptTestDesc* GetIntegrationTestFunction(const FString& TestFunctionName)
-	{
-		FAngelscriptTestDesc* FunctionDesc = IntegrationTestFunctions.Find(TestFunctionName);
-		if (FunctionDesc == nullptr)
-		{
-			return nullptr;
-		}
-		return FunctionDesc;
-	}
 };
 
 /* Helper scope struct to print out performance information. */

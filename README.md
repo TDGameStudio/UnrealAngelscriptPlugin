@@ -158,6 +158,150 @@ FunctionBindingMethod=NativeRuntimeLinked
 
 The module arrays use UE config operations consistently: an unprefixed assignment replaces the array, `+` appends, `-` removes, and `!Array=ClearArray` clears it. The Runtime-linked build emits one stable per-module aggregator that conditionally includes only the shards produced by the current UHT pass; it no longer creates a fixed set of wrapper translation units. Target-module descriptors are owned by the registering modular feature at runtime, remain pending while their `UClass` is unavailable, and are removed when that feature unregisters.
 
+### Reflected AngelScript test suites
+
+Script tests are ordinary reflected classes derived from the Runtime-owned
+`UAngelscriptTestSuite`. A method becomes an independent UE Automation leaf
+only when it is a non-static `void()` method marked with
+`meta=(AngelscriptTest)`; neither a `TEST_` name nor `UFUNCTION(Test)` is used.
+
+```angelscript
+UCLASS(meta=(AngelscriptTestFlags="EditorContext;EngineFilter"))
+class UInventoryScriptTests : UAngelscriptTestSuite
+{
+	UFUNCTION(BlueprintOverride)
+	void BeforeEach()
+	{
+		// A fresh suite instance is created for each leaf.
+	}
+
+	UFUNCTION(meta=(AngelscriptTest))
+	void AddingAnItemUpdatesTheCount()
+	{
+		AssertEquals(2, 1 + 1);
+	}
+
+	void UnmarkedHelper()
+	{
+	}
+}
+```
+
+`AngelscriptTestFlags` is a semicolon-separated **exact**
+`EAutomationTestFlags` mask. It must contain at least one application context
+and exactly one filter; empty, duplicate, and unknown tokens are rejected
+instead of receiving defaults. `#if EDITOR` still controls compilation of
+editor-only APIs, while `EditorContext` independently controls Automation
+execution eligibility.
+
+Each leaf gets a fresh transient fixture instance. `BeforeEach`, the marked
+method, ordinary command callbacks, and `AfterEach` share that instance.
+`BeforeAll` and `AfterAll` run synchronously on a separate suite-scope
+instance for each worker and registry generation. Lifecycle exceptions retain
+their script source and line. A failed `BeforeAll` skips the generation's
+leaves but still attempts `AfterAll`; an `AfterAll` failure is reported as a
+suite/session diagnostic.
+
+The suite instance owns fixture state and supplies fail-fast assertions and
+expected-log matching. Explicit environment tools live on the fieldless
+`FAngelscriptTest` USTRUCT, exposed to script as same-name namespace global
+functions. A pure test creates no World. Tests that need one call
+`FAngelscriptTest::CreateTestWorld`, then use
+`FAngelscriptTest::SpawnObject`, `SpawnActor`, `SpawnComponent`, `BeginPlay`,
+`TickWorld`, `TickActor`, `TickComponent`, `AdvanceTime`, and explicit or
+automatic cleanup. These tools are no longer methods on
+`UAngelscriptTestSuite`. No public test World, Map, or Network UObject type is
+required.
+
+`SpawnObject` itself does not require a World: by default the new object is
+owned by the current leaf fixture and is released during terminal cleanup.
+Use `FAngelscriptTest::CreateTestWorld(true)` only when the test needs a
+GameInstance and initialized subsystem context;
+`FAngelscriptTest::CreateTestWorld(false)` is the lighter Actor or Component
+test mode. Script-defined `StaticClass()` calls remain
+editor-only, so examples that pass a script class to `SpawnObject` or
+`SpawnActor` must still be compiled inside `#if EDITOR`.
+
+Expected-log matching is finalized against the leaf's own result in UE
+Automation, commandlet, and automatic hot-reload execution. It therefore does
+not rely on an enclosing Automation test and cannot consume a fail-fast
+assertion diagnostic.
+
+```angelscript
+ExpectError("intentional warning", 1);                // contains
+ExpectErrorRegex("item-[0-9]+ unavailable", 2);      // regex + count
+Error("prefix intentional warning suffix");
+Error("item-12 unavailable");
+Error("item-34 unavailable");
+```
+
+For common latent flows, start with `FAngelscriptTest::Commands()` and
+construct a fluent queue with `Do`/`Then`,
+`StartWhen`/`Until`, `WaitDelay`, and LIFO `OnTearDown`/`OnCleanup`.
+Queue construction is synchronous—it is not a resumable script `await`—so
+work that depends on a wait belongs in a later `Then` callback. Existing
+advanced `ULatentAutomationCommand` implementations remain supported through
+`FAngelscriptTest::Commands().AddLatentCommand(...)` and can access their active fixture with
+`GetCurrentSuite()`. Ordinary script exceptions from an advanced command's
+`Before`, `Update`, or `After` callback fail the owning leaf and stop its
+remaining main-command sequence; the hot-reload callback guard does not hide
+those errors. An ordinary exception from `AfterEach` or a registered cleanup
+callback remains a separate source-located error even after an earlier leaf
+failure; only the framework's controlled assertion exception is deduplicated.
+
+For client-enabled advanced commands, the configured timeout is an overall
+deadline through client finalization. Reaching it always runs server `After`
+at most once, destroys the executor, clears the suite association, and
+completes the leaf. `bAllowTimeout` suppresses the timeout error only; it
+cannot leave a command waiting forever in `AfterOnClient`. Losing the weak
+client executor also fails and finalizes the leaf with a phase diagnostic.
+
+Leaves are exposed as:
+
+```text
+Angelscript.ScriptTests.<Module>.<Suite>.<Method>
+```
+
+For ordinary files below a `Script/` root, `<Module>` is the relative path
+with `.as` removed and path separators replaced by dots. For example,
+`Script/Tests/Test_ReflectedScriptSuites.as` exposes this concrete leaf:
+
+```text
+Angelscript.ScriptTests.Tests.Test_ReflectedScriptSuites.UReflectedFixtureScriptTests.FirstLeafGetsFreshFixtureState
+```
+
+The same prefix can select the root, one module, one suite, or one method.
+For custom source providers, use the Editor Automation list or the exported
+report's `fullTestPath` as the authoritative name. The repository's runnable
+example file currently covers twelve leaves: assertions, fixture isolation,
+expected errors, World-free UObject creation, GameInstance/World tools,
+fluent and advanced latent work, exact runtime flags, and editor-only
+compilation.
+
+The registry publishes only after successful class generation. Hot reload
+cancels affected latent work at a callback boundary, runs old-generation
+teardown and World cleanup, and then exposes the newest names, markers,
+bodies, and exact flag buckets. Failed compilation retains the last-good
+registry. An open Automation suite section closes its old-generation All-hook
+session before compile and lazily opens the new one for the next leaf.
+Completed automatic-run failures are reported once rather than on every idle
+tick. Engine shutdown likewise cancels only leaves owned by that
+`FAngelscriptEngine` and closes its All-hook session before script functions
+are released.
+
+The `AngelscriptTest` commandlet selects non-disabled leaves whose exact mask
+contains `CommandletContext`. It reports `selected`, `executed`, `passed`, and
+`failed` counts and fails when no eligible leaf runs, selected work is not
+fully executed, a leaf fails, or suite lifecycle teardown fails. Diagnostics
+retain the script file, line, and original error text; the summary always
+keeps `passed + failed == executed`.
+
+The retired global `Test_*(FUnitTest&)` and
+`IntegrationTest_*(FIntegrationTest&)` protocols, their implicit Map/PIE
+startup, and their Automation roots are no longer registered. Parameterized
+providers, automatic Map/PIE/network sessions, lambda/function-handle
+callbacks, and resumable VM `await` are intentionally outside this framework.
+
 ## History
 
 This repository starts from a snapshot import. Earlier development history and planning context remain in `TDGameStudio/AngelscriptProject`.

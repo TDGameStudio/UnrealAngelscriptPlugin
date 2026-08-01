@@ -563,8 +563,6 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpModules(FAngelscr
 		TEXT("EnumCount"),
 		TEXT("DelegateCount"),
 		TEXT("ImportedModules"),
-		TEXT("UnitTestCount"),
-		TEXT("IntegrationTestCount"),
 		TEXT("bCompileError"),
 		TEXT("bLoadedPrecompiledCode")
 	});
@@ -581,8 +579,6 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpModules(FAngelscr
 			LexToString(Module->Enums.Num()),
 			LexToString(Module->Delegates.Num()),
 			JoinStrings(Module->ImportedModules),
-			LexToString(Module->UnitTestFunctions.Num()),
-			LexToString(Module->IntegrationTestFunctions.Num()),
 			BoolToString(Module->bCompileError),
 			BoolToString(Module->bLoadedPrecompiledCode)
 		});
