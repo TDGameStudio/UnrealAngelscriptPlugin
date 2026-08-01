@@ -1932,6 +1932,372 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCoverageInputTest,
 		ASSERT_THAT(IsNotNull(CaptureFunction->FindPropertyByName(TEXT("FingerIndex")), TEXT("CaptureTouch should expose ETouchIndex input")));
 		ASSERT_THAT(IsNotNull(CastField<FBoolProperty>(StorageFunction->GetReturnProperty()), TEXT("HasTouchStateStorage should return bool")));
 	}
+
+	TEST_METHOD(EnhancedInputTriggerEventReflectionPreservation)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageInput_TriggerEventReflection"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageInputTriggerEventReflection.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ATriggerEventReflectionActor : AActor
+			{
+				UFUNCTION()
+				void OnAction(FInputActionValue ActionValue, float32 ElapsedTime, float32 TriggeredTime, const UInputAction SourceAction)
+				{
+				}
+
+				UFUNCTION()
+				void Configure(UEnhancedInputComponent EnhancedComponent, UInputAction Action)
+				{
+					FEnhancedInputActionHandlerDynamicSignature Delegate;
+					Delegate.BindUFunction(this, n"OnAction");
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Started, Delegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Ongoing, Delegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Triggered, Delegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Completed, Delegate);
+					EnhancedComponent.BindAction(Action, ETriggerEvent::Canceled, Delegate);
+				}
+			}
+			)AS"),
+			TEXT("ATriggerEventReflectionActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("Enhanced Input trigger event reflection actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("Enhanced Input trigger event reflection actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		UEnhancedInputComponent* EnhancedComponent = NewObject<UEnhancedInputComponent>(Actor, TEXT("CoverageTriggerEventComponent"));
+		UInputAction* InputAction = NewObject<UInputAction>(Actor, TEXT("CoverageTriggerEventAction"));
+		ASSERT_THAT(IsNotNull(EnhancedComponent, TEXT("Enhanced Input component should be created for trigger event reflection")));
+		ASSERT_THAT(IsNotNull(InputAction, TEXT("Input action should be created for trigger event reflection")));
+		if (EnhancedComponent == nullptr || InputAction == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker ConfigureInvoker(*TestRunner, Actor, FName(TEXT("Configure")));
+		ASSERT_THAT(IsTrue(ConfigureInvoker.IsValid(), TEXT("Configure should be invokable for trigger event reflection")));
+		if (!ConfigureInvoker.IsValid())
+		{
+			return;
+		}
+		ConfigureInvoker.AddParam<UEnhancedInputComponent*>(EnhancedComponent);
+		ConfigureInvoker.AddParam<UInputAction*>(InputAction);
+		ASSERT_THAT(IsTrue(ConfigureInvoker.Call(), TEXT("Configure should add every ETriggerEvent binding")));
+
+		const TArray<TUniquePtr<FEnhancedInputActionEventBinding>>& Bindings = EnhancedComponent->GetActionEventBindings();
+		ASSERT_THAT(AreEqual(5, Bindings.Num(), TEXT("Configure should create five ETriggerEvent bindings")));
+		if (Bindings.Num() != 5)
+		{
+			return;
+		}
+		const ETriggerEvent ExpectedEvents[] = { ETriggerEvent::Started, ETriggerEvent::Ongoing, ETriggerEvent::Triggered, ETriggerEvent::Completed, ETriggerEvent::Canceled };
+		for (int32 Index = 0; Index < 5; ++Index)
+		{
+			ASSERT_THAT(IsNotNull(Bindings[Index].Get(), TEXT("ETriggerEvent binding should remain valid")));
+			if (Bindings[Index].IsValid())
+			{
+				ASSERT_THAT(AreEqual(ExpectedEvents[Index], Bindings[Index]->GetTriggerEvent(), TEXT("ETriggerEvent should survive AS BindAction reflection")));
+			}
+		}
+	}
+
+	TEST_METHOD(LegacyInputPriorityAndConsumeSurface)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageInput_LegacyPriorityAndConsume"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageInputLegacyPriorityAndConsume.as"),
+			ASTEST_AS(R"AS(
+			UCLASS()
+			class ALegacyInputPriorityActor : AActor
+			{
+				UFUNCTION()
+				void Configure(UInputComponent InputComponent)
+				{
+					FInputActionHandlerDynamicSignature Delegate;
+					InputComponent.BindKey(EKeys::One, EInputEvent::IE_Pressed, Delegate, false);
+					InputComponent.BindKey(EKeys::Two, EInputEvent::IE_Pressed, Delegate, true);
+				}
+
+				UFUNCTION()
+				void OnDebug(FKey Key, FInputActionValue Value)
+				{
+				}
+
+				UFUNCTION()
+				void ConfigureDebug(UEnhancedInputComponent InputComponent)
+				{
+					FInputDebugKeyHandlerDynamicSignature Delegate;
+					Delegate.BindUFunction(this, n"OnDebug");
+					InputComponent.BindDebugKey(FInputChord(EKeys::Three), EInputEvent::IE_Pressed, Delegate, false);
+				}
+			}
+			)AS"),
+			TEXT("ALegacyInputPriorityActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("legacy input priority actor should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("legacy input priority actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+
+		UInputComponent* InputComponent = NewObject<UInputComponent>(Actor, TEXT("CoverageLegacyInputComponent"));
+		ASSERT_THAT(IsNotNull(InputComponent, TEXT("legacy input component should be created")));
+		if (InputComponent == nullptr)
+		{
+			return;
+		}
+		InputComponent->Priority = 17;
+		InputComponent->bBlockInput = true;
+
+		FFunctionInvoker ConfigureInvoker(*TestRunner, Actor, FName(TEXT("Configure")));
+		ASSERT_THAT(IsTrue(ConfigureInvoker.IsValid(), TEXT("legacy input Configure should be invokable")));
+		if (!ConfigureInvoker.IsValid())
+		{
+			return;
+		}
+		ConfigureInvoker.AddParam<UInputComponent*>(InputComponent);
+		ASSERT_THAT(IsTrue(ConfigureInvoker.Call(), TEXT("legacy input Configure should execute")));
+
+		ASSERT_THAT(AreEqual(17, InputComponent->Priority, TEXT("InputComponent priority should remain observable")));
+		ASSERT_THAT(IsTrue(InputComponent->bBlockInput, TEXT("InputComponent block policy should remain observable")));
+		ASSERT_THAT(AreEqual(2, InputComponent->KeyBindings.Num(), TEXT("AS BindKey should create both consume variants")));
+		if (InputComponent->KeyBindings.Num() == 2)
+		{
+			ASSERT_THAT(IsFalse(InputComponent->KeyBindings[0].bConsumeInput, TEXT("explicit false bConsumeInput should survive AS binding")));
+			ASSERT_THAT(IsTrue(InputComponent->KeyBindings[1].bConsumeInput, TEXT("explicit true bConsumeInput should survive AS binding")));
+		}
+
+		UEnhancedInputComponent* EnhancedComponent = NewObject<UEnhancedInputComponent>(Actor, TEXT("CoveragePauseInputComponent"));
+		ASSERT_THAT(IsNotNull(EnhancedComponent, TEXT("Enhanced Input component should be created for pause policy")));
+		if (EnhancedComponent == nullptr)
+		{
+			return;
+		}
+
+		FFunctionInvoker DebugInvoker(*TestRunner, Actor, FName(TEXT("ConfigureDebug")));
+		ASSERT_THAT(IsTrue(DebugInvoker.IsValid(), TEXT("ConfigureDebug should be invokable")));
+		if (!DebugInvoker.IsValid())
+		{
+			return;
+		}
+		DebugInvoker.AddParam<UEnhancedInputComponent*>(EnhancedComponent);
+		ASSERT_THAT(IsTrue(DebugInvoker.Call(), TEXT("ConfigureDebug should execute")));
+		const TArray<TUniquePtr<FInputDebugKeyBinding>>& DebugBindings = EnhancedComponent->GetDebugKeyBindings();
+		ASSERT_THAT(AreEqual(1, DebugBindings.Num(), TEXT("BindDebugKey should create one pause-policy binding")));
+		if (DebugBindings.Num() == 1 && DebugBindings[0].IsValid())
+		{
+			ASSERT_THAT(IsFalse(DebugBindings[0]->bExecuteWhenPaused, TEXT("explicit false bExecuteWhenPaused should survive AS binding")));
+		}
+	}
+
+	TEST_METHOD(EnhancedInputAndDeviceBoundaryInventory)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+		const TArray<FString> ExpectedDiagnostics;
+
+		const FString FovScalingSource = ASTEST_AS(R"AS(
+			int FOVScalingIsExposed()
+			{
+				UInputModifierFOVScaling Modifier;
+				return Modifier != nullptr ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule FovScalingModule(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageInput_FOVScalingExposed"),
+			FovScalingSource);
+		ASSERT_THAT(IsTrue(
+			FovScalingModule.IsValid(),
+			TEXT("UInputModifierFOVScaling should remain exposed to AngelScript")));
+
+		const FString ChordActionSource = ASTEST_AS(R"AS(
+			int ChordActionTriggerIsExposed()
+			{
+				UInputAction Action = Cast<UInputAction>(NewObject(GetTransientPackage(), UInputAction::StaticClass(), n"CoverageChordAction", true));
+				UInputTriggerChordAction Trigger = Cast<UInputTriggerChordAction>(NewObject(GetTransientPackage(), UInputTriggerChordAction::StaticClass(), n"CoverageChordTrigger", true));
+				if (Action == nullptr || Trigger == nullptr)
+					return 0;
+
+				Trigger.ChordAction = Action;
+				return Trigger.ChordAction == Action ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ChordActionModule(
+			*TestRunner,
+			Engine,
+			TEXT("ASCoverageInput_ChordActionExposed"),
+			ChordActionSource);
+		ASSERT_THAT(IsTrue(
+			ChordActionModule.IsValid(),
+			TEXT("UInputTriggerChordAction and ChordAction should remain exposed to AngelScript")));
+		if (ChordActionModule.IsValid())
+		{
+			ASSERT_THAT(IsTrue(ExecuteAndExpectInt(
+				*TestRunner,
+				Engine,
+				ChordActionModule.GetModule(),
+				TEXT("int ChordActionTriggerIsExposed()"),
+				TEXT("UInputTriggerChordAction should preserve its assigned chord action"),
+				1)));
+		}
+
+		struct FBoundaryCase
+		{
+			const TCHAR* ModuleName;
+			const TCHAR* Label;
+			FString Source;
+		};
+
+		const FBoundaryCase Cases[] = {
+			{
+				TEXT("ASCoverageInput_ModifierTriggerApplicationBoundary"),
+				TEXT("Enhanced Input ModifyRaw and UpdateState should remain explicit boundaries"),
+				ASTEST_AS(R"AS(
+				int ModifierAndTriggerApplicationBoundary()
+				{
+					UInputModifierNegate Modifier;
+					UInputTriggerDown Trigger;
+					FInputActionValue Value;
+					Modifier.ModifyRaw(Value, 0.016f);
+					Trigger.UpdateState(Value, 0.016f);
+					return 1;
+				}
+				)AS")
+			},
+			{
+				TEXT("ASCoverageInput_UserSettingsBoundary"),
+				TEXT("Enhanced Input user settings and player mappable profiles should remain explicit boundaries"),
+				ASTEST_AS(R"AS(
+				int UserSettingsBoundary()
+				{
+					UEnhancedInputUserSettings Settings;
+					UPlayerMappableKeyProfile Profile;
+					return Settings != nullptr || Profile != nullptr ? 1 : 0;
+				}
+				)AS")
+			},
+			{
+				TEXT("ASCoverageInput_PlayerControllerDeviceBoundary"),
+				TEXT("PlayerController device query APIs should remain explicit boundaries"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class APlayerControllerDeviceBoundary : APlayerController
+				{
+					UFUNCTION()
+					void QueryDevices()
+					{
+						float32 MouseX = 0.0f;
+						float32 MouseY = 0.0f;
+						GetMousePosition(MouseX, MouseY);
+						GetInputMotionState(MouseX, MouseY, MouseX, MouseY, MouseX, MouseY);
+						GetInputAnalogKeyState(EKeys::Gamepad_LeftX);
+					}
+				}
+				)AS")
+			},
+			{
+				TEXT("ASCoverageInput_MultiPlayerRoutingBoundary"),
+				TEXT("multi-player input routing APIs should remain explicit boundaries"),
+				ASTEST_AS(R"AS(
+				int MultiPlayerRoutingBoundary()
+				{
+					CreatePlayer(1, false);
+					GetPlayerControllerFromID(1);
+					return 1;
+				}
+				)AS")
+			},
+			{
+				TEXT("ASCoverageInput_CursorEventBoundary"),
+				TEXT("cursor click and hover APIs should remain explicit boundaries"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class ACursorEventBoundary : APlayerController
+				{
+					UFUNCTION()
+					void ConfigureCursor()
+					{
+						SetMouseCursor(EMouseCursor::Hand);
+						bEnableClickEvents = true;
+						bEnableMouseOverEvents = true;
+					}
+				}
+				)AS")
+			},
+			{
+				TEXT("ASCoverageInput_ForceFeedbackBoundary"),
+				TEXT("Force Feedback and Haptic APIs should remain explicit boundaries"),
+				ASTEST_AS(R"AS(
+				UCLASS()
+				class AForceFeedbackBoundary : APlayerController
+				{
+					UFUNCTION()
+					void PlayFeedback()
+					{
+						ClientPlayForceFeedback(nullptr);
+						SetHapticsByValue(0.5f, 0.5f, 0.5f, 0.5f);
+					}
+				}
+				)AS")
+			}
+		};
+
+		for (const FBoundaryCase& Case : Cases)
+		{
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				Case.ModuleName,
+				Case.Source,
+				Case.Label,
+				MakeArrayView(ExpectedDiagnostics))));
+		}
+	}
 };
 
 #endif

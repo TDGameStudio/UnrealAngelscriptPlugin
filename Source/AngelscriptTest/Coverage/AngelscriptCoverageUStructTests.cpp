@@ -13,6 +13,7 @@
 #include "Misc/Guid.h"
 #include "Misc/PackageName.h"
 #include "Misc/ScopeExit.h"
+#include "StructUtils/InstancedStruct.h"
 #include "UObject/GarbageCollection.h"
 #include "UObject/Class.h"
 #include "UObject/Package.h"
@@ -16520,6 +16521,396 @@ public:
 		ASSERT_THAT(AreEqual(FString(TEXT("Label tooltip text")), LabelProperty->GetMetaData(TEXT("ToolTip")),
 			TEXT("USTRUCT FString member ToolTip metadata should round-trip")));
 	}
-};
+
+	TEST_METHOD(FInstancedStructCoverageSemantics)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageUStruct_InstancedStructSemantics"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructInstancedStructSemantics.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FInstancedStructPayload
+			{
+				UPROPERTY()
+				int Value = 42;
+			}
+
+			UCLASS()
+			class AInstancedStructCoverageActor : AActor
+			{
+				UPROPERTY()
+				FInstancedStruct Payload;
+
+				UPROPERTY()
+				TArray<FInstancedStruct> Payloads;
+
+				UPROPERTY()
+				bool bResetInvalid = false;
+
+				UFUNCTION()
+				FInstancedStruct EchoPayload(FInstancedStruct Input)
+				{
+					return Input;
+				}
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					Payload.Reset();
+					Payloads.Add(Payload);
+					bResetInvalid = !Payload.IsValid() && Payloads.Num() == 1;
+				}
+			}
+			)AS"),
+			TEXT("AInstancedStructCoverageActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("FInstancedStruct Coverage fixture should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FStructProperty* PayloadProperty = FindFProperty<FStructProperty>(ScriptClass, TEXT("Payload"));
+		FArrayProperty* PayloadsProperty = FindFProperty<FArrayProperty>(ScriptClass, TEXT("Payloads"));
+		ASSERT_THAT(IsNotNull(PayloadProperty, TEXT("FInstancedStruct UPROPERTY should be reflected as a struct property")));
+		ASSERT_THAT(IsNotNull(PayloadsProperty, TEXT("TArray<FInstancedStruct> UPROPERTY should be reflected as an array property")));
+		if (PayloadProperty == nullptr || PayloadsProperty == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(PayloadProperty->Struct == FInstancedStruct::StaticStruct(), TEXT("Payload should be backed by FInstancedStruct")));
+		const FStructProperty* PayloadsInner = CastField<FStructProperty>(PayloadsProperty->Inner);
+		ASSERT_THAT(IsNotNull(PayloadsInner, TEXT("TArray<FInstancedStruct> should preserve its struct element type")));
+		if (PayloadsInner != nullptr)
+		{
+			ASSERT_THAT(IsTrue(PayloadsInner->Struct == FInstancedStruct::StaticStruct(), TEXT("TArray<FInstancedStruct> should use FInstancedStruct elements")));
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("FInstancedStruct Coverage actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bResetInvalid"), true,
+			TEXT("FInstancedStruct Reset and container shape should execute through AS"))));
+	}
+
+	TEST_METHOD(UStructNestedContainerCopySemantics)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageUStruct_NestedContainerCopy"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructNestedContainerCopy.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FNestedContainerCopyStruct
+			{
+				UPROPERTY()
+				TArray<int> Values;
+
+				UPROPERTY()
+				TMap<int, int> Scores;
+
+				UPROPERTY()
+				TSet<int> Tags;
+			}
+
+			UCLASS()
+			class ANestedContainerCopyActor : AActor
+			{
+				UPROPERTY()
+				bool bArrayIndependent = false;
+
+				UPROPERTY()
+				bool bMapIndependent = false;
+
+				UPROPERTY()
+				bool bSetIndependent = false;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					FNestedContainerCopyStruct Original;
+					Original.Values.Add(1);
+					Original.Scores.Add(1, 10);
+					Original.Tags.Add(1);
+
+					FNestedContainerCopyStruct Copy = Original;
+					Copy.Values.Add(2);
+					Copy.Scores.Add(2, 20);
+					Copy.Tags.Add(2);
+
+					bArrayIndependent = Original.Values.Num() == 1 && Copy.Values.Num() == 2;
+					bMapIndependent = Original.Scores.Num() == 1 && Copy.Scores.Num() == 2;
+					bSetIndependent = Original.Tags.Num() == 1 && Copy.Tags.Num() == 2;
+				}
+			}
+			)AS"),
+			TEXT("ANestedContainerCopyActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("nested USTRUCT container copy fixture should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("nested USTRUCT container copy actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bArrayIndependent"), true,
+			TEXT("copied USTRUCT TArray should not alias the source"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bMapIndependent"), true,
+			TEXT("copied USTRUCT TMap should not alias the source"))));
+		ASSERT_THAT(IsTrue(VerifyByPath<FBoolProperty, bool>(*TestRunner, Actor, TEXT("bSetIndependent"), true,
+			TEXT("copied USTRUCT TSet should not alias the source"))));
+	}
+
+	TEST_METHOD(UStructOperatorExpansion)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		static const FName ModuleName(TEXT("ASCoverageUStruct_OperatorExpansion"));
+		ON_SCOPE_EXIT
+		{
+			Engine.DiscardModule(*ModuleName.ToString());
+		};
+
+		UClass* ScriptClass = CompileScriptModule(
+			*TestRunner,
+			Engine,
+			ModuleName,
+			TEXT("ASCoverageUStructOperatorExpansion.as"),
+			ASTEST_AS(R"AS(
+			USTRUCT()
+			struct FExpandedOperatorStruct
+			{
+				UPROPERTY()
+				int Value = 0;
+
+				FExpandedOperatorStruct opSub(const FExpandedOperatorStruct& Other) const
+				{
+					FExpandedOperatorStruct Result;
+					Result.Value = Value - Other.Value;
+					return Result;
+				}
+
+				FExpandedOperatorStruct opMul(int Scale) const
+				{
+					FExpandedOperatorStruct Result;
+					Result.Value = Value * Scale;
+					return Result;
+				}
+
+				FExpandedOperatorStruct opDiv(int Divisor) const
+				{
+					FExpandedOperatorStruct Result;
+					Result.Value = Value / Divisor;
+					return Result;
+				}
+
+				FExpandedOperatorStruct opNeg() const
+				{
+					FExpandedOperatorStruct Result;
+					Result.Value = -Value;
+					return Result;
+				}
+
+				FExpandedOperatorStruct& opAddAssign(const FExpandedOperatorStruct& Other)
+				{
+					Value += Other.Value;
+					return this;
+				}
+
+				FExpandedOperatorStruct& opSubAssign(const FExpandedOperatorStruct& Other)
+				{
+					Value -= Other.Value;
+					return this;
+				}
+
+				FExpandedOperatorStruct& opMulAssign(const FExpandedOperatorStruct& Other)
+				{
+					Value *= Other.Value;
+					return this;
+				}
+
+				FExpandedOperatorStruct& opDivAssign(const FExpandedOperatorStruct& Other)
+				{
+					Value /= Other.Value;
+					return this;
+				}
+			}
+
+			UCLASS()
+			class AExpandedOperatorActor : AActor
+			{
+				UPROPERTY()
+				int Results = 0;
+
+				UFUNCTION(BlueprintOverride)
+				void BeginPlay()
+				{
+					FExpandedOperatorStruct A;
+					A.Value = 12;
+					FExpandedOperatorStruct B;
+					B.Value = 3;
+					FExpandedOperatorStruct C = A - B;
+					FExpandedOperatorStruct D = A * 2;
+					FExpandedOperatorStruct E = A / 3;
+					FExpandedOperatorStruct F = -A;
+					C += B;
+					C -= B;
+					C *= B;
+					C /= B;
+					Results = C.Value + D.Value + E.Value + F.Value;
+				}
+			}
+			)AS"),
+			TEXT("AExpandedOperatorActor"));
+		ASSERT_THAT(IsNotNull(ScriptClass, TEXT("expanded USTRUCT operator fixture should compile")));
+		if (ScriptClass == nullptr)
+		{
+			return;
+		}
+
+		FActorTestSpawner Spawner;
+		Spawner.InitializeGameSubsystems();
+		AActor* Actor = SpawnScriptActor(*TestRunner, Spawner, ScriptClass);
+		ASSERT_THAT(IsNotNull(Actor, TEXT("expanded USTRUCT operator actor should spawn")));
+		if (Actor == nullptr)
+		{
+			return;
+		}
+		BeginPlayActor(Engine, *Actor);
+		ASSERT_THAT(IsTrue(VerifyByPath<FIntProperty, int32>(*TestRunner, Actor, TEXT("Results"), 25,
+			TEXT("expanded USTRUCT operators should execute and preserve compound assignment semantics"))));
+	}
+
+	TEST_METHOD(UStructUnsupportedBoundaryInventory)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		struct FBoundaryCase
+		{
+			const TCHAR* ModuleName;
+			const TCHAR* Label;
+			FString Source;
+			TArray<FString> ExpectedDiagnostics;
+		};
+
+		const FBoundaryCase Cases[] = {
+			{
+				TEXT("ASCoverageUStruct_PropertyBagBoundary"),
+				TEXT("FInstancedPropertyBag and FPropertyBag should remain unsupported boundaries"),
+				ASTEST_AS(R"AS(
+				USTRUCT()
+				struct FPropertyBagBoundary
+				{
+					FInstancedPropertyBag Foo;
+					FPropertyBag Bar;
+				}
+				)AS"),
+				{}
+			},
+			{
+				TEXT("ASCoverageUStruct_NativeMakeBreakBoundary"),
+				TEXT("HasNativeMake and HasNativeBreak should remain unsupported boundaries"),
+				ASTEST_AS(R"AS(
+				USTRUCT(HasNativeMake = "MakeBoundary", HasNativeBreak = "BreakBoundary")
+				struct FNativeMakeBreakBoundary
+				{
+					int Value = 0;
+				}
+				)AS"),
+				{
+					TEXT("Unknown class specifier HasNativeMake"),
+					TEXT("Unknown class specifier HasNativeBreak")
+				}
+			},
+			{
+				TEXT("ASCoverageUStruct_SerializeBoundary"),
+				TEXT("USTRUCT Serialize should remain an unsupported boundary"),
+				ASTEST_AS(R"AS(
+				USTRUCT()
+				struct FSerializeBoundary
+				{
+					void Serialize(FArchive& Ar)
+					{
+					}
+				}
+				)AS"),
+				{}
+			},
+			{
+				TEXT("ASCoverageUStruct_NetSerializeBoundary"),
+				TEXT("USTRUCT NetSerialize should remain an unsupported boundary"),
+				ASTEST_AS(R"AS(
+				USTRUCT()
+				struct FNetSerializeBoundary
+				{
+					bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess)
+					{
+						return false;
+					}
+				}
+				)AS"),
+				{}
+			},
+			{
+				TEXT("ASCoverageUStruct_StaticMemberBoundary"),
+				TEXT("USTRUCT static fields should remain an unsupported boundary"),
+				ASTEST_AS(R"AS(
+				USTRUCT()
+				struct FStaticMemberBoundary
+				{
+					static int Value;
+				}
+				)AS"),
+				{}
+			}
+		};
+
+		for (const FBoundaryCase& Case : Cases)
+		{
+			ASSERT_THAT(IsTrue(CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				Case.ModuleName,
+				Case.Source,
+				Case.Label,
+				MakeArrayView(Case.ExpectedDiagnostics))));
+		}
+	}
+	};
 
 #endif
