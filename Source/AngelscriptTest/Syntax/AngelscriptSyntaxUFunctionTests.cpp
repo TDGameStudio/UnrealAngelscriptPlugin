@@ -355,6 +355,24 @@ class AUFuncCtorActor : AActor
 			TEXT("UFUNCTION on constructor should fail"));
 	}
 
+	TEST_METHOD(Params_UnnamedParameter)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		// The maintained parser follows the upstream grammar: parameter names
+		// are optional, including on script-defined methods.
+		SyntaxTestHelpers::AssertCompiles(*TestRunner, Engine, TEXT("UFuncP_UnnamedParameter"),
+			TEXT(R"(
+class AUFuncPNoNameActor : AActor
+{
+	UFUNCTION()
+	void Foo(int) { }
+}
+)"),
+			TEXT("Parameter without a name is valid"));
+	}
+
 	// ====================================================================
 	// Parameters — Negative
 	// ====================================================================
@@ -440,17 +458,6 @@ class AUFuncPNBadRetActor : AActor
 }
 )"),
 			TEXT("Non-existent return type should fail"));
-
-		// Missing parameter name
-		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("UFuncPN_NoParamName"),
-			TEXT(R"(
-class AUFuncPNNoNameActor : AActor
-{
-	UFUNCTION()
-	void Foo(int) { }
-}
-)"),
-			TEXT("Parameter without name should fail"));
 
 		// Keyword as parameter name
 		SyntaxTestHelpers::AssertFailsToCompile(*TestRunner, Engine, TEXT("UFuncPN_KeywordName"),
