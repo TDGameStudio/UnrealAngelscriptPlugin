@@ -1550,6 +1550,7 @@ static FName PP_NAME_BlueprintProtected("BlueprintProtected");
 static FName PP_NAME_BlueprintSetter("BlueprintSetter");
 static FName PP_NAME_BlueprintGetter("BlueprintGetter");
 static FName PP_NAME_EditorOnly("EditorOnly");
+static FName PP_NAME_AngelscriptTest("AngelscriptTest");
 
 void FAngelscriptPreprocessor::ProcessFunctionMacro(FFile& File, FChunk& Chunk, FMacro& Macro)
 {
@@ -1812,6 +1813,15 @@ void FAngelscriptPreprocessor::ProcessFunctionMacro(FFile& File, FChunk& Chunk, 
 				*Spec.Name.ToString(), *ClassDesc->ClassName, *FunctionDesc->ScriptFunctionName));
 			bHasError = true;
 		}
+	}
+
+	// Reflected script-test methods remain UFunctions for source navigation
+	// and ProcessEvent dispatch, but must never be exposed as ordinary
+	// Blueprint-callable API even when that is the project-wide default.
+	if (FunctionDesc->Meta.Contains(PP_NAME_AngelscriptTest))
+	{
+		FunctionDesc->bBlueprintCallable = false;
+		FunctionDesc->bBlueprintPure = false;
 	}
 
 	// Replace the script function name if we need to

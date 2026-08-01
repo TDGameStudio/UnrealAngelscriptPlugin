@@ -591,6 +591,15 @@ void FAngelscriptClassGenerator::DoFullReloadClass(FModuleData& ModuleData, FCla
 #endif
 		}
 
+		// A reflected script-test marker belongs to the declaration being
+		// generated. Parent function flags and metadata are copied above and
+		// may otherwise re-introduce BlueprintCallable/BlueprintPure.
+		if (FunctionDesc->Meta.Contains(TEXT("AngelscriptTest")))
+		{
+			NewFunction->FunctionFlags &=
+				~(FUNC_BlueprintCallable | FUNC_BlueprintPure);
+		}
+
 		FProperty* ReturnProperty = AddFunctionReturnType(NewFunction, FunctionDesc->ReturnType);
 		if (ReturnProperty != nullptr)
 		{

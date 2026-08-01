@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Templates/SharedPointer.h"
 #include "UObject/Object.h"
 
 #include "LatentAutomationCommand.generated.h"
 
-class FAngelscriptIntegrationTest;
+class FAngelscriptScriptTestExecutionContext;
+class UAngelscriptTestSuite;
 
 UCLASS(Blueprintable)
 class ULatentAutomationCommand : public UObject
@@ -45,8 +47,12 @@ public:
 
 	void SetWorld(UWorld* InWorld);
 
-	void SetAssociatedTest(TSharedPtr<FAngelscriptIntegrationTest> T);
-	TSharedPtr<FAngelscriptIntegrationTest> GetAssociatedTest();
+	void SetExecutionContext(
+		TWeakPtr<FAngelscriptScriptTestExecutionContext> InContext);
+	void ClearExecutionContext();
+	TSharedPtr<FAngelscriptScriptTestExecutionContext>
+		GetExecutionContext() const;
+	UAngelscriptTestSuite* GetCurrentSuite() const;
 
 	bool AllowsTimeout() const;
 	bool RunsOnClient() const;
@@ -68,8 +74,5 @@ private:
 	UPROPERTY(Replicated, EditDefaultsOnly, Category=Settings)
 	bool bAlsoRunOnClient = false;
 
-	// This type is outside the Unreal type system, so keep track of it using a smart
-	// pointer. We can't use raw pointer since we don't control the copy constructor
-	// of this class.
-	TSharedPtr<FAngelscriptIntegrationTest> AssociatedTest;
+	TWeakPtr<FAngelscriptScriptTestExecutionContext> ExecutionContext;
 };

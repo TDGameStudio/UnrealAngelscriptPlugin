@@ -4,9 +4,13 @@
 #include "Engine/NetDriver.h"
 #include "Net/UnrealNetwork.h"
 #include "ClassGenerator/ASClass.h"
+#include "Core/AngelscriptEngine.h"
+#include "Misc/AutomationTest.h"
+#include "Testing/AngelscriptScriptTestRunner.h"
+#include "Testing/AngelscriptTestSuite.h"
 
 ULatentAutomationCommand::ULatentAutomationCommand() :
-	World(nullptr), bAllowTimeout(false), bAlsoRunOnClient(false), AssociatedTest(nullptr)
+	World(nullptr), bAllowTimeout(false), bAlsoRunOnClient(false)
 {
 }
 
@@ -42,7 +46,7 @@ bool ULatentAutomationCommand::AfterOnClient_Implementation()
 
 bool ULatentAutomationCommand::HasAuthority() const
 {
-	return AssociatedTest.IsValid();
+	return ExecutionContext.IsValid();
 }
 
 UWorld* ULatentAutomationCommand::GetWorld() const
@@ -66,14 +70,45 @@ void ULatentAutomationCommand::SetWorld(UWorld* InWorld)
 	World = InWorld;
 }
 
-void ULatentAutomationCommand::SetAssociatedTest(TSharedPtr<FAngelscriptIntegrationTest> T)
+void ULatentAutomationCommand::SetExecutionContext(
+	TWeakPtr<FAngelscriptScriptTestExecutionContext> InContext)
 {
-	AssociatedTest = T;
+	ExecutionContext = MoveTemp(InContext);
 }
 
-TSharedPtr<FAngelscriptIntegrationTest> ULatentAutomationCommand::GetAssociatedTest()
+void ULatentAutomationCommand::ClearExecutionContext()
 {
-	return AssociatedTest;
+	ExecutionContext.Reset();
+	World = nullptr;
+}
+
+TSharedPtr<FAngelscriptScriptTestExecutionContext>
+ULatentAutomationCommand::GetExecutionContext() const
+{
+	return ExecutionContext.Pin();
+}
+
+UAngelscriptTestSuite* ULatentAutomationCommand::GetCurrentSuite() const
+{
+	const TSharedPtr<FAngelscriptScriptTestExecutionContext> Context =
+		ExecutionContext.Pin();
+	if (Context.IsValid()
+		&& !Context->IsComplete()
+		&& Context->GetSuite() != nullptr)
+	{
+		return Context->GetSuite();
+	}
+
+	if (FAutomationTestBase* CurrentTest =
+		FAutomationTestFramework::Get().GetCurrentTest())
+	{
+		CurrentTest->AddError(TEXT(
+			"ULatentAutomationCommand::GetCurrentSuite was called "
+			"outside its active script-test leaf."));
+	}
+	FAngelscriptEngine::Throw(
+		"ULatentAutomationCommand has no active script-test suite.");
+	return nullptr;
 }
 
 bool ULatentAutomationCommand::AllowsTimeout() const

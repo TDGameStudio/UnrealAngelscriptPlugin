@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HotReload/AngelscriptScriptTestAutomationRefresh.h"
 #include "Modules/ModuleManager.h"
 
 class IDirectoryWatcher;
@@ -101,6 +102,8 @@ private:
 	FDelegateHandle StateDumpExtensionHandle;
 	FDelegateHandle DebugListAssetsBridgeHandle;
 	FDelegateHandle EditorCreateBlueprintBridgeHandle;
+	TUniquePtr<FAngelscriptScriptTestAutomationRefresh>
+		ScriptTestAutomationRefresh;
 };
 
 #if WITH_DEV_AUTOMATION_TESTS

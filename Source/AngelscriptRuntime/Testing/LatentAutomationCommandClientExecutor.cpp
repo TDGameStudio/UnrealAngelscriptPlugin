@@ -5,7 +5,32 @@
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
-#include "Testing/AngelscriptTest.h"
+#include "Testing/AngelscriptScriptTestRunner.h"
+
+namespace
+{
+	bool ReportToScriptTestContext(
+		ULatentAutomationCommand* Command,
+		bool bPassed,
+		const FString& Message)
+	{
+		if (Command == nullptr)
+		{
+			return false;
+		}
+		const TSharedPtr<FAngelscriptScriptTestExecutionContext> Context =
+			Command->GetExecutionContext();
+		if (!Context.IsValid())
+		{
+			return false;
+		}
+		if (!bPassed)
+		{
+			Context->Fail(Message, false);
+		}
+		return true;
+	}
+}
 
 //
 // ALatentAutomationCommandClientExecutor Implementation
@@ -161,7 +186,10 @@ void ALatentAutomationCommandClientExecutor::TickClient()
 	if (LatentCommand != nullptr)
 	{
 		// Handle client description.
-		Description = LatentCommand->DescribeOnClient();
+		{
+			FAngelscriptScriptTestCallbackScope CallbackScope;
+			Description = LatentCommand->DescribeOnClient();
+		}
 		if (!Description.IsEmpty())
 		{
 			ServerLatentCommandDescribeOnClient(Description);
@@ -176,28 +204,52 @@ void ALatentAutomationCommandClientExecutor::TickClient()
 
 			case EClientExecutorState::READY:
 				// Run until client-side Before() finishes.
-				if (CanStartBefore() && LatentCommand->BeforeOnClient())
+				if (CanStartBefore())
 				{
-					ServerLatentCommandClientReady();
-					CurrentState = EClientExecutorState::OBSERVING;
+					bool bBeforeComplete = false;
+					{
+						FAngelscriptScriptTestCallbackScope CallbackScope;
+						bBeforeComplete = LatentCommand->BeforeOnClient();
+					}
+					if (bBeforeComplete)
+					{
+						ServerLatentCommandClientReady();
+						CurrentState = EClientExecutorState::OBSERVING;
+					}
 				}
 				break;
 
 			case EClientExecutorState::OBSERVING:
 				// Run until client-side Update() finishes.
-				if (CanStartUpdate() && LatentCommand->UpdateOnClient())
+				if (CanStartUpdate())
 				{
-					ServerLatentCommandClientChecked();
-					CurrentState = EClientExecutorState::OBSERVED;
+					bool bUpdateComplete = false;
+					{
+						FAngelscriptScriptTestCallbackScope CallbackScope;
+						bUpdateComplete = LatentCommand->UpdateOnClient();
+					}
+					if (bUpdateComplete)
+					{
+						ServerLatentCommandClientChecked();
+						CurrentState = EClientExecutorState::OBSERVED;
+					}
 				}
 				break;
 
 			case EClientExecutorState::OBSERVED:
 				// Run until client-side After() finishes.
-				if (CanStartAfter() && LatentCommand->AfterOnClient())
+				if (CanStartAfter())
 				{
-					ServerLatentCommandClientDone();
-					CurrentState = EClientExecutorState::DONE;
+					bool bAfterComplete = false;
+					{
+						FAngelscriptScriptTestCallbackScope CallbackScope;
+						bAfterComplete = LatentCommand->AfterOnClient();
+					}
+					if (bAfterComplete)
+					{
+						ServerLatentCommandClientDone();
+						CurrentState = EClientExecutorState::DONE;
+					}
 				}
 				break;
 		}
@@ -274,10 +326,16 @@ void ALatentAutomationCommandClientExecutor::Fail(const FString& Message)
 		PrefixStr = "Server: ";
 	}
 
-	// FAngelscriptIntegrationTest does not exist in a header so we need to cast it to the base class so we can use it.
-	// Consider moving FAngelscriptIntegrationTest to a header file the future.
-	FAngelscriptTest* AngelscriptTest = (FAngelscriptTest*)(LatentCommand->GetAssociatedTest().Get());
-	AngelscriptTest->Fail(PrefixStr + Message);
+	if (ReportToScriptTestContext(
+		LatentCommand,
+		false,
+		PrefixStr + Message))
+	{
+		return;
+	}
+	UE_LOG(Angelscript, Error, TEXT(
+		"Client latent-command failure had no active reflected script-test context: %s"),
+		*(PrefixStr + Message));
 }
 
 void ALatentAutomationCommandClientExecutor::AssertSame(const UObject* Expected, const UObject* Actual, const FString& Message)
@@ -296,10 +354,16 @@ void ALatentAutomationCommandClientExecutor::AssertSame(const UObject* Expected,
 		PrefixStr = "Server: ";
 	}
 
-	// FAngelscriptIntegrationTest does not exist in a header so we need to cast it to the base class so we can use it.
-	// Consider moving FAngelscriptIntegrationTest to a header file the future.
-	FAngelscriptTest* AngelscriptTest = (FAngelscriptTest*)(LatentCommand->GetAssociatedTest().Get());
-	AngelscriptTest->AssertSame(Expected, Actual, PrefixStr + Message);
+	if (ReportToScriptTestContext(
+		LatentCommand,
+		Expected == Actual,
+		PrefixStr + Message))
+	{
+		return;
+	}
+	UE_LOG(Angelscript, Error, TEXT(
+		"Client latent-command assertion had no active reflected script-test context: %s"),
+		*(PrefixStr + Message));
 }
 
 void ALatentAutomationCommandClientExecutor::AssertNotSame(const UObject* Expected, const UObject* Actual, const FString& Message)
@@ -309,7 +373,7 @@ void ALatentAutomationCommandClientExecutor::AssertNotSame(const UObject* Expect
 
 	if (!HasAuthority())
 	{
-		ServerAssertSame(Expected, Actual, PrefixStr + Message);
+		ServerAssertNotSame(Expected, Actual, PrefixStr + Message);
 		return;
 	}
 
@@ -318,10 +382,16 @@ void ALatentAutomationCommandClientExecutor::AssertNotSame(const UObject* Expect
 		PrefixStr = "Server: ";
 	}
 
-	// FAngelscriptIntegrationTest does not exist in a header so we need to cast it to the base class so we can use it.
-	// Consider moving FAngelscriptIntegrationTest to a header file the future.
-	FAngelscriptTest* AngelscriptTest = (FAngelscriptTest*)(LatentCommand->GetAssociatedTest().Get());
-	AngelscriptTest->AssertNotSame(Expected, Actual, PrefixStr + Message);
+	if (ReportToScriptTestContext(
+		LatentCommand,
+		Expected != Actual,
+		PrefixStr + Message))
+	{
+		return;
+	}
+	UE_LOG(Angelscript, Error, TEXT(
+		"Client latent-command assertion had no active reflected script-test context: %s"),
+		*(PrefixStr + Message));
 }
 
 void ALatentAutomationCommandClientExecutor::AssertTrue(bool bExpression, const FString& Message)
@@ -340,10 +410,16 @@ void ALatentAutomationCommandClientExecutor::AssertTrue(bool bExpression, const 
 		PrefixStr = "Server: ";
 	}
 
-	// FAngelscriptIntegrationTest does not exist in a header so we need to cast it to the base class so we can use it.
-	// Consider moving FAngelscriptIntegrationTest to a header file the future.
-	FAngelscriptTest* AngelscriptTest = (FAngelscriptTest*)(LatentCommand->GetAssociatedTest().Get());
-	AngelscriptTest->AssertTrue(bExpression, PrefixStr + Message);
+	if (ReportToScriptTestContext(
+		LatentCommand,
+		bExpression,
+		PrefixStr + Message))
+	{
+		return;
+	}
+	UE_LOG(Angelscript, Error, TEXT(
+		"Client latent-command assertion had no active reflected script-test context: %s"),
+		*(PrefixStr + Message));
 }
 
 void ALatentAutomationCommandClientExecutor::AssertFalse(bool bExpression, const FString& Message)
@@ -362,10 +438,16 @@ void ALatentAutomationCommandClientExecutor::AssertFalse(bool bExpression, const
 		PrefixStr = "Server: ";
 	}
 
-	// FAngelscriptIntegrationTest does not exist in a header so we need to cast it to the base class so we can use it.
-	// Consider moving FAngelscriptIntegrationTest to a header file the future.
-	FAngelscriptTest* AngelscriptTest = (FAngelscriptTest*)(LatentCommand->GetAssociatedTest().Get());
-	AngelscriptTest->AssertFalse(bExpression, PrefixStr + Message);
+	if (ReportToScriptTestContext(
+		LatentCommand,
+		!bExpression,
+		PrefixStr + Message))
+	{
+		return;
+	}
+	UE_LOG(Angelscript, Error, TEXT(
+		"Client latent-command assertion had no active reflected script-test context: %s"),
+		*(PrefixStr + Message));
 }
 
 void ALatentAutomationCommandClientExecutor::AssertNull(const UObject* Object, const FString& Message)
@@ -384,10 +466,16 @@ void ALatentAutomationCommandClientExecutor::AssertNull(const UObject* Object, c
 		PrefixStr = "Server: ";
 	}
 
-	// FAngelscriptIntegrationTest does not exist in a header so we need to cast it to the base class so we can use it.
-	// Consider moving FAngelscriptIntegrationTest to a header file the future.
-	FAngelscriptTest* AngelscriptTest = (FAngelscriptTest*)(LatentCommand->GetAssociatedTest().Get());
-	AngelscriptTest->AssertNull(Object, PrefixStr + Message);
+	if (ReportToScriptTestContext(
+		LatentCommand,
+		Object == nullptr,
+		PrefixStr + Message))
+	{
+		return;
+	}
+	UE_LOG(Angelscript, Error, TEXT(
+		"Client latent-command assertion had no active reflected script-test context: %s"),
+		*(PrefixStr + Message));
 }
 
 void ALatentAutomationCommandClientExecutor::AssertNotNull(const UObject* Object, const FString& Message)
@@ -406,8 +494,14 @@ void ALatentAutomationCommandClientExecutor::AssertNotNull(const UObject* Object
 		PrefixStr = "Server: ";
 	}
 
-	// FAngelscriptIntegrationTest does not exist in a header so we need to cast it to the base class so we can use it.
-	// Consider moving FAngelscriptIntegrationTest to a header file the future.
-	FAngelscriptTest* AngelscriptTest = (FAngelscriptTest*)(LatentCommand->GetAssociatedTest().Get());
-	AngelscriptTest->AssertNotNull(Object, PrefixStr + Message);
+	if (ReportToScriptTestContext(
+		LatentCommand,
+		Object != nullptr,
+		PrefixStr + Message))
+	{
+		return;
+	}
+	UE_LOG(Angelscript, Error, TEXT(
+		"Client latent-command assertion had no active reflected script-test context: %s"),
+		*(PrefixStr + Message));
 }

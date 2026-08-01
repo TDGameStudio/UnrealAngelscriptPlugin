@@ -69,10 +69,14 @@
 #include "source/as_builder.h"
 #include "EndAngelscriptHeaders.h"
 
-#include "Testing/DiscoverTests.h"
 #include "Testing/AngelscriptBindExecutionObservation.h"
 #include "Testing/AngelscriptEnumTableBaselineProbe.h"
-#include "Testing/UnitTest.h"
+#if WITH_DEV_AUTOMATION_TESTS
+#include "Testing/AngelscriptScriptTestAutomation.h"
+#endif
+#include "Testing/AngelscriptScriptTestHotReloadRunner.h"
+#include "Testing/AngelscriptScriptTestRegistry.h"
+#include "Testing/AngelscriptScriptTestRunner.h"
 #include "Testing/AngelscriptTestSettings.h"
 
 #if WITH_AS_COVERAGE
@@ -1427,6 +1431,17 @@ bool FAngelscriptEngine::AreEnginesReleasedForExit()
 	return GAngelscriptEnginesReleasedForExit;
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
+void FAngelscriptEngine::EnsureScriptTestHotReloadRunnerForTesting()
+{
+	if (ScriptTestHotReloadRunner == nullptr)
+	{
+		ScriptTestHotReloadRunner =
+			new FAngelscriptScriptTestHotReloadRunner();
+	}
+}
+#endif
+
 void FAngelscriptEngine::Shutdown()
 {
 	const bool bHadInitializedEngine = Engine != nullptr;
@@ -1437,15 +1452,33 @@ void FAngelscriptEngine::Shutdown()
 		bHadInitializedEngine ? TEXT("true") : TEXT("false"),
 		bShouldReleaseOwnedEngine ? TEXT("true") : TEXT("false"));
 
+	if (bHadInitializedEngine && IsInGameThread())
+	{
+		// Active reflected tests retain script functions, suite instances, and
+		// callbacks owned by this engine. Cancel the leaves and close the
+		// suite-level Automation session before any AS-owned state is detached
+		// or released.
+		FAngelscriptScriptTestRunner::CancelEngine(
+			this,
+			TEXT("The owning AngelScript engine is shutting down."));
+#if WITH_DEV_AUTOMATION_TESTS
+		FAngelscriptScriptTestAutomation::Get()
+			.CancelEngineBeforeShutdown(this);
+#endif
+	}
+
+	// The automatic hot-reload scheduler owns a separate All-hook session.
+	// Destroy it while engine extensions and the old script generation are
+	// still usable so its destructor can run AfterAll safely.
+	if (ScriptTestHotReloadRunner != nullptr)
+	{
+		delete ScriptTestHotReloadRunner;
+		ScriptTestHotReloadRunner = nullptr;
+	}
+
 	if (bHadInitializedEngine)
 	{
 		FAngelscriptEngineExtensionRegistry::Get().DetachEngine(*this);
-	}
-
-	if (HotReloadTestRunner != nullptr)
-	{
-		delete HotReloadTestRunner;
-		HotReloadTestRunner = nullptr;
 	}
 
 	// Single-owner releases: the engine releases its own fields directly.
@@ -2101,7 +2134,8 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	}
 
 #if AS_CAN_HOTRELOAD
-	HotReloadTestRunner = new FHotReloadTestRunner();
+	ScriptTestHotReloadRunner =
+		new FAngelscriptScriptTestHotReloadRunner();
 #endif
 
 	// Use the checker thread if we want to detect hot reloads,
@@ -2856,23 +2890,37 @@ void FAngelscriptEngine::InitialCompile()
 
 void FAngelscriptEngine::DiscoverTests()
 {
+	const bool bDiscoveryEnabled =
+		WITH_DEV_AUTOMATION_TESTS
+		&& GetDefault<UAngelscriptTestSettings>()->bEnableTestDiscovery
+		&& !bSimulateCooked
 #if WITH_EDITOR
-	if (!GetDefault<UAngelscriptTestSettings>()->bEnableTestDiscovery)
-	{
-		return;
-	}
-	if (bSimulateCooked || IsRunningCookCommandlet())
-	{
-		// It doesn't make sense to run tests in simulate cooked mode since that's meant to simulate the
-		// AS that runs in a server or client - tests will never run there. Likewise actually cooking.
-		return;
-	}
-	for (auto& ActiveModule : GetActiveModules())
-	{
-		DiscoverUnitTests(*ActiveModule, ActiveModule->UnitTestFunctions);
-		DiscoverIntegrationTests(*ActiveModule, ActiveModule->IntegrationTestFunctions);
-	}
+		&& !IsRunningCookCommandlet();
+#else
+		;
 #endif
+	const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModuleList =
+		GetActiveModules();
+	const FAngelscriptScriptTestRegistryBuildResult ScriptSuiteResult =
+		FAngelscriptScriptTestRegistry::Get().Rebuild(
+			ActiveModuleList,
+			bDiscoveryEnabled);
+	for (const FAngelscriptScriptTestDiagnostic& Diagnostic :
+		ScriptSuiteResult.Diagnostics)
+	{
+		FAngelscriptEngine::FDiagnostic EngineDiagnostic;
+		EngineDiagnostic.Row = Diagnostic.SourceLine;
+		EngineDiagnostic.Column = 1;
+		EngineDiagnostic.bIsError = true;
+		EngineDiagnostic.bIsInfo = false;
+		EngineDiagnostic.Message = Diagnostic.Message;
+		ScriptCompileError(Diagnostic.SourceFile, EngineDiagnostic);
+	}
+
+	if (!bDiscoveryEnabled)
+	{
+		return;
+	}
 }
 
 bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray<FFilenamePair>& InReloadFiles)
@@ -3095,8 +3143,38 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 	// Notify for progress after preprocessor
 	SlowTask.EnterProgressFrame(2.5f);
 
+	// Preprocessing is side-effect free for the active VM. Once it has
+	// succeeded, retire any leaf that still owns objects from a module which
+	// is about to be replaced. This deliberately happens before class
+	// generation swaps the module so AfterEach/teardown callbacks still
+	// execute against the generation that created the leaf.
+	TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesToCompile =
+		Preprocessor.GetModulesToCompile();
+	TSet<FString> ReloadedModuleNames;
+	ReloadedModuleNames.Reserve(ModulesToCompile.Num());
+	for (const TSharedRef<FAngelscriptModuleDesc>& Module : ModulesToCompile)
+	{
+		ReloadedModuleNames.Add(Module->ModuleName);
+	}
+	if (!ReloadedModuleNames.IsEmpty())
+	{
+		FAngelscriptScriptTestRunner::CancelModules(
+			ReloadedModuleNames,
+			TEXT("the owning AngelScript module is being hot reloaded"));
+#if WITH_DEV_AUTOMATION_TESTS
+		FAngelscriptScriptTestAutomation::Get().
+			CancelModulesBeforeReload(ReloadedModuleNames);
+#endif
+		if (ScriptTestHotReloadRunner != nullptr)
+		{
+			ScriptTestHotReloadRunner->CancelModulesBeforeReload(
+				ReloadedModuleNames);
+		}
+	}
+
 	TArray<TSharedRef<FAngelscriptModuleDesc>> CompiledModules;
-	ECompileResult Result = CompileModules(CompileType, Preprocessor.GetModulesToCompile(), CompiledModules);
+	ECompileResult Result =
+		CompileModules(CompileType, ModulesToCompile, CompiledModules);
 	if (Result == ECompileResult::ErrorNeedFullReload)
 	{
 		return false;
@@ -3109,22 +3187,30 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 	// In the scenario where the initial compile fails and the user presses "Try Again" GEngine is nullptr.
 	// Since the unit tests assumes an existing GEngine we need to skip the unit testing in that case.
 	// Asset Manager initial scan should be completed also to queue tests for executing after hot reload finishes.
-	if (GEngine && bCompletedAssetScan && HotReloadTestRunner != nullptr && HotReloadTestRunner->ShouldRunUnitTestsOnHotReload())
-	{
-		TArray<FString> RelativeFileList;
-		RelativeFileList.Reserve(FileList.Num());
-		for (const auto& FilenamePair : FileList)
-		{
-			RelativeFileList.Add(FilenamePair.RelativePath);
-		}
-		HotReloadTestRunner->PrepareTests(GetActiveModules(), CompiledModules, RelativeFileList, ShouldUseAutomaticImportMethod());
-	}
-
 	if(Result == ECompileResult::FullyHandled || Result == ECompileResult::PartiallyHandled)
 	{
 		FAngelscriptPostCompileClassCollection& PostCompileDelegate = GetPostCompileClassCollection();
 			if (PostCompileDelegate.IsBound())
 				PostCompileDelegate.Broadcast(CompiledModules);
+
+#if WITH_DEV_AUTOMATION_TESTS
+		if (bIsInitialCompileFinished && bCompletedAssetScan)
+		{
+			// Publish exactly once at the successful hot-reload transaction
+			// boundary. Failed preprocess/compile paths retain the previous
+			// immutable registry generation.
+			DiscoverTests();
+			if (GIsEditor
+				&& GEngine != nullptr
+				&& ScriptTestHotReloadRunner != nullptr
+				&& ScriptTestHotReloadRunner->
+					ShouldRunTestsOnHotReload())
+			{
+				ScriptTestHotReloadRunner->PrepareTests(
+					CompiledModules);
+			}
+		}
+#endif
 	}
 
 #if WITH_AS_DEBUGSERVER
@@ -3363,6 +3449,12 @@ void FAngelscriptEngine::CheckForHotReload(ECompileType CompileType)
 	if (bUsedPrecompiledDataForPreprocessor)
 		return;
 
+	// A test callback can itself modify a script file (for example through a
+	// helper command). Never consume the queued changes while script code is
+	// still on the stack; the next engine tick will process the same queue.
+	if (FAngelscriptScriptTestRunner::IsExecutingScriptCallback())
+		return;
+
 	if (bUseHotReloadCheckerThread)
 	{
 		// Still waiting for hot reload results to come back,
@@ -3429,10 +3521,12 @@ void FAngelscriptEngine::Tick(float DeltaTime)
 	{
 		// In the scenario where the initial compile fails and the user press "Try Again" GEngine is nullptr.
 		// Since the unit tests assumes an existing GEngine we need to skip the unit testing in that case.
-		if (GEngine != nullptr && HotReloadTestRunner != nullptr)
+		if (GEngine != nullptr
+			&& ScriptTestHotReloadRunner != nullptr)
 		{
-			bool AllUnitTestsPass = HotReloadTestRunner->RunTests(this);
-			if (!AllUnitTestsPass)
+			const bool bAllScriptTestsPass =
+				ScriptTestHotReloadRunner->RunTests(this);
+			if (!bAllScriptTestsPass)
 			{
 				EmitDiagnostics();
 			}
@@ -4140,9 +4234,6 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 								NewModule->PrecompiledData = nullptr;
 								NewModule->bCompileError = false;
 								NewModule->bLoadedPrecompiledCode = false;
-								NewModule->UnitTestFunctions.Empty();
-								NewModule->IntegrationTestFunctions.Empty();
-
 								NewModule->Classes.Reset();
 								for (int ClassIndex = 0, ClassCount = OldModule->Classes.Num(); ClassIndex < ClassCount; ++ClassIndex)
 								{
@@ -4892,20 +4983,6 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 		if (PostCompileDelegate.IsBound())
 			PostCompileDelegate.Broadcast();
 
-#if WITH_EDITOR
-		if (FAngelscriptEngine::Get().IsInitialCompileFinished() && bCompletedAssetScan
-			&& !bSimulateCooked && !IsRunningCookCommandlet()
-			&& GetDefault<UAngelscriptTestSettings>()->bEnableTestDiscovery)
-		{
-			for (auto Module : CompiledModules)
-			{
-				// Avoid discovering tests if Asset Manager has not finised scanning.
-				// Test discovery will be performed after initial scan is completed.
-				DiscoverUnitTests(*Module, Module->UnitTestFunctions);
-				DiscoverIntegrationTests(*Module, Module->IntegrationTestFunctions);
-			}
-		}
-#endif
 	}
 
 	if (CompileType != ECompileType::Initial
@@ -6019,6 +6096,13 @@ FString GetScriptStack()
 
 void LogAngelscriptException(const ANSICHAR* ExceptionString)
 {
+	if (FAngelscriptScriptTestRunner::IsControlledException(ExceptionString)
+		|| FAngelscriptScriptTestRunner::
+			ShouldSuppressScriptExceptionLogging())
+	{
+		return;
+	}
+
 #if WITH_AS_DEBUGSERVER
 	if (FAngelscriptEngine::Get().IsEvaluatingDebuggerWatch())
 		return;
@@ -6055,6 +6139,12 @@ void LogAngelscriptException(const ANSICHAR* ExceptionString)
 void LogAngelscriptException(asIScriptContext* Context)
 {
 	const ANSICHAR* ExceptionString = Context->GetExceptionString();
+	if (FAngelscriptScriptTestRunner::IsControlledException(ExceptionString)
+		|| FAngelscriptScriptTestRunner::
+			ShouldSuppressScriptExceptionLogging())
+	{
+		return;
+	}
 	LogAngelscriptException(ExceptionString);
 
 #if WITH_AS_DEBUGSERVER

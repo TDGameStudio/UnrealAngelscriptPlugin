@@ -129,6 +129,67 @@ namespace AngelscriptTest
 		const FTCHARToUTF8 Utf8(*Normalized);
 		return std::string(Utf8.Get(), Utf8.Length());
 	}
+
+	inline FString NormalizeInlineASSourcePreserveLines(const TCHAR* Source)
+	{
+		if (Source == nullptr)
+		{
+			return FString();
+		}
+
+		FString Text(Source);
+		const bool bUseCrLf = Text.Contains(TEXT("\r\n"));
+		Text.ReplaceInline(TEXT("\r\n"), TEXT("\n"));
+		Text.ReplaceInline(TEXT("\r"), TEXT("\n"));
+
+		if (Text.StartsWith(TEXT("\n")))
+		{
+			Text.RightChopInline(1, EAllowShrinking::No);
+		}
+
+		const int32 LastLineStart = Text.Find(TEXT("\n"), ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+		if (LastLineStart != INDEX_NONE && IsInlineASWhitespaceOnlyLine(Text.Mid(LastLineStart + 1)))
+		{
+			Text.LeftInline(LastLineStart, EAllowShrinking::No);
+		}
+
+		TArray<FString> Lines;
+		Text.ParseIntoArray(Lines, TEXT("\n"), false);
+		int32 CommonIndent = MAX_int32;
+		for (const FString& Line : Lines)
+		{
+			if (!IsInlineASWhitespaceOnlyLine(Line))
+			{
+				CommonIndent = FMath::Min(CommonIndent, CountInlineASIndent(Line));
+			}
+		}
+		if (CommonIndent == MAX_int32)
+		{
+			CommonIndent = 0;
+		}
+
+		for (FString& Line : Lines)
+		{
+			if (!IsInlineASWhitespaceOnlyLine(Line) && CommonIndent > 0)
+			{
+				Line.RightChopInline(CommonIndent, EAllowShrinking::No);
+			}
+		}
+
+		FString Result = FString::Join(Lines, TEXT("\n"));
+		if (bUseCrLf)
+		{
+			Result.ReplaceInline(TEXT("\n"), TEXT("\r\n"));
+		}
+		return Result;
+	}
+
+	inline std::string NormalizeInlineASSourceAnsiPreserveLines(const TCHAR* Source)
+	{
+		const FString Normalized = NormalizeInlineASSourcePreserveLines(Source);
+		const FTCHARToUTF8 Utf8(*Normalized);
+		return std::string(Utf8.Get(), Utf8.Length());
+	}
 }
 
 #define ASTEST_AS(SourceLiteral) \
@@ -136,6 +197,12 @@ namespace AngelscriptTest
 
 #define ASTEST_AS_ANSI(SourceLiteral) \
 	AngelscriptTest::NormalizeInlineASSourceAnsi(TEXT(SourceLiteral))
+
+#define ASTEST_AS_PRESERVE_LINES(SourceLiteral) \
+	AngelscriptTest::NormalizeInlineASSourcePreserveLines(TEXT(SourceLiteral))
+
+#define ASTEST_AS_ANSI_PRESERVE_LINES(SourceLiteral) \
+	AngelscriptTest::NormalizeInlineASSourceAnsiPreserveLines(TEXT(SourceLiteral))
 
 // ============================================================================
 // Engine Creation Macros

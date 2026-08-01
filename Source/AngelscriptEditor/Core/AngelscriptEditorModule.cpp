@@ -1,5 +1,6 @@
 #include "Core/AngelscriptEditorModule.h"
 #include "HotReload/AngelscriptDirectoryWatcherInternal.h"
+#include "HotReload/AngelscriptScriptTestAutomationRefresh.h"
 #include "HotReload/ClassReloadHelper.h"
 #include "AngelscriptCompileOptions.h"
 #include "AngelscriptSettings.h"
@@ -907,6 +908,12 @@ void FAngelscriptEditorModule::StartupModule()
 {
 	FClassReloadHelper::Init();
 	RegisterAngelscriptSourceNavigation();
+	if (!ScriptTestAutomationRefresh.IsValid())
+	{
+		ScriptTestAutomationRefresh =
+			MakeUnique<FAngelscriptScriptTestAutomationRefresh>();
+		ScriptTestAutomationRefresh->Startup();
+	}
 
 	if (FAngelscriptEngine::IsInitialized() && FAngelscriptEngine::Get().IsInitialCompileFinished())
 	{
@@ -1178,6 +1185,12 @@ void FAngelscriptEditorModule::ShowAssetListPopup(const TArray<FString>& AssetPa
 
 void FAngelscriptEditorModule::ShutdownModule()
 {
+	if (ScriptTestAutomationRefresh.IsValid())
+	{
+		ScriptTestAutomationRefresh->Shutdown();
+		ScriptTestAutomationRefresh.Reset();
+	}
+
 	if (GOnPostEngineInitHandle.IsValid())
 	{
 		FCoreDelegates::GetOnPostEngineInit().Remove(GOnPostEngineInitHandle);

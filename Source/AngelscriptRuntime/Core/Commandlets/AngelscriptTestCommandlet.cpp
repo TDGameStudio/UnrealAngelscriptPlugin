@@ -1,6 +1,6 @@
 #include "AngelscriptTestCommandlet.h"
 #include "AngelscriptEngine.h"
-#include "Testing/UnitTest.h"
+#include "Testing/AngelscriptScriptTestHotReloadRunner.h"
 
 int32 UAngelscriptTestCommandlet::Main(const FString& Params)
 {
@@ -9,7 +9,7 @@ int32 UAngelscriptTestCommandlet::Main(const FString& Params)
 		return 1;
 	}
 
-	if (!RunAngelscriptUnitTests(FAngelscriptEngine::Get().GetActiveModules(), &FAngelscriptEngine::Get(), 0, 0))
+	if (!RunAngelscriptScriptTests(FAngelscriptEngine::Get()))
 	{
 		return 2;
 	}

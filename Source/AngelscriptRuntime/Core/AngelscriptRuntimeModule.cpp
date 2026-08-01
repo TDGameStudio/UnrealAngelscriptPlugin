@@ -2,6 +2,8 @@
 #include "AngelscriptEngine.h"
 #include "AngelscriptSubsystem.h"
 #include "Dump/AngelscriptCrashSnapshot.h"
+#include "Testing/AngelscriptScriptTestAutomation.h"
+#include "Testing/AngelscriptScriptTestRunner.h"
 #if WITH_AS_COVERAGE
 #include "Extension/CodeCoverage/AngelscriptCodeCoverage.h"
 #endif
@@ -19,6 +21,7 @@ void FAngelscriptRuntimeModule::StartupModule()
 {
 	UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] StartupModule."));
 	CrashSnapshotExtensionHandle = FAngelscriptCrashSnapshotExtension::Startup();
+	FAngelscriptScriptTestAutomation::Get().Startup();
 #if WITH_AS_COVERAGE
 	CodeCoverageExtensionHandle = FAngelscriptCodeCoverageExtension::Startup();
 #endif
@@ -28,6 +31,9 @@ void FAngelscriptRuntimeModule::ShutdownModule()
 {
 	UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] ShutdownModule ownedEngine=%s"),
 		OwnedPrimaryEngine.IsValid() ? TEXT("true") : TEXT("false"));
+	FAngelscriptScriptTestRunner::CancelAll(
+		TEXT("AngelscriptRuntime module shutdown"));
+	FAngelscriptScriptTestAutomation::Get().Shutdown();
 #if WITH_AS_COVERAGE
 	FAngelscriptCodeCoverageExtension::Shutdown(CodeCoverageExtensionHandle);
 #endif
