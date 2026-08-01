@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "native.basic",
+      "sourceRoot": "corpus",
+      "source": "Native/basic.as",
+      "provenance": "standalone-native-corpus",
+      "dependencies": ["native-runtime", "string-addon"],
+      "profile": "native",
+      "classification": "supported",
+      "automation": "standalone",
+      "expected": {
+        "compile": "success",
+        "run": "success",
+        "scriptResult": 17
+      },
+      "evidence": "AngelscriptStandalone.Corpus"
+    },
+    {
+      "id": "native.collections",
+      "sourceRoot": "corpus",
+      "source": "Native/collections.as",
+      "provenance": "standalone-native-corpus",
+      "dependencies": ["native-runtime", "array-addon", "dictionary-addon"],
+      "profile": "native",
+      "classification": "supported",
+      "automation": "standalone",
+      "expected": {
+        "compile": "success",
+        "run": "success",
+        "scriptResult": 23
+      },
+      "evidence": "AngelscriptStandalone.Corpus"
+    },
+    {
+      "id": "ue-core.declarations",
+      "sourceRoot": "corpus",
+      "source": "UECore/declarations.as",
+      "provenance": "standalone-ue-core-corpus",
+      "dependencies": ["ue-validation", "default-engine"],
+      "profile": "ue-validation",
+      "bundle": "default-engine",
+      "classification": "supported",
+      "automation": "standalone",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "AngelscriptStandalone.Corpus"
+    },
+    {
+      "id": "templates.requires-exported-adapter",
+      "sourceRoot": "corpus",
+      "source": "Templates/array-without-adapter.as",
+      "provenance": "standalone-template-negative-corpus",
+      "dependencies": ["ue-validation", "default-engine", "adapter:TArray"],
+      "profile": "ue-validation",
+      "bundle": "default-engine",
+      "classification": "unsupported",
+      "automation": "standalone",
+      "expected": {
+        "compile": "failure",
+        "run": "not-applicable"
+      },
+      "evidence": "AngelscriptStandalone.Corpus",
+      "reason": "The minimal frozen default fixture intentionally exports no TArray adapter; a matching real bundle promotes the adapter separately."
+    },
+    {
+      "id": "templates.project-adapter-matrix",
+      "sourceRoot": "corpus",
+      "source": "Templates/project-adapter-matrix.as",
+      "provenance": "complete-project-export-v6",
+      "dependencies": ["ue-validation", "project-bundle", "adapter-protocol:1"],
+      "profile": "ue-validation",
+      "bundle": "project",
+      "classification": "supported",
+      "automation": "external-project-evidence",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "Plugins/Angelscript/Standalone/Tests/Evidence/project-v6.json#templates.project-adapter-matrix",
+      "reason": "Requires the complete project bundle to validate all nine exported adapter handshakes and representative specializations."
+    },
+    {
+      "id": "resources.requires-typed-bundle-surface",
+      "sourceRoot": "corpus",
+      "source": "Resources/soft-path-without-symbol.as",
+      "provenance": "standalone-resource-negative-corpus",
+      "dependencies": ["ue-validation", "default-engine", "offline-resource-index"],
+      "profile": "ue-validation",
+      "bundle": "default-engine",
+      "classification": "ue-required",
+      "automation": "standalone",
+      "expected": {
+        "compile": "failure",
+        "run": "not-applicable"
+      },
+      "evidence": "AngelscriptStandalone.Corpus; AngelscriptStandalone.Resources",
+      "reason": "The minimal frozen default fixture intentionally has no FSoftObjectPath declaration or authoritative /Game asset scope."
+    },
+    {
+      "id": "resources.project-known-path",
+      "sourceRoot": "corpus",
+      "source": "Resources/project-known-path.as",
+      "provenance": "complete-project-export-v7-resource-contract",
+      "dependencies": ["ue-validation", "project-bundle", "offline-resource-index"],
+      "profile": "ue-validation",
+      "bundle": "project",
+      "classification": "supported",
+      "automation": "external-project-evidence",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "Plugins/Angelscript/Standalone/Tests/Evidence/project-v7-resource-contract.json#resources.project-known-path",
+      "reason": "Uses the complete project bundle to prove bounded const concatenation, parameter-level resource markers, and authoritative /Game membership without loading the referenced map."
+    },
+    {
+      "id": "script.example-array-project",
+      "sourceRoot": "repository",
+      "source": "Script/Examples/Core/Example_Array.as",
+      "provenance": "repository-script-example",
+      "dependencies": ["ue-validation", "project-bundle", "adapter:TArray"],
+      "profile": "ue-validation",
+      "bundle": "project",
+      "classification": "supported",
+      "automation": "external-project-evidence",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "Plugins/Angelscript/Standalone/Tests/Evidence/project-v6.json#script.example-array-project",
+      "reason": "Requires a complete project-kind bundle and is therefore validated by generated local evidence rather than the committed minimal default fixture."
+    },
+    {
+      "id": "templates.project-map-operations",
+      "sourceRoot": "corpus",
+      "source": "Templates/project-map-operations.as",
+      "provenance": "standalone-project-regression-corpus",
+      "dependencies": ["ue-validation", "project-bundle", "adapter:TMap", "uobject-relationships"],
+      "profile": "ue-validation",
+      "bundle": "project",
+      "classification": "supported",
+      "automation": "external-project-evidence",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "Plugins/Angelscript/Standalone/Tests/Evidence/project-v6.json#templates.project-map-operations",
+      "reason": "Exercises TMap access, iterator support templates, and exported UObject inheritance relationships against the complete project bundle."
+    },
+    {
+      "id": "ue-core.project-delegates",
+      "sourceRoot": "corpus",
+      "source": "UECore/project-delegates.as",
+      "provenance": "standalone-project-regression-corpus",
+      "dependencies": ["ue-validation", "project-bundle", "delegate-event-proxy", "uobject-relationships"],
+      "profile": "ue-validation",
+      "bundle": "project",
+      "classification": "supported",
+      "automation": "external-project-evidence",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "Plugins/Angelscript/Standalone/Tests/Evidence/project-v6.json#ue-core.project-delegates",
+      "reason": "Exercises delegate/event source declarations and AddUFunction/BindUFunction compile-only proxies through exported UObject relationships."
+    },
+    {
+      "id": "script.example-struct-project",
+      "sourceRoot": "repository",
+      "source": "Script/Examples/Core/Example_Struct.as",
+      "provenance": "repository-script-example",
+      "dependencies": ["ue-validation", "project-bundle", "reflected-value-types"],
+      "profile": "ue-validation",
+      "bundle": "project",
+      "classification": "supported",
+      "automation": "external-project-evidence",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "Plugins/Angelscript/Standalone/Tests/Evidence/project-v6.json#script.example-struct-project",
+      "reason": "Validates representative reflected value types and properties using the complete project bundle."
+    },
+    {
+      "id": "script.example-map-project",
+      "sourceRoot": "repository",
+      "source": "Script/Examples/Core/Example_Map.as",
+      "provenance": "repository-script-example",
+      "dependencies": ["ue-validation", "project-bundle", "adapter:TMap", "uobject-relationships"],
+      "profile": "ue-validation",
+      "bundle": "project",
+      "classification": "supported",
+      "automation": "external-project-evidence",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "Plugins/Angelscript/Standalone/Tests/Evidence/project-v6.json#script.example-map-project",
+      "reason": "Validates TMap, iterator support templates, string concatenation, and transitive UObject inheritance using the complete project bundle."
+    },
+    {
+      "id": "script.example-delegates-project",
+      "sourceRoot": "repository",
+      "source": "Script/Examples/Core/Example_Delegates.as",
+      "provenance": "repository-script-example",
+      "dependencies": ["ue-validation", "project-bundle", "delegate-event-proxy", "uobject-relationships"],
+      "profile": "ue-validation",
+      "bundle": "project",
+      "classification": "supported",
+      "automation": "external-project-evidence",
+      "expected": {
+        "compile": "success",
+        "run": "not-applicable"
+      },
+      "evidence": "Plugins/Angelscript/Standalone/Tests/Evidence/project-v6.json#script.example-delegates-project",
+      "reason": "Validates delegate/event declarations and compile-only binding proxies using the complete project bundle."
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "angelscript-standalone-project-corpus-evidence/1.0",
+  "generatedAt": "2026-07-31",
+  "bundle": {
+    "kind": "project",
+    "identity": "5237addd65090d4cd7794c860d3584a827af9473b09b15bbe3f9052fd3422240",
+    "symbolCount": 130068,
+    "assetCount": 9,
+    "symbolScopeComplete": true,
+    "assetScopeComplete": true,
+    "manifestSha256": "7d9d0ccb4f4bad153278f2d70580abacedaf51eb23196a5d16b2bc252946d06d",
+    "symbolsSha256": "f49f3b8a1d81a3364c71c7a46caf0da8723a1bd7e411f9baab1cd77dea9e164c",
+    "assetsSha256": "28a4028fc2418ca96f5a82734265ca9dfdf59f5903056882039b77be98d45d9f",
+    "repeatedExportByteIdentical": true
+  },
+  "cases": {
+    "templates.project-adapter-matrix": {
+      "resultSha256": "244c4c754bc4cf961b2ed1496f580036809bb21a86ce4bb3c7fdfc43ba6572f9",
+      "status": "complete"
+    },
+    "resources.project-known-path": {
+      "resultSha256": "f93ab0917f49dae83eedfcd21772875f99541b0e197ef1984775d87fbfdb2433",
+      "status": "complete"
+    },
+    "script.example-array-project": {
+      "resultSha256": "1a696f347b5f23a70cb740dd4a58166bf222231aa286d5002ebc38f1903afa6f",
+      "status": "complete"
+    },
+    "templates.project-map-operations": {
+      "resultSha256": "46589c772bc80ccfe05a0cf0c11a5d8d8fe327b66c0cabebb6f68f97f36aa342",
+      "status": "complete"
+    },
+    "ue-core.project-delegates": {
+      "resultSha256": "e34865c0e754d35ef813335bc9c8acd01cb9a7bdb30dc04277128e1f0d41f1c0",
+      "status": "complete"
+    },
+    "script.example-struct-project": {
+      "resultSha256": "04a1495c42511f4a844425d6795686589107e73bc19c79eb1367cb6c353b61e0",
+      "status": "complete"
+    },
+    "script.example-map-project": {
+      "resultSha256": "ddbc453e3eba0e7490fe8677cc03bf30fa89b288fa024c37c744ed33209bf63d",
+      "status": "complete"
+    },
+    "script.example-delegates-project": {
+      "resultSha256": "19d5fadd00b3814f7f07ecfc1da7563e1683e46f285e7cc370a1f901c856e606",
+      "status": "complete"
+    }
+  }
+}

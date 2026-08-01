@@ -800,11 +800,19 @@ asCScriptNode *asCParser::ParseParameterList()
 			node->AddChildLast(ParseTypeMod(true));
 			if( isSyntaxError ) return node;
 
-			// Parse name of the parameter
-			node->AddChildLast(ParseIdentifier());
-			if( isSyntaxError ) return node;
-
 			GetToken(&t1);
+
+			// Application registration declarations may omit parameter names.
+			// The grammar has long documented IDENTIFIER as optional, and the
+			// maintained public API accepts upstream add-ons that rely on it.
+			if( t1.type == ttIdentifier )
+			{
+				RewindTo(&t1);
+				node->AddChildLast(ParseIdentifier());
+				if( isSyntaxError ) return node;
+
+				GetToken(&t1);
+			}
 
 			// Parse optional expression for the default arg
 			if( t1.type == ttAssignment )

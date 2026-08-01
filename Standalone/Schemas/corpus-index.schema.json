@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tdgamestudio.example/schemas/angelscript-standalone-corpus-index-1.0.json",
+  "title": "Unreal AngelScript standalone corpus index 1.0",
+  "type": "object",
+  "required": ["schemaVersion", "cases"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "sourceRoot",
+          "source",
+          "provenance",
+          "dependencies",
+          "profile",
+          "classification",
+          "automation",
+          "expected",
+          "evidence"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "sourceRoot": { "enum": ["corpus", "repository"] },
+          "source": { "type": "string", "pattern": "\\.as$" },
+          "provenance": { "type": "string", "minLength": 1 },
+          "dependencies": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "profile": { "enum": ["native", "ue-validation"] },
+          "bundle": { "enum": ["default-engine", "project"] },
+          "automation": { "enum": ["standalone", "external-project-evidence"] },
+          "classification": {
+            "enum": ["supported", "compile-shim", "ue-required", "unsupported", "intentional-host-difference"]
+          },
+          "expected": {
+            "type": "object",
+            "required": ["compile"],
+            "properties": {
+              "compile": { "enum": ["success", "failure"] },
+              "run": { "enum": ["success", "exception", "timeout", "not-applicable"] },
+              "scriptResult": { "type": "integer" }
+            },
+            "additionalProperties": false
+          },
+          "evidence": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

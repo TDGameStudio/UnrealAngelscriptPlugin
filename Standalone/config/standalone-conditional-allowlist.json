@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "macro": "AS_MAX_PORTABILITY",
+      "scope": "Source/AngelscriptRuntime/ThirdParty/angelscript/source",
+      "reason": "Maintained AngelScript generic-call configuration; excludes native ABI call shims and assembly.",
+      "removalCondition": "Remove only if the maintained fork itself no longer distinguishes generic and native application calls."
+    }
+  ]
+}

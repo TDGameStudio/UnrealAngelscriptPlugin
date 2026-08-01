@@ -2142,53 +2142,59 @@ void asCReader::ReadTypeDeclaration(asCTypeInfo *type, int phase, bool *isExtern
 						Error(TXT_INVALID_BYTECODE_d);
 					}
 
-					func = ReadFunction(isNew, !sharedExists, !sharedExists, !sharedExists);
-					if( func )
+					// Script structs are value types and have constructors but
+					// no factories. Keep this symmetric with the writer rather
+					// than consuming a factory record that can never exist.
+					if( !(ot->flags & asOBJ_VALUE) )
 					{
-						if( sharedExists )
+						func = ReadFunction(isNew, !sharedExists, !sharedExists, !sharedExists);
+						if( func )
 						{
-							// Find the real function in the object, and update the savedFunctions array
-							bool found = false;
-							for( asUINT f = 0; f < ot->beh.factories.GetLength(); f++ )
+							if( sharedExists )
 							{
-								asCScriptFunction *realFunc = engine->GetScriptFunction(ot->beh.factories[f]);
-								if( realFunc->IsSignatureEqual(func) )
+								// Find the real function in the object, and update the savedFunctions array
+								bool found = false;
+								for( asUINT f = 0; f < ot->beh.factories.GetLength(); f++ )
 								{
-									// If the function is not the last, then the substitution has already occurred before
-									if( savedFunctions[savedFunctions.GetLength()-1] == func )
-										savedFunctions[savedFunctions.GetLength()-1] = realFunc;
-									found = true;
-									dontTranslate.Insert(realFunc, true);
-									break;
+									asCScriptFunction *realFunc = engine->GetScriptFunction(ot->beh.factories[f]);
+									if( realFunc->IsSignatureEqual(func) )
+									{
+										// If the function is not the last, then the substitution has already occurred before
+										if( savedFunctions[savedFunctions.GetLength()-1] == func )
+											savedFunctions[savedFunctions.GetLength()-1] = realFunc;
+										found = true;
+										dontTranslate.Insert(realFunc, true);
+										break;
+									}
+								}
+								if( !found )
+								{
+									asCString str;
+									str.Format(TXT_SHARED_s_DOESNT_MATCH_ORIGINAL, type->GetName());
+									engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
+									Error(TXT_INVALID_BYTECODE_d);
+								}
+								if( isNew )
+								{
+									// Destroy the function without releasing any references
+									func->id = 0;
+									func->scriptData->byteCode.SetLength(0);
+									func->ReleaseInternal();
 								}
 							}
-							if( !found )
+							else
 							{
-								asCString str;
-								str.Format(TXT_SHARED_s_DOESNT_MATCH_ORIGINAL, type->GetName());
-								engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
-								Error(TXT_INVALID_BYTECODE_d);
-							}
-							if( isNew )
-							{
-								// Destroy the function without releasing any references
-								func->id = 0;
-								func->scriptData->byteCode.SetLength(0);
-								func->ReleaseInternal();
+								ot->beh.factories.PushLast(func->id);
+								func->AddRefInternal();
+
+								if( func->parameterTypes.GetLength() == 0 )
+									ot->beh.factory = func->id;
 							}
 						}
 						else
 						{
-							ot->beh.factories.PushLast(func->id);
-							func->AddRefInternal();
-
-							if( func->parameterTypes.GetLength() == 0 )
-								ot->beh.factory = func->id;
+							Error(TXT_INVALID_BYTECODE_d);
 						}
-					}
-					else
-					{
-						Error(TXT_INVALID_BYTECODE_d);
 					}
 				}
 			}
@@ -5025,7 +5031,12 @@ void asCWriter::WriteTypeDeclaration(asCTypeInfo *type, int phase)
 				for( n = 0; n < t->beh.constructors.GetLength(); n++ )
 				{
 					WriteFunction(engine->scriptFunctions[t->beh.constructors[n]]);
-					WriteFunction(engine->scriptFunctions[t->beh.factories[n]]);
+					// Script structs are value types and deliberately have no
+					// factories. Their construction happens in caller-owned
+					// storage, so only reference script classes serialize the
+					// constructor/factory pair.
+					if( !(t->flags & asOBJ_VALUE) )
+						WriteFunction(engine->scriptFunctions[t->beh.factories[n]]);
 				}
 			}
 

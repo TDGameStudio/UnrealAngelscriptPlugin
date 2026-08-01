@@ -1,0 +1,31 @@
+{
+  "schema": "angelscript-standalone-project-corpus-evidence/1.0",
+  "generatedAt": "2026-07-31",
+  "bundle": {
+    "kind": "project",
+    "identity": "1aad4cd8eb1a196db621e10a6856c3944b28d7afbc84d5b13e606edec6051dff",
+    "symbolCount": 130068,
+    "assetCount": 9,
+    "symbolScopeComplete": true,
+    "assetScopeComplete": true,
+    "manifestSha256": "b02b0fd098fbc8124679b4448d0a633bb7674a07cea95040c3a28e35ea3a3c57",
+    "symbolsSha256": "911698ba49bf65c6ac7abacd5938691ce0872e81bbfd16c17a5d0a7ff3d71f54",
+    "assetsSha256": "28a4028fc2418ca96f5a82734265ca9dfdf59f5903056882039b77be98d45d9f",
+    "resourceParameterMarkerCount": 37,
+    "repeatedExportByteIdentical": true
+  },
+  "cases": {
+    "resources.project-known-path": {
+      "resultSha256": "4ff733d00b9f574393f70ae70da6ba3cfde03f276bcb288d77746cc3e41d9249",
+      "status": "complete",
+      "strictResources": true,
+      "resources": {
+        "found": 1,
+        "redirected": 0,
+        "missing": 0,
+        "incompatible": 0,
+        "unknown": 0
+      }
+    }
+  }
+}

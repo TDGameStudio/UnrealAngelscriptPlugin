@@ -349,6 +349,8 @@ enum asETypeIdFlags
 	asTYPEID_UINT64         = 9,
 	asTYPEID_FLOAT32          = 10,
 	asTYPEID_FLOAT64         = 11,
+	asTYPEID_FLOAT          = asTYPEID_FLOAT32,
+	asTYPEID_DOUBLE         = asTYPEID_FLOAT64,
 
 	asTYPEID_LAST_PRIMITIVE  = asTYPEID_FLOAT64,
 
@@ -407,6 +409,7 @@ enum asEFuncType
 //
 typedef signed char    asINT8;
 typedef signed short   asINT16;
+typedef signed int     asINT32;
 typedef unsigned char  asBYTE;
 typedef unsigned short asWORD;
 typedef unsigned int   asUINT;
@@ -592,6 +595,57 @@ struct asSMessageInfo
 	asEMsgType  type;
 	const char *message;
 };
+
+//[UE++]: Host-neutral, read-only compiler semantic observations. Hosts install
+// an observer through asIScriptEngine user data. The compiler never owns the
+// observer and does not retain pointers supplied by a callback.
+enum asESemanticObservationKind
+{
+	asSEMANTIC_OBSERVATION_RESOLVED_CALL = 0,
+	asSEMANTIC_OBSERVATION_CONSTRUCTOR = 1,
+	asSEMANTIC_OBSERVATION_ASSIGNMENT = 2,
+	asSEMANTIC_OBSERVATION_CONSTANT_STRING = 3,
+};
+
+struct asSSemanticArgumentObservation
+{
+	int    actualTypeId;
+	int    parameterTypeId;
+	asUINT sourceOffset;
+	asUINT sourceLength;
+};
+
+struct asSSemanticObservation
+{
+	asESemanticObservationKind kind;
+	asIScriptFunction         *function;
+	asITypeInfo               *type;
+	int                        sourceTypeId;
+	int                        targetTypeId;
+	const asSSemanticArgumentObservation *arguments;
+	asUINT                     argumentCount;
+	const char                *constantString;
+	asUINT                     constantStringLength;
+	const char                *section;
+	asUINT                     sourceOffset;
+	asUINT                     sourceLength;
+	int                        row;
+	int                        column;
+};
+
+class asISemanticObserver
+{
+public:
+	virtual void Observe(
+		const asSSemanticObservation &observation) = 0;
+
+protected:
+	virtual ~asISemanticObserver() {}
+};
+
+const asPWORD asSEMANTIC_OBSERVER_USER_DATA_ID =
+	static_cast<asPWORD>(0x415353454D4F4253ull);
+//[UE--]
 
 
 // API functions
@@ -1222,7 +1276,7 @@ public:
 
 	// User data
 	virtual void *SetUserData(void *data, asPWORD type = 0) = 0;
-	virtual void *GetUserData() const = 0;
+	virtual void *GetUserData(asPWORD type = 0) const = 0;
 
 	virtual void CopySystemType(asITypeInfo* SystemType) {}
 	int                          alignment = 4;

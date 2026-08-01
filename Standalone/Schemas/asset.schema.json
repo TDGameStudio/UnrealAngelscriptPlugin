@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tdgamestudio.example/schemas/angelscript-offline-asset-1.0.json",
+  "title": "Unreal AngelScript offline asset JSONL record 1.0",
+  "type": "object",
+  "required": [
+    "schema",
+    "stableId",
+    "packagePath",
+    "objectPath",
+    "generatedClassPath",
+    "assetClassPath",
+    "baseClassPath",
+    "mountPoint",
+    "originModule",
+    "originPlugin",
+    "redirectSource",
+    "redirectTarget",
+    "availability",
+    "typeCheckTags"
+  ],
+  "properties": {
+    "schema": { "const": "1.0" },
+    "stableId": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "packagePath": { "type": "string" },
+    "objectPath": { "type": "string" },
+    "generatedClassPath": { "type": "string" },
+    "assetClassPath": { "type": "string" },
+    "baseClassPath": { "type": "string" },
+    "mountPoint": { "type": "string" },
+    "originModule": { "type": "string" },
+    "originPlugin": { "type": "string" },
+    "redirectSource": { "type": "string" },
+    "redirectTarget": { "type": "string" },
+    "availability": {
+      "enum": ["available", "editor-only", "deprecated", "internal", "unavailable", "unknown"]
+    },
+    "typeCheckTags": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

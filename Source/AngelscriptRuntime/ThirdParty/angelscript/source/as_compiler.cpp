@@ -138,6 +138,140 @@ void asCCompiler::Reset(asCBuilder *in_builder, asCScriptCode *in_script, asCScr
 	ExternalThisOffset = 0;
 }
 
+//[UE++]: Host-neutral read-only semantic observer helpers.
+asISemanticObserver *asCCompiler::GetSemanticObserver() const
+{
+	if( engine == 0 )
+		return 0;
+	return reinterpret_cast<asISemanticObserver*>(
+		engine->GetUserData(asSEMANTIC_OBSERVER_USER_DATA_ID));
+}
+
+void asCCompiler::FillSemanticSource(
+	asSSemanticObservation &observation,
+	asCScriptNode *node) const
+{
+	observation.section = script ? script->name.AddressOf() : "";
+	observation.sourceOffset = node ? asUINT(node->tokenPos) : 0;
+	observation.sourceLength = node ? asUINT(node->tokenLength) : 0;
+	observation.row = 0;
+	observation.column = 0;
+	if( script && node )
+		script->ConvertPosToRowCol(
+			node->tokenPos,
+			&observation.row,
+			&observation.column);
+}
+
+void asCCompiler::ObserveResolvedFunction(
+	asCScriptFunction *function,
+	bool isConstructor,
+	asCArray<asCExprContext*> *args,
+	asCObjectType *constructedType,
+	asCScriptNode *node)
+{
+	asISemanticObserver *observer = GetSemanticObserver();
+	if( observer == 0 || function == 0 )
+		return;
+
+	asCArray<asSSemanticArgumentObservation> argumentObservations;
+	if( args )
+	{
+		argumentObservations.SetLength(args->GetLength());
+		for( asUINT n = 0; n < args->GetLength(); ++n )
+		{
+			asSSemanticArgumentObservation &argument =
+				argumentObservations[n];
+			asCExprContext *expression = (*args)[n];
+			argument.actualTypeId = expression
+				? engine->GetTypeIdFromDataType(
+					expression->type.dataType)
+				: 0;
+			argument.parameterTypeId =
+				n < function->parameterTypes.GetLength()
+					? engine->GetTypeIdFromDataType(
+						function->parameterTypes[n])
+					: 0;
+			argument.sourceOffset =
+				expression && expression->exprNode
+					? asUINT(expression->exprNode->tokenPos)
+					: 0;
+			argument.sourceLength =
+				expression && expression->exprNode
+					? asUINT(expression->exprNode->tokenLength)
+					: 0;
+		}
+	}
+
+	asSSemanticObservation observation = {};
+	observation.kind = isConstructor
+		? asSEMANTIC_OBSERVATION_CONSTRUCTOR
+		: asSEMANTIC_OBSERVATION_RESOLVED_CALL;
+	observation.function = function;
+	observation.type = constructedType;
+	observation.sourceTypeId = function->objectType
+		? engine->GetTypeIdFromDataType(
+			asCDataType::CreateType(function->objectType, false))
+		: 0;
+	if( constructedType )
+	{
+		observation.targetTypeId = engine->GetTypeIdFromDataType(
+			asCDataType::CreateType(constructedType, false));
+	}
+	else
+	{
+		observation.targetTypeId = engine->GetTypeIdFromDataType(
+			function->returnType);
+	}
+	observation.arguments = argumentObservations.GetLength()
+		? argumentObservations.AddressOf()
+		: 0;
+	observation.argumentCount =
+		argumentObservations.GetLength();
+	FillSemanticSource(observation, node);
+	observer->Observe(observation);
+}
+
+void asCCompiler::ObserveAssignment(
+	const asCDataType &sourceType,
+	const asCDataType &targetType,
+	asCScriptNode *node)
+{
+	asISemanticObserver *observer = GetSemanticObserver();
+	if( observer == 0 )
+		return;
+	asSSemanticObservation observation = {};
+	observation.kind = asSEMANTIC_OBSERVATION_ASSIGNMENT;
+	observation.sourceTypeId =
+		engine->GetTypeIdFromDataType(sourceType);
+	observation.targetTypeId =
+		engine->GetTypeIdFromDataType(targetType);
+	observation.type = targetType.GetTypeInfo();
+	FillSemanticSource(observation, node);
+	observer->Observe(observation);
+}
+
+void asCCompiler::ObserveConstantString(
+	const asCString &value,
+	asCScriptNode *node)
+{
+	asISemanticObserver *observer = GetSemanticObserver();
+	if( observer == 0 )
+		return;
+	asSSemanticObservation observation = {};
+	observation.kind =
+		asSEMANTIC_OBSERVATION_CONSTANT_STRING;
+	observation.targetTypeId =
+		engine->GetTypeIdFromDataType(engine->stringType);
+	observation.type = engine->stringType.GetTypeInfo();
+	observation.constantString = value.AddressOf();
+	observation.constantStringLength =
+		asUINT(value.GetLength());
+	FillSemanticSource(observation, node);
+	observer->Observe(observation);
+}
+//[UE--]
+
 int asCCompiler::CompileDefaultConstructor(asCBuilder *in_builder, asCScriptCode *in_script, asCScriptNode *in_node, asCScriptFunction *in_outFunc, sClassDeclaration *in_classDecl)
 {
 	Reset(in_builder, in_script, in_outFunc);
@@ -1041,10 +1175,8 @@ int asCCompiler::CompileFunction(asCBuilder *in_builder, asCScriptCode *in_scrip
 	int buildErrors = builder->numErrors;
 
 	// When properties are marked as editable, you are allowed to write to them at certain locations in the script
-	static const asCString __InitDefaultsName("__InitDefaults");
-	static const asCString __ConstructionScript("ConstructionScript_Implementation");
-	m_isInitDefaults = in_outFunc->name == __InitDefaultsName;
-	allowEditPropertyAccess = m_isInitDefaults || in_outFunc->name == __ConstructionScript
+	m_isInitDefaults = in_outFunc->name == "__InitDefaults";
+	allowEditPropertyAccess = m_isInitDefaults || in_outFunc->name == "ConstructionScript_Implementation"
 			|| in_outFunc->name.StartsWith("__Init_")
 			|| in_outFunc->name == "OnActorModifiedInEditor_Implementation"
 			|| in_outFunc->name == "OnComponentModifiedInEditor_Implementation"
@@ -7168,6 +7300,10 @@ int asCCompiler::PerformAssignment(asCExprValue *lvalue, asCExprValue *rvalue, a
 		}
 	}
 
+	ObserveAssignment(
+		rvalue->dataType,
+		lvalue->dataType,
+		node);
 	return 0;
 }
 
@@ -12034,6 +12170,7 @@ int asCCompiler::CompileExpressionValue(asCScriptNode *node, asCExprContext *ctx
 					// Mark the string as literal constant so the compiler knows it is allowed
 					// to treat it differently than an ordinary constant string variable
 					ctx->type.isConstant = true;
+					ObserveConstantString(str, vnode);
 				}
 			}
 		}
@@ -18272,6 +18409,25 @@ void asCCompiler::PerformFunctionCall(int funcId, asCExprContext *ctx, bool isCo
 	}
 
 	int argSize = descr->GetSpaceNeededForArguments();
+
+	bool semanticConstructor =
+		isConstructor
+		|| descr->traits.GetTrait(asTRAIT_CONSTRUCTOR);
+	asCObjectType *semanticConstructedType = objType;
+	if( semanticConstructor && semanticConstructedType == 0 )
+	{
+		if( descr->objectType )
+			semanticConstructedType = descr->objectType;
+		else
+			semanticConstructedType =
+				CastToObjectType(descr->returnType.GetTypeInfo());
+	}
+	ObserveResolvedFunction(
+		descr,
+		semanticConstructor,
+		args,
+		semanticConstructedType,
+		ctx->exprNode);
 
 	// Check if there is a need to add a hidden pointer for when the function returns an object by value
 	if( descr->DoesReturnOnStack() && !useVariable )

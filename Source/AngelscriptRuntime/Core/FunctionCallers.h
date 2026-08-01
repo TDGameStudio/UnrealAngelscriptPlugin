@@ -376,6 +376,15 @@ namespace ASAutoCaller
 	}
 }
 // END HAZE FIX
+enum class EAngelscriptFunctionBindingOrigin : uint8
+{
+	Unknown,
+	Manual,
+	Generated,
+	NativeModule,
+	Reflective,
+};
+
 struct FAngelscriptFunctionBinding
 {
 	FGenericFuncPtr FunctionPointer;
@@ -383,4 +392,6 @@ struct FAngelscriptFunctionBinding
 	void* UserData = nullptr;
 	bool bReflectiveFallbackBound = false;
 	bool bUsesGenericCall = false;
+	EAngelscriptFunctionBindingOrigin Origin =
+		EAngelscriptFunctionBindingOrigin::Unknown;
 };

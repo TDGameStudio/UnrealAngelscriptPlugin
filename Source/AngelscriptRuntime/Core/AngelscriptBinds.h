@@ -13,7 +13,7 @@
 #include "AngelscriptBindString.h"
 #include "AngelscriptType.h"
 #include "StaticJIT/StaticJITBinds.h"
-//#include "FunctionCallers.h"
+#include "FunctionCallers.h"
 
 // Need to disable some casting warnings. Trust us MSVC we know what we're doing
 #ifdef _MSC_VER
@@ -115,6 +115,13 @@ struct FSystemFunctionBind
 	TSharedPtr<FAngelscriptType> ObjectType;
 };
 
+struct FAngelscriptRegisteredFunctionProvenance
+{
+	EAngelscriptFunctionBindingOrigin Origin =
+		EAngelscriptFunctionBindingOrigin::Unknown;
+	FName Provider;
+};
+
 struct ANGELSCRIPTRUNTIME_API FAngelscriptBindState
 {
 	TMap<UClass*, TMap<FString, FAngelscriptFunctionBinding>> ClassFunctionBindings;
@@ -126,6 +133,10 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBindState
 	TMap<UClass*, TSet<FString>> SkipBinds;
 	TSet<TTuple<FName, FName>> SkipBindNames;
 	TSet<FName> SkipBindClasses;
+	TMap<int32, FAngelscriptRegisteredFunctionProvenance> FunctionProvenance;
+	TMap<const asIScriptFunction*, FAngelscriptRegisteredFunctionProvenance>
+		FunctionProvenanceByPointer;
+	FName ActiveBindProvider;
 	int32 PreviouslyBoundFunction = -1;
 	int32 PreviouslyBoundGlobalProperty = -1;
 };
@@ -483,6 +494,10 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
 	static TMap<UClass*, TSet<FString>>& GetSkipBinds();
 	static TSet<TTuple<FName, FName>>& GetSkipBindNames();
 	static TSet<FName>& GetSkipBindClasses();
+	static const FAngelscriptRegisteredFunctionProvenance*
+		FindFunctionProvenance(int32 FunctionId);
+	static const FAngelscriptRegisteredFunctionProvenance*
+		FindFunctionProvenance(const asIScriptFunction& Function);
 
 	struct ANGELSCRIPTRUNTIME_API FNamespace
 	{
@@ -513,6 +528,15 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBinds
 		}
 
 		FunctionMap.Add(Name, Binding);
+	}
+
+	static void RegisterGeneratedFunctionBinding(
+		UClass* Class,
+		const FString& Name,
+		FAngelscriptFunctionBinding Binding)
+	{
+		Binding.Origin = EAngelscriptFunctionBindingOrigin::Generated;
+		RegisterFunctionBinding(Class, Name, Binding);
 	}
 
 	static void SkipFunctionEntry(UClass* Class, FString Name)

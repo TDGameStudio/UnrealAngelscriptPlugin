@@ -2298,7 +2298,7 @@ void asCModule::DiffForReferenceUpdate(asCModule* OldModule, asModuleReferenceUp
 				}
 
 				builder->AddDefaultDestructor(NewClass, classDecl->script);
-				check(NewClass->beh.destruct != 0)
+				check(NewClass->beh.destruct != 0);
 			}
 
 			asCScriptFunction* OldFunction = engine->scriptFunctions[OldClass->beh.destruct];

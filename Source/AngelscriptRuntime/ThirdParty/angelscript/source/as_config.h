@@ -1173,8 +1173,10 @@
 // Detect target hardware
 //------------------------------------------------
 
-// Never use exceptions inside angelscript on any platform
-#ifndef AS_NO_EXCEPTIONS
+// Unreal builds keep the historical no-exception policy. Hosts that compile
+// with exception support may opt in so application allocation failures are
+// converted to script exceptions by the existing context/callfunc guards.
+#if !defined(AS_NO_EXCEPTIONS) && !defined(AS_USE_EXCEPTIONS)
 #define AS_NO_EXCEPTIONS
 #endif
 

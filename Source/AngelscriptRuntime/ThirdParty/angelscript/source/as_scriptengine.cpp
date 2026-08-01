@@ -889,11 +889,6 @@ asCScriptEngine::~asCScriptEngine()
 	// TODO: clean-up: Clean up redundant code
 
 	inDestructor = true;
-	// [UE++] Standalone raw-SDK script objects can use the process-wide
-	// allocator hook. Their type lookup registrations must not retain this
-	// engine's type-info pointers after the engine tears its types down.
-	UASClass::UnregisterRawScriptObjectsForEngine(this);
-	// [UE--]
 
 	asASSERT(refCount.get() == 0);
 
@@ -903,6 +898,12 @@ asCScriptEngine::~asCScriptEngine()
 		AddRef();
 		ShutDownAndRelease();
 	}
+	// [UE++] Standalone raw-SDK script objects can use the process-wide
+	// allocator hook. Keep their dynamic type registrations alive through the
+	// fallback shutdown so global objects can still run their destructors, then
+	// erase them before this engine tears its type-info objects down.
+	UASClass::UnregisterRawScriptObjectsForEngine(this);
+	// [UE--]
 
 	// Unravel the registered interface
 	if( defaultArrayObjectType )
@@ -956,6 +957,50 @@ asCScriptEngine::~asCScriptEngine()
 	}
 	registeredGlobalFuncs.SetLength(0);
 	registeredGlobalFuncTable.EraseAll();
+
+	// Generated template instances are owned by the bucket registry when no
+	// script module owns them. The UE fork historically lived for the process
+	// lifetime and left this registry intact during shutdown. Standalone hosts
+	// create and destroy engines repeatedly, so release the registry ownership
+	// before tearing down the registered template bases.
+	for (auto& Bucket : templateInstanceBuckets)
+	{
+		for (asCObjectType* Type : Bucket.Value)
+		{
+			if (Type != nullptr && !allRegisteredTypes.Contains(Type))
+			{
+				Type->DestroyInternal();
+				Type->ReleaseInternal();
+			}
+		}
+	}
+	templateInstanceBuckets.Empty();
+	unvalidatedTemplateInstances.Empty();
+
+	// allRegisteredTypes owns the initial internal reference for application
+	// registered types. The APV2 configuration-group removal path is empty, so
+	// explicitly perform the same release at engine shutdown. Funcdefs remain
+	// owned by funcDefs and are released in the dedicated pass below.
+	TArray<asCTypeInfo*> RegisteredNonFuncdefTypes;
+	allRegisteredTypes.IterateAll([&RegisteredNonFuncdefTypes](asCTypeInfo* Type)
+	{
+		// DestroyInternal can cascade-release funcdefs. Classify them while every
+		// entry is still alive instead of reading flags during the release pass.
+		if (Type != nullptr && !(Type->flags & asOBJ_FUNCDEF))
+			RegisteredNonFuncdefTypes.Add(Type);
+	});
+	allRegisteredTypes.EraseAll();
+	allRegisteredTypesByName.EraseAll();
+	for (asCTypeInfo* Type : RegisteredNonFuncdefTypes)
+	{
+		if (asCObjectType* ObjectType = CastToObjectType(Type))
+			ObjectType->ReleaseAllFunctions();
+	}
+	for (asCTypeInfo* Type : RegisteredNonFuncdefTypes)
+	{
+		Type->DestroyInternal();
+		Type->ReleaseInternal();
+	}
 
 	scriptTypeBehaviours.ReleaseAllFunctions();
 	functionBehaviours.ReleaseAllFunctions();
@@ -1176,7 +1221,11 @@ int asCScriptEngine::ShutDownAndRelease()
 	for( asUINT n = (asUINT)scriptModules.GetLength(); n-- > 0; )
 		if( scriptModules[n] )
 			scriptModules[n]->Discard();
-	scriptModules.SetLength(0);
+	// [UE++]: This fork keeps discarded modules in scriptModules and marks them
+	// in place instead of moving them to the upstream discardedModules array.
+	// DeleteDiscardedModules() below therefore still needs the owning pointers.
+	// Clearing the array here orphaned every module during engine shutdown.
+	// [UE--]
 
 	// Do another full garbage collection to destroy the object types/functions
 	// that may have been placed in the gc when destroying the modules
@@ -3560,8 +3609,15 @@ asCObjectType *asCScriptEngine::GetTemplateInstanceType(asCObjectType *templateT
 	for( n = 0; n < ot->beh.factories.GetLength(); n++ )
 	{
 		int funcId = ot->beh.factories[n];
-		asCScriptFunction *func = scriptFunctions[funcId];
-		check(false);
+		asCScriptFunction *func = GenerateTemplateFactoryStub(templateType, ot, funcId);
+		if( func == nullptr )
+			return nullptr;
+
+		scriptFunctions[funcId]->ReleaseInternal();
+		ot->beh.factories[n] = func->id;
+
+		if( func->parameterTypes.GetLength() == 0 )
+			ot->beh.factory = func->id;
 	}
 
 	// Increase ref counter for sub type if it is an object type
@@ -3748,6 +3804,7 @@ asCScriptFunction *asCScriptEngine::GenerateTemplateFactoryStub(asCObjectType *t
 	func->id = GetNextScriptFunctionId();
 	AddScriptFunction(func);
 
+	func->traits = factory->traits;
 	func->SetShared(true);
 	if( templateType->flags & asOBJ_REF )
 	{
@@ -4545,7 +4602,11 @@ void *asCScriptEngine::CallGlobalFunctionRetPtr(asSSystemFunctionInterface *i, a
 	}
 	else
 	{
-		asCGeneric gen(const_cast<asCScriptEngine*>(this), s, 0, (asDWORD*)&param1);
+		asCArray<asDWORD> paramStack;
+		paramStack.SetLength(s->totalSpaceBeforeFunction);
+		memset(paramStack.AddressOf(), 0, paramStack.GetLength() * sizeof(asDWORD));
+		*(void**)&paramStack[s->parameterOffsets[0]] = param1;
+		asCGeneric gen(const_cast<asCScriptEngine*>(this), s, 0, paramStack.AddressOf());
 		void (*f)(asIScriptGeneric *) = (void (*)(asIScriptGeneric *))(i->func);
 		f(&gen);
 		return *(void**)gen.GetReturnPointer();
@@ -4694,9 +4755,12 @@ void asCScriptEngine::CallGlobalFunction(void *param1, void *param2, asSSystemFu
 		// We must guarantee the order of the arguments which is why we copy them to this
 		// array. Otherwise the compiler may put them anywhere it likes, or even keep them
 		// in the registers which causes problem.
-		void *params[2] = {param1, param2};
-
-		asCGeneric gen(const_cast<asCScriptEngine*>(this), s, 0, (asDWORD*)&params);
+		asCArray<asDWORD> paramStack;
+		paramStack.SetLength(s->totalSpaceBeforeFunction);
+		memset(paramStack.AddressOf(), 0, paramStack.GetLength() * sizeof(asDWORD));
+		*(void**)&paramStack[s->parameterOffsets[0]] = param1;
+		*(void**)&paramStack[s->parameterOffsets[1]] = param2;
+		asCGeneric gen(const_cast<asCScriptEngine*>(this), s, 0, paramStack.AddressOf());
 		void (*f)(asIScriptGeneric *) = (void (*)(asIScriptGeneric *))(i->func);
 		f(&gen);
 	}
@@ -4737,8 +4801,12 @@ bool asCScriptEngine::CallGlobalFunctionRetBool(void *param1, void *param2, asSS
 		// We must guarantee the order of the arguments which is why we copy them to this
 		// array. Otherwise the compiler may put them anywhere it likes, or even keep them
 		// in the registers which causes problem.
-		void *params[2] = {param1, param2};
-		asCGeneric gen(const_cast<asCScriptEngine*>(this), s, 0, (asDWORD*)params);
+		asCArray<asDWORD> paramStack;
+		paramStack.SetLength(s->totalSpaceBeforeFunction);
+		memset(paramStack.AddressOf(), 0, paramStack.GetLength() * sizeof(asDWORD));
+		*(void**)&paramStack[s->parameterOffsets[0]] = param1;
+		*(void**)&paramStack[s->parameterOffsets[1]] = param2;
+		asCGeneric gen(const_cast<asCScriptEngine*>(this), s, 0, paramStack.AddressOf());
 		void (*f)(asIScriptGeneric *) = (void (*)(asIScriptGeneric *))(i->func);
 		f(&gen);
 		return *(bool*)gen.GetReturnPointer();
@@ -6270,7 +6338,13 @@ int asCScriptEngine::SetTranslateAppExceptionCallback(asSFuncPtr callback, void 
 			return asINVALID_ARG;
 		}
 	}
-	int r = DetectCallingConvention(isObj, callback, callConv, 0, &translateExceptionCallbackFunc);
+	int r = DetectCallingConvention(
+		isObj,
+		callback,
+		callConv,
+		0,
+		nullptr,
+		&translateExceptionCallbackFunc);
 	if (r < 0) 
 		translateExceptionCallback = false;
 

@@ -1038,6 +1038,7 @@ bool BindBlueprintCallableReflectionFallback(
 	}
 
 	Binding.bReflectiveFallbackBound = true;
+	Binding.Origin = EAngelscriptFunctionBindingOrigin::Reflective;
 	return true;
 }
 

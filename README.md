@@ -29,6 +29,7 @@ This repository is imported from `TDGameStudio/AngelscriptProject` as a clean pl
 - `Source/AngelscriptEditor/` - editor integration, hot reload, content browser, source navigation, and tooling.
 - `Source/AngelscriptTest/` - automation tests for the plugin.
 - `Source/AngelscriptUHTTool/` - UHT integration toolchain.
+- `Standalone/` - the no-Unreal CMake build, native runner, and offline compiler/analysis delivery surface.
 
 ## Requirements
 
@@ -63,6 +64,80 @@ AngelScript-generated classes are regular Unreal classes in the `Angelscript` sc
 ```
 
 For ambiguous edits, offline asset migration, or hand-authored redirects, use the same format in project or plugin config. Use the actual generated class names, including the `A` / `U` prefix used by the AS class. Unlike many native C++ examples, do not strip the prefix for AS classes. The plugin consumes UE's loaded CoreRedirects during hot reload so existing Blueprint children can be reparented from the removed AS class to the renamed AS class.
+
+## Standalone compiler
+
+`Standalone/` builds the maintained fork and shared language-core sources
+without Unreal Engine. Its native profile compiles and executes a bounded
+portable standard library; its UE profile performs compile-only validation
+against exactly one complete offline bundle. UE declarations are installed as
+non-executable traps, and UE-validation artifacts cannot be run or loaded as
+UE bytecode.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\RunTestSuite.ps1 -Suite Standalone -LabelPrefix standalone -TimeoutMs 600000
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\RunTestSuite.ps1 -Suite StandaloneRelease -TimeoutMs 1200000
+```
+
+See `Standalone/README.md` for build, CLI, package, security, adapter, resource,
+and support-tier contracts.
+
+## Standalone offline contract export
+
+The editor commandlet `AngelscriptOfflineExport` captures the complete,
+final AngelScript declaration surface after manual bindings, generated
+bindings, reflective fallback, optional plugins, project registrations, and
+the last successful script compilation. Existing `Bind_*.cpp` providers do
+not contain standalone branches or exporter hooks.
+
+Example project export through the repository runner, including an external
+consumer `.uproject`:
+
+```powershell
+$bundleArgs = @("-BundleKind=Project", "-Output=D:\Exports\MyProjectAS", "-AssetRoots=/Game")
+& Tools\RunCommandlet.ps1 -Commandlet AngelscriptOfflineExport -ProjectFile D:\Projects\MyGame\MyGame.uproject -Label offline-bundle-external -TimeoutMs 600000 -ExtraArgs $bundleArgs
+```
+
+Without `-Output`, the commandlet writes to the ignored
+`Saved/AngelscriptStandalone/project/` or
+`Saved/AngelscriptStandalone/default-engine/` directory. It always requires
+a complete final symbol scope. An independently incomplete asset scope may
+only be published with `-AllowIncompleteAssets`; its scope remains explicitly
+incomplete so offline resource queries cannot report authoritative absence.
+There are no module or plugin symbol filters.
+
+`DefaultEngine` is a packaged-selection role, not an engine-only symbol
+filter. The Standalone distribution's default is generated from the
+checked-in UE 5.8 `AngelscriptProject` host with its normally enabled plugins
+and explicit `/Game` scope. External projects run the same plugin-owned
+commandlet against their own `.uproject`, export `BundleKind=Project`, and
+pass that directory explicitly to `as-standalone --bundle`; it replaces the
+packaged default without merge or fallback.
+
+For UE validation, each `--script-root` is treated as a project `Script/`
+root. A relative source such as `Foo/Bar.as` uses
+`/Angelscript/Game/Foo/Bar.as` as its offline virtual-source identity, so it
+exactly replaces the matching exported script baseline. V1 does not infer
+plugin or memory mounts from arbitrary filesystem roots.
+
+After building `StandaloneRelease`, validate the real delivery boundary with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Tools\RunStandaloneExternalSmoke.ps1 -TimeoutMs 1200000
+```
+
+This creates a transient content-only project with no C++ host module,
+compares default-path and explicit-path Project exports byte for byte, then
+extracts and runs the CLI from the final Release ZIP. Its machine-readable
+summary is written under `Saved/StandaloneExternalSmoke/<RunId>/Summary.json`.
+
+Each atomically published bundle consists of `manifest.json`,
+`symbols.jsonl`, and `assets.jsonl` in canonical UTF-8 JSON/JSONL form with
+record counts and SHA-256 hashes. It contains declarations, normalized asset
+paths, provenance, and compatibility metadata only—never native/object
+addresses, source text, function bodies, bytecode, executable code, or asset
+payloads. The no-UE standalone process reads one complete bundle and never
+loads Unreal Engine or project/plugin binaries.
 
 ## Tests
 

@@ -212,56 +212,6 @@ void ScriptObjectDefaultConstructor(const asCObjectType *objType, asCScriptEngin
 
 #ifdef AS_MAX_PORTABILITY
 
-static void ScriptObject_AddRef_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-	self->AddRef();
-}
-
-static void ScriptObject_Release_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-	self->Release();
-}
-
-static void ScriptObject_GetRefCount_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-	*(int*)gen->GetAddressOfReturnLocation() = self->GetRefCount();
-}
-
-static void ScriptObject_SetFlag_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-	self->SetFlag();
-}
-
-static void ScriptObject_GetFlag_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-	*(bool*)gen->GetAddressOfReturnLocation() = self->GetFlag();
-}
-
-static void ScriptObject_GetWeakRefFlag_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-	*(asILockableSharedBool**)gen->GetAddressOfReturnLocation() = self->GetWeakRefFlag();
-}
-
-static void ScriptObject_EnumReferences_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-	asIScriptEngine *engine = *(asIScriptEngine**)gen->GetAddressOfArg(0);
-	self->EnumReferences(engine);
-}
-
-static void ScriptObject_ReleaseAllHandles_Generic(asIScriptGeneric *gen)
-{
-	asCScriptObject *self = (asCScriptObject*)gen->GetObject();
-	asIScriptEngine *engine = *(asIScriptEngine**)gen->GetAddressOfArg(0);
-	self->ReleaseAllHandles(engine);
-}
-
 static void ScriptObject_Assignment_Generic(asIScriptGeneric *gen)
 {
 	asCScriptObject *other = *(asCScriptObject**)gen->GetAddressOfArg(0);
@@ -315,10 +265,10 @@ void RegisterScriptObject(asCScriptEngine *engine)
 	//r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_ENUMREFS, "void f(int&in)", asMETHOD(asCScriptObject,EnumReferences), asCALL_THISCALL, 0); asASSERT( r >= 0 );
 	//r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD(asCScriptObject,ReleaseAllHandles), asCALL_THISCALL, 0); asASSERT( r >= 0 );
 #else
-	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_CONSTRUCT, "void f(int&in Other)", asFUNCTION(ScriptObject_Construct_Generic), asCALL_GENERIC, 0); asASSERT( r >= 0 );
+	r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_CONSTRUCT, "void f(int&in Other)", asFUNCTION(ScriptObject_Construct_Generic), asCALL_GENERIC, asFunctionCaller{}, 0); asASSERT( r >= 0 );
 	//r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_ADDREF, "void f()", asFUNCTION(ScriptObject_AddRef_Generic), asCALL_GENERIC, 0); asASSERT( r >= 0 );
 	//r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_RELEASE, "void f()", asFUNCTION(ScriptObject_Release_Generic), asCALL_GENERIC, 0); asASSERT( r >= 0 );
-	r = engine->RegisterMethodToObjectType(&engine->scriptTypeBehaviours, "int &opAssign(int &in Other)", asFUNCTION(ScriptObject_Assignment_Generic), asCALL_GENERIC); asASSERT( r >= 0 );
+	r = engine->RegisterMethodToObjectType(&engine->scriptTypeBehaviours, "int &opAssign(int &in Other)", asFUNCTION(ScriptObject_Assignment_Generic), asCALL_GENERIC, asFunctionCaller{}); asASSERT( r >= 0 );
 
 	// Weakref behaviours
 	//r = engine->RegisterBehaviourToObjectType(&engine->scriptTypeBehaviours, asBEHAVE_GET_WEAKREF_FLAG, "int &f()", asFUNCTION(ScriptObject_GetWeakRefFlag_Generic), asCALL_GENERIC, 0); asASSERT( r >= 0 );

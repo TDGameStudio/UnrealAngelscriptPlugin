@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tdgamestudio.example/schemas/angelscript-standalone-differential-result-1.0.json",
+  "title": "Unreal AngelScript normalized differential result 1.0",
+  "type": "object",
+  "required": [
+    "schema",
+    "caseId",
+    "host",
+    "profile",
+    "compileStatus",
+    "classification",
+    "diagnostics",
+    "resolvedStableSymbols",
+    "portableClasses",
+    "resources",
+    "bytecodeCompleted",
+    "scriptResult"
+  ],
+  "properties": {
+    "schema": { "const": "angelscript-standalone-differential-result/1.0" },
+    "caseId": { "type": "string", "minLength": 1 },
+    "host": { "enum": ["unreal", "standalone"] },
+    "profile": { "enum": ["native", "ue-validation"] },
+    "compileStatus": { "enum": ["complete", "partial", "failed", "infrastructure-failure"] },
+    "classification": {
+      "enum": ["supported", "compile-shim", "ue-required", "unsupported", "intentional-host-difference"]
+    },
+    "bytecodeCompleted": { "type": "boolean" },
+    "scriptResult": { "type": ["integer", "null"] },
+    "resolvedStableSymbols": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "portableClasses": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "category", "logicalPath", "begin", "end", "severity"],
+        "properties": {
+          "code": { "type": "string" },
+          "category": { "type": "string" },
+          "logicalPath": { "type": "string" },
+          "begin": { "type": "integer", "minimum": 0 },
+          "end": { "type": "integer", "minimum": 0 },
+          "severity": { "enum": ["info", "warning", "error"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "contextId",
+          "state",
+          "originalPath",
+          "normalizedPath",
+          "finalPath",
+          "requestedStableTypeId",
+          "resolvedStableTypeId",
+          "diagnosticId"
+        ],
+        "properties": {
+          "contextId": { "type": "string" },
+          "state": { "enum": ["found", "redirected", "missing", "incompatible", "unknown"] },
+          "originalPath": { "type": "string" },
+          "normalizedPath": { "type": "string" },
+          "finalPath": { "type": "string" },
+          "requestedStableTypeId": { "type": "string" },
+          "resolvedStableTypeId": { "type": "string" },
+          "diagnosticId": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

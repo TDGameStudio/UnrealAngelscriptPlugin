@@ -286,7 +286,7 @@ public:
 			TEXT("Legacy bytecode test should leave no module publication after cleanup")));
 	}
 
-	TEST_METHOD(CopyScriptSaveDeterminismAndCurrentForkLoadRestriction)
+	TEST_METHOD(CopyScriptSaveLoadRoundTripIsDeterministic)
 	{
 		using namespace AngelscriptNativeTestSupport;
 
@@ -470,24 +470,60 @@ public:
 				LoadResult,
 				*SourceEngine.GetMessagesText()));
 		}
-		ASSERT_THAT(AreNotEqual(static_cast<int32>(asSUCCESS), LoadResult,
-			TEXT("Current fork must reject nested non-POD CopyScript streams before bytecode translation")));
-		ASSERT_THAT(IsTrue(SourceEngine.GetMessagesText().Contains(TEXT("Shared type '$obj' doesn't match")),
-			TEXT("Current fork CopyScript load restriction should report its shared-type diagnostic")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(DestinationModule->GetFunctionCount()),
-			TEXT("Rejected nested non-POD CopyScript stream should leave no functions")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(DestinationModule->GetGlobalVarCount()),
-			TEXT("Rejected nested non-POD CopyScript stream should leave no globals")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(DestinationModule->GetObjectTypeCount()),
-			TEXT("Rejected nested non-POD CopyScript stream should leave no object types")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(DestinationModule->GetEnumCount()),
-			TEXT("Rejected nested non-POD CopyScript stream should leave no enums")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(DestinationModule->GetTypedefCount()),
-			TEXT("Rejected nested non-POD CopyScript stream should leave no typedefs")));
-		ASSERT_THAT(AreEqual(0, static_cast<int32>(DestinationModule->GetImportedFunctionCount()),
-			TEXT("Rejected nested non-POD CopyScript stream should leave no imports")));
+		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), LoadResult,
+			TEXT("Current fork should restore nested non-POD CopyScript streams without serializing value-type factories")));
+		ASSERT_THAT(IsFalse(bWasDebugInfoStripped,
+			TEXT("CopyScript round trip should preserve the requested debug information")));
+		asIScriptFunction* const RestoredEntry =
+			DestinationModule->GetFunctionByDecl("int CopyScriptEntry()");
+		ASSERT_THAT(IsNotNull(RestoredEntry,
+			TEXT("CopyScript round trip should restore its exact entry")));
+		if (RestoredEntry == nullptr)
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ContainsBytecodeOpcode(*RestoredEntry, asBC_CopyScript),
+			TEXT("CopyScript round trip should preserve the CopyScript opcode")));
+		asIScriptContext* DestinationContext =
+			SourceScriptEngine->CreateContext();
+		ASSERT_THAT(IsNotNull(DestinationContext,
+			TEXT("CopyScript round trip should create a restored execution context")));
+		if (DestinationContext == nullptr)
+		{
+			return;
+		}
+		const int RestoredPrepareResult =
+			DestinationContext->Prepare(RestoredEntry);
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(asSUCCESS),
+			static_cast<int32>(RestoredPrepareResult),
+			TEXT("CopyScript round trip should prepare the restored entry")));
+		if (RestoredPrepareResult == asSUCCESS)
+		{
+			const int RestoredExecuteResult =
+				DestinationContext->Execute();
+			ASSERT_THAT(AreEqual(
+				static_cast<int32>(asEXECUTION_FINISHED),
+				static_cast<int32>(RestoredExecuteResult),
+				TEXT("CopyScript round trip should execute the restored non-POD copy")));
+			if (RestoredExecuteResult == asEXECUTION_FINISHED)
+			{
+				ASSERT_THAT(AreEqual(
+					73,
+					static_cast<int32>(
+						DestinationContext->GetReturnDWord()),
+					TEXT("CopyScript round trip should preserve the copied payload value")));
+			}
+			ASSERT_THAT(AreEqual(
+				static_cast<int32>(asSUCCESS),
+				static_cast<int32>(DestinationContext->Unprepare()),
+				TEXT("CopyScript round trip should unprepare the restored context")));
+		}
+		DestinationContext->Release();
+		ASSERT_THAT(AreEqual(0, SourceRecorder.GetLiveObjectCount(),
+			TEXT("CopyScript restored execution should destroy all temporary native payloads")));
 		ASSERT_THAT(AreEqual(static_cast<int32>(asSUCCESS), SourceScriptEngine->DiscardModule(ModuleName),
-			TEXT("CopyScript restore test should explicitly discard the rejected destination")));
+			TEXT("CopyScript restore test should explicitly discard the restored destination")));
 		ASSERT_THAT(IsNull(SourceScriptEngine->GetModule(ModuleName, asGM_ONLY_IF_EXISTS),
 			TEXT("CopyScript restore test should leave no source-engine module after cleanup")));
 		ASSERT_THAT(AreEqual(0, SourceRecorder.GetLiveObjectCount(),

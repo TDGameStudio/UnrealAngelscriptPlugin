@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tdgamestudio.example/schemas/angelscript-offline-symbol-1.0.json",
+  "title": "Unreal AngelScript offline symbol JSONL record 1.0",
+  "type": "object",
+  "required": ["schema", "stableId", "kind", "canonicalIdentity", "origin"],
+  "properties": {
+    "schema": { "const": "1.0" },
+    "stableId": { "$ref": "#/$defs/stableId" },
+    "kind": {
+      "enum": ["type", "typedef", "funcdef", "delegate", "callable", "property", "global"]
+    },
+    "canonicalIdentity": { "type": "string", "minLength": 1 },
+    "origin": { "$ref": "#/$defs/origin" },
+    "type": { "$ref": "#/$defs/typeRecord" },
+    "callable": { "$ref": "#/$defs/callableRecord" },
+    "property": { "$ref": "#/$defs/propertyRecord" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "enum": ["type", "typedef", "funcdef", "delegate"] } } },
+      "then": { "required": ["type"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "callable" } } },
+      "then": { "required": ["callable"] }
+    },
+    {
+      "if": { "properties": { "kind": { "enum": ["property", "global"] } } },
+      "then": { "required": ["property"] }
+    }
+  ],
+  "$defs": {
+    "stableId": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "origin": {
+      "type": "object",
+      "required": ["layer", "kind", "module", "plugin", "stableModuleId"],
+      "properties": {
+        "layer": { "enum": ["host-surface", "script-baseline"] },
+        "kind": {
+          "enum": ["manual", "generated", "native-module", "reflective", "blueprint", "optional-plugin", "project", "script", "unknown"]
+        },
+        "module": { "type": "string" },
+        "plugin": { "type": "string" },
+        "stableModuleId": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "parameter": {
+      "type": "object",
+      "required": ["name", "type", "direction", "defaultExpression", "hasDefault", "const", "reference", "handle"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "minLength": 1 },
+        "direction": { "enum": ["value", "in", "out", "inout"] },
+        "defaultExpression": { "type": "string" },
+        "hasDefault": { "type": "boolean" },
+        "const": { "type": "boolean" },
+        "reference": { "type": "boolean" },
+        "handle": { "type": "boolean" },
+        "resourceKind": {
+          "enum": ["", "soft-object", "soft-class", "load-object", "load-class"]
+        },
+        "resourceTypeStableId": {
+          "anyOf": [
+            { "const": "" },
+            { "$ref": "#/$defs/stableId" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "typeRecord": {
+      "type": "object",
+      "required": ["stableId", "kind", "name", "namespace", "completeDeclaration", "origin"],
+      "properties": {
+        "stableId": { "$ref": "#/$defs/stableId" },
+        "kind": { "type": "string" },
+        "name": { "type": "string" },
+        "namespace": { "type": "string" },
+        "completeDeclaration": { "type": "string" },
+        "origin": { "$ref": "#/$defs/origin" },
+        "baseStableId": { "type": "string" },
+        "interfaces": { "type": "array", "items": { "$ref": "#/$defs/stableId" } },
+        "members": { "type": "array", "items": { "$ref": "#/$defs/stableId" } },
+        "adapterStableId": { "type": "string" },
+        "availability": { "type": "string" },
+        "compileSize": { "type": "integer" },
+        "compileAlignment": { "type": "integer" },
+        "flags": { "type": "array", "items": { "type": "string" } },
+        "handle": { "type": "boolean" },
+        "templateDefinition": { "type": "boolean" },
+        "templateSubtypes": { "type": "array", "items": { "$ref": "#/$defs/stableId" } },
+        "enumValues": { "type": "array" },
+        "traits": { "type": "object" },
+        "ueTypePath": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "callableRecord": {
+      "type": "object",
+      "required": ["stableId", "kind", "name", "namespace", "ownerStableId", "declaration", "returnType", "parameters"],
+      "properties": {
+        "stableId": { "$ref": "#/$defs/stableId" },
+        "kind": { "type": "string" },
+        "name": { "type": "string" },
+        "namespace": { "type": "string" },
+        "ownerStableId": { "type": "string" },
+        "declaration": { "type": "string" },
+        "returnType": { "type": "string" },
+        "parameters": { "type": "array", "items": { "$ref": "#/$defs/parameter" } },
+        "resourceContext": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "propertyRecord": {
+      "type": "object",
+      "required": ["stableId", "name", "namespace", "ownerStableId", "type", "completeDeclaration"],
+      "properties": {
+        "stableId": { "$ref": "#/$defs/stableId" },
+        "name": { "type": "string" },
+        "namespace": { "type": "string" },
+        "ownerStableId": { "type": "string" },
+        "type": { "type": "string" },
+        "completeDeclaration": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -386,6 +386,27 @@ protected:
 
 	void DetermineSingleFunc(asCExprContext *ctx, asCScriptNode *node);
 
+	//[UE++]: Optional read-only semantic observation. These helpers translate
+	// resolved compiler internals to public host-neutral observation PODs.
+	asISemanticObserver *GetSemanticObserver() const;
+	void FillSemanticSource(
+		asSSemanticObservation &observation,
+		asCScriptNode *node) const;
+	void ObserveResolvedFunction(
+		asCScriptFunction *function,
+		bool isConstructor,
+		asCArray<asCExprContext*> *args,
+		asCObjectType *constructedType,
+		asCScriptNode *node);
+	void ObserveAssignment(
+		const asCDataType &sourceType,
+		const asCDataType &targetType,
+		asCScriptNode *node);
+	void ObserveConstantString(
+		const asCString &value,
+		asCScriptNode *node);
+	//[UE--]
+
 	// Returns the cost of the conversion (the sum of the EConvCost performed)
 	asUINT ImplicitConversion(asCExprContext *ctx, const asCDataType &to, asCScriptNode *node, EImplicitConv convType, bool generateCode = true, bool allowObjectConstruct = true);
 	asUINT ImplicitConvPrimitiveToPrimitive(asCExprContext *ctx, const asCDataType &to, asCScriptNode *node, EImplicitConv convType, bool generateCode = true);

@@ -135,8 +135,7 @@ public:
 
 	// User data
 	void *SetUserData(void *data, asPWORD type);
-	void *GetUserData() const { return (void*)plainUserData; }
-	void *GetUserData(asPWORD type) const;
+	void *GetUserData(asPWORD type = 0) const;
 
 	//===========================================
 	// Internal

@@ -75,6 +75,24 @@ TSet<FName>& FAngelscriptBinds::GetSkipBindClasses()
 	return GetBindState().SkipBindClasses;
 }
 
+const FAngelscriptRegisteredFunctionProvenance*
+FAngelscriptBinds::FindFunctionProvenance(const int32 FunctionId)
+{
+	return GetBindState().FunctionProvenance.Find(FunctionId);
+}
+
+const FAngelscriptRegisteredFunctionProvenance*
+FAngelscriptBinds::FindFunctionProvenance(
+	const asIScriptFunction& Function)
+{
+	if (const FAngelscriptRegisteredFunctionProvenance* ByPointer =
+		GetBindState().FunctionProvenanceByPointer.Find(&Function))
+	{
+		return ByPointer;
+	}
+	return FindFunctionProvenance(Function.GetId());
+}
+
 int32& FAngelscriptBinds::GetPreviouslyBoundFunctionRef()
 {
 	return GetBindState().PreviouslyBoundFunction;
@@ -253,6 +271,10 @@ void FAngelscriptBinds::CallBinds(const TSet<FName>& DisabledBindNames)
 		const FString BindLeakContext = FString::Printf(TEXT("Angelscript/Bind/%s"), *Bind.BindName.ToString());
 		MALLOCLEAK_SCOPED_CONTEXT(*BindLeakContext);
 		#endif
+
+		TGuardValue<FName> ActiveProviderGuard(
+			GetBindState().ActiveBindProvider,
+			Bind.BindName);
 
 		#if WITH_DEV_AUTOMATION_TESTS
 		FAngelscriptBindExecutionObservation::RecordExecutedBind(Bind.BindName);
@@ -456,6 +478,34 @@ void FAngelscriptBinds::OnBind(int FunctionId, void* UserData, const FAngelscrip
 	asCScriptFunction* ScriptFunction = (asCScriptFunction*)Manager.Engine->GetFunctionById(FunctionId);
 	if (ScriptFunction != nullptr)
 	{
+		FAngelscriptRegisteredFunctionProvenance& Provenance =
+			GetBindState().FunctionProvenance.FindOrAdd(FunctionId);
+		if (Provenance.Origin
+			== EAngelscriptFunctionBindingOrigin::Unknown)
+		{
+			Provenance.Provider = GetBindState().ActiveBindProvider;
+			if (!Provenance.Provider.IsNone())
+			{
+				const FString ProviderName =
+					Provenance.Provider.ToString();
+				if (ProviderName.StartsWith(
+					TEXT("UHT.FunctionBinding.")))
+				{
+					Provenance.Origin =
+						EAngelscriptFunctionBindingOrigin::Generated;
+				}
+				else if (!ProviderName.StartsWith(
+					TEXT("Bind_BlueprintType")))
+				{
+					Provenance.Origin =
+						EAngelscriptFunctionBindingOrigin::Manual;
+				}
+			}
+		}
+		GetBindState().FunctionProvenanceByPointer.Add(
+			ScriptFunction,
+			Provenance);
+
 		if (UserData != nullptr)
 		{
 			ScriptFunction->SetUserData(UserData, 0);

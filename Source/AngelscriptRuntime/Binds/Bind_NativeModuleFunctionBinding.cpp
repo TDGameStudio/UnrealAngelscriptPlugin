@@ -222,6 +222,8 @@ namespace
 			FunctionBinding.FunctionCaller = ASAutoCaller::FunctionCaller::Make();
 			FunctionBinding.UserData = const_cast<FAngelscriptNativeModuleFunctionBinding*>(&Binding);
 			FunctionBinding.bUsesGenericCall = true;
+			FunctionBinding.Origin =
+				EAngelscriptFunctionBindingOrigin::NativeModule;
 			FAngelscriptBinds::RegisterFunctionBinding(Class, Binding.FunctionName, FunctionBinding);
 			State->InjectedBindings.Add({ Class, Binding.FunctionName, FunctionBinding.UserData });
 		}

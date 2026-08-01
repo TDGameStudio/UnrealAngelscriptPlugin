@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tdgamestudio.example/schemas/angelscript-offline-manifest-1.0.json",
+  "title": "Unreal AngelScript offline bundle manifest 1.0",
+  "type": "object",
+  "required": [
+    "schema",
+    "bundleKind",
+    "bundleIdentity",
+    "forkVersion",
+    "compilerContractVersion",
+    "symbolScope",
+    "assetScope",
+    "files"
+  ],
+  "properties": {
+    "schema": {
+      "type": "object",
+      "required": ["major", "minor"],
+      "properties": {
+        "major": { "const": 1 },
+        "minor": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "bundleKind": { "enum": ["default-engine", "project"] },
+    "bundleIdentity": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "forkVersion": { "type": "string" },
+    "compilerContractVersion": { "const": "ue-as-standalone-v1" },
+    "symbolScope": { "$ref": "#/$defs/scope" },
+    "assetScope": { "$ref": "#/$defs/scope" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "byteCount", "recordCount", "sha256"],
+        "properties": {
+          "name": { "enum": ["symbols.jsonl", "assets.jsonl"] },
+          "byteCount": { "type": "integer", "minimum": 0 },
+          "recordCount": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 2,
+      "maxItems": 2
+    }
+  },
+  "$defs": {
+    "scope": {
+      "type": "object",
+      "required": ["complete", "state", "included", "skipped"],
+      "properties": {
+        "complete": { "type": "boolean" },
+        "state": { "type": "string" },
+        "included": { "type": "array", "items": { "type": "string" } },
+        "skipped": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -20,6 +20,12 @@ namespace UnrealBuildTool.Rules
 			FunctionBindingSettings BindingSettings = ReadFunctionBindingSettings(Target);
 			PrivateDefinitions.Add("ANGELSCRIPT_EXPORT=1");
 			PublicDefinitions.Add("WITH_ANGELSCRIPT=1");
+			PublicDefinitions.Add("AS_REFERENCE_DEBUGGING=" + (Target.bBuildEditor ? "1" : "0"));
+			PublicDefinitions.Add("WITH_AS_DEBUGSERVER=" + (
+				Target.Configuration != UnrealTargetConfiguration.Test
+				&& Target.Configuration != UnrealTargetConfiguration.Shipping
+					? "1"
+					: "0"));
 			PublicDefinitions.Add("WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS=" + (BindingSettings.Method == FunctionBindingMethod.NativeModuleFunctionAddress ? "1" : "0"));
 			PublicDefinitions.Add("ANGELSCRIPT_DLL_LIBRARY_IMPORT=1");
 

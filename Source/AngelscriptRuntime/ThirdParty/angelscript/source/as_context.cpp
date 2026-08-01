@@ -1664,10 +1664,15 @@ void asCContext::ExecuteNext()
 
 		~asSInstructionCallbackScope()
 		{
-			if (bEnabled)
+			if (bEnabled && bExecuted)
 			{
 				Context->NotifyInstructionCallback(asVM_AFTER_INSTRUCTION, Instruction, InstructionName, ProgramPointer, StackPointer, StackFramePointer);
 			}
+		}
+
+		void MarkExecuted()
+		{
+			bExecuted = true;
 		}
 
 		asCContext* Context;
@@ -1677,12 +1682,21 @@ void asCContext::ExecuteNext()
 		asBYTE Instruction = 0;
 		const char* InstructionName = nullptr;
 		bool bEnabled = false;
+		bool bExecuted = false;
 	};
 
 	for(;;)
 	{
 		const bool bObserveInstruction = m_instructionCallback != nullptr && l_bc != nullptr;
 		asSInstructionCallbackScope InstructionCallbackScope(this, l_bc, l_sp, l_fp, bObserveInstruction);
+		if (m_status != asEXECUTION_ACTIVE)
+		{
+			m_regs.programPointer = l_bc;
+			m_regs.stackPointer = l_sp;
+			m_regs.stackFramePointer = l_fp;
+			return;
+		}
+		InstructionCallbackScope.MarkExecuted();
 
 #ifdef AS_DEBUG
 	// Gather statistics on executed bytecode

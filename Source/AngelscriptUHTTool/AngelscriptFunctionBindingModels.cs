@@ -29,7 +29,7 @@ internal sealed record AngelscriptGeneratedFunctionRegistration(
 {
 	public string BuildBindingRegistrationLine()
 	{
-		return $"\tFAngelscriptBinds::RegisterFunctionBinding({ClassName}::StaticClass(), \"{FunctionName}\", {{ {EraseMacro} }});";
+		return $"\tFAngelscriptBinds::RegisterGeneratedFunctionBinding({ClassName}::StaticClass(), \"{FunctionName}\", {{ {EraseMacro} }});";
 	}
 }
 

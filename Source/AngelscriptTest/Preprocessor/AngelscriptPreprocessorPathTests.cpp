@@ -120,6 +120,7 @@ int UseShared()
 
 		const FString FolderAsModuleName    = Preprocessor.FilenameToModuleName(TEXT("Tests/Foo.as/Bar.as"));
 		const FString RegularModuleName     = Preprocessor.FilenameToModuleName(TEXT("Tests/Foo/Bar.as"));
+		const FString BackslashModuleName   = Preprocessor.FilenameToModuleName(TEXT("Tests\\Foo\\Bar.as"));
 		const FString AssetSuffixModuleName = Preprocessor.FilenameToModuleName(TEXT("Tests/Foo.as/Baz.asset.as"));
 
 		ASSERT_THAT(AreEqual(
@@ -130,6 +131,10 @@ int UseShared()
 			FString(TEXT("Tests.Foo.Bar")),
 			RegularModuleName,
 			TEXT("FilenameToModuleName should continue normalizing a standard script filename")));
+		ASSERT_THAT(AreEqual(
+			RegularModuleName,
+			BackslashModuleName,
+			TEXT("FilenameToModuleName should normalize slash and backslash paths identically")));
 		ASSERT_THAT(IsTrue(
 			FolderAsModuleName != RegularModuleName,
 			TEXT("FilenameToModuleName should keep intermediate '.as' segments distinct from plain folders")));

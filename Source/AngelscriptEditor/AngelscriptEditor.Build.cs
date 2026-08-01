@@ -31,6 +31,7 @@ namespace UnrealBuildTool.Rules
 				"Slate",
 				"SlateCore",
 				"AssetTools",
+				"AssetRegistry",
             });
 
 			PrivateDependencyModuleNames.AddRange(new string[]

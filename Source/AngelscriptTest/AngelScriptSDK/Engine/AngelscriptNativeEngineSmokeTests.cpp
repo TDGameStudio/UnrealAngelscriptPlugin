@@ -114,7 +114,11 @@ TEST_CLASS_WITH_FLAGS(FEngineSmokeTests,
 			return;
 		}
 
-		ASSERT_THAT(IsNull(GetNativeFunctionByDecl(Module, "int Select(double)"),
+		// This project configures `float` as float64, so `double` is an
+		// intentional spelling alias rather than a distinct overload type.
+		// Use uint to verify that an actually different declaration cannot
+		// fall back to another overload by name.
+		ASSERT_THAT(IsNull(GetNativeFunctionByDecl(Module, "int Select(uint)"),
 			TEXT("Declaration lookup must not select another overload by function name")));
 
 		const TArray<asIScriptFunction*> Matches = FindNativeFunctionsByName(Module, "Select");

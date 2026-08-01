@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tdgamestudio.example/schemas/angelscript-standalone-result-1.0.json",
+  "title": "Unreal AngelScript standalone result 1.0",
+  "type": "object",
+  "required": ["schema", "profile", "status", "moduleId", "profileHash", "inputHash"],
+  "properties": {
+    "schema": { "const": "angelscript-standalone-result/1.0" },
+    "profile": { "enum": ["native", "ue-validation"] },
+    "status": { "enum": ["complete", "partial", "failed", "infrastructure-failure"] },
+    "moduleId": { "type": "string" },
+    "profileHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "inputHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "ueValidationOnly": { "type": "boolean" },
+    "bundleIdentity": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "scriptResult": { "type": "integer" }
+  },
+  "additionalProperties": true
+}

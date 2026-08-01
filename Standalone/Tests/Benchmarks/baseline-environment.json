@@ -1,0 +1,21 @@
+{
+  "schema": "angelscript-standalone-benchmark-environment/1.0",
+  "environmentId": "win64-msvc-debug-local-v1",
+  "machine": "recorded-at-run",
+  "os": "Windows Win64",
+  "compiler": "MSVC 2022",
+  "configuration": "Debug",
+  "commit": "recorded-at-run",
+  "profiles": [
+    "native-runtime",
+    "ue-validation"
+  ],
+  "corpus": "../Corpus/corpus-index.json",
+  "sampleCount": 11,
+  "comparison": {
+    "requiredEnvironmentMatch": true,
+    "medianRegressionPercent": 20,
+    "mismatchedEnvironmentResult": "incomparable"
+  },
+  "notes": "Machine-specific raw results are written under the ignored CMake build directory; this file freezes the comparison contract, not universal timing thresholds."
+}
