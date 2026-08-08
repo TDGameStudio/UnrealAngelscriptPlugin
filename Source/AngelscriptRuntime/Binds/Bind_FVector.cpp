@@ -1,3 +1,5 @@
+#include "Bind_FVector.h"
+
 #include "Misc/DefaultValueHelper.h"
 
 #include "Engine/NetSerialization.h"
@@ -6,111 +8,229 @@
 #include "AngelscriptDocs.h"
 #include "AngelscriptEngine.h"
 
-#include "Bind_FVector_Functions.h"
-#include "Helper_StructType.h"
 #include "Helper_ToString.h"
 
-struct FVectorType : TAngelscriptBaseStructType<FVector>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FVector");
-	}
-
-	void ConstructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override
-	{
-		new(DestinationPtr) FVector(0.f, 0.f, 0.f);
-	}
-
-	bool NeedConstruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
-	bool NeedDestruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
-
-	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		const FStructProperty* StructProp = CastField<FStructProperty>(Property);
-		if (StructProp == nullptr)
-			return false;
-		if (StructProp->Struct == GetStruct(Usage))
-			return true;
-		if (StructProp->Struct == FVector_NetQuantize::StaticStruct())
-			return true;
-		if (StructProp->Struct == FVector_NetQuantize10::StaticStruct())
-			return true;
-		if (StructProp->Struct == FVector_NetQuantize100::StaticStruct())
-			return true;
-		if (StructProp->Struct == FVector_NetQuantizeNormal::StaticStruct())
-			return true;
-		return false;
-	}
-
-	bool DefaultValue_UnrealToAngelscript(const FAngelscriptTypeUsage& Usage, const FString& InValue, FString& OutValue) const override
-	{
-		if (InValue.IsEmpty())
-		{
-			OutValue = TEXT("FVector()");
-			return true;
-		}
-		FVector Value;
-		if (FDefaultValueHelper::ParseVector(InValue, Value))
-		{
-			OutValue = FString::Printf(TEXT("FVector(%f,%f,%f)"), Value.X, Value.Y, Value.Z);
-			return true;
-		}
-		return false;
-	}
-
-	bool DefaultValue_AngelscriptToUnreal(const FAngelscriptTypeUsage& Usage, const FString& CppForm, FString& OutForm) const override
-	{
-		FString Parameters;
-		if(FDefaultValueHelper::Is( CppForm, TEXT("FVector :: ZeroVector") ))
-		{
-			return true;
-		}
-		else if(FDefaultValueHelper::Is(CppForm, TEXT("FVector :: UpVector")))
-		{
-			OutForm = FString::Printf(TEXT("%f,%f,%f"),
-				FVector::UpVector.X, FVector::UpVector.Y, FVector::UpVector.Z);
-		}
-		else if(FDefaultValueHelper::Is(CppForm, TEXT("FVector :: ForwardVector")))
-		{
-			OutForm = FString::Printf(TEXT("%f,%f,%f"),
-				FVector::ForwardVector.X, FVector::ForwardVector.Y, FVector::ForwardVector.Z);
-		}
-		else if(FDefaultValueHelper::Is(CppForm, TEXT("FVector :: RightVector")))
-		{
-			OutForm = FString::Printf(TEXT("%f,%f,%f"),
-				FVector::RightVector.X, FVector::RightVector.Y, FVector::RightVector.Z);
-		}
-		else if(FDefaultValueHelper::Is(CppForm, TEXT("FVector :: OneVector")))
-		{
-			OutForm = FString::Printf(TEXT("%f,%f,%f"),
-				FVector::OneVector.X, FVector::OneVector.Y, FVector::OneVector.Z);
-		}
-		else if( FDefaultValueHelper::GetParameters(CppForm, TEXT("FVector"), Parameters) )
-		{
-			FVector Vector;
-			double Value;
-			if (FDefaultValueHelper::ParseVector(Parameters, Vector))
-			{
-				OutForm = FString::Printf(TEXT("%f,%f,%f"),
-					Vector.X, Vector.Y, Vector.Z);
-			}
-			else if (FDefaultValueHelper::ParseDouble(Parameters, Value))
-			{
-				OutForm = FString::Printf(TEXT("%f,%f,%f"),
-					Value, Value, Value);
-			}
-		}
-
-		return !OutForm.IsEmpty();
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
+/**
+ * FVector binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FVector;                                                                            | Declares the double-precision three-component vector value type.                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector <FVector_NetQuantize property>;                                                    | Routes reflected FVector_NetQuantize, NetQuantize10/100, and NetQuantizeNormal properties to FVector.                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector Vector(float64 X, float64 Y, float64 Z);                                           | Constructs a vector from three components.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector Vector();                                                                          | Constructs the zero vector.                                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector Vector(float64 F);                                                                 | Constructs a vector with every component set to F.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector Vector(const FVector& Other);                                                      | Copy-constructs a vector.                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector Vector(const FVector3f& Other);                                                    | Constructs a double-precision vector from FVector3f.                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.X;                                                                         | Exposes the X component.                                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.Y;                                                                         | Exposes the Y component.                                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.Z;                                                                         | Exposes the Z component.                                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector = Other;                                                                            | Assigns another vector.                                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector + Other;                                                                            | Returns the component-wise sum.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector - Other;                                                                            | Returns the component-wise difference.                                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector * Other;                                                                            | Returns the component-wise product.                                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector / Other;                                                                            | Returns the component-wise quotient.                                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector * Scale;                                                                            | Returns the vector multiplied by a scalar.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector / Scale;                                                                            | Returns the vector divided by a scalar.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | -Vector;                                                                                   | Returns the component-wise negation.                                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector *= Scale;                                                                           | Multiplies each component by Scale in place.                                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector /= Scale;                                                                           | Divides each component by Scale in place.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector *= Other;                                                                           | Multiplies by another vector component-wise in place.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector /= Other;                                                                           | Divides by another vector component-wise in place.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector += Other;                                                                           | Adds another vector in place.                                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector -= Other;                                                                           | Subtracts another vector in place.                                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector[Index];                                                                             | Returns a mutable component reference for a non-const vector.                                                        |
+ * |                                                                                            | @param Index Component index from 0 through 2.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ConstVector[Index];                                                                        | Returns a component value for a const vector.                                                                        |
+ * |                                                                                            | @param Index Component index from 0 through 2.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Vector == Other;                                                                           | Compares two vectors for exact equality.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.Equals(const FVector& Other, float64 Tolerance = KINDA_SMALL_NUMBER) const;   | Returns whether every component difference is within Tolerance.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.CrossProduct(const FVector& Other) const;                                  | Returns the three-dimensional cross product.                                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.DotProduct(const FVector& Other) const;                                    | Returns the dot product.                                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.AllComponentsEqual(float64 Tolerance = KINDA_SMALL_NUMBER) const;             | Returns whether all three components are mutually within Tolerance.                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.Parallel(const FVector& Normal2, float64 ParallelCosineThreshold =            | Returns whether normalized vectors are parallel in either direction.                                                 |
+ * |     THRESH_NORMALS_ARE_PARALLEL) const;                                                    | @param ParallelCosineThreshold Minimum absolute dot product.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.Coincident(const FVector& Normal2, float64 ParallelCosineThreshold =          | Returns whether normalized vectors are parallel in the same direction.                                               |
+ * |     THRESH_NORMALS_ARE_PARALLEL) const;                                                    | @param ParallelCosineThreshold Minimum dot product.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.Orthogonal(const FVector& Normal2, float64 OrthogonalCosineThreshold =        | Returns whether normalized vectors are nearly perpendicular.                                                         |
+ * |     THRESH_NORMALS_ARE_ORTHOGONAL) const;                                                  | @param OrthogonalCosineThreshold Maximum absolute dot product.                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.GetMax() const;                                                            | Returns the greatest component.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.GetAbsMax() const;                                                         | Returns the greatest absolute component.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.GetMin() const;                                                            | Returns the smallest component.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.GetAbsMin() const;                                                         | Returns the smallest absolute component.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.ComponentMin(const FVector& Other) const;                                  | Returns component-wise minima.                                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.ComponentMax(const FVector& Other) const;                                  | Returns component-wise maxima.                                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.ComponentClamp(const FVector& Min, const FVector& Max) const;              | Clamps each component between the corresponding Min and Max components.                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetAbs() const;                                                            | Returns component-wise absolute values.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.Size() const;                                                              | Returns the three-dimensional Euclidean magnitude.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.SizeSquared() const;                                                       | Returns the squared three-dimensional magnitude.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.Size2D() const;                                                            | Returns the XY-plane Euclidean magnitude.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.SizeSquared2D() const;                                                     | Returns the squared XY-plane magnitude.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.IsNearlyZero(float64 Tolerance = KINDA_SMALL_NUMBER) const;                   | Returns whether every absolute component is within Tolerance.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.IsZero() const;                                                               | Returns whether every component is exactly zero.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.Normalize(float64 Tolerance = SMALL_NUMBER);                                  | Normalizes in place and reports whether squared length exceeded Tolerance.                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.IsNormalized() const;                                                         | Returns whether squared magnitude is within the engine unit tolerance.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FVector.ToDirectionAndLength(FVector& OutDir, float64& OutLength) const;              | Decomposes the vector into a safe unit direction and double-precision length.                                        |
+ * |                                                                                            | @param OutDir Receives direction. @param OutLength Receives magnitude.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FVector.ToDirectionAndLength(FVector& OutDir, float32& OutLength) const;              | Decomposes the vector into a safe unit direction and single-precision length.                                        |
+ * |                                                                                            | @param OutDir Receives direction. @param OutLength Receives magnitude.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetSignVector() const;                                                     | Returns a vector containing the sign of each component.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.Projection() const;                                                        | Returns the homogeneous projection (X/Z, Y/Z, 1).                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetUnsafeNormal() const;                                                   | Returns a normalized copy without guarding against zero length.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GridSnap(const float64& GridSize) const;                                   | Snaps every component to the nearest GridSize multiple.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.BoundToCube(float64 Radius) const;                                         | Clamps every component to the symmetric [-Radius, Radius] cube.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.BoundToBox(const FVector& Min, const FVector& Max) const;                  | Clamps every component to the supplied axis-aligned bounds.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetClampedToSize(float64 Min, float64 Max) const;                          | Clamps three-dimensional magnitude to the [Min, Max] range.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetClampedToSize2D(float64 Min, float64 Max) const;                        | Clamps XY magnitude to the [Min, Max] range while preserving Z.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetClampedToMaxSize(float64 Max) const;                                    | Limits three-dimensional magnitude to Max.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetClampedToMaxSize2D(float64 Max) const;                                  | Limits XY magnitude to Max while preserving Z.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FVector.AddBounded(const FVector& V, float64 Radius = MAX_int16);                     | Adds V in place, then clamps the result to the symmetric Radius cube.                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.Reciprocal() const;                                                        | Returns component-wise reciprocals using BIG_NUMBER for zero components.                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.IsUniform(float64 Tolerance = KINDA_SMALL_NUMBER) const;                      | Returns whether all components are mutually within Tolerance.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.MirrorByVector(const FVector& MirrorNormal) const;                         | Reflects this vector across the supplied unit normal.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.VectorPlaneProject(const FVector& PlaneNormal) const;                      | Projects this vector onto a plane whose normal is normalized.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.RotateAngleAxis(float64 AngleDeg, const FVector& Axis) const;              | Rotates the vector around Axis.                                                                                      |
+ * |                                                                                            | @param AngleDeg Rotation in degrees. @param Axis Normalized rotation axis.                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetSafeNormal(float64 Tolerance = SMALL_NUMBER, const FVector&             | Returns a normalized copy or ResultIfZero when squared length is below Tolerance.                                    |
+ * |     ResultIfZero = FVector::ZeroVector) const;                                             |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.GetSafeNormal2D(float64 Tolerance = SMALL_NUMBER, const FVector&           | Returns an XY-normalized copy or ResultIfZero when XY squared length is below Tolerance.                             |
+ * |     ResultIfZero = FVector::ZeroVector) const;                                             |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.CosineAngle2D(FVector B) const;                                            | Returns the cosine between XY projections, treating zero projections as coincident.                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.ProjectOnTo(const FVector& A) const;                                       | Projects this vector onto A without requiring A to be normalized.                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector FVector.ProjectOnToNormal(const FVector& Normal) const;                            | Projects this vector onto a normalized direction.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FVector.FindBestAxisVectors(FVector& Axis1, FVector& Axis2) const;                    | Builds two normalized axes perpendicular to this normalized vector.                                                  |
+ * |                                                                                            | @param Axis1, Axis2 Receive the perpendicular basis axes.                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FVector.UnwindEuler() const;                                                          | Unwinds Euler degree components to the engine normalized angular range.                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.ContainsNaN() const;                                                          | Returns whether any component is non-finite.                                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.IsUnit(float64 LengthSquaredTolerance = KINDA_SMALL_NUMBER) const;            | Returns whether squared magnitude is within LengthSquaredTolerance of one.                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.HeadingAngle() const;                                                      | Returns the XY heading angle in radians.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.PointsAreSame(const FVector& P2) const;                                       | Returns whether points match under the engine point-equality threshold.                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.PointsAreNear(const FVector& P2, float64 Dist) const;                         | Returns whether per-axis point differences are below Dist.                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.Distance(const FVector& Other) const;                                      | Returns three-dimensional Euclidean distance.                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.DistSquared(const FVector& Other) const;                                   | Returns squared three-dimensional distance.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.Dist2D(const FVector& Other) const;                                        | Returns XY-plane Euclidean distance.                                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.DistXY(const FVector& Other) const;                                        | Returns XY-plane Euclidean distance.                                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.DistSquaredXY(const FVector& Other) const;                                 | Returns squared XY-plane distance.                                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | float64 FVector.DistSquared2D(const FVector& Other) const;                                 | Returns squared XY-plane distance.                                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FVector FVector::ZeroVector;                                                         | Exposes the (0, 0, 0) constant.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FVector FVector::OneVector;                                                          | Exposes the (1, 1, 1) constant.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FVector FVector::UpVector;                                                           | Exposes the world-up (0, 0, 1) constant.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FVector FVector::DownVector;                                                         | Exposes the world-down (0, 0, -1) constant.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FVector FVector::ForwardVector;                                                      | Exposes the world-forward (1, 0, 0) constant.                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FVector FVector::BackwardVector;                                                     | Exposes the world-backward (-1, 0, 0) constant.                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FVector FVector::RightVector;                                                        | Exposes the world-right (0, 1, 0) constant.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FVector FVector::LeftVector;                                                         | Exposes the world-left (0, -1, 0) constant.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FRotator FVector.ToOrientationRotator() const;                                             | Returns the orientation rotator whose forward direction matches this vector.                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FQuat FVector.ToOrientationQuat() const;                                                   | Returns the orientation quaternion whose forward direction matches this vector.                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FRotator FVector.Rotation() const;                                                         | Returns the orientation rotator whose forward direction matches this vector.                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FVector.InitFromString(const FString& SourceString);                                  | Parses components from SourceString and reports success.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text + Vector;                                                                             | Appends FVector text to a string and returns the result.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text += Vector;                                                                            | Appends FVector text to a string in place.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text.Append(Vector);                                                                       | Appends FVector text to a temporary or existing string.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FVector.ToString() const;                                                          | Returns the engine string representation.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 static void BindFVectorTypeDeclarations(FAngelscriptBinds& Binds)
 {

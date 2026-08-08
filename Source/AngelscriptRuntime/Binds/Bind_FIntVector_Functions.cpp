@@ -1,4 +1,4 @@
-#include "Bind_FIntVector_Functions.h"
+#include "Bind_FIntVector.h"
 
 void FAngelscriptFIntVectorBinds::ConstructXYZ(FIntVector* Address, const int32 X, const int32 Y, const int32 Z)
 {

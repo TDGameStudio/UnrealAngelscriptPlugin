@@ -1,6 +1,34 @@
+#include "Bind_FPlane.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_FPlane_Functions.h"
+/**
+ * FPlane construction and geometric queries.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FPlane Plane(const FVector& InLocation, const FVector& InNormal);                                    | Constructs a plane from a point and normal.                                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FPlane Plane(const FVector& PointA, const FVector& PointB, const FVector& PointC);                   | Constructs a plane through three points.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FPlane Plane(const FPlane4f& Plane);                                                                 | Converts a single-precision plane.                                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | float64 Plane.PlaneDot(const FVector& Location) const;                                               | Returns the signed plane equation value at the location.                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FVector Plane.GetOrigin() const;                                                                     | Returns a point on the plane.                                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | const FVector& Plane.GetNormal() const;                                                              | Returns the plane normal.                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FVector Plane.RayPlaneIntersection(const FVector& RayOrigin, const FVector& RayDirection) const;     | Returns the intersection of an infinite ray and this plane; the caller must avoid parallel inputs.               |
+ * |                                                                                                      | @param RayOrigin Start point of the ray.                                                                         |
+ * |                                                                                                      | @param RayDirection Normalized ray direction.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Plane.SegmentPlaneIntersection(const FVector& StartPoint,                                       | Reports whether a finite segment intersects this plane.                                                          |
+ * |     const FVector& EndPoint,                                                                         | @param StartPoint Segment start.                                                                                 |
+ * |     FVector& OutIntersectionPoint) const;                                                            | @param EndPoint Segment end.                                                                                     |
+ * |                                                                                                      | @param OutIntersectionPoint Receives the intersection when the function returns true.                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

@@ -3,6 +3,21 @@
 
 #include "FunctionLibraries/UAssetManagerMixinLibrary.h"
 
+/**
+ * UAssetManager generated-binding overrides.
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                              | Purpose / parameter notes                                                                                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | void AssetManager.CallOrRegister_OnCompletedInitialScan(UObject Object, FName Function); | Invokes Object.Function after the initial scan, or immediately if scanning has already completed.                  |
+ * |                                                                                          | @param Object Callback receiver. @param Function Reflected no-argument callback name.                              |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetManager.GetPrimaryAssetData(const FPrimaryAssetId& Id, FAssetData&out Data);   | Looks up already-scanned metadata. @param Id Primary asset identifier. @param Data Receives metadata.              |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | UObject AssetManager.GetPrimaryAssetObject(const FPrimaryAssetId& Id);                   | Returns the loaded primary asset object, or null when it is not resident.                                          |
+ * |                                                                                          | @param Id Primary asset identifier.                                                                                |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ */
+
 namespace
 {
 	void BindAssetManagerScriptMixins(FAngelscriptBinds& Binds)

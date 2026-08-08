@@ -1,10 +1,52 @@
+#include "Bind_FunctionLibraryMixins.h"
+
 #include "AngelscriptBinds.h"
-#include "Bind_FunctionLibraryMixins_Functions.h"
 #include "Core/FunctionCallers.h"
 
 #include "FunctionLibraries/AngelscriptComponentLibrary.h"
 #include "FunctionLibraries/AngelscriptLevelStreamingLibrary.h"
 #include "FunctionLibraries/RuntimeFloatCurveMixinLibrary.h"
+
+/**
+ * Post-reflection component, streaming, runtime-curve, and curve-asset mixin surfaces.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bVisible = LevelStreaming.GetShouldBeVisibleInEditor() const;                                   | Returns the editor visibility request for a streaming level; available only in editor builds.                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | SceneComponent.SetRelativeRotation(FRotator NewRotation);                                            | Sets component rotation relative to its parent without sweep.                                                    |
+ * |                                                                                                      | @param NewRotation Relative rotation in degrees.                                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bAttached = SceneComponent.IsAttachedTo(const USceneComponent CheckComponent) const;            | Reports whether a component appears in this component's attachment ancestry.                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | RuntimeCurveLinearColor.AddDefaultKey(float32 InTime, FLinearColor InColor);                         | Adds a key to the runtime linear-color curve's default rich curves.                                              |
+ * |                                                                                                      | @param InTime Curve input time.                                                                                  |
+ * |                                                                                                      | @param InColor Color value stored at the key.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | RuntimeFloatCurve.AddDefaultKey(float32 InTime, float32 InValue);                                    | Adds a key to the runtime float curve's default rich curve.                                                      |
+ * |                                                                                                      | @param InTime Curve input time.                                                                                  |
+ * |                                                                                                      | @param InValue Float value stored at the key.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int Count = RuntimeFloatCurve.GetNumKeys() const;                                                    | Returns the number of keys in the runtime float curve.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | RuntimeFloatCurve.GetTimeRange(float32&out MinTime, float32&out MaxTime) const;                      | Returns the minimum and maximum key times.                                                                       |
+ * |                                                                                                      | @param MinTime Receives the earliest key time.                                                                   |
+ * |                                                                                                      | @param MaxTime Receives the latest key time.                                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FCurveKeyHandle Handle = CurveFloat.AddAutoCurveKey(float32 InTime, float32 InValue);                | Adds an automatically-tangent key and returns its stable handle.                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | CurveFloat.SetKeyInterpMode(FCurveKeyHandle KeyHandle, ERichCurveInterpMode NewInterpMode,           | Changes interpolation for a curve key.                                                                           |
+ * |     bool bAutoSetTangents);                                                                          | @param KeyHandle Key to edit.                                                                                    |
+ * |                                                                                                      | @param NewInterpMode New rich-curve interpolation mode.                                                          |
+ * |                                                                                                      | @param bAutoSetTangents Recomputes automatic tangents when true.                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | URuntimeCurveLinearColorMixinLibrary::AddDefaultKey(                                                 | Static form of the runtime linear-color key helper.                                                              |
+ * |     FRuntimeCurveLinearColor& Target, float32 InTime, FLinearColor InColor);                         |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | URuntimeFloatCurveMixinLibrary::GetTimeRange(const FRuntimeFloatCurve& Target, float32&out MinTime,  | Static form of the runtime float-curve time-range query.                                                         |
+ * |     float32&out MaxTime);                                                                            |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

@@ -1,9 +1,40 @@
-#include "AngelscriptBinds.h"
-#include "Bind_USceneComponent_Functions.h"
+#include "Bind_USceneComponent.h"
 
+#include "AngelscriptBinds.h"
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
 #include "UObject/UObjectGlobals.h"
+
+/**
+ * Scene-component manual binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int32 USceneComponent.GetNumChildrenComponents() const;                                    | Returns the number of direct child scene components.                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | USceneComponent USceneComponent.GetChildComponentByClass(                                  | Returns the first matching child, with the result typed to ComponentClass.                                           |
+ * |     TSubclassOf<USceneComponent> ComponentClass);                                          | @param ComponentClass Required scene-component subclass.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void USceneComponent.GetChildrenComponentsByClass(                                         | Collects matching child components into the typed output array.                                                      |
+ * |     UClass ComponentClass, bool bIncludeAllDescendants, ?& OutChildren);                   | @param bIncludeAllDescendants Includes recursive descendants when true.                                              |
+ * |                                                                                            | @param OutChildren Receives an array whose element type matches ComponentClass.                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FTransform USceneComponent.GetComponentTransform() const;                                  | Returns the component world transform.                                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void USceneComponent.SetRelativeLocation(FVector NewLocation);                             | Sets location relative to the attachment parent, in Unreal units.                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void USceneComponent.SetComponentVelocity(const FVector& Velocity);                        | Sets world-space component velocity in Unreal units per second.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FVector USceneComponent.GetComponentVelocity() const;                                      | Returns world-space component velocity in Unreal units per second.                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void USphereComponent.SetSphereRadius(                                                     | Sets the unscaled sphere radius in Unreal units.                                                                     |
+ * |     float32 InSphereRadius, bool bUpdateOverlaps = true);                                  | @param bUpdateOverlaps Recomputes overlap state immediately when true.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FScopedMovementUpdate;                                                              | Declares an RAII movement-update scope.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FScopedMovementUpdate Scope(USceneComponent Component);                                    | Defers scoped movement updates until Scope leaves its script lifetime.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

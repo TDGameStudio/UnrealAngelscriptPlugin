@@ -1,4 +1,4 @@
-#include "Bind_AssetRegistry_Functions.h"
+#include "Bind_AssetRegistry.h"
 
 #include "AngelscriptEngine.h"
 

@@ -1,4 +1,4 @@
-#include "Bind_WorldCollision_Functions.h"
+#include "Bind_WorldCollision.h"
 
 #include "AngelscriptEngine.h"
 #include "Components/PrimitiveComponent.h"

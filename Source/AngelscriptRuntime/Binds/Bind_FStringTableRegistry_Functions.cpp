@@ -1,4 +1,4 @@
-#include "Bind_FStringTableRegistry_Functions.h"
+#include "Bind_FStringTableRegistry.h"
 
 #include "Internationalization/StringTableRegistry.h"
 #include "Misc/Paths.h"

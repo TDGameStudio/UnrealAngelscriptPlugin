@@ -1,6 +1,17 @@
+#include "Bind_UPoseableMeshComponent.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_UPoseableMeshComponent_Functions.h"
+/**
+ * UPoseableMeshComponent manual binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UPoseableMeshComponent.AllocateTransformData();                                       | Allocates per-bone transform storage for the current skeletal mesh.                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UPoseableMeshComponent.RefreshBoneTransforms();                                       | Rebuilds component-space bone transforms from the poseable transform data.                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

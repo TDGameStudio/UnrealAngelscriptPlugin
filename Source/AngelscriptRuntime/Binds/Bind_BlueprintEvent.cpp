@@ -19,6 +19,51 @@
 #include "Helper_FunctionSignature.h"
 #include "Bind_BlueprintTypePrep.h"
 
+/**
+ * Blueprint-event helper, reflected event, and delegate-call binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void __Evt_PushArgument__<TypeName>(const <Type>& Value);                                  | Expands once per complete registered type that can construct, copy, and destruct.                                    |
+ * |                                                                                            | Pushes a copied argument into the pending internal reflected-event call.                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void __Evt_PushArgumentRef__<TypeName>(const <Type>& Value);                               | Expands for the same eligible types and pushes a writable reference argument.                                        |
+ * |                                                                                            | Stable aliases are also ensured for int32, uint32, float32, and float64.                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void __Evt_PushArgument(const ?& Value);                                                   | Pushes a copied type-erased argument after runtime type validation.                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void __Evt_PushArgumentRef(const ?& Value);                                                | Pushes a writable type-erased reference argument after runtime type validation.                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void __Evt_Execute(const UObject Object, const FName& Name);                               | Executes the pending argument list against a reflected event on Object.                                              |
+ * |                                                                                            | @param Name Reflected event function name.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void __Evt_ExecuteDelegate(const _FScriptDelegate& Delegate);                              | Executes the pending argument list against a single-cast script delegate.                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void __Evt_ExecuteDelegate(const _FMulticastScriptDelegate& Delegate);                     | Broadcasts the pending argument list through a multicast script delegate.                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ReturnType EventOwner.EventName(Arguments...);                                             | Expands for eligible instance Blueprint events with at most 16 supported arguments.                                  |
+ * |                                                                                            | The declaration preserves reflected return, input, output, default, and callable metadata.                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ReturnType EventOwner::EventName(Arguments...);                                            | Expands for eligible events exposed as static AngelScript namespace functions.                                       |
+ * |                                                                                            | Invocation targets the reflected class default object.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ReturnType Receiver.EventName(Arguments...);                                               | Expands for eligible static Unreal functions exposed as AngelScript mixins.                                          |
+ * |                                                                                            | Receiver supplies the mixin object type while invocation targets the class default object.                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ReturnType MulticastDelegate.Broadcast(Arguments...);                                      | Expands from multicast delegate signatures whose argument types support call marshalling.                            |
+ * |                                                                                            | Broadcast is a no-op when the delegate is unbound.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ReturnType SparseDelegate.Broadcast(Arguments...);                                         | Expands from sparse delegate signatures whose argument types support call marshalling.                               |
+ * |                                                                                            | The sparse owner and backing multicast delegate are resolved at invocation time.                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ReturnType Delegate.Execute(Arguments...);                                                 | Expands from single-cast delegate signatures.                                                                        |
+ * |                                                                                            | Raises an AngelScript exception when the delegate is unbound.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ReturnType Delegate.ExecuteIfBound(Arguments...);                                          | Expands from single-cast delegate signatures.                                                                        |
+ * |                                                                                            | Returns without invocation when the delegate is unbound.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
+
 #define AS_EVENT_MAX_ARGS 16
 #define AS_EVENT_MAX_SIZE 1024
 

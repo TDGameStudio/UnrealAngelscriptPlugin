@@ -1,8 +1,39 @@
+#include "Bind_FStringTableRegistry.h"
+
 #include "AngelscriptBinds.h"
 
 #include "Internationalization/StringTableRegistry.h"
 
-#include "Bind_FStringTableRegistry_Functions.h"
+/**
+ * String-table loading policy and global binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | enum EStringTableLoadingPolicy;                                                            | Declares the string-table lookup loading policy.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EStringTableLoadingPolicy::Find;                                                           | Looks only for an already loaded string table.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EStringTableLoadingPolicy::FindOrLoad;                                                     | Loads the table when it is not already available.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EStringTableLoadingPolicy::FindOrFullyLoad;                                                | Loads the table and fully resolves its asset references.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void LOCTABLE_NEW(const FName TableId, const FString& Namespace);                          | Creates an empty runtime string table.                                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void LOCTABLE_FROMFILE_ENGINE(const FName TableId, const FString& Namespace,               | Loads a string table from a path relative to the engine content directory.                                           |
+ * |     const FString& FilePath);                                                              | @param FilePath Engine-content-relative table file path.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void LOCTABLE_FROMFILE_GAME(const FName TableId, const FString& Namespace,                 | Loads a string table from a path relative to the game content directory.                                             |
+ * |     const FString& FilePath);                                                              | @param FilePath Game-content-relative table file path.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void LOCTABLE_SETSTRING(const FName TableId, const FString& Key,                           | Adds or replaces source text for a table key.                                                                        |
+ * |     const FString& SourceString);                                                          |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void LOCTABLE_SETMETA(const FName TableId, const FString& Key, const FName MetaDataId,     | Adds or replaces one metadata field for a table entry.                                                               |
+ * |     const FString& MetaData);                                                              |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FText LOCTABLE(const FName TableId, const FString& Key);                                   | Returns localized text for the table key.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

@@ -1,4 +1,4 @@
-#include "Bind_FIntPoint_Functions.h"
+#include "Bind_FIntPoint.h"
 
 void FAngelscriptFIntPointBinds::ConstructXY(FIntPoint* Address, int32 X, int32 Y)
 {

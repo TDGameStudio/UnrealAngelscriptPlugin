@@ -1,4 +1,4 @@
-#include "Bind_FSphere3f_Functions.h"
+#include "Bind_FSphere3f.h"
 
 void FAngelscriptFSphere3fBinds::ConstructDefault(FSphere3f* Address)
 {

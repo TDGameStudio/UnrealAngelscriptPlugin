@@ -1,4 +1,4 @@
-#include "Bind_FLinearColor_Functions.h"
+#include "Bind_FLinearColor.h"
 
 void FAngelscriptFLinearColorBinds::ConstructDefault(FLinearColor* Address)
 {

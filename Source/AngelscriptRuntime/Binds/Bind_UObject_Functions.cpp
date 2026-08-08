@@ -1,4 +1,4 @@
-#include "Bind_UObject_Functions.h"
+#include "Bind_UObject.h"
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptType.h"

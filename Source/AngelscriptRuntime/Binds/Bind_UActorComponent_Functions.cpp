@@ -1,4 +1,4 @@
-#include "Bind_UActorComponent_Functions.h"
+#include "Bind_UActorComponent.h"
 
 #include "GameFramework/Actor.h"
 

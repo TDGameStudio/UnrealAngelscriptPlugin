@@ -1,4 +1,4 @@
-#include "Bind_FBoxSphereBounds3f_Functions.h"
+#include "Bind_FBoxSphereBounds3f.h"
 
 void FAngelscriptFBoxSphereBounds3fBinds::ConstructDefault(FBoxSphereBounds3f* Address)
 {

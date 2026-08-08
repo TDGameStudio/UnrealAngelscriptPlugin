@@ -1,4 +1,4 @@
-#include "Bind_FPlatformProcess_Functions.h"
+#include "Bind_FPlatformProcess.h"
 
 #include "HAL/PlatformProcess.h"
 

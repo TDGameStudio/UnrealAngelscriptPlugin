@@ -1,7 +1,17 @@
+#include "Bind_FAngelscriptGameThreadScopeWorldContext.h"
+
 #include "AngelscriptBinds.h"
 
 #include "AngelscriptEngine.h"
-#include "Bind_FAngelscriptGameThreadScopeWorldContext_Functions.h"
+/**
+ * Scoped game-thread world context.
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                              | Purpose / parameter notes                                                                                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | FAngelscriptGameThreadScopeWorldContext Scope(UObject WorldContext);                     | Pushes WorldContext for the scope lifetime and restores the preceding context on destruction.                      |
+ * |                                                                                          | @param WorldContext Object used to resolve the active world.                                                       |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

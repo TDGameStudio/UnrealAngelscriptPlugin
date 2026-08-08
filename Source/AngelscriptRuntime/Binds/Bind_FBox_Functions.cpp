@@ -1,4 +1,4 @@
-#include "Bind_FBox_Functions.h"
+#include "Bind_FBox.h"
 
 void FAngelscriptFBoxBinds::ConstructDefault(FBox* Address)
 {

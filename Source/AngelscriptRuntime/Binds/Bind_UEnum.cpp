@@ -1,3 +1,5 @@
+#include "Bind_UEnum.h"
+
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 #include "AngelscriptDocs.h"
@@ -19,316 +21,62 @@
 #include "source/as_objecttype.h"
 #include "EndAngelscriptHeaders.h"
 
-static const FName NAME_ENUM_UnderlyingType("UnderlyingType");
-struct FEnumType : FAngelscriptType
-{
-	UEnum* Enum;
-	const FAngelscriptBindDatabase* BindDatabase;
-
-	FEnumType(UEnum* InEnum, const FAngelscriptBindDatabase& InBindDatabase)
-		: Enum(InEnum)
-		, BindDatabase(&InBindDatabase)
-	{}
-
-	bool IsPrimitive() const override
-	{
-		return true;
-	}
-
-	FString GetAngelscriptTypeName() const override
-	{
-		if (Enum == nullptr)
-		{
-			ensure(false); // Should not happen
-			return "int";
-		}
-		return Enum->GetName();
-	}
-
-	FString GetAngelscriptTypeName(const FAngelscriptTypeUsage& Usage) const override
-	{
-		if (Enum != nullptr)
-			return Enum->GetName();
-		else if (Usage.ScriptClass != nullptr)
-			return ANSI_TO_TCHAR(Usage.ScriptClass->GetName());
-
-		ensure(false);
-		return TEXT("");
-	}
-
-	void* GetData() const override
-	{
-		return Enum;
-	}
-
-	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Enum != nullptr || Usage.ScriptClass != nullptr;
-	}
-
-	bool CanQueryPropertyType() const override
-	{
-		return false;
-	}
-
-	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		auto* EnumProp = CastField<FEnumProperty>(Property);
-		UEnum* PropertyEnum = nullptr;
-		if (EnumProp != nullptr)
-		{
-			//PropertyEnum = EnumProp->Enum;
-			PropertyEnum = EnumProp->GetEnum();
-		}
-		else
-		{
-			auto* ByteProp = CastField<FByteProperty>(Property);
-			if (ByteProp != nullptr)
-				PropertyEnum = ByteProp->Enum;
-		}
-
-		if (PropertyEnum == nullptr)
-			return false;
-
-		auto* UsedEnum = Enum != nullptr ? Enum : (UEnum*)Usage.ScriptClass->GetUserData();
-		return PropertyEnum == UsedEnum;
-	}
-
-	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
-	{
-		auto* UsedEnum = Enum != nullptr ? Enum : (UEnum*)Usage.ScriptClass->GetUserData();
-		check(UsedEnum);
-
-		if (UsedEnum->GetCppForm() == UEnum::ECppForm::EnumClass || UsedEnum->IsA<UUserDefinedEnum>())
-		{
-			auto* EnumProp = new FEnumProperty(Params.Outer, Params.PropertyName);
-			auto* ByteProp = new FByteProperty(EnumProp, NAME_ENUM_UnderlyingType);
-
-			EnumProp->SetEnum(UsedEnum);
-			EnumProp->AddCppProperty(ByteProp);
-
-			return EnumProp;
-		}
-		else
-		{
-			auto* ByteProp = new FByteProperty(Params.Outer, Params.PropertyName);
-			ByteProp->Enum = UsedEnum;
-			return ByteProp;
-		}
-	}
-
-	bool IsTypeEquivalent(const FAngelscriptTypeUsage& Usage, const FAngelscriptTypeUsage& Other) const override
-	{
-		// C++ enums have individual type instances, so we don't need to check this
-		if (Enum != nullptr)
-			return true;
-
-		// If the scriptclass is identical we don't need to check it
-		if (Usage.ScriptClass == Other.ScriptClass)
-			return true;
-
-		// Shouldn't happen, safety check
-		if (Usage.ScriptClass == nullptr || Other.ScriptClass == nullptr)
-			return false;
-
-		// Compare script enums by name, because we are likely comparing for changes during a compile
-		if (((asCTypeInfo*)Usage.ScriptClass)->name == ((asCTypeInfo*)Other.ScriptClass)->name)
-			return true;
-
-		return false;
-	}
-
-	bool CanCopy(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	bool NeedCopy(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	void CopyValue(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const override
-	{
-		*(uint8*)DestinationPtr = *(uint8*)SourcePtr;
-	}
-
-	bool CanCompare(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	bool IsValueEqual(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const override
-	{
-		return *(uint8*)DestinationPtr == *(uint8*)SourcePtr;
-	}
-
-	bool CanConstruct(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	bool NeedConstruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
-	void ConstructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override {}
-
-	bool CanDestruct(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	bool NeedDestruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
-	void DestructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override {}
-
-	int32 GetValueSize(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return 1;
-	}
-
-	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	void SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FArgData& Data) const override
-	{
-		uint8* ValuePtr = (uint8*)Data.StackPtr;
-		if (Usage.bIsReference)
-		{
-			uint8& ObjRef = Stack.StepCompiledInRef<FEnumProperty, uint8>(ValuePtr);
-			Context->SetArgAddress(ArgumentIndex, &ObjRef);
-		}
-		else
-		{
-			Stack.StepCompiledIn<FEnumProperty>(ValuePtr);
-			Context->SetArgByte(ArgumentIndex, *ValuePtr);
-		}
-	}
-
-	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return !Usage.bIsReference;
-	}
-
-	void GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const override
-	{
-		*(uint8*)Destination = (uint8)Context->GetReturnByte();
-	}
-
-	bool DefaultValue_UnrealToAngelscript(const FAngelscriptTypeUsage& Usage, const FString& InValue, FString& OutValue) const override
-	{
-		OutValue = InValue;
-		if (!OutValue.Contains(TEXT("::")))
-		{
-			FString EnumName = Enum != nullptr ? Enum->GetName() : ANSI_TO_TCHAR(Usage.ScriptClass->GetName());
-			if (OutValue.Len() == 0)
-			{
-				if (Enum == nullptr)
-					return false;
-
-				// Unreal can send us an empty value if this is the 0 value for the enum
-				OutValue = Enum->GetNameStringByValue(0);
-				OutValue = FString::Printf(TEXT("%s::%s"), *EnumName, *OutValue);
-			}
-			else
-			{
-				OutValue = FString::Printf(TEXT("%s::%s"), *EnumName, *OutValue);
-			}
-		}
-		return true;
-	}
-
-	bool DefaultValue_AngelscriptToUnreal(const FAngelscriptTypeUsage& Usage, const FString& InValue, FString& OutValue) const override
-	{
-		OutValue = InValue;
-		int32 ScopePos = OutValue.Find(TEXT("::"));
-		if (ScopePos != -1)
-		{
-			OutValue = OutValue.Mid(ScopePos+2);
-			OutValue.TrimStartAndEndInline();
-		}
-		return true;
-	}
-
-	int32 GetValueAlignment(const FAngelscriptTypeUsage& Usage) const
-	{
-		return 1;
-	}
-
-	bool CanHashValue(const FAngelscriptTypeUsage& Usage) const
-	{
-		return true;
-	}
-
-	uint32 GetHash(const FAngelscriptTypeUsage& Usage, const void* Address) const
-	{
-		return GetTypeHash(*(uint8*)Address);
-	}
-
-	FASDebugValue* CreateDebugValue(const FAngelscriptTypeUsage& Usage, FDebugValuePrototype& Values, int32 Offset) const override
-	{
-		if(Usage.bIsReference)
-			return Values.Create<TDebug<uint8*>>(Offset);
-		else
-			return Values.Create<TDebug<uint8>>(Offset);
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		auto* UsedEnum = Enum != nullptr ? Enum : (UEnum*)Usage.ScriptClass->GetUserData();
-		int32 EnumValue = 0;
-
-		EnumValue = Usage.ResolvePrimitive<uint8>(Address);
-		FString EnumName = UsedEnum->GetNameByValue(EnumValue).ToString();
-
-		Value.Type = Usage.GetAngelscriptDeclaration();
-		Value.Usage = Usage;
-		Value.Address = Address;
-		Value.Value = FString::Printf(TEXT("%s (%d)"), *EnumName, EnumValue);
-
-		return true;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		if (Enum == nullptr)
-		{
-			// Script enums are _always_ 1 byte
-			check(GetValueSize(Usage) == 1);
-			OutCppForm.CppType = TEXT("uint8");
-			return true;
-		}
-
-		if (Enum->GetCppForm() == UEnum::ECppForm::EnumClass)
-			OutCppForm.CppGenericType = TEXT("uint8");
-		else
-			OutCppForm.bDisallowNativeNest = true;
-
-		if (!Usage.bIsReference)
-		{
-			FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Enum, *BindDatabase);
-			if (HeaderPath.Len() != 0)
-			{
-				OutCppForm.CppType = Enum->GetName();
-				if (Enum->GetCppForm() == UEnum::ECppForm::Namespaced)
-					OutCppForm.CppType += TEXT("::Type");
-
-				if (!HeaderPath.Contains(TEXT("NoExportTypes.h")))
-					OutCppForm.CppHeader = FString::Printf(TEXT("#include \"%s\""), *HeaderPath);
-			}
-		}
-
-		return true;
-	}
-
-	bool GetStringIdentifier(const FAngelscriptTypeUsage& Usage, void* Address, FString& OutString) const override
-	{
-		auto* UsedEnum = Enum != nullptr ? Enum : (UEnum*)Usage.ScriptClass->GetUserData();
-		if (UsedEnum == nullptr)
-			return false;
-
-		int32 EnumValue = 0;
-		EnumValue = Usage.ResolvePrimitive<uint8>(Address);
-
-		FString EnumName = UsedEnum->GetNameByValue(EnumValue).ToString();
-		OutString = EnumName;
-
-		return !EnumName.IsEmpty();
-	}
-
-	bool FromStringIdentifier(const FAngelscriptTypeUsage& Usage, const FString& InString, void* BufferPtr) const override
-	{
-		auto* UsedEnum = Enum != nullptr ? Enum : (UEnum*)Usage.ScriptClass->GetUserData();
-		if (UsedEnum == nullptr)
-			return false;
-
-		int EnumValue = UsedEnum->GetValueByName(*InString);
-		if (EnumValue != -1)
-		{
-			*(uint8*)BufferPtr = EnumValue;
-			return true;
-		}
-
-		LexFromString(EnumValue, *InString);
-		*(uint8*)BufferPtr = EnumValue;
-		return true;
-	}
-};
+/**
+ * Reflected enum type expansion and UEnum manual binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | enum <EligibleUEnum> { <reflected enumerators> };                                          | Expands once per loaded UEnum accepted by ShouldBindEngineType. Enumerator names have native qualification removed.  |
+ * |                                                                                            | Script-generated /Script/Angelscript enums, explicit exclusions, and opt-out metadata are not expanded.              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | enum EGetByNameFlags;                                                                      | Declares flags controlling reflected enum name lookup.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EGetByNameFlags::None;                                                                     | Uses default reflected enum lookup behavior.                                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EGetByNameFlags::ErrorIfNotFound;                                                          | Requests an error when a reflected enum name is not found.                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EGetByNameFlags::CaseSensitive;                                                            | Makes reflected enum name lookup case-sensitive.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EGetByNameFlags::CheckAuthoredName;                                                        | Also checks the authored enum entry name.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName UEnum.GetNameByIndex(int32 InIndex) const;                                           | Returns the qualified name at an enum index.                                                                         |
+ * |                                                                                            | @param InIndex Reflected enumerator index.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int32 UEnum.GetIndexByName(FName InName,                                                   | Returns the index matching a reflected enum name under Flags.                                                        |
+ * |     EGetByNameFlags Flags = EGetByNameFlags::None) const;                                  |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName UEnum.GetNameByValue(int64 InValue) const;                                           | Returns the qualified name matching an enum value.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int64 UEnum.GetValueByName(FName InName,                                                   | Returns the value matching a reflected enum name under Flags.                                                        |
+ * |     EGetByNameFlags Flags = EGetByNameFlags::None) const;                                  |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UEnum.GetNameStringByIndex(int32 InIndex) const;                                   | Returns the unqualified name string at an enum index.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int32 UEnum.GetIndexByNameString(const FString& SearchString,                              | Returns the index matching an enum name string under Flags.                                                          |
+ * |     EGetByNameFlags Flags = EGetByNameFlags::None) const;                                  |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UEnum.GetNameStringByValue(int64 InValue) const;                                   | Returns the unqualified name string matching an enum value.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int64 UEnum.GetValueByNameString(const FString& SearchString,                              | Returns the value matching an enum name string under Flags.                                                          |
+ * |     EGetByNameFlags Flags = EGetByNameFlags::None) const;                                  |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FText UEnum.GetDisplayNameTextByIndex(int32 InIndex) const;                                | Returns localized display text at an enum index.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FText UEnum.GetDisplayNameTextByValue(int64 InValue) const;                                | Returns localized display text matching an enum value.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int64 UEnum.GetMaxEnumValue() const;                                                       | Returns the greatest reflected enumerator value.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int32 UEnum.NumEnums() const;                                                              | Returns the number of reflected enumerator entries.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnum.IsValidEnumValue(int64 InValue) const;                                          | Returns whether InValue is a declared enumerator value.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnum.IsValidEnumName(FName InName) const;                                            | Returns whether InName is a declared enumerator name.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnum.ContainsExistingMax() const;                                                    | Returns whether the enum already declares a conventional maximum entry.                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UEnum.GenerateEnumPrefix() const;                                                  | Generates the common reflected enumerator-name prefix.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 static const FName NAME_Enum_BlueprintType("BlueprintType");
 static const FName NAME_Enum_NotBlueprintType("NotBlueprintType");

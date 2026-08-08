@@ -1,4 +1,4 @@
-#include "Bind_Logging_Functions.h"
+#include "Bind_Logging.h"
 
 #include "CoreGlobals.h"
 #include "Engine/Engine.h"

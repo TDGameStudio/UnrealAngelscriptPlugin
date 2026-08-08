@@ -1,4 +1,4 @@
-#include "Bind_FVector3f_Functions.h"
+#include "Bind_FVector3f.h"
 
 void FAngelscriptFVector3fBinds::ConstructXYZ(FVector3f* Address, float X, float Y, float Z)
 {

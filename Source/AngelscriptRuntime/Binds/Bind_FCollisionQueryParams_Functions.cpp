@@ -1,4 +1,4 @@
-#include "Bind_FCollisionQueryParams_Functions.h"
+#include "Bind_FCollisionQueryParams.h"
 
 void FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionQueryParams(FCollisionQueryParams* Address)
 {

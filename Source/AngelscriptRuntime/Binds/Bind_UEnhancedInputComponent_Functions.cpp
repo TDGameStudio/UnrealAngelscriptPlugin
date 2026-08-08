@@ -1,4 +1,4 @@
-#include "Bind_UEnhancedInputComponent_Functions.h"
+#include "Bind_UEnhancedInputComponent.h"
 
 FEnhancedInputActionEventBinding& FAngelscriptUEnhancedInputComponentBinds::BindAction(
 	UEnhancedInputComponent& InputComponent,

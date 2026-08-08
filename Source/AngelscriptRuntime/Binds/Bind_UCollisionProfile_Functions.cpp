@@ -1,4 +1,4 @@
-#include "Bind_UCollisionProfile_Functions.h"
+#include "Bind_UCollisionProfile.h"
 
 #include "Engine/CollisionProfile.h"
 

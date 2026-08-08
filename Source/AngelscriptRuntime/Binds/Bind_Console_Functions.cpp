@@ -1,6 +1,5 @@
-#include "Bind_Console_Functions.h"
+#include "Bind_Console.h"
 
-#include "Binds/Bind_Console.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 

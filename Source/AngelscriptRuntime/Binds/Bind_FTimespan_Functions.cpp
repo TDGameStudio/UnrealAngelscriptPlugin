@@ -1,4 +1,4 @@
-#include "Bind_FTimespan_Functions.h"
+#include "Bind_FTimespan.h"
 
 void FAngelscriptFTimespanBinds::ConstructTicks(FTimespan* Address, const int64 Ticks)
 {

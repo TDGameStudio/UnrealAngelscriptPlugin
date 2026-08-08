@@ -16,6 +16,16 @@
 #include "UObject/FindObjectFlags.h"
 #include "UObject/UObjectGlobals.h"
 
+/**
+ * Generated native-module transport contribution; this registrar declares no fixed script API.
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                              | Purpose / parameter notes                                                                                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | <UHT-generated UFUNCTION signature>;                                                     | Replaces an eligible reflective binding with its versioned native-module function-address payload.                 |
+ * |                                                                                          | The exact declaration is supplied by the target module and remains identical to its UFUNCTION surface.             |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ */
+
 void GAngelscriptNativeModuleFunctionBindingGenericThunk(asIScriptGeneric* Generic);
 void GAngelscriptNativeModuleFunctionBindingUnregisterEngine(FAngelscriptEngine& Engine);
 #if WITH_DEV_AUTOMATION_TESTS

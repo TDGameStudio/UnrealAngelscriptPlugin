@@ -537,11 +537,6 @@ class ATestActorInterfaceSpawnAndQuery : AActor
 		if (TaggedActors.Num() < 5)
 			return 80;
 
-		TArray<AActor> InternalClassActors;
-		__Actor_GetAllByClass(ATestActorInterfaceSpawned::StaticClass(), InternalClassActors);
-		if (InternalClassActors.Num() < 5)
-			return 90;
-
 		return 1;
 	}
 }

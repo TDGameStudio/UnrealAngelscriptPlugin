@@ -1,4 +1,4 @@
-#include "Bind_FRotator3f_Functions.h"
+#include "Bind_FRotator3f.h"
 
 namespace
 {

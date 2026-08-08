@@ -1,30 +1,48 @@
+#include "Bind_FSphere.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Helper_StructType.h"
 
-#include "Bind_FSphere_Functions.h"
-
-struct FGetSphere
-{
-	static UScriptStruct* Get();
-};
-
-UScriptStruct* FGetSphere::Get()
-{
-	static UScriptStruct* ScriptStruct = FindObject<UScriptStruct>(nullptr, TEXT("/Script/CoreUObject.Sphere"));
-	return ScriptStruct;
-}
-
-struct FSphereType : TAngelscriptCoreStructType<FSphere, FGetSphere, false>
-{
-	FString GetAngelscriptTypeName() const override { return TEXT("FSphere"); }
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
+/**
+ * FSphere construction, fields, operators, and geometry.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSphere Sphere();                                                                                    | Constructs a zero-initialized sphere.                                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSphere Sphere(FVector InV, float32 InW);                                                            | Constructs a sphere from center and radius.                                                                      |
+ * |                                                                                                      | @param InV Center in Unreal units.                                                                               |
+ * |                                                                                                      | @param InW Radius in Unreal units.                                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSphere Sphere(const FSphere& Sphere);                                                               | Copy-constructs a sphere.                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSphere Sphere(const FSphere3f& Sphere);                                                             | Converts a single-precision sphere.                                                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSphere Sphere(const TArray<FVector>& Points);                                                       | Constructs the bounding sphere of the supplied points.                                                           |
+ * |                                                                                                      | @param Points World-space positions to enclose.                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | float64 Sphere.W;                                                                                    | Exposes the sphere radius.                                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FVector Sphere.Center;                                                                               | Exposes the sphere center.                                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSphere Combined = Left + Right;                                                                     | Returns the sphere enclosing both operands.                                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Left += Right;                                                                                       | Expands the left sphere to enclose the right sphere.                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Sphere.Equals(const FSphere& Other, float64 Tolerance = KINDA_SMALL_NUMBER) const;              | Compares sphere center and radius within a tolerance.                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Sphere.IsInside(const FSphere& Other, float64 Tolerance = KINDA_SMALL_NUMBER) const;            | Reports whether this sphere lies inside the other sphere.                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Sphere.IsInside(const FVector& Point, float64 Tolerance = KINDA_SMALL_NUMBER) const;            | Reports whether the point lies inside this sphere.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Sphere.Intersects(const FSphere& Other, float64 Tolerance = KINDA_SMALL_NUMBER) const;          | Reports whether the spheres intersect.                                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSphere Sphere.TransformBy(const FTransform& M) const;                                               | Transforms the sphere.                                                                                           |
+ * |                                                                                                      | @param M Transform applied to the center and radius.                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | float32 Sphere.GetVolume() const;                                                                    | Returns the sphere volume.                                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

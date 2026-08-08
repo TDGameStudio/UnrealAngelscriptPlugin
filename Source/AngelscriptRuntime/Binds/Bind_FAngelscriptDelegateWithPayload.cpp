@@ -1,15 +1,33 @@
+#include "Bind_FAngelscriptDelegateWithPayload.h"
+
 #include "AngelscriptDelegateWithPayload.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptDocs.h"
 #include "AngelscriptEngine.h"
 #include "AngelscriptType.h"
-#include "Bind_FAngelscriptDelegateWithPayload_Functions.h"
-
 #include "StartAngelscriptHeaders.h"
 #include "source/as_context.h"
 #include "source/as_datatype.h"
 #include "source/as_scriptengine.h"
 #include "EndAngelscriptHeaders.h"
+
+/**
+ * FAngelscriptDelegateWithPayload manual binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FAngelscriptDelegateWithPayload.ExecuteIfBound() const;                               | Invokes the stored function with its copied payload when the target remains valid.                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FAngelscriptDelegateWithPayload.IsBound() const;                                      | Returns whether both a live target object and function name are stored.                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FAngelscriptDelegateWithPayload.BindUFunction(                                        | Binds a parameterless void UFUNCTION and clears any previous payload.                                                |
+ * |     UObject Object, const FName& FunctionName);                                            | @param FunctionName Reflected function name; incompatible signatures raise a script exception.                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FAngelscriptDelegateWithPayload.BindWithPayload(                                      | Binds a one-parameter void UFUNCTION and copies the supplied payload.                                                |
+ * |     UObject Object, const FName& FunctionName, const ?&in Payload);                        | @param FunctionName Reflected function name whose parameter must match Payload.                                      |
+ * |                                                                                            | @param Payload Struct, primitive, or byte-sized enum value retained by the delegate.                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 extern FString GetSignatureStringForFunction(UFunction* Function);
 

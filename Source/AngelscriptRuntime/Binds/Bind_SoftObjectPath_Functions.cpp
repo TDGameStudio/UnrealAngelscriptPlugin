@@ -1,4 +1,4 @@
-#include "Bind_SoftObjectPath_Functions.h"
+#include "Bind_SoftObjectPath.h"
 
 void FAngelscriptSoftObjectPathBinds::ConstructObjectPathFromString(void* Memory, const FString& Path)
 {

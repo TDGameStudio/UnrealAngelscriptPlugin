@@ -1,6 +1,22 @@
+#include "Bind_UCollisionProfile.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_UCollisionProfile_Functions.h"
+/**
+ * UCollisionProfile namespace binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ECollisionChannel UCollisionProfile::ConvertToCollisionChannel(bool TraceType, int32       | Converts a trace-type or object-type query index to its collision channel. @param TraceType Selects trace-query      |
+ * | Index);                                                                                    | mapping when true and object-query mapping when false.                                                               |
+ * |                                                                                            | @param Index Query index in the selected trace-type or object-type mapping.                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EObjectTypeQuery UCollisionProfile::ConvertToObjectType(ECollisionChannel                  | Converts a collision channel to its object-query value.                                                              |
+ * | CollisionChannel);                                                                         |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ETraceTypeQuery UCollisionProfile::ConvertToTraceType(ECollisionChannel CollisionChannel); | Converts a collision channel to its trace-query value.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

@@ -1303,14 +1303,6 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 		bool bHasStatics = false;
 		if (ClassDesc->CodeSuperClass->IsChildOf(AActor::StaticClass()))
 		{
-			/*GeneratedStatics += FString::Printf(
-				TEXT("\n void GetAll(TArray<%s>& OutActors) {")
-				TEXT("__Actor_GetAllByClass(%s, OutActors);")
-				TEXT("}"),
-				*ClassDesc->ClassName,
-				*ClassDesc->StaticClassGlobalVariableName
-			);*/
-
 			GeneratedStatics += FString::Printf(
 				TEXT("\n %s Spawn(const FVector& Location = FVector::ZeroVector,")
 				TEXT(" const FRotator& Rotation = FRotator::ZeroRotator,")

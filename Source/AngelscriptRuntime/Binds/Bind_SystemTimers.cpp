@@ -1,6 +1,26 @@
+#include "Bind_SystemTimers.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_SystemTimers_Functions.h"
+/**
+ * System timer-handle binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FTimerHandle System::SetTimer(const UObject Object, const FName& FunctionName,             | Schedules a reflected object function on the object world timer manager.                                             |
+ * |     float32 Time, bool bLooping = false);                                                  | @param FunctionName Parameterless reflected function invoked by the timer.                                           |
+ * |                                                                                            | @param Time Interval in seconds. @param bLooping Repeats at Time intervals when true.                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool System::IsTimerPausedHandle(FTimerHandle Handle);                                     | Returns whether Handle identifies a paused timer in the current world.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void System::PauseTimerHandle(FTimerHandle Handle);                                        | Pauses the timer identified by Handle in the current world.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void System::UnPauseTimerHandle(FTimerHandle Handle);                                      | Resumes the timer identified by Handle in the current world.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void System::ClearAndInvalidateTimerHandle(FTimerHandle& Handle);                          | Clears the current-world timer and invalidates the caller handle.                                                    |
+ * |                                                                                            | @param Handle Timer handle mutated to the invalid state.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

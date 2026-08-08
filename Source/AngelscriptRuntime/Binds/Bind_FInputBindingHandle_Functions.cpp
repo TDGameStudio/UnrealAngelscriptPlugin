@@ -1,4 +1,4 @@
-#include "Bind_FInputBindingHandle_Functions.h"
+#include "Bind_FInputBindingHandle.h"
 
 uint32 FAngelscriptFInputBindingHandleBinds::GetActionEventHandle(const FEnhancedInputActionEventBinding& Binding)
 {

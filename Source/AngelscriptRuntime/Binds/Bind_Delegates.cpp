@@ -6,8 +6,6 @@
 #include "UObject/UObjectIterator.h"
 #include "UObject/UnrealType.h"
 
-#include "Helper_CppType.h"
-
 #include "StartAngelscriptHeaders.h"
 //#include "as_scriptengine.h"
 //#include "as_objecttype.h"
@@ -15,22 +13,131 @@
 #include "source/as_objecttype.h"
 #include "EndAngelscriptHeaders.h"
 
-inline static FString CreateCppNameForDelegate(UDelegateFunction* Function)
-{
-	FString Decl = TEXT("F");
-	Decl += Function->GetName();
-	Decl.RemoveFromEnd(TEXT("__DelegateSignature"));
-
-	// Delegates declared inside classes get suffixed with the class they're in,
-	// so we don't run into conflicts binding them globally.
-	UClass* OuterClass = Cast<UClass>(Function->GetOuter());
-	if (OuterClass)
-	{
-		Decl = FString::Printf(TEXT("%s%s::%s"), OuterClass->GetPrefixCPP(), *OuterClass->GetName(), *Decl);
-	}
-
-	return Decl;
-}
+/**
+ * Reflected single-cast, multicast, sparse, and signature-erased delegate surfaces.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <SingleCastDelegate> Delegate();                                                                     | Constructs an unbound reflected single-cast delegate. Expanded for every eligible non-multicast                  |
+ * |                                                                                                      | UDelegateFunction.                                                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <SingleCastDelegate> Delegate(const <SingleCastDelegate>& Other);                                    | Copy-constructs a single-cast delegate binding.                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate = Other;                                                                                    | Copies a single-cast delegate binding.                                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <SingleCastDelegate> Delegate(UObject Object, const FName& FunctionName);                            | Constructs and binds a single-cast delegate.                                                                     |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bBound = Delegate.IsBound() const;                                                              | Reports whether the delegate has a live target.                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject Object = Delegate.GetUObject() const;                                                        | Returns the bound target object, or null when unbound.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FName Name = Delegate.GetFunctionName() const;                                                       | Returns the bound UFUNCTION name.                                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Clear();                                                                                    | Removes the current binding.                                                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.BindUFunction(UObject Object, const FName& FunctionName);                                   | Binds a compatible reflected function.                                                                           |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <ReturnType> Result = Delegate.Execute(<SignatureParameters>);                                       | Invokes the bound single-cast delegate. Emitted from the reflected signature when all parameter types are        |
+ * |                                                                                                      | supported and the argument count fits AS_EVENT_MAX_ARGS.                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <ReturnType> Result = Delegate.ExecuteIfBound(<SignatureParameters>);                                | Invokes the single-cast delegate only when bound, using the reflected return policy when unbound.                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <MulticastDelegate> Delegate();                                                                      | Constructs an empty reflected multicast delegate. Expanded for every eligible multicast UDelegateFunction.       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <MulticastDelegate> Delegate(const <MulticastDelegate>& Other);                                      | Copy-constructs a multicast invocation list.                                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate = Other;                                                                                    | Copies a multicast invocation list.                                                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bBound = Delegate.IsBound() const;                                                              | Reports whether the multicast delegate has at least one live target.                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Clear();                                                                                    | Removes every multicast binding.                                                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.AddUFunction(const UObject Object, const FName& FunctionName);                              | Adds a compatible reflected function once.                                                                       |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Unbind(UObject Object, const FName& FunctionName);                                          | Removes the matching object/function binding.                                                                    |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.UnbindObject(UObject Object);                                                               | Removes every binding owned by an object.                                                                        |
+ * |                                                                                                      | @param Object UObject whose bindings are removed.                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Broadcast(<SignatureParameters>);                                                           | Invokes the multicast invocation list. Emitted from each supported reflected signature.                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <SparseDelegate> Delegate();                                                                         | Constructs an empty reflected sparse delegate. Expanded for every eligible USparseDelegateFunction.              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bBound = Delegate.IsBound() const;                                                              | Reports whether sparse storage contains a live target.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Clear();                                                                                    | Removes every sparse binding from the resolved owner.                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.AddUFunction(UObject Object, const FName& FunctionName);                                    | Adds a compatible reflected function to sparse storage.                                                          |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Unbind(UObject Object, const FName& FunctionName);                                          | Removes a matching sparse object/function binding.                                                               |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.UnbindObject(UObject Object);                                                               | Removes an object's sparse bindings.                                                                             |
+ * |                                                                                                      | @param Object UObject whose sparse bindings are removed.                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Broadcast(<SignatureParameters>);                                                           | Invokes the sparse invocation list. Emitted from each supported reflected signature.                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | _FScriptDelegate Delegate();                                                                         | Constructs an unbound signature-erased single-cast delegate.                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | _FScriptDelegate Delegate(const _FScriptDelegate& Other);                                            | Copy-constructs a signature-erased single-cast delegate.                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate = Other;                                                                                    | Copies a signature-erased single-cast binding.                                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bBound = Delegate.IsBound() const;                                                              | Reports whether the signature-erased delegate is bound.                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Clear() const;                                                                              | Removes the signature-erased delegate binding.                                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | _FScriptDelegate Delegate(UObject Object, const FName& FunctionName, UDelegateFunction Signature);   | Constructs a signature-erased delegate and validates its target.                                                 |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * |                                                                                                      | @param Signature Reflected delegate signature used to validate the target function.                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.BindUFunction(UObject Object, const FName& FunctionName, UDelegateFunction Signature);      | Binds and validates a signature-erased delegate target.                                                          |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * |                                                                                                      | @param Signature Reflected delegate signature used to validate the target function.                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject Object = Delegate.GetUObject() const;                                                        | Returns the signature-erased delegate's target object.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FName Name = Delegate.GetFunctionName() const;                                                       | Returns the signature-erased delegate's target UFUNCTION name.                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | _FMulticastScriptDelegate Delegate();                                                                | Constructs an empty signature-erased multicast delegate.                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | _FMulticastScriptDelegate Delegate(const _FMulticastScriptDelegate& Other);                          | Copy-constructs a signature-erased multicast invocation list.                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate = Other;                                                                                    | Copies a signature-erased multicast invocation list.                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bBound = Delegate.IsBound() const;                                                              | Reports whether the signature-erased multicast delegate has a live target.                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Clear();                                                                                    | Removes every signature-erased multicast binding.                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.AddUFunction(const UObject Object, const FName& FunctionName, UDelegateFunction Signature); | Adds and validates a signature-erased multicast target.                                                          |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * |                                                                                                      | @param Signature Reflected delegate signature used to validate the target function.                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.Unbind(UObject Object, const FName& FunctionName);                                          | Removes a signature-erased multicast object/function binding.                                                    |
+ * |                                                                                                      | @param Object UObject that owns the target UFUNCTION.                                                            |
+ * |                                                                                                      | @param FunctionName Reflected UFUNCTION name; its signature must be compatible.                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Delegate.UnbindObject(UObject Object);                                                               | Removes every signature-erased multicast binding for an object.                                                  |
+ * |                                                                                                      | @param Object UObject whose bindings are removed.                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UDelegateFunction Signature = __DelegateSignature(?& Delegate);                                      | Returns the reflected signature for an arbitrary delegate value.                                                 |
+ * |                                                                                                      | @param Delegate Single-cast or multicast delegate whose signature is queried.                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 inline static FString CreateAngelscriptNameForDelegate(UDelegateFunction* Function)
 {
@@ -53,286 +160,6 @@ struct FDelegateOps
 
 // From Bind_BlueprintEvent.cpp
 extern void BindDelegateEvent(FAngelscriptBinds& Delegate_, UFunction* Function, bool bIsMulticast, bool bIsSparse);
-
-struct FScriptDelegateType : TAngelscriptCppType<FScriptDelegate>
-{
-	FString Name;
-	UDelegateFunction* Function;
-	const FAngelscriptBindDatabase* BindDatabase;
-
-	FScriptDelegateType(
-		const FString& InName,
-		UDelegateFunction* InFunction,
-		const FAngelscriptBindDatabase& InBindDatabase)
-		: Name(InName)
-		, Function(InFunction)
-		, BindDatabase(&InBindDatabase)
-	{
-	}
-
-	explicit FScriptDelegateType(const FAngelscriptBindDatabase& InBindDatabase)
-		: Name(TEXT("_FScriptDelegate"))
-		, Function(nullptr)
-		, BindDatabase(&InBindDatabase)
-	{}
-
-	FORCEINLINE UDelegateFunction* GetSignature(const FAngelscriptTypeUsage& Usage) const
-	{
-		if (Function != nullptr)
-			return Function;
-		check(Usage.ScriptClass != nullptr);
-		void* UserData = Usage.ScriptClass->GetUserData();
-		check(UserData != FAngelscriptType::TAG_UserData_Delegate);
-		check(UserData != FAngelscriptType::TAG_UserData_Multicast_Delegate);
-		return (UDelegateFunction*)UserData;
-	}
-
-	FORCEINLINE UDelegateFunction* GetSignatureMaybeTagged(const FAngelscriptTypeUsage& Usage) const
-	{
-		if (Function != nullptr)
-			return Function;
-		check(Usage.ScriptClass != nullptr);
-		void* UserData = Usage.ScriptClass->GetUserData();
-		if (UserData == FAngelscriptType::TAG_UserData_Delegate)
-			return nullptr;
-		if (UserData == FAngelscriptType::TAG_UserData_Multicast_Delegate)
-			return nullptr;
-		return (UDelegateFunction*)UserData;
-	}
-
-	bool IsTypeEquivalent(const FAngelscriptTypeUsage& Usage, const FAngelscriptTypeUsage& Other) const override
-	{
-		// C++ delegates have individual type instances, so we don't need to check this
-		if (Function != nullptr)
-			return true;
-
-		// If the scriptclass is identical we don't need to check it
-		if (Usage.ScriptClass == Other.ScriptClass)
-			return true;
-
-		// Shouldn't happen, safety check
-		if (Usage.ScriptClass == nullptr || Other.ScriptClass == nullptr)
-			return false;
-
-		// Compare script delegates by name, because we are likely comparing for changes during a compile
-		if (((asCObjectType*)Usage.ScriptClass)->name == ((asCObjectType*)Other.ScriptClass)->name)
-			return true;
-
-		return false;
-	}
-
-	void* GetData() const override
-	{
-		return Function;
-	}
-
-	FString GetAngelscriptTypeName() const override
-	{
-		return Name;
-	}
-
-	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return true;
-	}
-
-	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
-	{
-		auto* Prop = new FDelegateProperty(Params.Outer, Params.PropertyName);
-		Prop->SignatureFunction = GetSignature(Usage);
-		return Prop;
-	}
-
-	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return true;
-	}
-
-	void SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FArgData& Data) const override
-	{
-		FScriptDelegate* ValuePtr = (FScriptDelegate*)Data.StackPtr;
-		new(ValuePtr) FScriptDelegate();
-
-		if (Usage.bIsReference)
-		{
-			FScriptDelegate& ObjRef = Stack.StepCompiledInRef<FDelegateProperty, FScriptDelegate>(ValuePtr);
-			Context->SetArgAddress(ArgumentIndex, &ObjRef);
-		}
-		else
-		{
-			Stack.StepCompiledIn<FDelegateProperty>(ValuePtr);
-			Context->SetArgObject(ArgumentIndex, ValuePtr);
-		}
-	}
-
-	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return !Usage.bIsReference;
-	}
-
-	void GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const override
-	{
-		void* ReturnedObject = Context->GetReturnObject();
-		if (ReturnedObject == nullptr)
-			return;
-		*(FScriptDelegate*)Destination = *(FScriptDelegate*)ReturnedObject;
-	}
-
-	bool CanQueryPropertyType() const override
-	{
-		return false;
-	}
-
-	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		auto* DelegateProp = CastField<FDelegateProperty>(Property);
-		if (DelegateProp == nullptr)
-			return false;
-		auto* Signature = GetSignatureMaybeTagged(Usage);
-		if (Signature != nullptr)
-		{
-			return DelegateProp->SignatureFunction == Signature;
-		}
-		else
-		{
-			check(Usage.ScriptClass != nullptr);
-			FString CheckName = ANSI_TO_TCHAR(Usage.ScriptClass->GetName());
-			return DelegateProp->SignatureFunction->GetFName().GetPlainNameString() == CheckName;
-		}
-	}
-
-	bool DefaultValue_AngelscriptFallback(const FAngelscriptTypeUsage& Usage, FString& OutAngelscriptValue) const
-	{
-		OutAngelscriptValue = Name + TEXT("()");
-		return true;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		if (Function == nullptr)
-		{
-			OutCppForm.bNativeCannotBeGeneric = true;
-			OutCppForm.TemplateObjectForm = TEXT("FScriptDelegate");
-			return true;
-		}
-
-		OutCppForm.CppType = CreateCppNameForDelegate(Function);
-		FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Function, *BindDatabase);
-		if (HeaderPath.Len() != 0 && !HeaderPath.Contains(TEXT("NoExportTypes.h")))
-		{
-			OutCppForm.CppHeader = FString::Printf(TEXT("#include \"%s\""), *HeaderPath);
-		}
-		OutCppForm.bNativeCannotBeGeneric = true;
-		OutCppForm.TemplateObjectForm = TEXT("FScriptDelegate");
-		return true;
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		FScriptDelegate& Delegate = Usage.ResolvePrimitive<FScriptDelegate>(Address);
-
-		if (Function != nullptr)
-			Value.Type = Name;
-		else if(Usage.ScriptClass != nullptr)
-			Value.Type = ANSI_TO_TCHAR(Usage.ScriptClass->GetName());
-
-		Value.Usage = Usage;
-		Value.Address = Address;
-		Value.SetAddressToMonitor(&Delegate, sizeof(Delegate));
-
-		if (Delegate.IsBound())
-		{
-			UObject* Object = Delegate.GetUObject();
-			FName FunctionName = Delegate.GetFunctionName();
-
-			Value.bHasMembers = true;
-			Value.Value = FString::Printf(TEXT("Bound to %s.%s"),
-				*GetNameSafe(Object),
-				*FunctionName.ToString()
-			);
-		}
-		else
-		{
-			Value.bHasMembers = false;
-			Value.Value = TEXT("Unbound");
-		}
-
-		return true;
-	}
-
-	bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override
-	{
-		FScriptDelegate& Delegate = Usage.ResolvePrimitive<FScriptDelegate>(Address);
-		if (!Delegate.IsBound())
-			return false;
-
-		UObject* Object = Delegate.GetUObject();
-		FName FunctionName = Delegate.GetFunctionName();
-
-		FAngelscriptTypeUsage ObjectUsage(FAngelscriptType::GetByClass(UObject::StaticClass()));
-		if (ObjectUsage.IsValid())
-		{
-			FDebuggerValue ObjectValue;
-			const UObject*& ObjectRef = ObjectValue.AllocatePODLiteral<const UObject*>();
-			ObjectRef = Object;
-
-			ObjectValue.Name = TEXT("Object");
-			ObjectValue.Usage = ObjectUsage;
-			ObjectValue.Address = &ObjectRef;
-			ObjectUsage.GetDebuggerValue(&ObjectRef, ObjectValue);
-			Scope.Values.Add(MoveTemp(ObjectValue));
-		}
-
-		FDebuggerValue NameValue;
-		NameValue.Name = TEXT("Function");
-		NameValue.Type = TEXT("FName");
-		NameValue.Value = FString::Printf(TEXT("n\"%s\""), *FunctionName.ToString());
-		Scope.Values.Add(MoveTemp(NameValue));
-
-		return true;
-	}
-
-	bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override
-	{
-		FScriptDelegate& Delegate = Usage.ResolvePrimitive<FScriptDelegate>(Address);
-		if (!Delegate.IsBound())
-			return false;
-
-		if (Member == TEXT("Object"))
-		{
-			UObject* Object = Delegate.GetUObject();
-			Value.Name = TEXT("Object");
-
-			const UObject*& ObjectRef = Value.AllocatePODLiteral<const UObject*>();
-			ObjectRef = Object;
-
-			FAngelscriptTypeUsage ObjectUsage(FAngelscriptType::GetByClass(UObject::StaticClass()));
-			if (ObjectUsage.IsValid())
-			{
-				Value.Usage = ObjectUsage;
-				Value.Address = &ObjectRef;
-				ObjectUsage.GetDebuggerValue(&ObjectRef, Value);
-			}
-			else
-			{
-				Value.Type = TEXT("UObject");
-				Value.Value = GetNameSafe(Object);
-			}
-
-			return true;
-		}
-		else if (Member == TEXT("Function"))
-		{
-			FName FunctionName = Delegate.GetFunctionName();
-			Value.Name = TEXT("Function");
-			Value.Type = TEXT("FName");
-			Value.Value = FString::Printf(TEXT("n\"%s\""), *FunctionName.ToString());
-			return true;
-		}
-
-		return false;
-	}
-};
 
 bool CheckAngelscriptPropertyCompatibility(const FProperty* A, const FProperty* B)
 {
@@ -637,393 +464,7 @@ void DeclareDelegateOperations(FAngelscriptBinds& Binds, UDelegateFunction* Func
 	BindDelegateEvent(Delegate_, Function, false, false);
 }
 
-struct FMulticastScriptDelegateType : TAngelscriptCppType<FMulticastScriptDelegate>
-{
-	FString Name;
-	UDelegateFunction* Function;
-	const FAngelscriptBindDatabase* BindDatabase;
 
-	FMulticastScriptDelegateType(
-		const FString& InName,
-		UDelegateFunction* InFunction,
-		const FAngelscriptBindDatabase& InBindDatabase)
-		: Name(InName)
-		, Function(InFunction)
-		, BindDatabase(&InBindDatabase)
-	{
-	}
-
-	explicit FMulticastScriptDelegateType(const FAngelscriptBindDatabase& InBindDatabase)
-		: Name(TEXT("_FMulticastScriptDelegate"))
-		, Function(nullptr)
-		, BindDatabase(&InBindDatabase)
-	{}
-
-	FORCEINLINE UDelegateFunction* GetSignature(const FAngelscriptTypeUsage& Usage) const
-	{
-		if (Function != nullptr)
-			return Function;
-		check(Usage.ScriptClass != nullptr);
-		void* UserData = Usage.ScriptClass->GetUserData();
-		check(UserData != FAngelscriptType::TAG_UserData_Delegate);
-		check(UserData != FAngelscriptType::TAG_UserData_Multicast_Delegate);
-		return (UDelegateFunction*)UserData;
-	}
-
-	FORCEINLINE UDelegateFunction* GetSignatureMaybeTagged(const FAngelscriptTypeUsage& Usage) const
-	{
-		if (Function != nullptr)
-			return Function;
-		check(Usage.ScriptClass != nullptr);
-		void* UserData = Usage.ScriptClass->GetUserData();
-		if (UserData == FAngelscriptType::TAG_UserData_Delegate)
-			return nullptr;
-		if (UserData == FAngelscriptType::TAG_UserData_Multicast_Delegate)
-			return nullptr;
-		return (UDelegateFunction*)UserData;
-	}
-
-	bool IsTypeEquivalent(const FAngelscriptTypeUsage& Usage, const FAngelscriptTypeUsage& Other) const override
-	{
-		// C++ delegates have individual type instances, so we don't need to check this
-		if (Function != nullptr)
-			return true;
-
-		// If the scriptclass is identical we don't need to check it
-		if (Usage.ScriptClass == Other.ScriptClass)
-			return true;
-
-		// Shouldn't happen, safety check
-		if (Usage.ScriptClass == nullptr || Other.ScriptClass == nullptr)
-			return false;
-
-		// Compare script delegates by name, because we are likely comparing for changes during a compile
-		if (((asCObjectType*)Usage.ScriptClass)->name == ((asCObjectType*)Other.ScriptClass)->name)
-			return true;
-
-		return false;
-	}
-
-	void* GetData() const override
-	{
-		return Function;
-	}
-
-	FString GetAngelscriptTypeName() const override
-	{
-		return Name;
-	}
-
-	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return true;
-	}
-
-	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
-	{
-		auto* Prop = new FMulticastInlineDelegateProperty(Params.Outer, Params.PropertyName);
-		Prop->SignatureFunction = GetSignature(Usage);
-		Prop->SetPropertyFlags(CPF_BlueprintAssignable | CPF_BlueprintCallable);
-		return Prop;
-	}
-
-	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return !Usage.bIsReference;
-	}
-
-	void SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FArgData& Data) const override
-	{
-		FMulticastScriptDelegate* ValuePtr = (FMulticastScriptDelegate*)Data.StackPtr;
-		new(ValuePtr) FMulticastScriptDelegate();
-
-		if (Usage.bIsReference)
-		{
-			FMulticastScriptDelegate& ObjRef = Stack.StepCompiledInRef<FMulticastInlineDelegateProperty, FMulticastScriptDelegate>(ValuePtr);
-			Context->SetArgAddress(ArgumentIndex, &ObjRef);
-		}
-		else
-		{
-			Stack.StepCompiledIn<FMulticastInlineDelegateProperty>(ValuePtr);
-			Context->SetArgObject(ArgumentIndex, ValuePtr);
-		}
-	}
-
-	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return !Usage.bIsReference;
-	}
-
-	void GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const override
-	{
-		void* ReturnedObject = Context->GetReturnObject();
-		if (ReturnedObject == nullptr)
-			return;
-		*(FMulticastScriptDelegate*)Destination = *(FMulticastScriptDelegate*)ReturnedObject;
-	}
-
-	bool CanQueryPropertyType() const override
-	{
-		return false;
-	}
-
-	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		auto* DelegateProp = CastField<FMulticastInlineDelegateProperty>(Property);
-		if (DelegateProp == nullptr)
-			return false;
-		auto* Signature = GetSignatureMaybeTagged(Usage);
-		if (Signature != nullptr)
-		{
-			return DelegateProp->SignatureFunction == Signature;
-		}
-		else
-		{
-			check(Usage.ScriptClass != nullptr);
-			FString CheckName = ANSI_TO_TCHAR(Usage.ScriptClass->GetName());
-			return DelegateProp->SignatureFunction->GetFName().GetPlainNameString() == CheckName;
-		}
-	}
-
-	bool DefaultValue_AngelscriptFallback(const FAngelscriptTypeUsage& Usage, FString& OutAngelscriptValue) const
-	{
-		OutAngelscriptValue = Name + TEXT("()");
-		return true;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		if (Function == nullptr)
-		{
-			OutCppForm.bNativeCannotBeGeneric = true;
-			OutCppForm.TemplateObjectForm = TEXT("FMulticastScriptDelegate");
-			return true;
-		}
-
-		OutCppForm.CppType = CreateCppNameForDelegate(Function);
-		FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Function, *BindDatabase);
-		if (HeaderPath.Len() != 0 && !HeaderPath.Contains(TEXT("NoExportTypes.h")))
-		{
-			OutCppForm.CppHeader = FString::Printf(TEXT("#include \"%s\""), *HeaderPath);
-		}
-		OutCppForm.bNativeCannotBeGeneric = true;
-		OutCppForm.TemplateObjectForm = TEXT("FMulticastScriptDelegate");
-		return true;
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		FMulticastScriptDelegate& Delegate = Usage.ResolvePrimitive<FMulticastScriptDelegate>(Address);
-
-		if (Function != nullptr)
-			Value.Type = Name;
-		else if(Usage.ScriptClass != nullptr)
-			Value.Type = ANSI_TO_TCHAR(Usage.ScriptClass->GetName());
-
-		Value.Usage = Usage;
-		Value.Usage.TypeIndex = 0;
-		Value.Address = Address;
-
-		if (Delegate.IsBound())
-		{
-			Value.bHasMembers = true;
-			Value.Value = FString::Printf(TEXT("Bound to %d object(s)"), Delegate.GetAllObjects().Num());
-		}
-		else
-		{
-			Value.bHasMembers = false;
-			Value.Value = TEXT("Unbound");
-		}
-
-		return true;
-	}
-
-	struct FMulticastScriptDelegateBinding
-	{
-		UObject* Object;
-		FString FunctionName;
-	};
-
-	bool GetBindings(const FMulticastScriptDelegate& Delegate, TArray<FMulticastScriptDelegateBinding>& OutBindings) const
-	{
-		if (!Delegate.IsBound())
-			return false;
-
-		const TArray<UObject*>& BoundObjects = Delegate.GetAllObjects();
-
-		if (BoundObjects.IsEmpty())
-			return false;
-
-		OutBindings.Reserve(BoundObjects.Num());
-
-		FString DelegateString = Delegate.ToString<UObject>();
-		if (DelegateString.IsEmpty())
-			return false;
-
-		// Remove [ and ]
-		DelegateString.MidInline(1, DelegateString.Len() - 2);
-
-		TArray<FString> Values;
-		DelegateString.ParseIntoArray(Values, TEXT(","));
-
-		if (Values.IsEmpty())
-			return false;
-
-		for (int32 i = 0; i < BoundObjects.Num(); i++)
-		{
-			if (BoundObjects[i] == nullptr)
-				continue;
-
-			FMulticastScriptDelegateBinding Binding;
-			Binding.Object = BoundObjects[i];
-
-			int32 FunctionNameStart = -1;
-			Values[i].FindLastChar('.', FunctionNameStart);
-
-			if (FunctionNameStart >= 0)
-			{
-				FString FunctionName = Values[i].Mid(FunctionNameStart + 1, Values[i].Len() - 1);
-				Binding.FunctionName = MoveTemp(FunctionName);
-			}
-
-			OutBindings.Add(Binding);
-		}
-
-		if (OutBindings.IsEmpty())
-			return false;
-
-		return true;
-	}
-
-	bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override
-	{
-		FMulticastScriptDelegate& Delegate = Usage.ResolvePrimitive<FMulticastScriptDelegate>(Address);
-
-		if (!Delegate.IsBound())
-			return false;
-
-		TArray<FMulticastScriptDelegateBinding> Bindings;
-		if (!GetBindings(Delegate, Bindings))
-			return false;
-
-		if (Usage.TypeIndex == 0)
-		{
-			for (int32 i = 0; i < Bindings.Num(); i++)
-			{
-				if (Bindings[i].Object == nullptr)
-					continue;
-
-				FDebuggerValue ElemValue;
-				ElemValue.Name = FString::Printf(TEXT("[%d]"), i);
-				ElemValue.Usage = Usage;
-				ElemValue.Usage.TypeIndex = i + 1;
-				ElemValue.Address = Address;
-				ElemValue.bHasMembers = true;
-
-				ElemValue.Value = FString::Printf(TEXT("%s.%s"), *Bindings[i].Object->GetName(), *Bindings[i].FunctionName);
-
-				Scope.Values.Add(MoveTemp(ElemValue));
-			}
-		}
-		else
-		{
-			int32 Index = Usage.TypeIndex - 1;
-
-			if (!Bindings.IsValidIndex(Index))
-				return false;
-
-			if (Bindings[Index].Object == nullptr)
-				return false;
-
-			FAngelscriptTypeUsage ObjectUsage(FAngelscriptType::GetByClass(UObject::StaticClass()));
-
-			FDebuggerValue ObjectValue;
-			const UObject*& ObjectRef = ObjectValue.AllocatePODLiteral<const UObject*>();
-			ObjectRef = Bindings[Index].Object;
-
-			ObjectValue.Name = TEXT("Object");
-			ObjectValue.Usage = ObjectUsage;
-			ObjectValue.Address = &ObjectRef;
-			ObjectUsage.GetDebuggerValue(&ObjectRef, ObjectValue);
-			Scope.Values.Add(MoveTemp(ObjectValue));
-
-			FDebuggerValue NameValue;
-			NameValue.Name = TEXT("Function");
-			NameValue.Type = TEXT("FName");
-			NameValue.Value = FString::Printf(TEXT("n\"%s\""), *Bindings[Index].FunctionName);
-			Scope.Values.Add(MoveTemp(NameValue));
-		}
-
-		return true;
-	}
-
-	bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override
-	{
-		FMulticastScriptDelegate& Delegate = Usage.ResolvePrimitive<FMulticastScriptDelegate>(Address);
-
-		FString DelegateString = Delegate.ToString<UObject>();
-
-		TArray<FMulticastScriptDelegateBinding> Bindings;
-		if (!GetBindings(Delegate, Bindings))
-			return false;
-
-		if (Usage.TypeIndex == 0)
-		{
-			if (Member.StartsWith(TEXT("[")) && Member.EndsWith(TEXT("]")))
-			{
-				int32 Index = -1;
-				LexFromString(Index, *Member.Mid(1, Member.Len() - 2));
-
-				if (!Bindings.IsValidIndex(Index))
-					return false;
-
-				if (Bindings[Index].Object == nullptr)
-					return false;
-
-				Value.Name = FString::Printf(TEXT("[%d]"), Index);
-				Value.Usage = Usage;
-				Value.Usage.TypeIndex = Index + 1;
-				Value.Address = Address;
-				Value.bHasMembers = true;
-				Value.Value = FString::Printf(TEXT("%s.%s"), *Bindings[Index].Object->GetName(), *Bindings[Index].FunctionName);
-				return true;
-			}
-		}
-		else
-		{
-			int32 Index = Usage.TypeIndex - 1;
-
-			if (!Bindings.IsValidIndex(Index))
-				return false;
-
-			if (Member == TEXT("Object"))
-			{
-				if (Bindings[Index].Object == nullptr)
-					return false;
-
-				FAngelscriptTypeUsage ObjectUsage(FAngelscriptType::GetByClass(UObject::StaticClass()));
-
-				const UObject*& ObjectRef = Value.AllocatePODLiteral<const UObject*>();
-				ObjectRef = Bindings[Index].Object;
-
-				Value.Name = TEXT("Object");
-				Value.Usage = ObjectUsage;
-				Value.Address = &ObjectRef;
-				ObjectUsage.GetDebuggerValue(&ObjectRef, Value);
-				return true;
-			}
-			else if (Member == TEXT("Function"))
-			{
-				Value.Name = TEXT("Function");
-				Value.Type = TEXT("FName");
-				Value.Value = FString::Printf(TEXT("n\"%s\""), *Bindings[Index].FunctionName);
-				return true;
-			}
-		}
-
-		return false;
-	}
-};
 
 void DeclareMulticastDelegate(FAngelscriptBinds& Binds, UDelegateFunction* Function)
 {
@@ -1139,98 +580,7 @@ void DeclareMulticastDelegateOperations(FAngelscriptBinds& Binds, UDelegateFunct
 	BindDelegateEvent(Delegate_, Function, true, false);
 }
 
-struct FScriptSparseDelegateType : public FAngelscriptType
-{
-	FString Name;
-	USparseDelegateFunction* Function;
 
-	FScriptSparseDelegateType(const FString& InName, USparseDelegateFunction* InFunction)
-		: Name(InName)
-		, Function(InFunction)
-	{
-	}
-
-	FScriptSparseDelegateType()
-		: Function(nullptr)
-	{}
-
-	FORCEINLINE USparseDelegateFunction* GetSignature(const FAngelscriptTypeUsage& Usage) const
-	{
-		if (Function != nullptr)
-			return Function;
-		check(Usage.ScriptClass != nullptr);
-		void* UserData = Usage.ScriptClass->GetUserData();
-		check(UserData != FAngelscriptType::TAG_UserData_Delegate);
-		check(UserData != FAngelscriptType::TAG_UserData_Multicast_Delegate);
-		return (USparseDelegateFunction*)UserData;
-	}
-
-	void* GetData() const override
-	{
-		return Function;
-	}
-
-	FString GetAngelscriptTypeName() const override
-	{
-		return Name;
-	}
-
-	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return true;
-	}
-
-	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
-	{
-		auto* Prop = new FMulticastSparseDelegateProperty(Params.Outer, Params.PropertyName);
-		Prop->SignatureFunction = GetSignature(Usage);
-		Prop->SetPropertyFlags(CPF_BlueprintAssignable | CPF_BlueprintCallable);
-		return Prop;
-	}
-
-	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return false;
-	}
-
-	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return false;
-	}
-
-	bool CanQueryPropertyType() const override
-	{
-		return false;
-	}
-
-	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		auto* DelegateProp = CastField<FMulticastSparseDelegateProperty>(Property);
-		if (DelegateProp == nullptr)
-			return false;
-		auto* Signature = GetSignature(Usage);
-		return DelegateProp->SignatureFunction == Signature;
-	}
-
-	bool CanCopy(const FAngelscriptTypeUsage& Usage) const override { return false; }
-	bool CanCompare(const FAngelscriptTypeUsage& Usage) const override { return false; }
-
-	bool CanConstruct(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	bool NeedConstruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
-
-	bool CanDestruct(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	bool NeedDestruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
-
-	int32 GetValueSize(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return sizeof(FSparseDelegate);
-	}
-
-	int32 GetValueAlignment(const FAngelscriptTypeUsage& Usage) const
-	{
-		return alignof(FSparseDelegate);
-	}
-};
 
 void DeclareSparseDelegate(FAngelscriptBinds& Binds, USparseDelegateFunction* Function)
 {

@@ -1,8 +1,29 @@
+#include "Bind_FLatentActionInfo.h"
+
 #include "AngelscriptBinds.h"
 
 #include "Engine/LatentActionManager.h"
 
-#include "Bind_FLatentActionInfo_Functions.h"
+/**
+ * FLatentActionInfo construction and fields.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FLatentActionInfo Info(int32 InLinkage,                                                              | Constructs latent callback routing information.                                                                  |
+ * |     int32 InUUID,                                                                                    | @param InLinkage Continuation link selected when the latent action completes.                                    |
+ * |     const FName InFunctionName,                                                                      | @param InUUID Identifier used to find or replace the latent action.                                              |
+ * |     UObject InCallbackTarget);                                                                       | @param InFunctionName Callback function invoked on completion.                                                   |
+ * |                                                                                                      | @param InCallbackTarget Object that receives the callback.                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int32 Info.Linkage;                                                                                  | Exposes the latent continuation linkage.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int32 Info.UUID;                                                                                     | Exposes the latent action identifier.                                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FName Info.ExecutionFunction;                                                                        | Exposes the callback function name.                                                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject unresolved_object Info.CallbackTarget;                                                       | Exposes the unresolved callback target.                                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

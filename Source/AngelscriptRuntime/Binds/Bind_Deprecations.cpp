@@ -4,6 +4,15 @@
 
 #if WITH_EDITOR
 
+/**
+ * Reflected deprecation contribution; this registrar adds metadata and declares no new callable.
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                              | Purpose / parameter notes                                                                                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | NiagaraComponent.SetNiagaraVariable*(...);                                               | Marks the legacy typed-name Niagara setters deprecated; use the corresponding SetVariable(FName, ...) APIs.        |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ */
+
 namespace DeprecationBind
 {
 	static const FName NAME_META_DeprecatedFunction("DeprecatedFunction");

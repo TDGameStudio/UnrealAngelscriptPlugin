@@ -1,21 +1,33 @@
+#include "Bind_FFormatArgumentValue.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_FFormatArgumentValue_Functions.h"
-#include "Helper_CppType.h"
-
-struct FFormatArgumentValueType : TAngelscriptCppType<FFormatArgumentValue>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FFormatArgumentValue");
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
+/**
+ * FFormatArgumentValue binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FFormatArgumentValue;                                                               | Declares the tagged value used as a localized FText format argument.                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value();                                                              | Constructs the default empty format argument.                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value(const int32 Value);                                             | Constructs a signed 32-bit numeric format argument.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value(const uint32 Value);                                            | Constructs an unsigned 32-bit numeric format argument.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value(const int64 Value);                                             | Constructs a signed 64-bit numeric format argument.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value(const uint64 Value);                                            | Constructs an unsigned 64-bit numeric format argument.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value(const float32 Value);                                           | Constructs a single-precision numeric format argument.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value(const float64 Value);                                           | Constructs a double-precision numeric format argument.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value(const FText& Value);                                            | Constructs a localized text format argument.                                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FFormatArgumentValue Value(ETextGender Value);                                             | Constructs a grammatical-gender format argument.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

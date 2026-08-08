@@ -1,8 +1,8 @@
+#include "Bind_Subsystems.h"
+
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 #include "AngelscriptType.h"
-#include "Bind_Subsystems_Functions.h"
-
 #include "Subsystems/EngineSubsystem.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Subsystems/LocalPlayerSubsystem.h"
@@ -13,6 +13,36 @@
 #if WITH_EDITOR
 #include "EditorSubsystem.h"
 #endif
+
+/**
+ * Subsystem lookup helpers and reflected native Get factories.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject USubsystemLibrary::GetEngineSubsystem(UClass Class);                                         | Returns the engine subsystem for the requested class.                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject USubsystemLibrary::GetGameInstanceSubsystem(UClass Class);                                   | Returns the current game-instance subsystem for the requested class.                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject USubsystemLibrary::GetLocalPlayerSubsystem(UClass Class);                                    | Returns the current local-player subsystem for the requested class.                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject USubsystemLibrary::GetWorldSubsystem(UClass Class);                                          | Returns the current world subsystem for the requested class.                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject USubsystemLibrary::GetLocalPlayerSubsystemFromLocalPlayer(ULocalPlayer LocalPlayer,          | Returns a local-player subsystem using an explicit local player.                                                 |
+ * |     UClass Class);                                                                                   |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UObject USubsystemLibrary::GetLocalPlayerSubsystemFromPlayerController(                              | Returns a local-player subsystem using an explicit player controller.                                            |
+ * |     APlayerController PlayerController,                                                              |                                                                                                                  |
+ * |     UClass Class);                                                                                   |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <NativeSubsystemType> <NativeSubsystemType>::Get();                                                  | Generated for each eligible native engine, game-instance, world, and editor subsystem. Editor forms are          |
+ * |                                                                                                      | available only to editor scripts.                                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <NativeLocalPlayerSubsystemType> <NativeLocalPlayerSubsystemType>::Get(ULocalPlayer LocalPlayer);    | Generated for each eligible native local-player subsystem.                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | <NativeLocalPlayerSubsystemType> <NativeLocalPlayerSubsystemType>::Get(                              | Generated player-controller overload for each eligible native local-player subsystem.                            |
+ * |     APlayerController LocalPlayer);                                                                  |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

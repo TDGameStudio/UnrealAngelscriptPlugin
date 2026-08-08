@@ -1,4 +1,4 @@
-#include "Bind_UPoseableMeshComponent_Functions.h"
+#include "Bind_UPoseableMeshComponent.h"
 
 #include "Components/PoseableMeshComponent.h"
 

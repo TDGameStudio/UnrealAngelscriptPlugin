@@ -1,4 +1,4 @@
-#include "Bind_FCpuProfilerTraceScoped_Functions.h"
+#include "Bind_FCpuProfilerTraceScoped.h"
 
 #include "FCpuProfilerTraceScoped.h"
 

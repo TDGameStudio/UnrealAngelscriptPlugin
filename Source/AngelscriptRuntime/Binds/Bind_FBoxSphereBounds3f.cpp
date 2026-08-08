@@ -1,31 +1,70 @@
+#include "Bind_FBoxSphereBounds3f.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Helper_StructType.h"
 #include "Helper_ToString.h"
 
-#include "Bind_FBoxSphereBounds3f_Functions.h"
+/**
+ * FBoxSphereBounds3f construction, fields, bounds operations, intersection tests, and formatting.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Bounds();                                                                         | Constructs zero-sized bounds at the origin.                                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Bounds(const FVector3f& InOrigin, const FVector3f& InBoxExtent,                   | Constructs bounds from center, positive box half-extents, and sphere radius.                                     |
+ * |     float32 InSphereRadius);                                                                         | @param InOrigin Center in the caller's coordinate space.                                                         |
+ * |                                                                                                      | @param InBoxExtent Positive half-size on each axis.                                                              |
+ * |                                                                                                      | @param InSphereRadius Radius in the same units as the origin.                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Bounds(const FBoxSphereBounds& Bounds64);                                         | Converts double-precision bounds to single precision.                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Bounds(const FBox3f& Box, const FSphere3f& Sphere);                               | Builds bounds enclosing both supplied primitives.                                                                |
+ * |                                                                                                      | @param Box Axis-aligned box in the same coordinate space.                                                        |
+ * |                                                                                                      | @param Sphere Sphere in the same coordinate space.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Bounds(const FBox3f& Box);                                                        | Builds box/sphere bounds from an axis-aligned box.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Bounds(const FSphere3f& Sphere);                                                  | Builds box/sphere bounds from a sphere.                                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Bounds(const TArray<FVector3f>& Points);                                          | Builds bounds enclosing all points.                                                                              |
+ * |                                                                                                      | @param Points Positions expressed in one coordinate space.                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FVector3f Bounds.Origin;                                                                             | Exposes the bounds center.                                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FVector3f Bounds.BoxExtent;                                                                          | Exposes positive axis-aligned box half-extents.                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | float32 Bounds.SphereRadius;                                                                         | Exposes the enclosing sphere radius.                                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Combined = Left + Right;                                                          | Returns bounds enclosing both operands.                                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = Left == Right;                                                                         | Compares origin, extents, and radius exactly.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | float32 DistanceSquared = Bounds.ComputeSquaredDistanceFromBoxToPoint(const FVector3f& Point) const; | Returns squared distance from the box to a point, in squared coordinate units.                                   |
+ * |                                                                                                      | @param Point Position in the bounds' coordinate space.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBox3f Box = Bounds.GetBox() const;                                                                  | Returns the represented axis-aligned box.                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FVector3f Corner = Bounds.GetBoxExtrema(uint32 Extrema) const;                                       | Returns the selected minimum or maximum box corner.                                                              |
+ * |                                                                                                      | @param Extrema Selects the lower or upper extrema using Unreal's bounds convention.                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSphere3f Sphere = Bounds.GetSphere() const;                                                         | Returns the represented enclosing sphere.                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Expanded = Bounds.ExpandBy(float32 ExpandAmount) const;                           | Expands box extents and sphere radius by a distance.                                                             |
+ * |                                                                                                      | @param ExpandAmount Signed distance in bounds units.                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FBoxSphereBounds3f Transformed = Bounds.TransformBy(const FTransform3f& M) const;                    | Transforms the bounds and recomputes conservative extents.                                                       |
+ * |                                                                                                      | @param M Transform from the current coordinate space to the destination space.                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bIntersects = FBoxSphereBounds3f::SpheresIntersect(const FBoxSphereBounds3f& A,                 | Tests the enclosing spheres with an additive distance tolerance.                                                 |
+ * |     const FBoxSphereBounds3f& B, float32 Tolerance = KINDA_SMALL_NUMBER);                            |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bIntersects = FBoxSphereBounds3f::BoxesIntersect(const FBoxSphereBounds3f& A,                   | Tests the axis-aligned boxes for overlap.                                                                        |
+ * |     const FBoxSphereBounds3f& B);                                                                    |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FString Text = f"{Bounds}";                                                                          | Formats origin, box extent, and sphere radius through the shared formatter.                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
-struct FGetBoxSphereBounds3f
-{
-	static UScriptStruct* Get();
-};
-
-UScriptStruct* FGetBoxSphereBounds3f::Get()
-{
-	static UScriptStruct* ScriptStruct = FindObject<UScriptStruct>(nullptr, TEXT("/Script/CoreUObject.BoxSphereBounds3f"));
-	return ScriptStruct;
-}
-
-struct FBoxSphereBounds3fType : TAngelscriptCoreStructType<FBoxSphereBounds3f, FGetBoxSphereBounds3f>
-{
-	FString GetAngelscriptTypeName() const override { return TEXT("FBoxSphereBounds3f"); }
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
 
 namespace
 {

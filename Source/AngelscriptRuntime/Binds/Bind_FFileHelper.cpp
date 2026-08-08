@@ -1,8 +1,36 @@
+#include "Bind_FFileHelper.h"
+
 #include "AngelscriptBinds.h"
 
 #include "Misc/FileHelper.h"
 
-#include "Bind_FFileHelper_Functions.h"
+/**
+ * FFileHelper option enums and file I/O helpers.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | enum EFileWrite { None, NoFail, NoReplaceExisting, EvenIfReadOnly, Append, AllowRead, Silent };      | Bit flags controlling file writes.                                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | enum EFileRead { None, NoFail, Silent, AllowWrite };                                                 | Bit flags controlling file reads.                                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | enum FFileHelper::EHashOptions { None, EnableVerify, ErrorMissingHash };                             | Controls hash verification while loading.                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | enum FFileHelper::EEncodingOptions { AutoDetect, ForceAnsi, ForceUnicode, ForceUTF8,                 | Selects the text encoding used when saving.                                                                      |
+ * |     ForceUTF8WithoutBOM };                                                                           |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool FFileHelper::LoadFileToString(FString& Result,                                                  | Loads an entire text file.                                                                                       |
+ * |     const FString& Filename,                                                                         | @param Result Receives the loaded text.                                                                          |
+ * |     FFileHelper::EHashOptions HashOptions = FFileHelper::EHashOptions::None,                         | @param Filename File to read.                                                                                    |
+ * |     uint32 ReadFlags = uint32(EFileRead::None));                                                     | @param HashOptions Optional hash-verification policy.                                                            |
+ * |                                                                                                      | @param ReadFlags EFileRead bit mask.                                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool FFileHelper::SaveStringToFile(const FString& String,                                            | Saves text to a file.                                                                                            |
+ * |     const FString& Filename,                                                                         | @param String Text to write.                                                                                     |
+ * |     FFileHelper::EEncodingOptions EncodingOptions = FFileHelper::EEncodingOptions::AutoDetect,       | @param Filename Destination file.                                                                                |
+ * |     uint32 WriteFlags = uint32(EFileWrite::None));                                                   | @param EncodingOptions Output encoding policy.                                                                   |
+ * |                                                                                                      | @param WriteFlags EFileWrite bit mask.                                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

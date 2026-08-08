@@ -1,4 +1,4 @@
-#include "Bind_TSoftObjectPtr_Functions.h"
+#include "Bind_TSoftObjectPtr.h"
 
 #include "AngelscriptEngine.h"
 #include "Components/ActorComponent.h"

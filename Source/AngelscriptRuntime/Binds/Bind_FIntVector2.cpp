@@ -1,39 +1,37 @@
+#include "Bind_FIntVector2.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Helper_StructType.h"
 #include "Helper_ToString.h"
 
-#include "Bind_FIntVector2_Functions.h"
+/**
+ * FIntVector2 construction, fields, assignment, indexing, equality, and formatting.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FIntVector2 Vector(int32 X, int32 Y);                                                                | Constructs from two integer components.                                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FIntVector2 Vector();                                                                                | Constructs the zero vector.                                                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FIntVector2 Vector(int32 F);                                                                         | Constructs with both components set to the same value.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FIntVector2 Vector(const FIntVector2& Other);                                                        | Copy-constructs a vector.                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int32 Vector.X;                                                                                      | Exposes X.                                                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int32 Vector.Y;                                                                                      | Exposes Y.                                                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Left = Right;                                                                                        | Assigns both components.                                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | const int32& Component = Vector[int32 Index];                                                        | Returns a component reference.                                                                                   |
+ * |                                                                                                      | @param Index Component index 0 or 1.                                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = Left == Right;                                                                         | Compares both components exactly.                                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FString Text = f"{Vector}";                                                                          | Formats both components through the shared formatter.                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
-struct FGetIntVector2
-{
-	static UScriptStruct* Get();
-};
-
-UScriptStruct* FGetIntVector2::Get()
-{
-	static UScriptStruct* ScriptStruct = FindObject<UScriptStruct>(nullptr, TEXT("/Script/CoreUObject.IntVector2"));
-	return ScriptStruct;
-}
-
-struct FIntVector2Type : TAngelscriptCoreStructType<FIntVector2, FGetIntVector2, false>
-{
-	FString GetAngelscriptTypeName() const override { return TEXT("FIntVector2"); }
-
-	void ConstructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override
-	{
-		new (DestinationPtr) FIntVector2(0);
-	}
-
-	bool NeedConstruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
-	bool NeedDestruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
 
 namespace
 {

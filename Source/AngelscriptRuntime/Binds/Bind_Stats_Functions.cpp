@@ -1,4 +1,4 @@
-#include "Bind_Stats_Functions.h"
+#include "Bind_Stats.h"
 
 #include "AngelscriptPerformanceStats.h"
 

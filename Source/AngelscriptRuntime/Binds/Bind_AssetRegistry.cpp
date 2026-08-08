@@ -1,6 +1,94 @@
+#include "Bind_AssetRegistry.h"
+
 #include "AngelscriptBinds.h"
-#include "Bind_AssetRegistry_Functions.h"
 #include "Helper_ToString.h"
+
+/**
+ * Asset data, top-level paths, registry queries, and formatter contribution.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FSoftObjectPath AssetData.GetSoftObjectPath() const;                                                 | Returns the asset object path.                                                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FString AssetData.GetObjectPathString() const;                                                       | Returns the object path as text.                                                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetData.IsInstanceOf(const UClass BaseClass, bool bResolveClass = false) const;               | Reports whether the asset class derives from BaseClass.                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FTopLevelAssetPath Path(const UObject AssetObject);                                                  | Constructs a top-level path from an object.                                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FTopLevelAssetPath Path(const FString& AssetPath);                                                   | Parses a top-level asset path.                                                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FTopLevelAssetPath Path(const FName& PackageName, const FName& AssetName);                           | Constructs from package and asset names.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Path.IsValid() const;                                                                           | Reports whether both path names are valid.                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Path.IsNull() const;                                                                            | Reports whether the path is null.                                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void Path.Reset();                                                                                   | Clears the path.                                                                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = Left == Right;                                                                         | Compares top-level asset paths.                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Path = AssetPath;                                                                                    | Assigns a parsed string path.                                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::IsLoadingAssets();                                                               | Reports whether initial asset discovery is active.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::HasAssets(const FName PackagePath, const bool bRecursive = false);               | Reports whether a package path contains assets.                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetAssetsByPackageName(FName PackageName,                                        | Finds assets in a package.                                                                                       |
+ * |     TArray<FAssetData>& OutAssetData,                                                                | @param OutAssetData Receives matching assets.                                                                    |
+ * |     bool bIncludeOnlyOnDiskAssets = false);                                                          |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetAssetsByPath(FName PackagePath,                                               | Finds assets below a package path.                                                                               |
+ * |     TArray<FAssetData>& OutAssetData,                                                                | @param OutAssetData Receives matching assets.                                                                    |
+ * |     bool bRecursive = false,                                                                         |                                                                                                                  |
+ * |     bool bIncludeOnlyOnDiskAssets = false);                                                          |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetAssetsByClass(const FTopLevelAssetPath& ClassPath,                            | Finds assets by class.                                                                                           |
+ * |     TArray<FAssetData>& OutAssetData,                                                                | @param OutAssetData Receives matching assets.                                                                    |
+ * |     bool bSearchSubClasses = false);                                                                 |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void AssetRegistry::GetBlueprintCDOsByParentClass(UClass Class, TArray<UObject>& OutAssets);         | Finds Blueprint CDOs derived from a class.                                                                       |
+ * |                                                                                                      | @param OutAssets Receives matching CDOs.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void AssetRegistry::GetWidgetBlueprintCDOsByParentClass(UClass Class, TArray<UObject>& OutAssets);   | Editor-only widget Blueprint variant.                                                                            |
+ * |                                                                                                      | @param OutAssets Receives matching CDOs.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetAssetsByTags(const TArray<FName>& AssetTags,                                  | Finds assets containing requested tags.                                                                          |
+ * |     TArray<FAssetData>& OutAssetData);                                                               | @param OutAssetData Receives matching assets.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FAssetData AssetRegistry::GetAssetByObjectPath(const FSoftObjectPath& ObjectPath,                    | Returns asset data for an object path.                                                                           |
+ * |     bool bIncludeOnlyOnDiskAssets = false);                                                          |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetAllAssets(TArray<FAssetData>& OutAssetData,                                   | Returns every known asset.                                                                                       |
+ * |     bool bIncludeOnlyOnDiskAssets = false);                                                          | @param OutAssetData Receives asset data.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetAssets(const FARFilter& Filter,                                               | Runs an asset-registry filter.                                                                                   |
+ * |     TArray<FAssetData>& OutAssetData,                                                                | @param OutAssetData Receives matching assets.                                                                    |
+ * |     bool bSkipARFilteredAssets = true);                                                              |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetDependencies(FName PackageName,                                               | Finds package dependencies.                                                                                      |
+ * |     const FAssetRegistryDependencyOptions& DependencyOptions,                                        | @param OutDependencies Receives dependency package names.                                                        |
+ * |     TArray<FName>& OutDependencies);                                                                 |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetReferencers(FName PackageName,                                                | Finds package referencers.                                                                                       |
+ * |     const FAssetRegistryDependencyOptions& ReferenceOptions,                                         | @param OutReferencers Receives referencing package names.                                                        |
+ * |     TArray<FName>& OutReferencers);                                                                  |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void AssetRegistry::GetDerivedClassNames(const TArray<FTopLevelAssetPath>& ClassNames,               | Expands derived class paths.                                                                                     |
+ * |     const TSet<FTopLevelAssetPath>& ExcludedClassNames,                                              | @param OutDerivedClassNames Receives derived classes.                                                            |
+ * |     TSet<FTopLevelAssetPath>&OutDerivedClassNames);                                                  |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool AssetRegistry::GetGeneratedClassName(const FAssetData& AssetData,                               | Reads a Blueprint generated-class path.                                                                          |
+ * |     FTopLevelAssetPath& OutGeneratedClassName);                                                      | @param OutGeneratedClassName Receives the generated class path.                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void AssetRegistry::AssetCreated(UObject NewAsset);                                                  | Notifies the registry that an asset was created.                                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void AssetRegistry::LoadAllBlueprintsUnderPath(FName PathToLoadFrom,                                 | Loads Blueprint assets below a path, optionally filtered by filename regex.                                      |
+ * |     FString OptionalFileIncludeRegex = "");                                                          |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FString Text = f"{Path}";                                                                            | Formats the top-level asset path through the shared formatter contribution.                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

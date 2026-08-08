@@ -1,4 +1,4 @@
-#include "Bind_FMath_Functions.h"
+#include "Bind_FMath.h"
 
 #include "AngelscriptEngine.h"
 #include "Kismet/KismetMathLibrary.h"

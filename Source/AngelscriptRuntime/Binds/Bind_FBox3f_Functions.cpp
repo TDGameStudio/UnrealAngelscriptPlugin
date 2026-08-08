@@ -1,4 +1,4 @@
-#include "Bind_FBox3f_Functions.h"
+#include "Bind_FBox3f.h"
 
 void FAngelscriptFBox3fBinds::ConstructDefault(FBox3f* Address)
 {

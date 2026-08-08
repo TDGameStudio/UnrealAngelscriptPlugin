@@ -1,4 +1,4 @@
-#include "Bind_FRandomStream_Functions.h"
+#include "Bind_FRandomStream.h"
 
 void FAngelscriptFRandomStreamBinds::ConstructDefault(FRandomStream* Address)
 {

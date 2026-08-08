@@ -1,11 +1,11 @@
+#include "Bind_TSoftObjectPtr.h"
+
 #include "CoreMinimal.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptType.h"
 #include "AngelscriptBindDatabase.h"
 #include "UObject/UnrealType.h"
 #include "Binds/Helper_StructType.h"
-
-#include "Bind_TSoftObjectPtr_Functions.h"
 
 #include "StartAngelscriptHeaders.h"
 //#include "as_context.h"
@@ -16,282 +16,106 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-struct FBaseSoftReferenceType : public TAngelscriptCppType<FSoftObjectPtr>
-{
-	explicit FBaseSoftReferenceType(const FAngelscriptBindDatabase& InBindDatabase)
-		: BindDatabase(&InBindDatabase)
-	{
-	}
-
-	const FAngelscriptBindDatabase* BindDatabase;
-
-	UClass* GetSubTypeClass(const FAngelscriptTypeUsage& Usage) const
-	{
-		if (Usage.SubTypes.Num() == 0)
-			return nullptr;
-		return Usage.SubTypes[0].GetClass();
-	}
-
-	virtual UClass* GetClassOfObject(const FAngelscriptTypeUsage& Usage) const
-	{
-		return nullptr;
-	}
-
-	bool DescribesCompleteType(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() >= 1 && Usage.SubTypes[0].IsValid();
-	}
-
-	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override
-	{
-		if (Usage.SubTypes.Num() == 0)
-			return false;
-
-		if (!Usage.SubTypes[0].IsValid())
-			return false;
-
-		// At analyze-time we don't have an actual UClass yet for script classes, so assume it will be created in time
-		if (Usage.SubTypes[0].Type->IsObjectPointer() && Usage.SubTypes[0].Type.Get() != this && Usage.SubTypes[0].ScriptClass != nullptr)
-			return true;
-
-		UClass* SubClass = Usage.SubTypes[0].GetClass();
-		if (SubClass == nullptr)
-			return false;
-
-		return true;
-	}
-
-	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	void SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FAngelscriptType::FArgData& Data) const override
-	{
-		FSoftObjectPtr* ValuePtr = (FSoftObjectPtr*)Data.StackPtr;
-		new(ValuePtr) FSoftObjectPtr();
-
-		if (Usage.bIsReference)
-		{
-			FSoftObjectPtr& ObjRef = Stack.StepCompiledInRef<FSoftObjectProperty, FSoftObjectPtr>(ValuePtr);
-			Context->SetArgAddress(ArgumentIndex, &ObjRef);
-		}
-		else
-		{
-			Stack.StepCompiledIn<FSoftObjectProperty>(ValuePtr);
-			Context->SetArgObject(ArgumentIndex, ValuePtr);
-		}
-	}
-
-	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return true;
-	}
-
-	void GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const override
-	{
-		if(Usage.bIsReference)
-		{
-			*(FSoftObjectPtr**)Destination = (FSoftObjectPtr*)Context->GetReturnAddress();
-		}
-		else
-		{
-			void* ReturnedObject = Context->GetReturnObject();
-			if (ReturnedObject == nullptr)
-				return;
-			*(FSoftObjectPtr*)Destination = *(FSoftObjectPtr*)ReturnedObject;
-		}
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		FSoftObjectPtr& SoftPtr = Usage.ResolvePrimitive<FSoftObjectPtr>(Address);
-
-		UObject* Object = SoftPtr.Get();
-		if (Object == nullptr)
-		{
-			Value.Value = FString::Printf(TEXT("{ Pending %s }"), *SoftPtr.ToString());
-			Value.Type = Usage.GetAngelscriptDeclaration();
-			Value.Usage = Usage;
-			Value.Address = Address;
-			Value.bHasMembers = false;
-			return true;
-		}
-
-		FAngelscriptTypeUsage ObjectUsage(FAngelscriptType::GetByClass(GetClassOfObject(Usage)));
-		if (ObjectUsage.IsValid())
-		{
-			const UObject*& ObjectRef = Value.AllocatePODLiteral<const UObject*>();
-			ObjectRef = Object;
-
-			if (ObjectUsage.GetDebuggerValue(&ObjectRef, Value))
-			{
-				Value.Type = Usage.GetAngelscriptDeclaration();
-				return true;
-			}
-		}
-
-		Value.Value = FString::Printf(TEXT("{ Object %s }"), *SoftPtr.ToString());
-		Value.Type = Usage.GetAngelscriptDeclaration();
-		Value.Usage = Usage;
-		Value.Address = Address;
-		Value.bHasMembers = false;
-		return true;
-	}
-
-	bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override
-	{
-		FSoftObjectPtr& SoftPtr = Usage.ResolvePrimitive<FSoftObjectPtr>(Address);
-
-		UObject* Object = SoftPtr.Get();
-		if (Object == nullptr)
-			return false;
-		
-		FAngelscriptTypeUsage ObjectUsage(FAngelscriptType::GetByClass(GetClassOfObject(Usage)));
-		if (ObjectUsage.IsValid())
-		{
-			if (ObjectUsage.GetDebuggerScope(&Object, Scope))
-				return true;
-		}
-
-		return false;
-	}
-
-	bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override
-	{
-		FSoftObjectPtr& SoftPtr = Usage.ResolvePrimitive<FSoftObjectPtr>(Address);
-
-		UObject* Object = SoftPtr.Get();
-		if (Object == nullptr)
-			return false;
-		
-		FAngelscriptTypeUsage ObjectUsage(FAngelscriptType::GetByClass(GetClassOfObject(Usage)));
-		if (ObjectUsage.IsValid())
-		{
-			if (ObjectUsage.GetDebuggerMember(&Object, Member, Value))
-				return true;
-		}
-
-		return false;
-	}
-};
-
-struct FSoftObjectPtrType : public FBaseSoftReferenceType
-{
-	explicit FSoftObjectPtrType(const FAngelscriptBindDatabase& InBindDatabase)
-		: FBaseSoftReferenceType(InBindDatabase)
-	{
-	}
-
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("TSoftObjectPtr");
-	}
-
-	virtual UClass* GetClassOfObject(const FAngelscriptTypeUsage& Usage) const
-	{
-		return GetSubTypeClass(Usage);
-	}
-
-	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FAngelscriptType::FPropertyParams& Params) const override
-	{
-		if (Usage.SubTypes.Num() == 0)
-			return nullptr;
-
-		auto* ObjectProp = new FSoftObjectProperty(Params.Outer, Params.PropertyName);
-		ObjectProp->PropertyClass = GetClassOfObject(Usage);
-
-		return ObjectProp;
-	}
-
-	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		const FSoftObjectProperty* ObjProp = CastField<FSoftObjectProperty>(Property);
-		if (ObjProp == nullptr)
-			return false;
-		return true;
-	}
-
-	bool CanQueryPropertyType() const override
-	{
-		return false;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		UClass* MetaClass = GetClassOfObject(Usage);
-		if (MetaClass != nullptr)
-		{
-			const FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(MetaClass, *BindDatabase);
-			if (!ClassHeaderPath.IsEmpty())
-			{
-				OutCppForm.CppType = FString::Printf(TEXT("TSoftObjectPtr<%s%s>"), MetaClass->GetPrefixCPP(), *MetaClass->GetName());
-				OutCppForm.CppHeader = FString::Printf(TEXT("#include \"%s\""), *ClassHeaderPath);
-			}
-		}
-
-		OutCppForm.CppGenericType = TEXT("TSoftObjectPtr<UObject>");
-		OutCppForm.TemplateObjectForm = TEXT("TSoftObjectPtr<UObject>");
-		return true;
-	}
-};
-
-struct FSoftClassPtrType : public FBaseSoftReferenceType
-{
-	explicit FSoftClassPtrType(const FAngelscriptBindDatabase& InBindDatabase)
-		: FBaseSoftReferenceType(InBindDatabase)
-	{
-	}
-
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("TSoftClassPtr");
-	}
-
-	virtual UClass* GetClassOfObject(const FAngelscriptTypeUsage& Usage) const
-	{
-		return UClass::StaticClass();
-	}
-
-	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FAngelscriptType::FPropertyParams& Params) const override
-	{
-		if (Usage.SubTypes.Num() == 0)
-			return nullptr;
-
-		auto* ClassProp = new FSoftClassProperty(Params.Outer, Params.PropertyName);
-		ClassProp->PropertyClass = UClass::StaticClass();
-		ClassProp->MetaClass = GetSubTypeClass(Usage);
-
-		return ClassProp;
-	}
-
-	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		const FSoftClassProperty* ClassProp = CastField<FSoftClassProperty>(Property);
-		if (ClassProp == nullptr)
-			return false;
-		return true;
-	}
-
-	bool CanQueryPropertyType() const override
-	{
-		return false;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		UClass* MetaClass = GetSubTypeClass(Usage);
-		if (MetaClass != nullptr)
-		{
-			const FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(MetaClass, *BindDatabase);
-			if (!ClassHeaderPath.IsEmpty())
-			{
-				OutCppForm.CppType = FString::Printf(TEXT("TSoftClassPtr<%s%s>"), MetaClass->GetPrefixCPP(), *MetaClass->GetName());
-				OutCppForm.CppHeader = FString::Printf(TEXT("#include \"%s\""), *ClassHeaderPath);
-			}
-		}
-
-		OutCppForm.CppGenericType = TEXT("TSoftClassPtr<UObject>");
-		OutCppForm.TemplateObjectForm = TEXT("TSoftClassPtr<UObject>");
-		return true;
-	}
-};
+/**
+ * Soft object and class reference binding surface.
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                                                  | Purpose / parameter notes                                                                                            |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftObjectPtr<T> ObjectRef;                                                                                                 | Declares a covariant soft reference to an object of type T.                                                          |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftClassPtr<T> ClassRef;                                                                                                   | Declares a covariant soft reference to a class derived from T.                                                       |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftObjectPtr<T> Value();                                                                                                   | Constructs a null soft object reference.                                                                             |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftObjectPtr<T> Value(const FSoftObjectPath& Path);                                                                        | Constructs a soft object reference from an unloaded asset path.                                                      |
+ * |                                                                                                                              | @param Path Asset path retained without forcing the object to load.                                                  |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftObjectPtr<T> Value(T Object);                                                                                           | Implicitly constructs a soft reference from a loaded object.                                                         |
+ * |                                                                                                                              | @param Object Loaded object used to establish the reference.                                                         |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftObjectPtr<T> Value(const TSoftObjectPtr<T>& Other);                                                                     | Copies another soft object reference.                                                                                |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FSoftObjectPath TSoftObjectPtr<T>.ToSoftObjectPath() const;                                                                  | Returns the reference as a soft object path.                                                                         |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString TSoftObjectPtr<T>.ToString() const;                                                                                  | Returns the reference's asset path string.                                                                           |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString TSoftObjectPtr<T>.GetLongPackageName() const;                                                                        | Returns the long package name portion of the asset path.                                                             |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString TSoftObjectPtr<T>.GetAssetName() const;                                                                              | Returns the asset name portion of the path.                                                                          |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TSoftObjectPtr<T>.IsValid() const;                                                                                      | Reports whether the referenced object is currently loaded and valid.                                                 |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TSoftObjectPtr<T>.IsPending() const;                                                                                    | Reports whether a non-null reference exists but its object is not loaded.                                            |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TSoftObjectPtr<T>.IsNull() const;                                                                                       | Reports whether the reference contains no asset path or object.                                                      |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TSoftObjectPtr<T>.Reset();                                                                                              | Clears the stored path and object reference.                                                                         |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ObjectRef = Path;                                                                                                            | Replaces the soft object reference with Path.                                                                        |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ObjectRef = Object;                                                                                                          | Replaces the soft reference with a loaded Object of type T.                                                          |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ObjectRef = Other;                                                                                                           | Copies another soft object reference.                                                                                |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = ObjectRef == Other;                                                                                            | Compares two soft object references by their referenced identity.                                                    |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = ObjectRef == Object;                                                                                           | Reports whether Object is the currently referenced loaded object.                                                    |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | T TSoftObjectPtr<T>.Get() const;                                                                                             | Returns the loaded object, or null without loading it.                                                               |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TSoftObjectPtr<T>.LoadAsync(FOnSoftObjectLoaded OnLoaded) const;                                                        | Requests asynchronous asset loading; an already-loaded asset may invoke the delegate immediately.                    |
+ * |                                                                                                                              | @param OnLoaded Called with the resolved object when loading completes.                                              |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | T TSoftObjectPtr<T>.EditorOnlyLoadSynchronous() const;                                                                       | Synchronously loads and returns the object in editor builds; unavailable for runtime gameplay.                       |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftClassPtr<T> Value();                                                                                                    | Constructs a null soft class reference.                                                                              |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftClassPtr<T> Value(const FSoftObjectPath& Path);                                                                         | Constructs a soft class reference from an unloaded class path.                                                       |
+ * |                                                                                                                              | @param Path Class asset path retained without forcing the class to load.                                             |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftClassPtr<T> Value(UClass Object);                                                                                       | Constructs a soft class reference from a loaded UClass.                                                              |
+ * |                                                                                                                              | @param Object Loaded class constrained to derive from T.                                                             |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftClassPtr<T> Value(const TSoftClassPtr<T>& Other);                                                                       | Copies another soft class reference.                                                                                 |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSoftClassPtr<T> Value(const TSubclassOf<T>& Other);                                                                         | Initializes the soft class reference from a typed class value.                                                       |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FSoftObjectPath TSoftClassPtr<T>.ToSoftObjectPath() const;                                                                   | Returns the class reference as a soft object path.                                                                   |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString TSoftClassPtr<T>.ToString() const;                                                                                   | Returns the class reference's asset path string.                                                                     |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString TSoftClassPtr<T>.GetLongPackageName() const;                                                                         | Returns the long package name portion of the class asset path.                                                       |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString TSoftClassPtr<T>.GetAssetName() const;                                                                               | Returns the class asset name portion of the path.                                                                    |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TSoftClassPtr<T>.IsValid() const;                                                                                       | Reports whether the referenced class is currently loaded and valid.                                                  |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TSoftClassPtr<T>.IsPending() const;                                                                                     | Reports whether a non-null class reference exists but is not loaded.                                                 |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TSoftClassPtr<T>.IsNull() const;                                                                                        | Reports whether the class reference contains no path or class.                                                       |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TSoftClassPtr<T>.Reset();                                                                                               | Clears the stored class path and reference.                                                                          |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ClassRef = Path;                                                                                                             | Replaces the soft class reference with Path.                                                                         |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ClassRef = Object;                                                                                                           | Replaces the soft class reference with a loaded UClass derived from T.                                               |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ClassRef = OtherClassRef;                                                                                                    | Copies another soft class reference.                                                                                 |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ClassRef = Subclass;                                                                                                         | Copies a TSubclassOf<T> class value.                                                                                 |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = ClassRef == OtherClassRef;                                                                                     | Compares against another soft class reference by class identity.                                                     |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = ClassRef == Subclass;                                                                                          | Compares against a TSubclassOf<T> value by class identity.                                                           |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = ClassRef == Object;                                                                                            | Reports whether Object is the currently referenced loaded class.                                                     |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TSubclassOf<T> TSoftClassPtr<T>.Get() const;                                                                                 | Returns the loaded class as TSubclassOf<T>, or null without loading it.                                              |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TSoftClassPtr<T>.LoadAsync(FOnSoftClassLoaded OnLoaded) const;                                                          | Requests asynchronous class loading; an already-loaded class may invoke the delegate immediately.                    |
+ * |                                                                                                                              | @param OnLoaded Called with the resolved class when loading completes.                                               |
+ * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

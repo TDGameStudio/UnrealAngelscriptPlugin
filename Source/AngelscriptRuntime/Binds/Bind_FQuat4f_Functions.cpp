@@ -1,4 +1,4 @@
-#include "Bind_FQuat4f_Functions.h"
+#include "Bind_FQuat4f.h"
 
 void FAngelscriptFQuat4fBinds::ConstructDefault(FQuat4f* Address)
 {

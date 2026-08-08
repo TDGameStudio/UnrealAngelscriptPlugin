@@ -1,8 +1,44 @@
+#include "Bind_FInstancedStruct.h"
+
 #include "AngelscriptBinds.h"
 
 #include "StructUtils/InstancedStruct.h"
 
-#include "Bind_FInstancedStruct_Functions.h"
+/**
+ * FInstancedStruct conversion, access, and construction helpers.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FAngelscriptAnyStructParameter Parameter(const ?&in Struct);                                         | Implicitly wraps any struct argument.                                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FAngelscriptAnyStructParameter Parameter(const FInstancedStruct& Struct);                            | Implicitly wraps an existing instanced struct.                                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = Left == Right;                                                                         | Deep-compares the contained struct type and value.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void InstancedStruct.InitializeAs(const ?&in Struct);                                                | Initializes from a concrete struct value.                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void InstancedStruct.InitializeAs(const UScriptStruct StructType);                                   | Default-initializes storage for the requested struct type.                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | const FScriptStructWildcard& InstancedStruct.Get(const UScriptStruct StructType) const;              | Returns a typed const reference and throws on a type mismatch.                                                   |
+ * |                                                                                                      | @param StructType Determines the returned wildcard reference type.                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FScriptStructWildcard& InstancedStruct.GetMutable(const UScriptStruct StructType);                   | Returns a typed mutable reference and throws on a type mismatch.                                                 |
+ * |                                                                                                      | @param StructType Determines the returned wildcard reference type.                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void InstancedStruct.Get(?&out Struct) const;                                                        | Deprecated copying getter; use Get or GetMutable.                                                                |
+ * |                                                                                                      | @param Struct Receives a copy of the contained value.                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void InstancedStruct.Reset();                                                                        | Clears the contained struct.                                                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool InstancedStruct.Contains(const UScriptStruct StructType) const;                                 | Reports whether the value contains the requested struct type.                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool InstancedStruct.IsValid() const;                                                                | Reports whether a struct value is present.                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | UScriptStruct InstancedStruct.GetScriptStruct() const;                                               | Returns the contained script-struct type.                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FInstancedStruct FInstancedStruct::Make(const ?&in Struct);                                          | Creates an instanced struct from a concrete struct value.                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

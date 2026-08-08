@@ -1,6 +1,18 @@
+#include "Bind_FCommandLine.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_FCommandLine_Functions.h"
+/**
+ * Process command-line helpers.
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                              | Purpose / parameter notes                                                                                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | FString FCommandLine::Get();                                                             | Returns the process command line.                                                                                  |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | void FCommandLine::Parse(const FString& CommandLine, TArray<FString>&out Tokens,         | Splits a command line into positional tokens and switches.                                                         |
+ * | TArray<FString>&out Switches);                                                           | @param CommandLine Text to parse. @param Tokens Positional results. @param Switches Switch results.                |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

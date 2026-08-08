@@ -1,25 +1,47 @@
+#include "Bind_FNumberFormattingOptions.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Helper_CppType.h"
-
-#include "Bind_FNumberFormattingOptions_Functions.h"
+/**
+ * FNumberFormattingOptions binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FNumberFormattingOptions;                                                           | Declares the value type used to configure localized number formatting.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FNumberFormattingOptions Options();                                                        | Constructs options initialized to the engine defaults.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FNumberFormattingOptions& FNumberFormattingOptions.SetAlwaysSign(bool InValue);            | Sets whether positive values include an explicit sign.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FNumberFormattingOptions& FNumberFormattingOptions.SetUseGrouping(bool InValue);           | Sets whether integral digits use grouping separators.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FNumberFormattingOptions& FNumberFormattingOptions.SetRoundingMode(ERoundingMode InValue); | Sets the rounding mode.                                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FNumberFormattingOptions& FNumberFormattingOptions.SetMinimumIntegralDigits(               | Sets the minimum number of integral digits.                                                                          |
+ * |     int32 InValue);                                                                        |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FNumberFormattingOptions& FNumberFormattingOptions.SetMaximumIntegralDigits(               | Sets the maximum number of integral digits.                                                                          |
+ * |     int32 InValue);                                                                        |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FNumberFormattingOptions& FNumberFormattingOptions.SetMinimumFractionalDigits(             | Sets the minimum number of fractional digits.                                                                        |
+ * |     int32 InValue);                                                                        |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FNumberFormattingOptions& FNumberFormattingOptions.SetMaximumFractionalDigits(             | Sets the maximum number of fractional digits.                                                                        |
+ * |     int32 InValue);                                                                        |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | uint32 FNumberFormattingOptions.GetTypeHash() const;                                       | Returns a hash for these options.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FNumberFormattingOptions.IsIdentical(                                                 | Returns whether every formatting option matches Other.                                                               |
+ * |     const FNumberFormattingOptions& Other) const;                                          |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FNumberFormattingOptions& FNumberFormattingOptions::DefaultWithGrouping();           | Returns the shared default options with digit grouping enabled.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FNumberFormattingOptions& FNumberFormattingOptions::DefaultNoGrouping();             | Returns the shared default options with digit grouping disabled.                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {
-	struct FNumberFormattingOptionsType : TAngelscriptCppType<FNumberFormattingOptions>
-	{
-		FString GetAngelscriptTypeName() const override
-		{
-			return TEXT("FNumberFormattingOptions");
-		}
-
-		bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-		{
-			OutCppForm.CppType = GetAngelscriptTypeName();
-			return true;
-		}
-	};
-
 	void BindFNumberFormattingOptionsType(FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;

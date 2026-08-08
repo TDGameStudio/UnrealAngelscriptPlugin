@@ -1,4 +1,4 @@
-#include "Bind_FVector2D_Functions.h"
+#include "Bind_FVector2D.h"
 
 void FAngelscriptFVector2DBinds::Construct(FVector2D* Address, const double X, const double Y)
 {

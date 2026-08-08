@@ -1,4 +1,4 @@
-#include "Bind_FCollisionShape_Functions.h"
+#include "Bind_FCollisionShape.h"
 
 void FAngelscriptFCollisionShapeBinds::ConstructDefault(FCollisionShape* Address)
 {

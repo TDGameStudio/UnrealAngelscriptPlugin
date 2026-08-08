@@ -15,304 +15,40 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-struct ANGELSCRIPTRUNTIME_API FAngelscriptOptionalType final : FAngelscriptType
-{
-	virtual FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("TOptional");
-	}
-
-	virtual bool CanQueryPropertyType() const override { return false; }
-	virtual bool CanBeTemplateSubType() const override { return false; }
-	virtual bool RequiresProperty(const FAngelscriptTypeUsage& Usage) const override { return false; }
-
-	virtual bool HasReferences(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() == 1 && Usage.SubTypes[0].HasReferences();
-	}
-
-	void EmitReferenceInfo(const FAngelscriptTypeUsage& Usage, FGCReferenceParams& Params) const 
-	{
-		check(HasReferences(Usage));
-
-		UE::GC::FSchemaBuilder InnerSchema(Usage.SubTypes[0].GetValueSize());
-		{
-			FGCReferenceParams InnerParams = Params;
-			InnerParams.AtOffset = 0;
-			InnerParams.Schema = &InnerSchema;
-			Usage.SubTypes[0].EmitReferenceInfo(InnerParams);
-		}
-		Params.Schema->Add(DeclareMember(Params.Names.Top(), Params.AtOffset, UE::GC::EMemberType::Optional, InnerSchema.Build()));
-	}
-
-	virtual bool CanCopy(const FAngelscriptTypeUsage& Usage) const override
-	{
-    	return Usage.SubTypes.Num() == 1 && Usage.SubTypes[0].CanCopy()
-			&& Usage.SubTypes[0].CanConstruct() && Usage.SubTypes[0].CanDestruct();
-    }
-
-	virtual bool CanCompare(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() == 1 && Usage.SubTypes[0].CanCompare();
-	}
-
-	virtual bool IsValueEqual(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const override
-	{
-		const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-		check(SubType.CanCompare());
-
-		FOptionalOperations Ops(SubType);
-		FAngelscriptOptional& SourceOptional = *static_cast<FAngelscriptOptional*>(SourcePtr);
-		FAngelscriptOptional& DestinationOptional = *static_cast<FAngelscriptOptional*>(DestinationPtr);
-
-		const bool bSourceSet = Ops.IsSet(SourceOptional);
-		const bool bDestinationSet = Ops.IsSet(DestinationOptional);
-		if (bSourceSet != bDestinationSet)
-		{
-			return false;
-		}
-
-		if (!bSourceSet)
-		{
-			return true;
-		}
-
-		return SubType.IsValueEqual(Ops.GetValuePtr(SourceOptional), Ops.GetValuePtr(DestinationOptional));
-	}
-
-	virtual bool NeedCopy(const FAngelscriptTypeUsage& Usage) const override { return true; }
-
-	virtual void CopyValue(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const override
-	{
-		int32 ElementSize = Usage.SubTypes[0].GetValueSize();
-		if (*(bool*)((SIZE_T)SourcePtr + ElementSize))
-		{
-			if (!*(bool*)((SIZE_T)DestinationPtr + ElementSize))
-			{
-				Usage.SubTypes[0].ConstructValue(DestinationPtr);
-				*(bool*)((SIZE_T)DestinationPtr + ElementSize) = true;
-			}
-
-			Usage.SubTypes[0].CopyValue(SourcePtr, DestinationPtr);
-		}
-		else
-		{
-			if (*(bool*)((SIZE_T)DestinationPtr + ElementSize))
-			{
-				Usage.SubTypes[0].DestructValue(DestinationPtr);
-				*(bool*)((SIZE_T)DestinationPtr + ElementSize) = false;
-			}
-		}
-	}
-
-	virtual bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override
-	{
-		if (Usage.SubTypes.Num() != 1)
-			return false;
-		return Usage.SubTypes[0].CanCreateProperty();
-	}
-
-	virtual FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
-	{
-		auto* OptionalProp = new FOptionalProperty(Params.Outer, Params.PropertyName);
-
-		FPropertyParams InnerParams = Params;
-		InnerParams.Outer = OptionalProp;
-		InnerParams.PropertyName = *(Params.PropertyName.ToString() + TEXT("_Inner"));
-
-		OptionalProp->SetValueProperty(Usage.SubTypes[0].CreateProperty(InnerParams));
-
-		return OptionalProp;
-	}
-
-	virtual bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		if (Usage.SubTypes.Num() != 1)
-			return false;
-
-		const FOptionalProperty* OptionalProp = CastField<FOptionalProperty>(Property);
-		if (OptionalProp == nullptr)
-			return false;
-
-		return Usage.SubTypes[0].MatchesProperty(OptionalProp->GetValueProperty(), FAngelscriptType::EPropertyMatchType::InContainer);
-	}
-
-	virtual bool CanConstruct(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() == 1;
-	}
-
-	virtual bool NeedConstruct(const FAngelscriptTypeUsage& Usage) const override { return true; }
-
-	virtual void ConstructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override
-	{
-		int32 ElementSize = Usage.SubTypes[0].GetValueSize();
-		*(bool*)((SIZE_T)DestinationPtr + ElementSize) = false;
-	}
-
-	virtual bool CanDestruct(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() == 1 && Usage.SubTypes[0].CanDestruct();
-	}
-
-	virtual bool NeedDestruct(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes[0].NeedDestruct();
-	}
-
-	virtual void DestructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override
-	{
-		int32 ElementSize = Usage.SubTypes[0].GetValueSize();
-		if (*(bool*)((SIZE_T)DestinationPtr + ElementSize))
-			Usage.SubTypes[0].DestructValue(DestinationPtr);
-	}
-
-	virtual int32 GetValueSize(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Align(Usage.SubTypes[0].GetValueSize() + 1, Usage.SubTypes[0].GetValueAlignment());
-	}
-
-	virtual int32 GetValueAlignment(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes[0].GetValueAlignment();
-	}
-
-	virtual bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override { return false; }
-
-	virtual void SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FArgData& Data) const override
-	{
-		check(false);
-	}
-
-	virtual bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override { return true; }
-
-	virtual void GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const override
-	{
-		if (Usage.bIsReference)
-		{
-			*static_cast<void**>(Destination) = Context->GetReturnAddress();
-		}
-		else
-		{
-			if (void* ReturnedObject = Context->GetReturnObject())
-			{
-				CopyValue(Usage, ReturnedObject, Destination);
-			}
-		}
-	}
-
-	virtual bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		if (Usage.SubTypes.Num() != 1)
-		{
-			return false;
-		}
-
-		const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-		FAngelscriptOptional& Optional = Usage.ResolvePrimitive<FAngelscriptOptional>(Address);
-
-		FOptionalOperations Ops(SubType);
-
-		Value.Usage = Usage;
-		Value.Address = Address;
-		Value.bHasMembers = true;
-		Value.Type = Usage.GetAngelscriptDeclaration();
-
-		if (Ops.IsSet(Optional))
-		{
-			FDebuggerValue InnerValue;
-			if (SubType.GetDebuggerValue(Ops.GetValuePtr(Optional), InnerValue))
-			{
-				Value.Value = TEXT("Set: ");
-				Value.Value += InnerValue.Value;
-			}
-			else
-			{
-				Value.Value = TEXT("Set");
-			}
-		}
-		else
-		{
-			Value.Value = TEXT("Unset");
-		}
-
-		return true;
-	}
-
-	virtual bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override
-	{
-		if (Usage.SubTypes.Num() != 1)
-		{
-			return false;
-		}
-
-		const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-		FAngelscriptOptional& Optional = Usage.ResolvePrimitive<FAngelscriptOptional>(Address);
-
-		FOptionalOperations Ops(SubType);
-		if (Ops.IsSet(Optional))
-		{
-			void* Data = Ops.GetValuePtr(Optional);
-
-			FDebuggerValue Value;
-			if (SubType.GetDebuggerValue(Data, Value))
-			{
-				Value.Name = TEXT("Value");
-				Scope.Values.Add(MoveTemp(Value));
-			}
-
-			return true;
-		}
-
-		return false;
-	}
-
-	virtual bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override
-	{
-		if (Usage.SubTypes.Num() != 1)
-		{
-			return false;
-		}
-
-		const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-		FAngelscriptOptional& Optional = Usage.ResolvePrimitive<FAngelscriptOptional>(Address);
-
-		FOptionalOperations Ops(SubType);
-
-		void* Data = Ops.GetValuePtr(Optional);
-		if (SubType.GetDebuggerValue(Data, Value))
-		{
-			Value.Name = TEXT("Value");
-			return true;
-		}
-
-		return false;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		if (Usage.SubTypes.Num() != 1)
-			return false;
-
-		FCppForm CppInner;
-		if (Usage.SubTypes[0].GetCppForm(CppInner))
-		{
-			if (CppInner.CppType.Len() != 0 && !CppInner.bDisallowNativeNest)
-			{
-				OutCppForm.CppType = FString::Printf(TEXT("TOptional<%s>"), *CppInner.CppType);
-				OutCppForm.CppHeader = CppInner.CppHeader;
-			}
-
-			if (CppInner.CppGenericType.Len() != 0)
-			{
-				OutCppForm.CppGenericType = FString::Printf(TEXT("TOptional<%s>"), *CppInner.CppGenericType);
-			}
-		}
-
-		OutCppForm.TemplateObjectForm = TEXT("FAngelscriptOptional");
-		return true;
-	}
-};
+/**
+ * TOptional template construction, value access, assignment, and state management.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TOptional<T> Optional();                                                                             | Constructs an unset optional.                                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TOptional<T> Optional(const T&in if_handle_then_const Other);                                        | Implicitly constructs a set optional from a value.                                                               |
+ * |                                                                                                      | @param Other Initial contained value.                                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TOptional<T> Optional(const TOptional<T>& Other);                                                    | Copy-constructs an optional, preserving its set state.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Left = Right;                                                                                        | Copies another optional, including an unset state.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Optional = Value;                                                                                    | Stores a value and marks the optional as set.                                                                    |
+ * |                                                                                                      | @param Value Value to copy into the optional.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = Left == Right;                                                                         | Compares set state and, when set, the contained value.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bIsSet = Optional.IsSet() const;                                                                | Reports whether a contained value is present.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Optional.Set(const T&in if_handle_then_const Value) const;                                           | Stores a value and marks the optional as set.                                                                    |
+ * |                                                                                                      | @param Value Value to copy into the optional.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | const T& Value = Optional.GetValue() const;                                                          | Returns a const reference to the contained value; throws when unset.                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | T& Value = Optional.GetValue();                                                                      | Returns a mutable reference to the contained value; throws when unset.                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | const T& Value = Optional.Get(const T&in if_handle_then_const DefaultValue) const;                   | Returns the contained value when set, otherwise the supplied reference.                                          |
+ * |                                                                                                      | @param DefaultValue Fallback reference returned while the optional is unset.                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Optional.Reset();                                                                                    | Destroys the contained value and marks the optional as unset.                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 FOptionalOperations::FOptionalOperations(const FAngelscriptTypeUsage& Usage)
 {

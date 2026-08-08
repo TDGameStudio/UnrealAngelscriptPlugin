@@ -1,7 +1,6 @@
-#include "Bind_Debugging_Functions.h"
+#include "Bind_Debugging.h"
 
 #include "AngelscriptEngine.h"
-#include "Bind_Debugging.h"
 
 namespace
 {

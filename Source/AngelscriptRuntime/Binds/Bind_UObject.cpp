@@ -1,3 +1,5 @@
+#include "Bind_UObject.h"
+
 #include "Engine/Engine.h"
 
 #include "UObject/Package.h"
@@ -17,7 +19,6 @@
 #include "ClassGenerator/ASClass.h"
 #include "Engine/SimpleConstructionScript.h"
 
-#include "Bind_UObject_Functions.h"
 #include "Helper_ToString.h"
 
 #if WITH_EDITOR
@@ -30,6 +31,134 @@
 #include "source/as_scriptengine.h"
 #include "source/as_objecttype.h"
 #include "EndAngelscriptHeaders.h"
+
+/**
+ * UObject, UClass, UFunction, and global object-operation binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UObject.AddToRoot();                                                                  | Adds this object to the GC root set.                                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UObject.RemoveFromRoot();                                                             | Removes this object from the GC root set.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UObject.GetIsRooted() const;                                                          | Returns whether this object is in the GC root set.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UObject.IsTransient() const;                                                          | Returns whether this object has the transient object flag.                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UObject.IsEditorOnly() const;                                                         | Returns whether this object is editor-only.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UObject.Modify(bool bAlwaysMarkDirty = true);                                         | Records a transaction snapshot for editor undo/redo.                                                                 |
+ * |                                                                                            | @param bAlwaysMarkDirty Marks the package dirty even when no transaction is active.                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UObject.SetTransactional(bool bTransactional);                                        | Adds or removes the transactional object flag.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UObject.IsSupportedForNetworking() const;                                             | Returns whether this object supports networking references.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UClass UObject.GetClass() const;                                                           | Returns the runtime class.                                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UObject UObject.GetOuter() const;                                                          | Returns the immediate outer object.                                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UObject UObject.GetTypedOuter(const TSubclassOf<UObject>& Target) const;                   | Returns the first outer compatible with Target, typed to the requested class.                                        |
+ * |                                                                                            | @param Target Class searched for while traversing the outer chain.                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UPackage UObject.GetOutermost() const;                                                     | Returns the outermost package.                                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UPackage UObject.GetPackage() const;                                                       | Returns the package containing this object.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UObject.MarkPackageDirty() const;                                                     | Marks the containing package dirty and returns whether the state changed.                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UWorld UObject.GetWorld() const;                                                           | Returns the world associated with this object, when available.                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName UObject.GetName() const;                                                             | Returns the object short name.                                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UObject.GetFullName(const UObject StopOuter = nullptr) const;                      | Returns the class-qualified object name, optionally stopping at StopOuter.                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UObject.GetPathName(const UObject StopOuter = nullptr) const;                      | Returns the object path, optionally stopping at StopOuter.                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UObject.IsA(const UClass Class) const;                                                | Returns whether the object class is Class or derives from it.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UObject.ImplementsInterface(const UClass InterfaceClass) const;                       | Returns whether the object class implements InterfaceClass.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UObject.SaveConfig();                                                                 | Writes config-backed properties to configuration files.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UObject.LoadConfig();                                                                 | Loads config-backed properties from configuration files.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UObject.ReloadConfig();                                                               | Reloads config-backed properties from configuration files.                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UObject.CopyScriptPropertiesFrom(const UObject OtherObject);                          | Copies compatible script properties from OtherObject.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TargetType CastObject = Cast<TargetType>(Object);                                          | Dynamically casts a UObject handle to the requested registered UObject type.                                         |
+ * |                                                                                            | The generic opCast expands through AngelScript Cast<TargetType> syntax.                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool IsValid(const UObject Object);                                                        | Returns whether Object is non-null and not pending destruction.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text + Object;                                                                             | Appends the UObject text representation to a string and returns the result.                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text += Object;                                                                            | Appends the UObject text representation to a string in place.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text.Append(Object);                                                                       | Appends the UObject text representation to a temporary or existing string.                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UObject.ToString() const;                                                          | Returns the UObject text representation.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UObject UClass.GetDefaultObject() const;                                                   | Returns the class default object.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UClass.GetSourceFilePath() const;                                                  | Returns the source file that declares a script class, or an empty string.                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UClass.GetScriptModuleName() const;                                                | Returns the owning AngelScript module name for a script class.                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UClass.GetScriptTypeDeclaration() const;                                           | Returns the AngelScript type declaration for a script class.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UClass.IsFunctionImplementedInScript(FName InFunctionName) const;                     | Returns whether a named function has a script implementation on this class.                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UFunction UClass.FindFunctionByName(FName InFunctionName) const;                           | Finds a reflected function on this class by name.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UClass.IsChildOf(UClass Other) const;                                                 | Returns whether this class equals or derives from Other.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UClass.IsAbstract() const;                                                            | Returns whether the class has the abstract class flag.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UClass UClass.GetSuperClass() const;                                                       | Returns the immediate superclass.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UClass UClass::FindClass(const FString& Name);                                             | Finds a loaded class by reflected object name.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UClass::GetAllClasses(TArray<UClass>& OutClasses);                                    | Collects all loaded classes.                                                                                         |
+ * |                                                                                            | @param OutClasses Receives the loaded class handles.                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TArray<UClass> UClass::GetAllSubclassesOf(                                                 | Returns loaded subclasses of Class.                                                                                  |
+ * |     UClass Class, bool bIncludeAbstractClasses = false);                                   | @param bIncludeAbstractClasses Includes abstract subclasses when true.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UClass UClass::__StaticClass(const FString& Name);                                         | Resolves an internal static-class request by script type name.                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UFunction.GetSourceFilePath() const;                                               | Returns the source file that declares a script function, or an empty string.                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int UFunction.GetSourceLineNumber() const;                                                 | Returns the source line that declares a script function.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString UFunction.GetScriptFunctionDeclaration() const;                                    | Returns the AngelScript declaration for a script function.                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const UObject null;                                                                        | Exposes the canonical null UObject handle constant.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UPackage GetTransientPackage();                                                            | Returns the engine transient package.                                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UPackage GetAngelscriptPackage();                                                          | Returns the package containing generated AngelScript types.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UClass FindClass(const FString& Name);                                                     | Finds a class by AngelScript type name.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void GetAllClasses(TArray<UClass>& OutClasses);                                            | Collects all loaded classes.                                                                                         |
+ * |                                                                                            | @param OutClasses Receives the loaded class handles.                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UObject NewObject(UObject Outer, const TSubclassOf<UObject>& Class,                        | Creates an object typed to Class within Outer.                                                                       |
+ * |     FName Name = NAME_None, bool bTransient = false);                                      | @param bTransient Applies transient lifetime/persistence semantics when true.                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UObject LoadObject(UObject Outer, const FString& Name);                                    | Loads an object by path or name, using Outer as the resolution context.                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UObject FindObject(const FString& Name);                                                   | Finds a loaded object by path or name.                                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UObject FindObject(UObject Outer, const FString& Name);                                    | Finds a loaded object with the requested name inside Outer.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | UObject __CreateLiteralAsset(UClass AssetClass, const FString& Name);                      | Creates or resolves the internal asset object used by an asset literal.                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void __PostLiteralAssetSetup(UObject Asset, const FString& Name);                          | Completes internal asset-literal setup after object creation.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {
@@ -135,7 +264,7 @@ namespace
 	}
 }
 
-/**
+/*
  * Binds default methods that all UObjects have
  */
 AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Base(
@@ -148,7 +277,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UObject_ToStringContribution(
 	EAngelscriptBindPhase::TypeInfrastructure,
 	&BindUObjectToStringContribution);
 
-/**
+/*
  * Binds default methods that all UClasses have
  */
 AS_FORCE_LINK const FAngelscriptBind Bind_UClass_Base(
@@ -233,7 +362,7 @@ static bool IsPlayingPIE()
 	return false;
 }
 
-/**
+/*
  * Bind global operations manipulating or finding UObjects.
  */
 static IAssetRegistry* GetBindAssetRegistry();

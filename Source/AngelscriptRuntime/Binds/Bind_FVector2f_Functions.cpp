@@ -1,4 +1,4 @@
-#include "Bind_FVector2f_Functions.h"
+#include "Bind_FVector2f.h"
 
 void FAngelscriptFVector2fBinds::Construct(FVector2f* Address, const float X, const float Y)
 {

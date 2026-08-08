@@ -1,4 +1,4 @@
-#include "Bind_FTransform_Functions.h"
+#include "Bind_FTransform.h"
 
 void FAngelscriptFTransformBinds::ConstructDefault(FTransform* Address)
 {

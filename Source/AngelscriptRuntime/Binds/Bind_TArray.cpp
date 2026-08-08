@@ -23,7 +23,128 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-#include "Binds/Bind_TArray_Functions.h"
+/**
+ * TArray template construction, indexed access, mutation, iteration, and allocation queries.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TArray<T> Array();                                                                                   | Constructs an empty array.                                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | T& Value = Array[Index];                                                                             | Returns a mutable element reference.                                                                             |
+ * |                                                                                                      | @param Index Zero-based element index; an invalid index raises a script exception.                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | const T& Value = Array[Index];                                                                       | Returns a const element reference.                                                                               |
+ * |                                                                                                      | @param Index Zero-based element index; an invalid index raises a script exception.                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Left = Right;                                                                                        | Copies every element from another array.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = Left == Right;                                                                         | Compares array lengths and corresponding elements.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Add(const T&in Value);                                                                         | Appends one element.                                                                                             |
+ * |                                                                                                      | @param Value Element copied or referenced according to T.                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Append(const TArray<T>& Other);                                                                | Appends all elements from another array.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Shuffle();                                                                                     | Randomly permutes the elements.                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Swap(int32 FirstIndexToSwap, int32 SecondIndexToSwap);                                         | Exchanges two elements.                                                                                          |
+ * |                                                                                                      | @param FirstIndexToSwap Zero-based index of the first element.                                                   |
+ * |                                                                                                      | @param SecondIndexToSwap Zero-based index of the second element.                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.MoveAssignFrom(TArray<T>& OtherArray);                                                         | Moves storage from another array and empties the source.                                                         |
+ * |                                                                                                      | @param OtherArray Source whose allocation and elements are consumed.                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bValid = Array.IsValidIndex(int32 Index) const;                                                 | Reports whether an index addresses an existing element.                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | const T& Value = Array.Last(int32 IndexFromEnd = 0) const;                                           | Returns a const element counted backward from the last element.                                                  |
+ * |                                                                                                      | @param IndexFromEnd Zero selects the last element.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | T& Value = Array.Last(int32 IndexFromEnd = 0);                                                       | Returns a mutable element counted backward from the last element.                                                |
+ * |                                                                                                      | @param IndexFromEnd Zero selects the last element.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Insert(const T&in Value, int32 Index = 0);                                                     | Inserts an element and shifts following elements.                                                                |
+ * |                                                                                                      | @param Value Element to insert.                                                                                  |
+ * |                                                                                                      | @param Index Zero-based insertion position.                                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bAdded = Array.AddUnique(const T&in Value);                                                     | Adds the value only when no equal element exists; returns whether insertion occurred.                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Empty(int32 ReservedSize = 0);                                                                 | Removes all elements and sets the requested slack.                                                               |
+ * |                                                                                                      | @param ReservedSize Capacity to retain after clearing.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Reset(int32 ReservedSize = 0);                                                                 | Removes all elements while reusing allocation when possible.                                                     |
+ * |                                                                                                      | @param ReservedSize Minimum capacity to retain.                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Reserve(int32 ReservedSize = 0);                                                               | Ensures capacity for at least the requested number of elements.                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.SetNum(int32 NewNum = 0);                                                                      | Resizes the array, constructing or removing elements as needed.                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Copy(const TArray<T>& SourceArray, int32 SourceIndex, int32 Count, int TargetIndex = 0);       | Copies a range into this array.                                                                                  |
+ * |                                                                                                      | @param SourceArray Array supplying elements.                                                                     |
+ * |                                                                                                      | @param SourceIndex First source element.                                                                         |
+ * |                                                                                                      | @param Count Number of elements to copy.                                                                         |
+ * |                                                                                                      | @param TargetIndex First destination element.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.SetNumZeroed(int32 NewNum = 0);                                                                | Resizes the array and zero-initializes newly added storage.                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int32 Index = Array.FindIndex(const T&in Value) const;                                               | Returns the first matching index, or -1 when absent.                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bContains = Array.Contains(const T&in Value) const;                                             | Reports whether an equal element exists.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int Removed = Array.RemoveSingle(const T&in Value);                                                  | Removes the first matching element while preserving order.                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int Removed = Array.Remove(const T&in Value);                                                        | Removes every matching element while preserving order.                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int Removed = Array.RemoveSingleSwap(const T&in Value);                                              | Removes the first match by swapping from the end; order may change.                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int Removed = Array.RemoveSwap(const T&in Value);                                                    | Removes every match using swap removal; order may change.                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.RemoveAt(int32 Index);                                                                         | Removes one indexed element while preserving order.                                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.RemoveAtSwap(int32 Index);                                                                     | Removes one indexed element by swapping from the end; order may change.                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Sort(bool bDescendingOrder = false);                                                           | Sorts elements using T's comparison operator.                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int Count = Array.Num() const;                                                                       | Returns the number of elements.                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int Capacity = Array.Max() const;                                                                    | Returns the allocated element capacity.                                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int64 Bytes = Array.GetAllocatedSize() const;                                                        | Returns heap storage consumed by the array in bytes.                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEmpty = Array.IsEmpty() const;                                                                 | Reports whether the array has no elements.                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | int Slack = Array.GetSlack() const;                                                                  | Returns unused allocated element capacity.                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | for (T& Value : Array);                                                                              | Iterates mutable values through the compiler-facing array iteration protocol.                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | for (const T& Value : Array);                                                                        | Iterates const values through the compiler-facing array iteration protocol.                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | for (int Index, T& Value : Array);                                                                   | Iterates mutable values together with their zero-based indices.                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | for (int Index, const T& Value : Array);                                                             | Iterates const values together with their zero-based indices.                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Array.Shrink();                                                                                      | Releases slack so capacity approaches the current element count.                                                 |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TArrayIterator<T> Iterator(const TArrayIterator<T>& Other);                                          | Copy-constructs a mutable array iterator.                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Iterator = Other;                                                                                    | Assigns a mutable array iterator.                                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Iterator.CanProceed;                                                                            | Reports whether the mutable iterator can produce another element.                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | T& Value = Iterator.Proceed();                                                                       | Returns the current mutable element and advances the iterator.                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TArrayConstIterator<T> ConstIterator(const TArrayConstIterator<T>& Other);                           | Copy-constructs a const array iterator.                                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | ConstIterator = Other;                                                                               | Assigns a const array iterator.                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool ConstIterator.CanProceed;                                                                       | Reports whether the const iterator can produce another element.                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | const T& Value = ConstIterator.Proceed();                                                            | Returns the current const element and advances the iterator.                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TArrayIterator<T> Iterator = Array.Iterator();                                                       | Creates a mutable iterator for the array.                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TArrayConstIterator<T> Iterator = Array.Iterator() const;                                            | Creates a const iterator for the array.                                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 #if AS_ITERATOR_DEBUGGING
 thread_local static TArray<void*, TInlineAllocator<16>> GArraysBeingIterated;
@@ -68,451 +189,6 @@ static bool CheckArrayValueDoesNotAliasStorage(FScriptArray& Array, void* Value,
 		return false;
 	}
 
-	return true;
-}
-
-FString FAngelscriptArrayType::GetAngelscriptTypeName() const 
-{
-	return TEXT("TArray");
-}
-
-bool FAngelscriptArrayType::CanQueryPropertyType() const { return false; }
-
-bool FAngelscriptArrayType::HasReferences(const FAngelscriptTypeUsage& Usage) const 
-{
-	return Usage.SubTypes.Num() == 1 && Usage.SubTypes[0].HasReferences();
-}
-
-void FAngelscriptArrayType::EmitReferenceInfo(const FAngelscriptTypeUsage& Usage, FGCReferenceParams& Params) const 
-{
-	check(HasReferences(Usage));
-
-	int32 ElementSize = Usage.SubTypes[0].Type->GetValueSize(Usage.SubTypes[0]);
-	UE::GC::FSchemaBuilder InnerSchema(ElementSize);
-
-	if (Usage.SubTypes[0].Type->IsObjectPointer())
-	{
-		Params.Schema->Add(UE::GC::DeclareMember(Params.Names.Top(), Params.AtOffset, UE::GC::EMemberType::ReferenceArray, InnerSchema.Build()));
-	}
-	else
-	{
-		FGCReferenceParams InnerParams = Params;
-		InnerParams.Schema = &InnerSchema;
-		InnerParams.AtOffset = 0;
-		Usage.SubTypes[0].EmitReferenceInfo(InnerParams);
-		
-		Params.Schema->Add(UE::GC::DeclareMember(Params.Names.Top(), Params.AtOffset, UE::GC::EMemberType::StructArray, InnerSchema.Build()));
-	}
-}
-
-bool FAngelscriptArrayType::CanCreateProperty(const FAngelscriptTypeUsage& Usage) const 
-{
-	if (Usage.SubTypes.Num() != 1)
-		return false;
-	return Usage.SubTypes[0].CanCreateProperty();
-}
-
-FProperty* FAngelscriptArrayType::CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const
-{
-	auto* ArrayProp = new FArrayProperty(Params.Outer, Params.PropertyName);
-
-	FPropertyParams InnerParams = Params;
-	InnerParams.Outer = ArrayProp;
-	InnerParams.PropertyName = *(Params.PropertyName.ToString() + TEXT("_Inner"));
-	ArrayProp->Inner = Usage.SubTypes[0].CreateProperty(InnerParams);
-
-	return ArrayProp;
-}
-
-bool FAngelscriptArrayType::MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const
-{
-	if (Usage.SubTypes.Num() != 1)
-		return false;
-
-	const FArrayProperty* ArrayProp = CastField<FArrayProperty>(Property);
-	if (ArrayProp == nullptr)
-		return false;
-
-	return Usage.SubTypes[0].MatchesProperty(ArrayProp->Inner, FAngelscriptType::EPropertyMatchType::InContainer);
-}
-
-bool FAngelscriptArrayType::CanCopy(const FAngelscriptTypeUsage& Usage) const 
-{
-	return Usage.SubTypes.Num() == 1 && Usage.SubTypes[0].CanCopy()
-		&& Usage.SubTypes[0].CanConstruct() && Usage.SubTypes[0].CanDestruct();
-}
-bool FAngelscriptArrayType::NeedCopy(const FAngelscriptTypeUsage& Usage) const  { return true; }
-void FAngelscriptArrayType::CopyValue(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const 
-{
-	const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-	FScriptArray& SourceArray = *(FScriptArray*)SourcePtr;
-	FScriptArray& DestinationArray = *(FScriptArray*)DestinationPtr;
-	int32 ElementSize = Usage.SubTypes[0].GetValueSize();
-	int32 ElementAlignment = Usage.SubTypes[0].GetValueAlignment();
-
-	int32 SourceNum = SourceArray.Num();
-	int32 DestNum = DestinationArray.Num();
-
-	if (!SubType.NeedCopy())
-	{
-		// Totally POD-typed, so just do a direct copy instead of shenanigans
-		if (SourceNum > DestNum)
-			DestinationArray.Add(SourceNum - DestNum, ElementSize, ElementAlignment);
-		else if(DestNum > SourceNum)
-			DestinationArray.Remove(SourceNum, DestNum - SourceNum, ElementSize, ElementAlignment);
-		FMemory::Memcpy(DestinationArray.GetData(), SourceArray.GetData(), SourceNum * ElementSize);
-		return;
-	}
-
-	if (SourceNum > DestNum)
-	{
-		DestinationArray.Add(SourceNum - DestNum, ElementSize, ElementAlignment);
-
-		if (SubType.NeedConstruct())
-		{
-			for (int32 i = DestNum; i < SourceNum; ++i)
-				SubType.ConstructValue((void*)((SIZE_T)DestinationArray.GetData() + (i * ElementSize)));
-		}
-	}
-	else if (DestNum > SourceNum)
-	{
-		if (SubType.NeedDestruct())
-		{
-			for (int32 i = SourceNum; i < DestNum; ++i)
-				SubType.DestructValue((void*)((SIZE_T)DestinationArray.GetData() + (i * ElementSize)));
-		}
-
-		DestinationArray.Remove(SourceNum, DestNum - SourceNum, ElementSize, ElementAlignment);
-	}
-
-	for (int32 i = 0; i < SourceNum; ++i)
-	{
-		SubType.CopyValue(
-			(void*)((SIZE_T)SourceArray.GetData() + (i * ElementSize)),
-			(void*)((SIZE_T)DestinationArray.GetData() + (i * ElementSize)));
-	}
-}
-
-bool FAngelscriptArrayType::CanConstruct(const FAngelscriptTypeUsage& Usage) const 
-{
-	return Usage.SubTypes.Num() == 1;
-}
-bool FAngelscriptArrayType::NeedConstruct(const FAngelscriptTypeUsage& Usage) const  { return true; }
-void FAngelscriptArrayType::ConstructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const 
-{
-	new(DestinationPtr) FScriptArray();
-}
-
-bool FAngelscriptArrayType::CanDestruct(const FAngelscriptTypeUsage& Usage) const 
-{
-	return Usage.SubTypes.Num() == 1 && Usage.SubTypes[0].CanDestruct();
-}
-bool FAngelscriptArrayType::NeedDestruct(const FAngelscriptTypeUsage& Usage) const  { return true; }
-void FAngelscriptArrayType::DestructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const 
-{
-	const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-	FScriptArray& Array = *(FScriptArray*)DestinationPtr;
-
-	int32 ElementSize = SubType.GetValueSize();
-	int32 SourceNum = Array.Num();
-
-	if (SubType.NeedDestruct())
-	{
-		for (int32 i = 0; i < SourceNum; ++i)
-			SubType.DestructValue((void*)((SIZE_T)Array.GetData() + (i * ElementSize)));
-	}
-
-
-	Array.~FScriptArray();
-}
-
-int32 FAngelscriptArrayType::GetValueSize(const FAngelscriptTypeUsage& Usage) const 
-{
-	return sizeof(FScriptArray);
-}
-
-int32 FAngelscriptArrayType::GetValueAlignment(const FAngelscriptTypeUsage& Usage) const
-{
-	return alignof(FScriptArray);
-}
-
-bool FAngelscriptArrayType::CanBeArgument(const FAngelscriptTypeUsage& Usage) const  { return true; }
-void FAngelscriptArrayType::SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FArgData& Data) const 
-{
-	FScriptArray* Arg = (FScriptArray*)Data.StackPtr;
-	new(Arg) FScriptArray();
-
-	if (Usage.bIsReference)
-	{
-		FScriptArray& Ref = Stack.StepCompiledInRef<FArrayProperty,FScriptArray>(Arg);
-		Context->SetArgAddress(ArgumentIndex, &Ref);
-	}
-	else
-	{
-		Stack.StepCompiledIn<FArrayProperty>(Arg);
-		Context->SetArgObject(ArgumentIndex, Arg);
-	}
-}
-
-bool FAngelscriptArrayType::CanBeReturned(const FAngelscriptTypeUsage& Usage) const 
-{
-	return true;
-}
-
-void FAngelscriptArrayType::GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const 
-{
-	if (Usage.bIsReference)
-	{
-		*(void**)Destination = Context->GetReturnAddress();
-	}
-	else
-	{
-		void* ReturnedObject = Context->GetReturnObject();
-		if (ReturnedObject == nullptr)
-			return;
-		CopyValue(Usage, ReturnedObject, Destination);
-	}
-}
-
-bool FAngelscriptArrayType::CanCompare(const FAngelscriptTypeUsage& Usage) const 
-{
-	return Usage.SubTypes.Num() == 1 && Usage.SubTypes[0].CanCompare();
-}
-
-bool FAngelscriptArrayType::IsValueEqual(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const 
-{
-	const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-	FScriptArray& SourceArray = *(FScriptArray*)SourcePtr;
-	FScriptArray& DestArray = *(FScriptArray*)DestinationPtr;
-
-	check(SubType.CanCompare());
-
-	int32 ElementSize = SubType.GetValueSize();
-	int32 SourceNum = SourceArray.Num();
-	int32 DestNum = DestArray.Num();
-
-	if (SourceNum != DestNum)
-		return false;
-
-	for (int32 i = 0; i < SourceNum; ++i)
-	{
-		void* SourceValue = (void*)((SIZE_T)SourceArray.GetData() + (i * ElementSize));
-		void* DestValue = (void*)((SIZE_T)DestArray.GetData() + (i * ElementSize));
-
-		if (!SubType.IsValueEqual(SourceValue, DestValue))
-			return false;
-	}
-
-	return true;
-}
-
-template<typename T>
-struct TNativeDebugArray : FASDebugValue
-{
-	TArray<T>* Value;
-
-	TNativeDebugArray(SIZE_T Offset)
-		: Value((TArray<T>*)(void*)Offset)
-	{
-	}
-
-	void Instantiate(void* ForObject) override
-	{
-		Value = (TArray<T>*)((SIZE_T)Value + (SIZE_T)ForObject);
-	}
-};
-
-struct FGenericDebugArray : FASDebugValue
-{
-	FScriptArray* Value;
-	int32 ElementSize;
-
-	FGenericDebugArray(SIZE_T Offset, int32 InElementSize)
-		: Value((FScriptArray*)(void*)Offset)
-		, ElementSize(InElementSize)
-	{
-	}
-
-	void Instantiate(void* ForObject) override
-	{
-		Value = (FScriptArray*)((SIZE_T)Value + (SIZE_T)ForObject);
-	}
-};
-
-template<typename T>
-struct TNativeDebugArrayPtr : FASDebugValue
-{
-	TArray<T>** Value;
-
-	TNativeDebugArrayPtr(SIZE_T Offset)
-		: Value((TArray<T>**)(void*)Offset)
-	{
-	}
-
-	void Instantiate(void* ForObject) override
-	{
-		Value = (TArray<T>**)((SIZE_T)Value + (SIZE_T)ForObject);
-	}
-};
-
-struct FGenericDebugArrayPtr : FASDebugValue
-{
-	FScriptArray** Value;
-	int32 ElementSize;
-
-	FGenericDebugArrayPtr(SIZE_T Offset, int32 InElementSize)
-		: Value((FScriptArray**)(void*)Offset)
-		, ElementSize(InElementSize)
-	{
-	}
-
-	void Instantiate(void* ForObject) override
-	{
-		Value = (FScriptArray**)((SIZE_T)Value + (SIZE_T)ForObject);
-	}
-};
-
-FASDebugValue* FAngelscriptArrayType::CreateDebugValue(const FAngelscriptTypeUsage& Usage, FDebugValuePrototype& Values, int32 Offset) const
-{
-	if (Usage.SubTypes.Num() != 1)
-		return nullptr;
-	if (Usage.bIsReference)
-	{
-		return ReifyDebugValueTemplate<TNativeDebugArrayPtr, FGenericDebugArrayPtr>(
-			Usage.SubTypes[0].GetReifyType(), Values, Offset,
-			Usage.SubTypes[0].GetValueSize());
-	}
-	else
-	{
-		return ReifyDebugValueTemplate<TNativeDebugArray, FGenericDebugArray>(
-			Usage.SubTypes[0].GetReifyType(), Values, Offset,
-			Usage.SubTypes[0].GetValueSize());
-	}
-}
-
-bool FAngelscriptArrayType::GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const
-{
-	if (Usage.SubTypes.Num() != 1)
-		return false;
-
-	const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-	FScriptArray& Array = Usage.ResolvePrimitive<FScriptArray>(Address);
-
-	Value.Usage = Usage;
-	Value.Address = Address;
-	Value.bHasMembers = true;
-	Value.Type = Usage.GetAngelscriptDeclaration();
-
-	int32 Num = Array.Num();
-	if (Num == 0)
-	{
-		Value.Value = TEXT("Empty");
-	}
-	else
-	{
-		Value.Value = FString::Printf(TEXT("Num = %d"), Num);
-	}
-
-	return true;
-}
-
-bool FAngelscriptArrayType::GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const
-{
-	if (Usage.SubTypes.Num() != 1)
-		return false;
-
-	const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-	FScriptArray& Array = Usage.ResolvePrimitive<FScriptArray>(Address);
-
-	int32 Num = Array.Num();
-	int32 ElementSize = SubType.GetValueSize();
-
-	for (int32 i = 0; i < Num; ++i)
-	{
-		void* ElemPtr = (void*)((SIZE_T)Array.GetData() + (i * ElementSize));
-
-		FDebuggerValue ElemValue;
-		if (SubType.GetDebuggerValue(ElemPtr, ElemValue))
-		{
-			ElemValue.Name = FString::Printf(TEXT("[%d]"), i);
-			Scope.Values.Add(MoveTemp(ElemValue));
-		}
-	}
-
-	{
-		FDebuggerValue NumValue;
-		NumValue.Name = TEXT("Num");
-		NumValue.Type = TEXT("int");
-		NumValue.Value = LexToString(Array.Num());
-		Scope.Values.Add(MoveTemp(NumValue));
-	}
-
-	return true;
-}
-
-bool FAngelscriptArrayType::GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const
-{
-	if (Usage.SubTypes.Num() != 1)
-		return false;
-
-	const FAngelscriptTypeUsage& SubType = Usage.SubTypes[0];
-	FScriptArray& Array = Usage.ResolvePrimitive<FScriptArray>(Address);
-
-	if (Member.StartsWith(TEXT("[")) && Member.EndsWith(TEXT("]")))
-	{
-		FString Number = Member.Mid(1, Member.Len() - 2);
-		if (!Number.IsNumeric())
-			return false;
-
-		int32 Index = -1;
-		LexFromString(Index, *Number);
-
-		if (!Array.IsValidIndex(Index))
-			return false;
-
-		int32 ElementSize = SubType.GetValueSize();
-		void* ElemPtr = (void*)((SIZE_T)Array.GetData() + (Index * ElementSize));
-
-		if (SubType.GetDebuggerValue(ElemPtr, Value))
-		{
-			Value.Name = FString::Printf(TEXT("[%d]"), Index);
-			return true;
-		}
-
-		return false;
-	}
-	else if (Member == TEXT("Num"))
-	{
-		Value.Name = TEXT("Num");
-		Value.Type = TEXT("int");
-		Value.Value = LexToString(Array.Num());
-		return true;
-	}
-
-	return true;
-}
-
-bool FAngelscriptArrayType::GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const
-{
-	if (Usage.SubTypes.Num() != 1)
-		return false;
-
-	FCppForm CppInner;
-	if (Usage.SubTypes[0].GetCppForm(CppInner))
-	{
-		if (CppInner.CppType.Len() != 0 && !CppInner.bDisallowNativeNest)
-		{
-			OutCppForm.CppType = FString::Printf(TEXT("TArray<%s>"), *CppInner.CppType);
-			OutCppForm.CppHeader = CppInner.CppHeader;
-		}
-
-		if (CppInner.CppGenericType.Len() != 0)
-		{
-			OutCppForm.CppGenericType = FString::Printf(TEXT("TArray<%s>"), *CppInner.CppGenericType);
-		}
-	}
-
-	OutCppForm.TemplateObjectForm = TEXT("FScriptArray");
 	return true;
 }
 
@@ -1345,38 +1021,6 @@ void FArrayOperations::Shrink(FScriptArray& Arr, asCObjectType* Meta)
 	auto* Ops = GetArrayOperations(Meta);
 	return Arr.Shrink(Ops->NumBytesPerElement, Ops->Alignment);
 }
-
-struct FAngelscriptArrayIteratorType : public FAngelscriptType
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("TArrayIterator");
-	}
-
-	virtual bool CanQueryPropertyType() const override { return false; }
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.TemplateObjectForm = TEXT("FArrayIterator");
-		return true;
-	}
-};
-
-struct FAngelscriptArrayConstIteratorType : public FAngelscriptType
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("TArrayConstIterator");
-	}
-
-	virtual bool CanQueryPropertyType() const override { return false; }
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.TemplateObjectForm = TEXT("FArrayIterator");
-		return true;
-	}
-};
 
 namespace
 {

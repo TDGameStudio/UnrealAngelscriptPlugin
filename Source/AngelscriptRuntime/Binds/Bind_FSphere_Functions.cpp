@@ -1,4 +1,4 @@
-#include "Bind_FSphere_Functions.h"
+#include "Bind_FSphere.h"
 
 void FAngelscriptFSphereBinds::ConstructDefault(FSphere* Address)
 {

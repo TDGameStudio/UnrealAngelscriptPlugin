@@ -1,6 +1,24 @@
+#include "Bind_FMessageDialog.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_FMessageDialog_Functions.h"
+/**
+ * FMessageDialog namespace helpers.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | EAppReturnType FMessageDialog::Open(EAppMsgType MessageType,                                         | Opens a modal message dialog with an optional title.                                                             |
+ * |     const FText& Message,                                                                            | @param MessageType Selects the available buttons.                                                                |
+ * |     FText OptionalTitle = FText());                                                                  | @param Message Text displayed in the dialog.                                                                     |
+ * |                                                                                                      | @param OptionalTitle Title text; an empty value uses the platform default.                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | EAppReturnType FMessageDialog::Open(EAppMsgCategory MessageCategory,                                 | Opens a categorized modal message dialog with an optional title.                                                 |
+ * |     EAppMsgType MessageType,                                                                         | @param MessageCategory Categorizes the message for platform handling.                                            |
+ * |     const FText& Message,                                                                            | @param MessageType Selects the available buttons.                                                                |
+ * |     FText OptionalTitle = FText());                                                                  | @param Message Text displayed in the dialog.                                                                     |
+ * |                                                                                                      | @param OptionalTitle Title text; an empty value uses the platform default.                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

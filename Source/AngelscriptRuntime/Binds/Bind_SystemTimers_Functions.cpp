@@ -1,4 +1,4 @@
-#include "Bind_SystemTimers_Functions.h"
+#include "Bind_SystemTimers.h"
 
 #include "AngelscriptEngine.h"
 #include "Kismet/KismetSystemLibrary.h"

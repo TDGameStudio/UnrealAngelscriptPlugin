@@ -1,4 +1,4 @@
-#include "Bind_FPlane4f_Functions.h"
+#include "Bind_FPlane4f.h"
 
 void FAngelscriptFPlane4fBinds::ConstructFromLocationAndNormal(
 	FPlane4f* Address,

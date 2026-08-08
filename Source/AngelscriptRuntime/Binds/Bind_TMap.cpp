@@ -20,6 +20,97 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
+/**
+ * Generic TMap and iterator binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | template<class K, class V> struct TMap;                                                    | Declares the generic map type.                                                                                       |
+ * |                                                                                            | Each TMap<K,V> instantiation validates key hashing/equality and value operations.                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | template<class K, class V> struct TMapIterator;                                            | Declares the mutable map iterator type.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | template<class K, class V> struct TMapConstIterator;                                       | Declares the read-only map iterator type.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TMap<K,V> Map;                                                                             | Constructs an empty map; element lifetimes are managed automatically.                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Map[Key];                                                                                  | Returns a mutable value reference, adding a default value when Key is absent.                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ConstMap[Key];                                                                             | Returns a read-only value reference for Key; a missing key raises a script exception.                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TMap<K,V>.Add(const K& Key, const V& Value);                                          | Adds or replaces the value associated with Key.                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TMap<K,V>.Contains(const K& Key) const;                                               | Returns whether Key is present.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TMap<K,V>.RemoveAndCopyValue(const K& Key, V& OutValue);                              | Removes Key and copies its previous value when found.                                                                |
+ * |                                                                                            | @param OutValue Receives the removed value on success.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TMap<K,V>.Remove(const K& Key);                                                       | Removes Key and reports whether an entry existed.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int32 TMap<K,V>.Num() const;                                                               | Returns the number of key-value pairs.                                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TMap<K,V>.IsEmpty() const;                                                            | Returns whether the map has no entries.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | V& TMap<K,V>.FindOrAdd(const K& Key);                                                      | Returns the value for Key, default-constructing it when absent.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | V& TMap<K,V>.FindOrAdd(const K& Key, const V& DefaultValue);                               | Returns the value for Key, inserting DefaultValue when absent.                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TMap<K,V>.Find(const K& Key, V& OutValue) const;                                      | Copies the value for Key and reports whether it was found.                                                           |
+ * |                                                                                            | @param OutValue Receives the found value on success.                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Map = Other;                                                                               | Replaces this map with a copy of Other.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Map == Other;                                                                              | Compares maps by key-value contents.                                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TMap<K,V>.Empty(int32 Slack = 0);                                                     | Removes every entry and reserves optional capacity.                                                                  |
+ * |                                                                                            | @param Slack Desired post-clear allocation capacity.                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TMap<K,V>.Reset();                                                                    | Removes every entry while retaining reusable allocation.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TMap<K,V>.GetKeys(TArray<K>& OutKeys) const;                                          | Copies all keys into an array.                                                                                       |
+ * |                                                                                            | @param OutKeys Receives keys in native map iteration order.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TMap<K,V>.GetValues(TArray<V>& OutValues) const;                                      | Copies all values into an array.                                                                                     |
+ * |                                                                                            | @param OutValues Receives values in native map iteration order.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TMapIterator<K,V> It(const TMapIterator<K,V>& Other);                                      | Copy-constructs a mutable iterator.                                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | It = Other;                                                                                | Assigns mutable iterator state.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TMapIterator<K,V>.CanProceed;                                                         | Reports whether the mutable iterator refers to a valid entry.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TMapIterator<K,V>.RemoveCurrent() const;                                              | Removes the current entry; iterator-debug builds enforce mutation safety.                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const K& TMapIterator<K,V>.GetKey() const;                                                 | Returns the current key.                                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | V& TMapIterator<K,V>.GetValue() const;                                                     | Returns a mutable reference to the current value.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void TMapIterator<K,V>.SetValue(const V& NewValue) const;                                  | Replaces the current value.                                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TMapIterator<K,V>& TMapIterator<K,V>.Proceed();                                            | Advances to the next entry and returns this iterator.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TMapConstIterator<K,V> It(const TMapConstIterator<K,V>& Other);                            | Copy-constructs a read-only iterator.                                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | It = Other;                                                                                | Assigns read-only iterator state.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool TMapConstIterator<K,V>.CanProceed;                                                    | Reports whether the read-only iterator refers to a valid entry.                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const K& TMapConstIterator<K,V>.GetKey() const;                                            | Returns the current key.                                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const V& TMapConstIterator<K,V>.GetValue() const;                                          | Returns the current value as read-only.                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TMapConstIterator<K,V>& TMapConstIterator<K,V>.Proceed();                                  | Advances to the next entry and returns this iterator.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | for (auto Value : Map) { Use(Value); }                                                     | Iterates mutable or read-only values through the opFor protocol.                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | for (auto Key, auto Value : Map) { Use(Key, Value); }                                      | Iterates keys and values together through the opFor protocol.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TMapIterator<K,V> TMap<K,V>.Iterator();                                                    | Creates a mutable explicit iterator.                                                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TMapConstIterator<K,V> TMap<K,V>.Iterator() const;                                         | Creates a read-only explicit iterator.                                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
+
 #if AS_ITERATOR_DEBUGGING
 static thread_local TArray<void*, TInlineAllocator<16>> GMapsBeingIterated;
 
@@ -45,7 +136,6 @@ void FMapOperations::UnmarkMapBeingIterated(FScriptMap& Map)
 }
 #endif
 
-
 #if AS_REFERENCE_DEBUGGING
 static void InvalidateReferencesToMap(FScriptMap& Map, FMapOperations* Ops)
 {
@@ -56,725 +146,6 @@ static void InvalidateReferencesToMap(FScriptMap& Map, FMapOperations* Ops)
 	}
 }
 #endif
-
-struct FAngelscriptMapType : public FAngelscriptType
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("TMap");
-	}
-
-	virtual bool CanQueryPropertyType() const { return false; }
-	virtual bool CanBeTemplateSubType() const override { return false; }
-
-	bool HasReferences(const FAngelscriptTypeUsage& Usage) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-		return Usage.SubTypes[0].HasReferences() || Usage.SubTypes[1].HasReferences();
-	}
-
-	void EmitReferenceInfo(const FAngelscriptTypeUsage& Usage, FGCReferenceParams& Params) const override
-	{
-		check(HasReferences(Usage));
-
-		auto MapLayout = FScriptMap::GetScriptLayout(
-			Usage.SubTypes[0].GetValueSize(),
-			Usage.SubTypes[0].GetValueAlignment(),
-			Usage.SubTypes[1].GetValueSize(),
-			Usage.SubTypes[1].GetValueAlignment()
-		);
-
-		UE::GC::FSchemaBuilder InnerSchema(MapLayout.SetLayout.Size);
-		if (Usage.SubTypes[0].HasReferences())
-		{
-			FGCReferenceParams InnerParams = Params;
-			InnerParams.Schema = &InnerSchema;
-			InnerParams.AtOffset = 0;
-			Usage.SubTypes[0].EmitReferenceInfo(InnerParams);
-		}
-		
-		if (Usage.SubTypes[1].HasReferences())
-		{
-			FGCReferenceParams InnerParams = Params;
-			InnerParams.Schema = &InnerSchema;
-			InnerParams.AtOffset = MapLayout.ValueOffset;
-			Usage.SubTypes[1].EmitReferenceInfo(InnerParams);
-		}
-		
-		Params.Schema->Add(UE::GC::DeclareMember(Params.Names.Top(), Params.AtOffset, UE::GC::EMemberType::StructSet, InnerSchema.Build()));
-	}
-
-	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-		return Usage.SubTypes[0].CanCreateProperty() && Usage.SubTypes[0].CanHashValue()
-			&& Usage.SubTypes[1].CanCreateProperty();
-	}
-
-	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override
-	{
-		auto* MapProp = new FMapProperty(Params.Outer, Params.PropertyName);
-
-		{
-			FPropertyParams InnerParams = Params;
-			InnerParams.Outer = MapProp;
-			InnerParams.PropertyName = *(Params.PropertyName.ToString() + TEXT("_Key"));
-
-			MapProp->KeyProp = Usage.SubTypes[0].CreateProperty(InnerParams);
-		}
-
-		{
-			FPropertyParams InnerParams = Params;
-			InnerParams.Outer = MapProp;
-			InnerParams.PropertyName = *(Params.PropertyName.ToString() + TEXT("_Value"));
-
-			MapProp->ValueProp = Usage.SubTypes[1].CreateProperty(InnerParams);
-		}
-
-		MapProp->MapLayout = FScriptMap::GetScriptLayout(
-			Usage.SubTypes[0].GetValueSize(),
-			Usage.SubTypes[0].GetValueAlignment(),
-			Usage.SubTypes[1].GetValueSize(),
-			Usage.SubTypes[1].GetValueAlignment()
-		);
-
-		return MapProp;
-	}
-
-	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		const FMapProperty* MapProp = CastField<FMapProperty>(Property);
-		if (MapProp == nullptr)
-			return false;
-
-		return Usage.SubTypes[0].MatchesProperty(MapProp->GetKeyProperty(), FAngelscriptType::EPropertyMatchType::InContainer)
-		&& Usage.SubTypes[1].MatchesProperty(MapProp->GetValueProperty(), FAngelscriptType::EPropertyMatchType::InContainer);
-	}
-
-	bool CanCopy(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() == 2
-			&& Usage.SubTypes[0].CanCopy()
-			&& Usage.SubTypes[0].CanConstruct()
-			&& Usage.SubTypes[0].CanDestruct()
-			&& Usage.SubTypes[1].CanCopy()
-			&& Usage.SubTypes[1].CanConstruct()
-			&& Usage.SubTypes[1].CanDestruct();
-	}
-
-	bool NeedCopy(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	void CopyValue(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const override
-	{
-		FScriptMap& Source = *(FScriptMap*)SourcePtr;
-		FScriptMap& Destination = *(FScriptMap*)DestinationPtr;
-
-		FMapOperations Ops(Usage.SubTypes[0], Usage.SubTypes[1]);
-		Ops.Empty(Destination, Source.Num());
-		for (int32 i = 0, Num = Source.GetMaxIndex(); i < Num; ++i)
-		{
-			if (Source.IsValidIndex(i))
-				Ops.Add(Destination, Ops.GetKey(Source, i), Ops.GetValue(Source, i));
-		}
-	}
-
-	bool CanConstruct(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() == 2 && Usage.SubTypes[0].CanConstruct() && Usage.SubTypes[1].CanConstruct();
-	}
-	bool NeedConstruct(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	void ConstructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override
-	{
-		new(DestinationPtr) FScriptMap();
-	}
-
-	bool CanDestruct(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() == 2 && Usage.SubTypes[0].CanDestruct() && Usage.SubTypes[1].CanDestruct();
-	}
-	bool NeedDestruct(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	void DestructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override
-	{
-		FScriptMap& Destination = *(FScriptMap*)DestinationPtr;
-
-		FMapOperations Ops(Usage.SubTypes[0], Usage.SubTypes[1]);
-		Ops.Empty(Destination, 0);
-
-		Destination.~FScriptMap();
-	}
-
-	int32 GetValueSize(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return sizeof(FScriptMap);
-	}
-
-	int32 GetValueAlignment(const FAngelscriptTypeUsage& Usage) const
-	{
-		return alignof(FScriptMap);
-	}
-
-	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override { return true; }
-	void SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FArgData& Data) const override
-	{
-		FScriptMap* Arg = (FScriptMap*)Data.StackPtr;
-		new(Arg) FScriptMap();
-
-		if (Usage.bIsReference)
-		{
-			FScriptMap& Ref = Stack.StepCompiledInRef<FMapProperty,FScriptMap>(Arg);
-			Context->SetArgAddress(ArgumentIndex, &Ref);
-		}
-		else
-		{
-			Stack.StepCompiledIn<FMapProperty>(Arg);
-			Context->SetArgObject(ArgumentIndex, Arg);
-		}
-	}
-
-	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return true;
-	}
-
-	void GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const override
-	{
-		if (Usage.bIsReference)
-		{
-			*(void**)Destination = Context->GetReturnAddress();
-		}
-		else
-		{
-			void* ReturnedObject = Context->GetReturnObject();
-			if (ReturnedObject == nullptr)
-				return;
-			CopyValue(Usage, ReturnedObject, Destination);
-		}
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-		const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-
-		FScriptMap& Map = Usage.ResolvePrimitive<FScriptMap>(Address);
-
-		Value.Usage = Usage;
-		Value.Usage.TypeIndex = 0;
-		Value.Address = Address;
-		Value.bHasMembers = true;
-		Value.Type = Usage.GetAngelscriptDeclaration();
-
-		int32 Num = Map.Num();
-		if (Num == 0)
-		{
-			Value.Value = TEXT("Empty");
-		}
-		else
-		{
-			Value.Value = FString::Printf(TEXT("Num = %d"), Num);
-		}
-
-		return true;
-	}
-
-	bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-		const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-
-		FScriptMap& Map = Usage.ResolvePrimitive<FScriptMap>(Address);
-
-		FMapOperations Ops(KeyType, ValueType);
-
-		if (Usage.TypeIndex != 0)
-		{
-			// We're looking inside a key,value pair
-			int32 MapIndex = Usage.TypeIndex - 1;
-			if (!Map.IsValidIndex(MapIndex))
-				return false;
-
-			void* ValuePtr = Ops.GetValue(Map, MapIndex);
-			void* KeyPtr = Ops.GetKey(Map, MapIndex);
-
-			FDebuggerValue KeyValue;
-			if (KeyType.GetDebuggerValue(KeyPtr, KeyValue))
-			{
-				KeyValue.Name = TEXT("Key");
-				Scope.Values.Add(MoveTemp(KeyValue));
-			}
-
-			FDebuggerValue ElemValue;
-			if (ValueType.GetDebuggerValue(ValuePtr, ElemValue))
-			{
-				ElemValue.Name = TEXT("Value");
-				Scope.Values.Add(MoveTemp(ElemValue));
-			}
-
-			return true;
-		}
-
-		for (int32 i = 0, Num = Map.GetMaxIndex(); i < Num; ++i)
-		{
-			if (!Map.IsValidIndex(i))
-				continue;
-
-			void* ValuePtr = Ops.GetValue(Map, i);
-			void* KeyPtr = Ops.GetKey(Map, i);
-
-			FDebuggerValue ElemValue;
-			if (ValueType.GetDebuggerValue(ValuePtr, ElemValue))
-			{
-				if (KeyType.GetStringIdentifier(KeyPtr, ElemValue.Name))
-				{
-					ElemValue.Name = FString::Printf(TEXT("[%s]"), *ElemValue.Name);
-					Scope.Values.Add(MoveTemp(ElemValue));
-				}
-				else
-				{
-					FDebuggerValue KeyValue;
-					if (KeyType.GetDebuggerValue(KeyPtr, KeyValue))
-					{
-						FDebuggerValue PairValue;
-						PairValue.Type = FString::Printf(TEXT("<%s,%s>"), *KeyValue.Type, *ElemValue.Type);
-						PairValue.Name = FString::Printf(TEXT("[%d]"), i);
-						PairValue.Value = FString::Printf(TEXT("%s: %s"), *KeyValue.Value, *ElemValue.Value);
-						PairValue.Address = Address;
-						PairValue.Usage = Usage;
-						PairValue.Usage.TypeIndex = 1 + i;
-						PairValue.bHasMembers = true;
-
-						Scope.Values.Add(MoveTemp(PairValue));
-					}
-				}
-			}
-		}
-
-		{
-			FDebuggerValue NumValue;
-			NumValue.Name = TEXT("Num");
-			NumValue.Type = TEXT("int");
-			NumValue.Value = LexToString(Map.Num());
-			Scope.Values.Add(MoveTemp(NumValue));
-		}
-
-		return true;
-	}
-
-	bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-		const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-
-		FScriptMap& Map = Usage.ResolvePrimitive<FScriptMap>(Address);
-
-		FMapOperations Ops(KeyType, ValueType);
-
-		if (Usage.TypeIndex != 0)
-		{
-			// We're looking inside a key,value pair
-			int32 MapIndex = Usage.TypeIndex - 1;
-			if (!Map.IsValidIndex(MapIndex))
-				return false;
-
-			if (Member == TEXT("Key"))
-			{
-				void* KeyPtr = Ops.GetKey(Map, MapIndex);
-				if (KeyType.GetDebuggerValue(KeyPtr, Value))
-				{
-					Value.Name = TEXT("Key");
-					return true;
-				}
-
-				return false;
-			}
-			else if (Member == TEXT("Value"))
-			{
-				void* ValuePtr = Ops.GetValue(Map, MapIndex);
-				if (ValueType.GetDebuggerValue(ValuePtr, Value))
-				{
-					Value.Name = TEXT("Value");
-					return true;
-				}
-
-				return false;
-			}
-		}
-		else
-		{
-			if (Member == TEXT("Num"))
-			{
-				Value.Name = TEXT("Num");
-				Value.Type = TEXT("int");
-				Value.Value = LexToString(Map.Num());
-				return true;
-			}
-			else if (Member.StartsWith(TEXT("[")) && Member.EndsWith(TEXT("]")))
-			{
-				FString Identifier = Member.Mid(1, Member.Len() - 2);
-
-				int32 Index = -1;
-
-				void* KeyBuffer = (void*)FMemory_Alloca(Ops.KeySize);
-				bool bHasKeyBuffer = false;
-				if (KeyType.FromStringIdentifier(Identifier, KeyBuffer))
-				{
-					Index = Ops.FindPairIndex(Map, KeyBuffer);
-					bHasKeyBuffer = true;
-				}
-				else
-				{
-					LexFromString(Index, *Identifier);
-				}
-
-				bool bValidValue = false;
-				if (Map.IsValidIndex(Index))
-				{
-					void* ValuePtr = Ops.GetValue(Map, Index);
-					void* KeyPtr = Ops.GetKey(Map, Index);
-
-					FDebuggerValue ElemValue;
-					if (ValueType.GetDebuggerValue(ValuePtr, ElemValue))
-					{
-						if (KeyType.GetStringIdentifier(KeyPtr, ElemValue.Name))
-						{
-							ElemValue.Name = FString::Printf(TEXT("[%s]"), *ElemValue.Name);
-							Value = MoveTemp(ElemValue);
-
-							bValidValue = true;
-						}
-						else
-						{
-							FDebuggerValue KeyValue;
-							if (KeyType.GetDebuggerValue(KeyPtr, KeyValue))
-							{
-								Value.Type = FString::Printf(TEXT("<%s,%s>"), *KeyValue.Type, *ElemValue.Type);
-								Value.Name = FString::Printf(TEXT("[%d]"), Index);
-								Value.Value = FString::Printf(TEXT("%s: %s"), *KeyValue.Value, *ElemValue.Value);
-								Value.Address = Address;
-								Value.Usage = Usage;
-								Value.Usage.TypeIndex = 1 + Index;
-								Value.bHasMembers = true;
-
-								bValidValue = true;
-							}
-						}
-					}
-				}
-
-				if(bHasKeyBuffer && KeyType.CanDestruct() && KeyType.NeedDestruct())
-					KeyType.DestructValue(KeyBuffer);
-
-				return bValidValue;
-			}
-		}
-
-		return false;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		FCppForm CppInnerKey;
-		FCppForm CppInnerValue;
-		if (Usage.SubTypes[0].GetCppForm(CppInnerKey) && Usage.SubTypes[1].GetCppForm(CppInnerValue))
-		{
-			if (CppInnerKey.CppType.Len() != 0 && CppInnerValue.CppType.Len() != 0
-				&& !CppInnerKey.bDisallowNativeNest && !CppInnerValue.bDisallowNativeNest)
-			{
-				OutCppForm.CppType = FString::Printf(TEXT("TMap<%s,%s>"), *CppInnerKey.CppType, *CppInnerValue.CppType);
-				OutCppForm.CppHeader = CppInnerKey.CppHeader + TEXT("\n") + CppInnerValue.CppHeader;
-			}
-
-			FString KeyGeneric = CppInnerKey.CppGenericType.Len() != 0 ? CppInnerKey.CppGenericType : CppInnerKey.CppType;
-			FString ValueGeneric = CppInnerValue.CppGenericType.Len() != 0 ? CppInnerValue.CppGenericType : CppInnerValue.CppType;
-
-			if (KeyGeneric.Len() != 0 && ValueGeneric.Len() != 0)
-			{
-				OutCppForm.CppGenericType = FString::Printf(TEXT("TMap<%s,%s>"), *KeyGeneric, *ValueGeneric);
-			}
-		}
-
-		OutCppForm.TemplateObjectForm = TEXT("FScriptMap");
-		return true;
-	}
-
-	bool CanCompare(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return Usage.SubTypes.Num() == 2 && Usage.SubTypes[0].CanCompare() && Usage.SubTypes[1].CanCompare();
-	}
-
-	bool IsValueEqual(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const override
-	{
-		const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-		const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-
-		FScriptMap& SourceMap = *(FScriptMap*)SourcePtr;
-		FScriptMap& DestMap = *(FScriptMap*)DestinationPtr;
-
-		FMapOperations Ops(KeyType, ValueType);
-		return Ops.IsPermutation(SourceMap, DestMap);
-	}
-
-};
-
-struct FAngelscriptMapIteratorType : public FAngelscriptType
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("TMapIterator");
-	}
-
-	int32 GetValueSize(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return sizeof(FMapIterator);
-	}
-
-	int32 GetValueAlignment(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return alignof(FMapIterator);
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		FMapIterator& MapIterator = Usage.ResolvePrimitive<FMapIterator>(Address);
-		Value.Usage = Usage;
-		Value.Usage.TypeIndex = 0;
-		Value.Address = Address;
-		Value.bHasMembers = true;
-		Value.Type = Usage.GetAngelscriptDeclaration();
-
-		if (Usage.SubTypes.Num() == 2)
-		{
-			const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-			const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-			Value.Value = FString::Printf(TEXT("%s → %s"), *KeyType.GetAngelscriptDeclaration(), *ValueType.GetAngelscriptDeclaration());
-		}
-
-		return true;
-	}
-
-	bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		FMapIterator& MapIterator = Usage.ResolvePrimitive<FMapIterator>(Address);
-		if (MapIterator.Map == nullptr)
-			return false;
-
-		const int32 MapIndex = MapIterator.Index;
-		if (!MapIterator.Map->IsValidIndex(MapIndex))
-			return false;
-
-		const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-		const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-		FMapOperations Ops(KeyType, ValueType);
-
-		void* KeyPtr = Ops.GetKey(*MapIterator.Map, MapIndex);
-		void* ValuePtr = Ops.GetValue(*MapIterator.Map, MapIndex);
-
-		FDebuggerValue KeyValue;
-		if (KeyType.GetDebuggerValue(KeyPtr, KeyValue))
-		{
-			KeyValue.Name = TEXT("Key");
-			Scope.Values.Add(MoveTemp(KeyValue));
-		}
-
-		FDebuggerValue ElemValue;
-		if (ValueType.GetDebuggerValue(ValuePtr, ElemValue))
-		{
-			ElemValue.Name = TEXT("Value");
-			Scope.Values.Add(MoveTemp(ElemValue));
-		}
-
-		return true;
-	}
-
-	bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		FMapIterator& MapIterator = Usage.ResolvePrimitive<FMapIterator>(Address);
-		if (MapIterator.Map == nullptr)
-			return false;
-
-		const int32 MapIndex = MapIterator.Index;
-		if (!MapIterator.Map->IsValidIndex(MapIndex))
-			return false;
-
-		const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-		const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-		FMapOperations Ops(KeyType, ValueType);
-
-		if (Member == TEXT("Key"))
-		{
-			void* KeyPtr = Ops.GetKey(*MapIterator.Map, MapIndex);
-			if (KeyType.GetDebuggerValue(KeyPtr, Value))
-			{
-				Value.Name = TEXT("Key");
-				return true;
-			}
-			return false;
-		}
-
-		if (Member == TEXT("Value"))
-		{
-			void* ValuePtr = Ops.GetValue(*MapIterator.Map, MapIndex);
-			if (ValueType.GetDebuggerValue(ValuePtr, Value))
-			{
-				Value.Name = TEXT("Value");
-				return true;
-			}
-			return false;
-		}
-
-		return false;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.TemplateObjectForm = TEXT("FMapIterator");
-		return true;
-	}
-};
-
-struct FAngelscriptMapConstIteratorType : public FAngelscriptType
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("TMapConstIterator");
-	}
-
-	int32 GetValueSize(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return sizeof(FMapIterator);
-	}
-
-	int32 GetValueAlignment(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return alignof(FMapIterator);
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		FMapIterator& MapIterator = Usage.ResolvePrimitive<FMapIterator>(Address);
-		Value.Usage = Usage;
-		Value.Usage.TypeIndex = 0;
-		Value.Address = Address;
-		Value.bHasMembers = true;
-		Value.Type = Usage.GetAngelscriptDeclaration();
-
-		if (Usage.SubTypes.Num() == 2)
-		{
-			const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-			const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-			Value.Value = FString::Printf(TEXT("const %s → %s"), *KeyType.GetAngelscriptDeclaration(), *ValueType.GetAngelscriptDeclaration());
-		}
-
-		return true;
-	}
-
-	bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		FMapIterator& MapIterator = Usage.ResolvePrimitive<FMapIterator>(Address);
-		if (MapIterator.Map == nullptr)
-			return false;
-
-		const int32 MapIndex = MapIterator.Index;
-		if (!MapIterator.Map->IsValidIndex(MapIndex))
-			return false;
-
-		const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-		const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-		FMapOperations Ops(KeyType, ValueType);
-
-		void* KeyPtr = Ops.GetKey(*MapIterator.Map, MapIndex);
-		void* ValuePtr = Ops.GetValue(*MapIterator.Map, MapIndex);
-
-		FDebuggerValue KeyValue;
-		if (KeyType.GetDebuggerValue(KeyPtr, KeyValue))
-		{
-			KeyValue.Name = TEXT("Key");
-			Scope.Values.Add(MoveTemp(KeyValue));
-		}
-
-		FDebuggerValue ElemValue;
-		if (ValueType.GetDebuggerValue(ValuePtr, ElemValue))
-		{
-			ElemValue.Name = TEXT("Value");
-			Scope.Values.Add(MoveTemp(ElemValue));
-		}
-
-		return true;
-	}
-
-	bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override
-	{
-		if (Usage.SubTypes.Num() != 2)
-			return false;
-
-		FMapIterator& MapIterator = Usage.ResolvePrimitive<FMapIterator>(Address);
-		if (MapIterator.Map == nullptr)
-			return false;
-
-		const int32 MapIndex = MapIterator.Index;
-		if (!MapIterator.Map->IsValidIndex(MapIndex))
-			return false;
-
-		const FAngelscriptTypeUsage& KeyType = Usage.SubTypes[0];
-		const FAngelscriptTypeUsage& ValueType = Usage.SubTypes[1];
-		FMapOperations Ops(KeyType, ValueType);
-
-		if (Member == TEXT("Key"))
-		{
-			void* KeyPtr = Ops.GetKey(*MapIterator.Map, MapIndex);
-			if (KeyType.GetDebuggerValue(KeyPtr, Value))
-			{
-				Value.Name = TEXT("Key");
-				return true;
-			}
-			return false;
-		}
-
-		if (Member == TEXT("Value"))
-		{
-			void* ValuePtr = Ops.GetValue(*MapIterator.Map, MapIndex);
-			if (ValueType.GetDebuggerValue(ValuePtr, Value))
-			{
-				Value.Name = TEXT("Value");
-				return true;
-			}
-			return false;
-		}
-
-		return false;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.TemplateObjectForm = TEXT("FMapIterator");
-		return true;
-	}
-};
 
 bool ValidateMapOperations(asITypeInfo* TemplateType, asCString* ErrorMessage);
 

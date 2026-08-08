@@ -1,4 +1,4 @@
-#include "Bind_FPlatformMisc_Functions.h"
+#include "Bind_FPlatformMisc.h"
 
 #include "HAL/PlatformMisc.h"
 

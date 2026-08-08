@@ -1,47 +1,121 @@
+#include "Bind_FText.h"
+
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 
-#include "Bind_FText_Functions.h"
-#include "Helper_CppType.h"
 #include "Helper_GetTypeInfo.h"
 #include "Helper_ToString.h"
 
-#include "UObject/TextProperty.h"
-
-struct FTextType : TAngelscriptCppPropertyType<FTextProperty>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FText");
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, FDebuggerValue& Value) const override
-	{
-		FText& NativeValue = Usage.ResolvePrimitive<FText>(Address);
-
-		Value.Type = Usage.GetAngelscriptDeclaration();
-		Value.Usage = Usage;
-		Value.Address = Address;
-		Value.Value = TEXT("FText: \"") + NativeValue.ToString() + TEXT("\"");
-		return true;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-
-	bool CanCompare(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return true;
-	}
-
-	bool IsValueEqual(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const override
-	{
-		return static_cast<FText*>(SourcePtr)->IdenticalTo(*static_cast<FText*>(DestinationPtr));
-	}
-};
+/**
+ * FText enums, lifecycle, comparison, localization, formatting, and conversion.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | enum ETextIdenticalModeFlags { None, DeepCompare, LexicalCompareInvariants };                        | Controls FText identity comparison.                                                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | enum EDateTimeStyle { Default, Short, Medium, Long, Full };                                          | Selects localized date/time verbosity.                                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText Text();                                                                                        | Constructs empty text.                                                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText Text(const FText& Other);                                                                      | Copy-constructs text.                                                                                            |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Text.IsEmpty() const;                                                                           | Reports whether the display string is empty.                                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Text.IsEmptyOrWhitespace() const;                                                               | Reports whether the display string is empty or whitespace.                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Text.IsTransient() const;                                                                       | Reports whether the text is transient.                                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Text.IsCultureInvariant() const;                                                                | Reports whether localization leaves the text unchanged.                                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Text.IsInitializedFromString() const;                                                           | Reports whether the text originated from a string.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Text.IsFromStringTable() const;                                                                 | Reports whether the text references a string table.                                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Text.IdenticalTo(const FText& Other,                                                            | Compares text histories under the requested mode.                                                                |
+ * |     const ETextIdenticalModeFlags CompareModeFlags = ETextIdenticalModeFlags::None) const;           |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | Left = Right;                                                                                        | Assigns text.                                                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::FromStringTable(const FName InTableId,                                                  | Loads text from a string table.                                                                                  |
+ * |     const FString& InKey,                                                                            | @param InTableId String-table identifier.                                                                        |
+ * |     const EStringTableLoadingPolicy InLoadingPolicy = EStringTableLoadingPolicy::FindOrLoad);        | @param InKey Entry key.                                                                                          |
+ * |                                                                                                      | @param InLoadingPolicy Controls table loading.                                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::FromName(const FName& Val);                                                             | Creates text from a name.                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::FromString(const FString& Val);                                                         | Creates text from a string.                                                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsCultureInvariant(const FString& Val);                                                 | Creates culture-invariant text.                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Join(const FText& Delimiter, const TArray<FFormatArgumentValue>& Args);                 | Joins format arguments with a delimiter.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Join(const FText& Delimiter, const TArray<FText>& Args);                                | Joins text values with a delimiter.                                                                              |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsDate(const FDateTime& DateTime,                                                       | Formats a localized date.                                                                                        |
+ * |     const EDateTimeStyle::Type DateStyle = EDateTimeStyle::Default);                                 |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsDateTime(const FDateTime& DateTime,                                                   | Formats localized date and time.                                                                                 |
+ * |     const EDateTimeStyle::Type DateStyle = EDateTimeStyle::Default,                                  |                                                                                                                  |
+ * |     const EDateTimeStyle::Type TimeStyle = EDateTimeStyle::Default);                                 |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsTime(const FDateTime& DateTime,                                                       | Formats a localized time.                                                                                        |
+ * |     const EDateTimeStyle::Type TimeStyle = EDateTimeStyle::Default);                                 |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsTimespan(const FTimespan& Timespan);                                                  | Formats a localized duration.                                                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(float32 Val, const FNumberFormattingOptions& Options);                         | Formats a localized float32 value using the supplied options.                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(float64 Val, const FNumberFormattingOptions& Options);                         | Formats a localized float64 value using the supplied options.                                                    |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(int8 Val, const FNumberFormattingOptions& Options);                            | Formats a localized int8 value using the supplied options.                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(int16 Val, const FNumberFormattingOptions& Options);                           | Formats a localized int16 value using the supplied options.                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(int32 Val, const FNumberFormattingOptions& Options);                           | Formats a localized int32 value using the supplied options.                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(int64 Val, const FNumberFormattingOptions& Options);                           | Formats a localized int64 value using the supplied options.                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(uint8 Val, const FNumberFormattingOptions& Options);                           | Formats a localized uint8 value using the supplied options.                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(uint16 Val, const FNumberFormattingOptions& Options);                          | Formats a localized uint16 value using the supplied options.                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(uint32 Val, const FNumberFormattingOptions& Options);                          | Formats a localized uint32 value using the supplied options.                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsNumber(uint64 Val, const FNumberFormattingOptions& Options);                          | Formats a localized uint64 value using the supplied options.                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::AsMemory(uint64 NumBytes);                                                              | Formats a byte count using localized memory units.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Format(const FText& Format, const ?& Arg0);                                             | Formats positional wildcard arguments 0 through 0.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Format(const FText& Format, const ?& Arg0, const ?& Arg1);                              | Formats positional wildcard arguments 0 through 1.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Format(const FText& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2);               | Formats positional wildcard arguments 0 through 2.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Format(const FText& Format,                                                             | Formats positional wildcard arguments 0 through 3.                                                               |
+ * |     const ?& Arg0,                                                                                   |                                                                                                                  |
+ * |     const ?& Arg1,                                                                                   |                                                                                                                  |
+ * |     const ?& Arg2,                                                                                   |                                                                                                                  |
+ * |     const ?& Arg3);                                                                                  |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Format(const FText& Format,                                                             | Formats positional wildcard arguments 0 through 4.                                                               |
+ * |     const ?& Arg0,                                                                                   |                                                                                                                  |
+ * |     const ?& Arg1,                                                                                   |                                                                                                                  |
+ * |     const ?& Arg2,                                                                                   |                                                                                                                  |
+ * |     const ?& Arg3,                                                                                   |                                                                                                                  |
+ * |     const ?& Arg4);                                                                                  |                                                                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Format(const FText& Format, const TMap<FString, FFormatArgumentValue>& Arguments);      | Formats named arguments.                                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText FText::Format(const FText& Format, const TArray<FFormatArgumentValue>& Arguments);             | Formats an ordered argument array.                                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | void FText::GetFormatPatternParameters(const FText& Fmt, TArray<FString>&out ParameterNames);        | Extracts named placeholders.                                                                                     |
+ * |                                                                                                      | @param ParameterNames Receives parameter names in the pattern.                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FText NSLOCTEXT(const FString& Namespace, const FString& Key, const FString& Text);                  | Creates gatherable localizable text; all three arguments must be string literals.                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FString Value = f"{Text}";                                                                           | Formats FText through the shared string formatter contribution.                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

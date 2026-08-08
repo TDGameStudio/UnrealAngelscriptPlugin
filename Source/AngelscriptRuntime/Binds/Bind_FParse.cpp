@@ -1,6 +1,25 @@
+#include "Bind_FParse.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_FParse_Functions.h"
+/**
+ * FParse namespace binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FParse::Value(const FString& Stream, const FString& Match, FString& Value);           | Parses the string value following Match.                                                                             |
+ * |                                                                                            | @param Value Receives the parsed text on success.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FParse::Value(const FString& Stream, const FString& Match, float32& Value);           | Parses the floating-point value following Match.                                                                     |
+ * |                                                                                            | @param Value Receives the parsed number on success.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FParse::Value(const FString& Stream, const FString& Match, int& Value);               | Parses the integer value following Match.                                                                            |
+ * |                                                                                            | @param Value Receives the parsed number on success.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FParse::Bool(const FString& Stream, const FString& Match, bool& OnOff);               | Parses the Boolean value following Match.                                                                            |
+ * |                                                                                            | @param OnOff Receives the parsed state on success.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

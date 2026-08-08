@@ -1,4 +1,4 @@
-#include "Bind_FString_Functions.h"
+#include "Bind_FString.h"
 
 #include "AngelscriptEngine.h"
 #include "Helper_ToString.h"

@@ -1,6 +1,32 @@
+#include "Bind_FAnchors.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_FAnchors_Functions.h"
+/**
+ * FAnchors construction, comparison, and stretch queries.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FAnchors Anchors(float32 UnifromAnchors);                                                            | Constructs uniform minimum and maximum anchors.                                                                  |
+ * |                                                                                                      | @param UnifromAnchors Shared normalized anchor coordinate on both axes.                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FAnchors Anchors(float32 Horizontal, float32 Vertical);                                              | Constructs point anchors from horizontal and vertical coordinates.                                               |
+ * |                                                                                                      | @param Horizontal Normalized X anchor coordinate.                                                                |
+ * |                                                                                                      | @param Vertical Normalized Y anchor coordinate.                                                                  |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FAnchors Anchors(float32 MinX, float32 MinY, float32 MaxX, float32 MaxY);                            | Constructs ranged anchors from minimum and maximum coordinates.                                                  |
+ * |                                                                                                      | @param MinX Minimum normalized X coordinate.                                                                     |
+ * |                                                                                                      | @param MinY Minimum normalized Y coordinate.                                                                     |
+ * |                                                                                                      | @param MaxX Maximum normalized X coordinate.                                                                     |
+ * |                                                                                                      | @param MaxY Maximum normalized Y coordinate.                                                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = Left == Right;                                                                         | Compares every anchor coordinate.                                                                                |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Anchors.IsStretchedVertical() const;                                                            | Reports whether the vertical anchors span a range.                                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool Anchors.IsStretchedHorizontal() const;                                                          | Reports whether the horizontal anchors span a range.                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

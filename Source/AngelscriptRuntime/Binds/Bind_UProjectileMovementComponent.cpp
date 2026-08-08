@@ -1,6 +1,18 @@
+#include "Bind_UProjectileMovementComponent.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_UProjectileMovementComponent_Functions.h"
+/**
+ * UProjectileMovementComponent manual binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const USceneComponent UProjectileMovementComponent.GetHomingTargetComponent() const;       | Returns the current homing target component while its weak reference remains valid.                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UProjectileMovementComponent.SetHomingTargetComponent(                                | Sets the weak homing target component used when homing acceleration is enabled.                                      |
+ * |     USceneComponent HomingTargetComponent);                                                | Registration is skipped only when UProjectileMovementComponent is unavailable.                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

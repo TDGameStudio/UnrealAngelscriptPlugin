@@ -1,4 +1,4 @@
-#include "Bind_LandscapeProxy_Functions.h"
+#include "Bind_LandscapeProxy.h"
 
 #include "Runtime/Landscape/Classes/LandscapeProxy.h"
 

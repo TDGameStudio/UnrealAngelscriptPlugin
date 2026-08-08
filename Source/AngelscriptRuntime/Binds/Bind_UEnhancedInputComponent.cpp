@@ -1,8 +1,70 @@
+#include "Bind_UEnhancedInputComponent.h"
+
 #include "AngelscriptBinds.h"
 
 #include "EnhancedInputComponent.h"
 
-#include "Bind_UEnhancedInputComponent_Functions.h"
+/**
+ * UEnhancedInputComponent manual binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UEnhancedInputComponent.SetShouldFireDelegatesInEditor(                               | Sets whether enhanced-input delegates may fire in editor worlds.                                                     |
+ * |     const bool bInNewValue);                                                               |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.ShouldFireDelegatesInEditor() const;                          | Returns whether enhanced-input delegates may fire in editor worlds.                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.HasBindings() const;                                          | Returns whether the component owns any input bindings.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UEnhancedInputComponent.ClearActionEventBindings();                                   | Removes all enhanced action-event bindings.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UEnhancedInputComponent.ClearActionValueBindings();                                   | Removes all enhanced action-value bindings.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UEnhancedInputComponent.ClearDebugKeyBindings();                                      | Removes all debug-key bindings.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UEnhancedInputComponent.ClearActionBindings();                                        | Removes all action bindings owned by the component.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void UEnhancedInputComponent.ClearBindingsForObject(UObject InOwner);                      | Removes every binding whose delegate is owned by InOwner.                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.RemoveActionEventBinding(const int32 BindingIndex);           | Removes an action-event binding by array index.                                                                      |
+ * |                                                                                            | @param BindingIndex Index in the action-event binding array.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.RemoveDebugKeyBinding(const int32 BindingIndex);              | Removes a debug-key binding by array index.                                                                          |
+ * |                                                                                            | @param BindingIndex Index in the debug-key binding array.                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.RemoveActionValueBinding(const int32 BindingIndex);           | Removes an action-value binding by array index.                                                                      |
+ * |                                                                                            | @param BindingIndex Index in the action-value binding array.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.RemoveBindingByHandle(const uint32 BindingIndex);             | Removes the binding identified by its numeric binding handle.                                                        |
+ * |                                                                                            | @param BindingIndex Registered binding-handle value, despite the exposed parameter name.                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.RemoveBinding(                                                | Removes the binding identified by the generic input-binding handle.                                                  |
+ * |     const FInputBindingHandle& BindingToRemove);                                           |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.RemoveBinding(                                                | Removes the supplied enhanced action-event binding.                                                                  |
+ * |     const FEnhancedInputActionEventBinding& BindingToRemove);                              |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.RemoveBinding(                                                | Removes the supplied enhanced action-value binding.                                                                  |
+ * |     const FEnhancedInputActionValueBinding& BindingToRemove);                              |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UEnhancedInputComponent.RemoveBinding(                                                | Removes the supplied debug-key binding.                                                                              |
+ * |     const FInputDebugKeyBinding& BindingToRemove);                                         |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FEnhancedInputActionEventBinding& UEnhancedInputComponent.BindAction(                      | Binds a dynamic delegate to an input action trigger event.                                                           |
+ * |     const UInputAction Action, ETriggerEvent TriggerEvent,                                 | @param Action Input action asset to observe.                                                                         |
+ * |     FEnhancedInputActionHandlerDynamicSignature Delegate);                                 | @param TriggerEvent Trigger phase that invokes Delegate.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FEnhancedInputActionValueBinding& UEnhancedInputComponent.BindActionValue(                 | Binds value polling for an input action and returns the stable binding record.                                       |
+ * |     const UInputAction Action);                                                            |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FInputDebugKeyBinding& UEnhancedInputComponent.BindDebugKey(                               | Binds a dynamic delegate to a debug chord and input event.                                                           |
+ * |     const FInputChord Chord, const EInputEvent KeyEvent,                                   | @param KeyEvent Input transition that invokes Delegate.                                                              |
+ * |     FInputDebugKeyHandlerDynamicSignature Delegate, bool bExecuteWhenPaused = true);       | @param bExecuteWhenPaused Allows invocation while gameplay is paused.                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FInputActionValue UEnhancedInputComponent.GetBoundActionValue(                             | Returns the current accumulated value for a bound input action.                                                      |
+ * |     const UInputAction Action);                                                            |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

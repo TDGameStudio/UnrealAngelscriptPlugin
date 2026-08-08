@@ -4,6 +4,15 @@
 
 #include "Engine/CollisionProfile.h"
 
+/**
+ * Project collision-profile constants generated from UCollisionProfile at bind time.
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                              | Purpose / parameter notes                                                                                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | const FName CollisionProfile::<ProfileIdentifier>;                                       | Names one configured collision profile; invalid identifier characters become underscores.                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ */
+
 namespace CollisionProfileBind
 {
 	FString MakeIdentifier(const FName& ProfileName)

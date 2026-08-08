@@ -2,6 +2,30 @@
 #include "AngelscriptEngine.h"
 #include "GameFramework/InputSettings.h"
 
+/**
+ * UInputSettings manual binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName UInputSettings.GetUniqueActionName(const FName BaseActionMappingName);               | Returns an unused action-mapping name derived from the requested base name.                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName UInputSettings.GetUniqueAxisName(const FName BaseAxisMappingName);                   | Returns an unused axis-mapping name derived from the requested base name.                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const TArray<FInputActionKeyMapping>& UInputSettings.GetActionMappings() const;            | Returns all configured action key mappings.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const TArray<FInputAxisKeyMapping>& UInputSettings.GetAxisMappings() const;                | Returns all configured axis key mappings.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const TArray<FInputActionSpeechMapping>& UInputSettings.GetSpeechMappings()                | Returns all configured legacy speech mappings.                                                                       |
+ * |     const;                                                                                 |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UInputSettings.DoesActionExist(const FName InActionName);                             | Returns whether an action mapping with the supplied name exists.                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UInputSettings.DoesAxisExist(const FName InAxisName);                                 | Returns whether an axis mapping with the supplied name exists.                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool UInputSettings.DoesSpeechExist(const FName InSpeechName);                             | Returns whether a legacy speech mapping with the supplied name exists.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
+
 namespace
 {
 	void BindUInputSettings(FAngelscriptBinds& Binds)

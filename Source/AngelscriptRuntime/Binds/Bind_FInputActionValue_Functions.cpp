@@ -1,4 +1,4 @@
-#include "Bind_FInputActionValue_Functions.h"
+#include "Bind_FInputActionValue.h"
 
 void FAngelscriptFInputActionValueBinds::ConstructAxis1D(FInputActionValue* Address, float Value)
 {

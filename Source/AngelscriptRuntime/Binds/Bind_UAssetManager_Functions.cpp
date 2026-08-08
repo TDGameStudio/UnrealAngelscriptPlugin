@@ -1,4 +1,4 @@
-#include "Bind_UAssetManager_Functions.h"
+#include "Bind_UAssetManager.h"
 
 #include "Engine/AssetManager.h"
 

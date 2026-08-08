@@ -1,4 +1,4 @@
-#include "Bind_UStruct_Functions.h"
+#include "Bind_UStruct.h"
 
 #include "AngelscriptEngine.h"
 

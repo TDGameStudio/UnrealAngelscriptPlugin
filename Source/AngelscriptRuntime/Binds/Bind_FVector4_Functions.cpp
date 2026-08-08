@@ -1,4 +1,4 @@
-#include "Bind_FVector4_Functions.h"
+#include "Bind_FVector4.h"
 
 void FAngelscriptFVector4Binds::Construct(FVector4* Address, const double X, const double Y, const double Z, const double W)
 {

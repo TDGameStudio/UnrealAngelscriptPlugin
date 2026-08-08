@@ -1,14 +1,13 @@
+#include "Bind_FString.h"
+
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 
 #include "Containers/UnrealString.h"
 #include "Engine/UserDefinedEnum.h"
 
-#include "Helper_CppType.h"
 #include "Helper_GetTypeInfo.h"
 #include "Helper_ToString.h"
-#include "Bind_FString_Functions.h"
-
 #include "StartAngelscriptHeaders.h"
 //#include "as_scriptengine.h"
 //#include "as_objecttype.h"
@@ -17,67 +16,234 @@
 #include "ClassGenerator/ASClass.h"
 #include "EndAngelscriptHeaders.h"
 
-struct FStringType : TAngelscriptCppPropertyType<FStrProperty>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FString");
-	}
-
-	bool DefaultValue_UnrealToAngelscript(const FAngelscriptTypeUsage& Usage, const FString& InValue, FString& OutValue) const override
-	{
-		OutValue = FString::Printf(TEXT("\"%s\""), *InValue);
-		return true;
-	}
-
-	bool DefaultValue_AngelscriptToUnreal(const FAngelscriptTypeUsage& Usage, const FString& InValue, FString& OutValue) const override
-	{
-		OutValue = InValue.TrimQuotes();
-		return true;
-	}
-
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
-	{
-		FString& NativeValue = Usage.ResolvePrimitive<FString>(Address);
-
-		Value.Type = Usage.GetAngelscriptDeclaration();
-		Value.Usage = Usage;
-		Value.Address = Address;
-		Value.Value = TEXT("\"") + NativeValue + TEXT("\"");
-
-		return true;
-	}
-
-	bool GetStringIdentifier(const FAngelscriptTypeUsage& Usage, void* Address, FString& OutString) const override
-	{
-		OutString = *(FString*)Address;
-		return true;
-	}
-
-	bool FromStringIdentifier(const FAngelscriptTypeUsage& Usage, const FString& InString, void* BufferPtr) const
-	{
-		new(BufferPtr) FString(InString);
-		return true;
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-
-	virtual bool IsOrdered(const FAngelscriptTypeUsage& Usage) const override
-	{
-		return true;
-	}
-
-	virtual int32 CompareOrder(const FAngelscriptTypeUsage& Usage, void* Value, void* OtherValue) const override
-	{
-		FString& A = Usage.ResolvePrimitive<FString>(Value);
-		FString& B = Usage.ResolvePrimitive<FString>(OtherValue);
-		return A.Compare(B);
-	}
-};
+/**
+ * FString core, conversion, formatting, and parsing binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FString;                                                                            | Declares the engine UTF-16 string value type.                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString Text = "literal";                                                                  | Creates FString values from AngelScript string literals through the registered string factory.                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString Text;                                                                              | Constructs an empty string; storage lifetime is managed automatically.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString Text(const FString& Other);                                                        | Copy-constructs a string.                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text = Other;                                                                              | Assigns another string.                                                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text += Other;                                                                             | Appends another string in place.                                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text == Other;                                                                             | Compares strings for case-sensitive equality.                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text < Other;                                                                              | Compares strings lexically; the same comparison binding supplies <=, >, and >=.                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text + Other;                                                                              | Returns the concatenation of two strings.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text[Index];                                                                               | Returns a mutable UTF-16 code-unit reference.                                                                        |
+ * |                                                                                            | @param Index Zero-based UTF-16 code-unit index.                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ConstText[Index];                                                                          | Returns a read-only UTF-16 code-unit reference.                                                                      |
+ * |                                                                                            | @param Index Zero-based UTF-16 code-unit index.                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString& FString.Append(const FString& Other);                                             | Appends Other and returns this string, including on temporary strings.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString& FString.AppendChar(int16 Character);                                              | Appends one UTF-16 code unit and returns this string.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.AppendInt(int32 InNum);                                                       | Appends the decimal representation of InNum.                                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.InsertAt(int32 Index, int16 Character);                                       | Inserts one UTF-16 code unit at Index.                                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.InsertAt(int32 Index, const FString& Characters);                             | Inserts Characters at Index.                                                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.Empty();                                                                      | Removes all characters and releases allocated storage.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.Empty(int Slack);                                                             | Removes all characters and reserves Slack UTF-16 code units.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.IsEmpty() const;                                                              | Returns whether the string has zero length.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.Reset(int NewReservedSize = 0);                                               | Removes all characters while retaining or resizing reusable storage.                                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.Reserve(int Count);                                                           | Reserves storage for at least Count UTF-16 code units.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.Shrink();                                                                     | Shrinks allocated storage to the current string length.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.IsValidIndex(int Index) const;                                                | Returns whether Index addresses an existing UTF-16 code unit.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.RemoveAt(int Index, int Count);                                               | Removes Count UTF-16 code units beginning at Index.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FString.RemoveSpacesInline();                                                         | Removes space characters in place.                                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int FString.Len() const;                                                                   | Returns the number of UTF-16 code units.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.IsNumeric() const;                                                            | Returns whether the string contains a valid numeric representation.                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.Reverse() const;                                                           | Returns a reversed copy.                                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.ConvertTabsToSpaces(int32 InSpacesPerTab) const;                           | Expands tab characters to the requested tab width.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.RemoveFromStart(const FString& Prefix, ESearchCase SearchCase =               | Removes Prefix when it matches the start under SearchCase and reports success.                                       |
+ * |     ESearchCase::IgnoreCase);                                                              |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.RemoveFromEnd(const FString& Suffix, ESearchCase SearchCase =                 | Removes Suffix when it matches the end under SearchCase and reports success.                                         |
+ * |     ESearchCase::IgnoreCase);                                                              |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.Left(int Count) const;                                                     | Returns at most Count code units from the start.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.LeftChop(int Count) const;                                                 | Returns the string without Count code units from the end.                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.Right(int Count) const;                                                    | Returns at most Count code units from the end.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.RightChop(int Count) const;                                                | Returns the string without Count code units from the start.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.Mid(int Start, int Count = MAX_int32) const;                               | Returns up to Count code units beginning at Start.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.Split(const FString& Needle, FString& OutLeft, FString& OutRight, ESearchCase | Splits around the first matching Needle in SearchDir and reports whether one was found.                              |
+ * |     SearchCase = ESearchCase::IgnoreCase, ESearchDir SearchDir = ESearchDir::FromStart)    | @param OutLeft, OutRight Receive text before and after the match.                                                    |
+ * |     const;                                                                                 |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.Replace(const FString& From, const FString& To, ESearchCase SearchCase =   | Returns a copy with every matching From substring replaced by To.                                                    |
+ * |     ESearchCase::IgnoreCase) const;                                                        |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int FString.ReplaceInline(const FString& SearchText, const FString& ReplacementText,       | Replaces matches in place and returns the replacement count.                                                         |
+ * |     ESearchCase SearchCase = ESearchCase::IgnoreCase);                                     |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.ReplaceCharWithEscapedChar() const;                                        | Returns a copy with control characters converted to escape sequences.                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.ReplaceEscapedCharWithChar() const;                                        | Returns a copy with recognized escape sequences converted to characters.                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int FString.Find(const FString& SubStr, ESearchCase SearchCase = ESearchCase::IgnoreCase,  | Returns the matching UTF-16 index, or INDEX_NONE.                                                                    |
+ * |     ESearchDir SearchDir = ESearchDir::FromStart, int StartPosition = -1) const;           | @param StartPosition Optional search start; -1 uses the direction-specific default.                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.Contains(const FString& SubStr, ESearchCase SearchCase =                      | Returns whether SubStr occurs under the requested case and direction.                                                |
+ * |     ESearchCase::IgnoreCase, ESearchDir SearchDir = ESearchDir::FromStart) const;          |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.FindChar(int16 Char, int& Index) const;                                       | Finds the first matching UTF-16 code unit.                                                                           |
+ * |                                                                                            | @param Index Receives the match index on success.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.FindLastChar(int16 Char, int& Index) const;                                   | Finds the last matching UTF-16 code unit.                                                                            |
+ * |                                                                                            | @param Index Receives the match index on success.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.StartsWith(const FString& SubStr, ESearchCase SearchCase =                    | Returns whether the string begins with SubStr under SearchCase.                                                      |
+ * |     ESearchCase::IgnoreCase) const;                                                        |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.EndsWith(const FString& SubStr, ESearchCase SearchCase =                      | Returns whether the string ends with SubStr under SearchCase.                                                        |
+ * |     ESearchCase::IgnoreCase) const;                                                        |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.MatchesWildcard(const FString& Wildcard, ESearchCase SearchCase =             | Returns whether the string matches the wildcard pattern.                                                             |
+ * |     ESearchCase::IgnoreCase) const;                                                        |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.Equals(const FString& Other, ESearchCase SearchCase =                         | Compares strings for equality under SearchCase.                                                                      |
+ * |     ESearchCase::CaseSensitive) const;                                                     |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.ToUpper() const;                                                           | Returns an uppercase copy.                                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.ToLower() const;                                                           | Returns a lowercase copy.                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.LeftPad(int Count) const;                                                  | Left-pads with spaces until the result reaches Count code units.                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.RightPad(int Count) const;                                                 | Right-pads with spaces until the result reaches Count code units.                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.TrimQuotes(bool& OutQuotesRemoved) const;                                  | Returns a copy without one matching surrounding quote pair.                                                          |
+ * |                                                                                            | @param OutQuotesRemoved Reports whether quotes were removed.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.TrimStartAndEnd() const;                                                   | Returns a copy with leading and trailing whitespace removed.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.TrimStart() const;                                                         | Returns a copy with leading whitespace removed.                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.TrimEnd() const;                                                           | Returns a copy with trailing whitespace removed.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.TrimChar(int16 CharacterToTrim) const;                                     | Returns a copy with CharacterToTrim removed from both ends.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int32 FString.Compare(const FString& Other, ESearchCase SearchCase =                       | Returns a negative, zero, or positive lexical comparison result.                                                     |
+ * |     ESearchCase::CaseSensitive) const;                                                     |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FString.ToBool() const;                                                               | Parses common true/false string representations.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString.ToDisplayName(bool bIsBool = false) const;                                 | Converts an identifier to a display label, with Boolean prefix handling when requested.                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | uint FString.GetHash() const;                                                              | Returns the engine string hash.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text + ContributedValue;                                                                   | Appends any type registered with FToStringHelper and returns the result.                                             |
+ * |                                                                                            | Expands once per contributed type; handle and value qualifiers follow that type registration.                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text += ContributedValue;                                                                  | Appends any FToStringHelper-contributed value in place.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text.Append(ContributedValue);                                                             | Appends any FToStringHelper-contributed value to a temporary or existing string.                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString ContributedType.ToString() const;                                                  | Adds ToString to every available FToStringHelper-contributed type.                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString Text(ImplicitContributedValue);                                                    | Adds an implicit FString constructor only for contributions marked implicit.                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::Join(const TArray<FString>& StringArray, const FString& Separator);       | Joins array elements with Separator between adjacent strings.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::FromInt(int32 Num);                                                       | Returns the decimal representation of Num.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::SanitizeFloat(float64 InFloat, int32 InMinFractionalDigits = 1);          | Formats a finite float without unnecessary trailing zeroes while retaining the minimum fraction digits.              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::FormatAsNumber(int32 InNumber);                                           | Formats an integer with the current culture number rules.                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::Chr(int16 Ch);                                                            | Creates a one-code-unit string.                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ChrN(int32 NumCharacters, int16 Char);                                    | Creates a string containing NumCharacters copies of Char.                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::Format(const FString& Format, const ?& Arg0);                             | Formats one type-erased ordered argument.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::Format(const FString& Format, const ?& Arg0, const ?& Arg1);              | Formats two type-erased ordered arguments.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?&      | Formats three type-erased ordered arguments.                                                                         |
+ * |     Arg2);                                                                                 |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?&      | Formats four type-erased ordered arguments.                                                                          |
+ * |     Arg2, const ?& Arg3);                                                                  |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?&      | Formats five type-erased ordered arguments.                                                                          |
+ * |     Arg2, const ?& Arg3, const ?& Arg4);                                                   |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(int32 Value, const FString& Specifier);                       | Applies the FString format specifier to a int32 value.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(uint32 Value, const FString& Specifier);                      | Applies the FString format specifier to a uint32 value.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(int64 Value, const FString& Specifier);                       | Applies the FString format specifier to a int64 value.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(uint64 Value, const FString& Specifier);                      | Applies the FString format specifier to a uint64 value.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(int16 Value, const FString& Specifier);                       | Applies the FString format specifier to a int16 value.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(uint16 Value, const FString& Specifier);                      | Applies the FString format specifier to a uint16 value.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(int8 Value, const FString& Specifier);                        | Applies the FString format specifier to a int8 value.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(uint8 Value, const FString& Specifier);                       | Applies the FString format specifier to a uint8 value.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(bool Value, const FString& Specifier);                        | Applies the FString format specifier to a bool value.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(float32 Value, const FString& Specifier);                     | Applies the FString format specifier to a float32 value.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(float64 Value, const FString& Specifier);                     | Applies the FString format specifier to a float64 value.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(const FString& Value, const FString& Specifier);              | Applies string width/alignment formatting from Specifier.                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FString::ApplyFormat(const ?& Value, const FString& Specifier);                    | Formats a supported type-erased value with Specifier.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text + Value;                                                                              | Converts a type-erased Value through the generic formatter and returns concatenated text.                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Text += Value;                                                                             | Converts a type-erased Value through the generic formatter and appends in place.                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString& FString.Append(const ?& Value);                                                   | Converts a type-erased Value through the generic formatter and appends it.                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int FString.ParseIntoArray(TArray<FString>& OutArray, const FString& Delimiter, bool       | Splits on one delimiter and returns the output count.                                                                |
+ * |     bCullEmpty = true) const;                                                              | @param OutArray Receives tokens. @param bCullEmpty Omits empty tokens when true.                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int FString.ParseIntoArray(TArray<FString>& OutArray, const TArray<FString>& Delimiters,   | Splits on any supplied delimiter and returns the output count.                                                       |
+ * |     bool bCullEmpty = true) const;                                                         | @param OutArray Receives tokens. @param bCullEmpty Omits empty tokens when true.                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int FString.ParseIntoArrayLines(TArray<FString>& OutArray, bool bCullEmpty = true) const;  | Splits into lines and returns the output count.                                                                      |
+ * |                                                                                            | @param OutArray Receives lines. @param bCullEmpty Omits empty lines when true.                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int FString.ParseIntoArrayWS(TArray<FString>& OutArray, bool bCullEmpty = true) const;     | Splits on whitespace and returns the output count.                                                                   |
+ * |                                                                                            | @param OutArray Receives tokens. @param bCullEmpty Omits empty tokens when true.                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 template <typename InternalType, typename ExternalType>
 FORCEINLINE static bool AddPrimitiveFormatOrderedArgument(FStringFormatOrderedArguments& OutFormatOrderedArguments, const void* Ptr)

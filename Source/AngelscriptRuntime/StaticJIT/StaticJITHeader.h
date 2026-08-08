@@ -36,7 +36,7 @@
 #define SCRIPT_ASSUME(V) 
 #endif
 
-#include "Binds/Bind_TArray_Functions.h"
+#include "Binds/Bind_TArray.h"
 
 #ifndef AS_FORCE_LINK
 #if defined(__GNUC__) || defined(__clang__)

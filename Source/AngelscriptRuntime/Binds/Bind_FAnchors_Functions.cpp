@@ -1,4 +1,4 @@
-#include "Bind_FAnchors_Functions.h"
+#include "Bind_FAnchors.h"
 
 void FAngelscriptFAnchorsBinds::ConstructUniform(FAnchors* Address, float UniformAnchors)
 {

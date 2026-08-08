@@ -1,4 +1,4 @@
-#include "Bind_AActor_Functions.h"
+#include "Bind_AActor.h"
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptType.h"
@@ -513,17 +513,6 @@ void FAngelscriptActorBinds::GetAllActorsOfClassWithExplicitClass(
 		FAngelscriptEngine::Throw("Class specified to GetAllActorsOfClass is not a child of array element class.");
 		return;
 	}
-	UGameplayStatics::GetAllActorsOfClass(
-		FAngelscriptEngine::TryGetCurrentWorldContextObject(),
-		ActorClass,
-		OutActors);
-}
-
-void FAngelscriptActorBinds::GetAllActorsByClassUnchecked(
-	UClass* ActorClass,
-	TArray<AActor*>& OutActors,
-	int TypeId)
-{
 	UGameplayStatics::GetAllActorsOfClass(
 		FAngelscriptEngine::TryGetCurrentWorldContextObject(),
 		ActorClass,

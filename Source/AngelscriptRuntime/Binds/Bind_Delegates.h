@@ -1,6 +1,9 @@
 #pragma once
+
 #include "CoreMinimal.h"
 #include "AngelscriptEngine.h"
+#include "AngelscriptType.h"
+#include "Helper_CppType.h"
 
 #include "StartAngelscriptHeaders.h"
 //#include "as_context.h"
@@ -12,6 +15,8 @@
 #include "source/as_scriptengine.h"
 #include "source/as_objecttype.h"
 #include "EndAngelscriptHeaders.h"
+
+class FAngelscriptBindDatabase;
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptDelegateOperations
 {
@@ -126,4 +131,153 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptSparseDelegateOperations
 	static void AddUFunction(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& FunctionName);
 	static void Unbind(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& FunctionName);
 	static void UnbindObject(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& FunctionName);
+};
+
+struct FScriptDelegateType : TAngelscriptCppType<FScriptDelegate>
+{
+	FString Name;
+	UDelegateFunction* Function;
+	const FAngelscriptBindDatabase* BindDatabase;
+
+	FScriptDelegateType(
+		const FString& InName,
+		UDelegateFunction* InFunction,
+		const FAngelscriptBindDatabase& InBindDatabase);
+
+	explicit FScriptDelegateType(const FAngelscriptBindDatabase& InBindDatabase);
+
+	UDelegateFunction* GetSignature(const FAngelscriptTypeUsage& Usage) const;
+
+	UDelegateFunction* GetSignatureMaybeTagged(const FAngelscriptTypeUsage& Usage) const;
+
+	bool IsTypeEquivalent(const FAngelscriptTypeUsage& Usage, const FAngelscriptTypeUsage& Other) const override;
+
+	void* GetData() const override;
+
+	FString GetAngelscriptTypeName() const override;
+
+	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override;
+
+	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override;
+
+	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override;
+
+	void SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FArgData& Data) const override;
+
+	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override;
+
+	void GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const override;
+
+	bool CanQueryPropertyType() const override;
+
+	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override;
+
+	bool DefaultValue_AngelscriptFallback(const FAngelscriptTypeUsage& Usage, FString& OutAngelscriptValue) const;
+
+	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override;
+
+	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override;
+
+	bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override;
+
+	bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override;
+};
+
+struct FMulticastScriptDelegateType : TAngelscriptCppType<FMulticastScriptDelegate>
+{
+	FString Name;
+	UDelegateFunction* Function;
+	const FAngelscriptBindDatabase* BindDatabase;
+
+	FMulticastScriptDelegateType(
+		const FString& InName,
+		UDelegateFunction* InFunction,
+		const FAngelscriptBindDatabase& InBindDatabase);
+
+	explicit FMulticastScriptDelegateType(const FAngelscriptBindDatabase& InBindDatabase);
+
+	UDelegateFunction* GetSignature(const FAngelscriptTypeUsage& Usage) const;
+
+	UDelegateFunction* GetSignatureMaybeTagged(const FAngelscriptTypeUsage& Usage) const;
+
+	bool IsTypeEquivalent(const FAngelscriptTypeUsage& Usage, const FAngelscriptTypeUsage& Other) const override;
+
+	void* GetData() const override;
+
+	FString GetAngelscriptTypeName() const override;
+
+	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override;
+
+	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override;
+
+	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override;
+
+	void SetArgument(const FAngelscriptTypeUsage& Usage, int32 ArgumentIndex, class asIScriptContext* Context, struct FFrame& Stack, const FArgData& Data) const override;
+
+	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override;
+
+	void GetReturnValue(const FAngelscriptTypeUsage& Usage, class asIScriptContext* Context, void* Destination) const override;
+
+	bool CanQueryPropertyType() const override;
+
+	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override;
+
+	bool DefaultValue_AngelscriptFallback(const FAngelscriptTypeUsage& Usage, FString& OutAngelscriptValue) const;
+
+	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override;
+
+	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override;
+
+	struct FMulticastScriptDelegateBinding
+	{
+		UObject* Object;
+		FString FunctionName;
+	};
+
+	bool GetBindings(const FMulticastScriptDelegate& Delegate, TArray<FMulticastScriptDelegateBinding>& OutBindings) const;
+
+	bool GetDebuggerScope(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerScope& Scope) const override;
+
+	bool GetDebuggerMember(const FAngelscriptTypeUsage& Usage, void* Address, const FString& Member, struct FDebuggerValue& Value) const override;
+};
+
+struct FScriptSparseDelegateType : public FAngelscriptType
+{
+	FString Name;
+	USparseDelegateFunction* Function;
+
+	FScriptSparseDelegateType(const FString& InName, USparseDelegateFunction* InFunction);
+
+	FScriptSparseDelegateType();
+
+	USparseDelegateFunction* GetSignature(const FAngelscriptTypeUsage& Usage) const;
+
+	void* GetData() const override;
+
+	FString GetAngelscriptTypeName() const override;
+
+	bool CanCreateProperty(const FAngelscriptTypeUsage& Usage) const override;
+
+	FProperty* CreateProperty(const FAngelscriptTypeUsage& Usage, const FPropertyParams& Params) const override;
+
+	bool CanBeArgument(const FAngelscriptTypeUsage& Usage) const override;
+
+	bool CanBeReturned(const FAngelscriptTypeUsage& Usage) const override;
+
+	bool CanQueryPropertyType() const override;
+
+	bool MatchesProperty(const FAngelscriptTypeUsage& Usage, const FProperty* Property, EPropertyMatchType MatchType) const override;
+
+	bool CanCopy(const FAngelscriptTypeUsage& Usage) const override;
+	bool CanCompare(const FAngelscriptTypeUsage& Usage) const override;
+
+	bool CanConstruct(const FAngelscriptTypeUsage& Usage) const override;
+	bool NeedConstruct(const FAngelscriptTypeUsage& Usage) const override;
+
+	bool CanDestruct(const FAngelscriptTypeUsage& Usage) const override;
+	bool NeedDestruct(const FAngelscriptTypeUsage& Usage) const override;
+
+	int32 GetValueSize(const FAngelscriptTypeUsage& Usage) const override;
+
+	int32 GetValueAlignment(const FAngelscriptTypeUsage& Usage) const;
 };

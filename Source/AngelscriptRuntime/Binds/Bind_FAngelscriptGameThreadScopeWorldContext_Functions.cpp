@@ -1,4 +1,4 @@
-#include "Bind_FAngelscriptGameThreadScopeWorldContext_Functions.h"
+#include "Bind_FAngelscriptGameThreadScopeWorldContext.h"
 
 #include "AngelscriptEngine.h"
 

@@ -1,4 +1,4 @@
-#include "Bind_UGameInstance_Functions.h"
+#include "Bind_UGameInstance.h"
 
 #include "Engine/GameInstance.h"
 #include "GameFramework/OnlineReplStructs.h"

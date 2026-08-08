@@ -1,4 +1,4 @@
-#include "Bind_FInstancedStruct_Functions.h"
+#include "Bind_FInstancedStruct.h"
 
 #include "StructUtils/InstancedStruct.h"
 

@@ -1,4 +1,4 @@
-#include "Bind_UPrimitiveComponent_Functions.h"
+#include "Bind_UPrimitiveComponent.h"
 
 FVector FAngelscriptUPrimitiveComponentBinds::GetBoundingBoxExtents(const UPrimitiveComponent* Component)
 {

@@ -1,4 +1,4 @@
-#include "Bind_AVolume_Functions.h"
+#include "Bind_AVolume.h"
 
 #include "GameFramework/Volume.h"
 

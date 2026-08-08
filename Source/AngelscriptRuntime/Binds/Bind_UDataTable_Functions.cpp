@@ -1,4 +1,4 @@
-#include "Bind_UDataTable_Functions.h"
+#include "Bind_UDataTable.h"
 
 #include "AngelscriptEngine.h"
 

@@ -1,4 +1,4 @@
-#include "Bind_FHitResult_Functions.h"
+#include "Bind_FHitResult.h"
 
 #include "Components/PrimitiveComponent.h"
 #include "Engine/EngineTypes.h"

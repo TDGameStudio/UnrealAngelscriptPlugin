@@ -1,4 +1,4 @@
-#include "Bind_UUserWidget_Functions.h"
+#include "Bind_UUserWidget.h"
 
 #include "AngelscriptEngine.h"
 

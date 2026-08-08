@@ -1,9 +1,57 @@
+#include "Bind_UDataTable.h"
+
 #include "Engine/DataTable.h"
 #include "Containers/ScriptArray.h"
 
 #include "AngelscriptBinds.h"
 
-#include "Bind_UDataTable_Functions.h"
+/**
+ * Data-table row mutation, wildcard row access, row handles, and category handles.
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | DataTable.EmptyTable();                                                                              | Removes every row while preserving the table schema.                                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TArray<FName> Names = DataTable.GetRowNames() const;                                                 | Returns all row names.                                                                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | DataTable.RemoveRow(FName RowName);                                                                  | Removes a named row.                                                                                             |
+ * |                                                                                                      | @param RowName Key of the row to remove.                                                                         |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | DataTable.AddRow(FName RowName, const ?&in InRow);                                                   | Copies a wildcard struct value into a named row.                                                                 |
+ * |                                                                                                      | @param RowName Key to add or replace.                                                                            |
+ * |                                                                                                      | @param InRow Struct value whose exact type must match the table's RowStruct.                                     |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bFound = DataTable.FindRow(FName RowName, ?&out OutRow) const;                                  | Copies a named row into a wildcard output and reports success.                                                   |
+ * |                                                                                                      | @param RowName Key to find.                                                                                      |
+ * |                                                                                                      | @param OutRow Struct output whose exact type must match RowStruct.                                               |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | DataTable.GetAllRows(?& OutArray) const;                                                             | Copies every row into a caller-provided typed array.                                                             |
+ * |                                                                                                      | @param OutArray TArray whose element type must exactly match RowStruct.                                          |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bNull = RowHandle.IsNull() const;                                                               | Reports whether the row handle lacks a table or row name.                                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = LeftRowHandle == RightRowHandle;                                                       | Compares data-table and row-name identity.                                                                       |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | FString Text = RowHandle.ToDebugString(bool bUseFullPath = false) const;                             | Returns a diagnostic table/row description.                                                                      |
+ * |                                                                                                      | @param bUseFullPath Includes the table's full object path when true.                                             |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bFound = RowHandle.GetRow(?&out OutRow) const;                                                  | Resolves the handle and copies its row into a wildcard output.                                                   |
+ * |                                                                                                      | @param OutRow Struct output whose exact type must match the table schema.                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bNull = CategoryHandle.IsNull() const;                                                          | Reports whether the category handle lacks a table or column selection.                                           |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bEqual = LeftCategoryHandle == RightCategoryHandle;                                             | Compares table, column, and category identity.                                                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | TArray<FName> Names = CategoryHandle.GetRowNames() const;                                            | Returns row names selected by the category.                                                                      |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | bool bFound = CategoryHandle.GetRow(FName RowName, ?&out OutRow) const;                              | Resolves a selected named row into a wildcard output.                                                            |
+ * |                                                                                                      | @param RowName Selected row key.                                                                                 |
+ * |                                                                                                      | @param OutRow Struct output whose exact type must match the table schema.                                        |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ * | CategoryHandle.GetRows(?& OutArray) const;                                                           | Copies every selected row into a typed array.                                                                    |
+ * |                                                                                                      | @param OutArray TArray whose element type must exactly match the table schema.                                   |
+ * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

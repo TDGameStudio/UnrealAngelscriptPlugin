@@ -1,4 +1,4 @@
-#include "Bind_FText_Functions.h"
+#include "Bind_FText.h"
 
 #include "AngelscriptEngine.h"
 

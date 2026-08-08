@@ -1,6 +1,22 @@
+#include "Bind_FPlatformMisc.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_FPlatformMisc_Functions.h"
+/**
+ * FPlatformMisc namespace binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FPlatformMisc::RequestExit(bool Force);                                               | Requests process exit.                                                                                               |
+ * |                                                                                            | @param Force Forces immediate shutdown rather than a graceful exit request when true.                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FPlatformMisc::RequestExit(bool Force, const FString& CallSite);                      | Requests process exit and records the supplied call-site description.                                                |
+ * |                                                                                            | @param Force Forces immediate shutdown rather than a graceful exit request when true.                                |
+ * |                                                                                            | @param CallSite Diagnostic description of the caller requesting exit.                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FPlatformMisc::GetEnvironmentVariable(const FString& VariableName);                | Returns the named process environment variable, or an empty string when it is unset.                                 |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

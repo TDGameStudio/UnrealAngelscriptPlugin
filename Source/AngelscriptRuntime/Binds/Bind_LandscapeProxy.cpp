@@ -1,6 +1,16 @@
+#include "Bind_LandscapeProxy.h"
+
 #include "AngelscriptBinds.h"
 
-#include "Bind_LandscapeProxy_Functions.h"
+/**
+ * Landscape height query.
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                              | Purpose / parameter notes                                                                                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | bool Landscape.GetHeightAtLocation(FVector Location, float32&out Height) const;          | Samples the landscape height at a world-space location.                                                            |
+ * |                                                                                          | @param Location World position to sample. @param Height Receives the sampled Z value on success.                   |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

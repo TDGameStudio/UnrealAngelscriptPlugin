@@ -1,4 +1,4 @@
-#include "Bind_FLatentActionInfo_Functions.h"
+#include "Bind_FLatentActionInfo.h"
 
 void FAngelscriptFLatentActionInfoBinds::Construct(
 	FLatentActionInfo* Address,

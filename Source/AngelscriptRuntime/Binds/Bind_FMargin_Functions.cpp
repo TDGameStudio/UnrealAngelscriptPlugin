@@ -1,4 +1,4 @@
-#include "Bind_FMargin_Functions.h"
+#include "Bind_FMargin.h"
 
 void FAngelscriptFMarginBinds::ConstructUniform(FMargin* Address, float UniformMargin)
 {

@@ -1,4 +1,4 @@
-#include "Bind_FFormatArgumentValue_Functions.h"
+#include "Bind_FFormatArgumentValue.h"
 
 void FAngelscriptFFormatArgumentValueBinds::ConstructDefault(FFormatArgumentValue* Address)
 {

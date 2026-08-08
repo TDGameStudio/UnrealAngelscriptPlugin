@@ -26,7 +26,7 @@ namespace
 				*FPaths::Combine(BindsDirectory, FString::Printf(TEXT("Bind_%s.cpp"), TypeName)))
 			&& FFileHelper::LoadFileToString(
 				OutSource.Header,
-				*FPaths::Combine(BindsDirectory, FString::Printf(TEXT("Bind_%s_Functions.h"), TypeName)))
+				*FPaths::Combine(BindsDirectory, FString::Printf(TEXT("Bind_%s.h"), TypeName)))
 			&& FFileHelper::LoadFileToString(
 				OutSource.Implementation,
 				*FPaths::Combine(BindsDirectory, FString::Printf(TEXT("Bind_%s_Functions.cpp"), TypeName)));
@@ -64,7 +64,8 @@ namespace
 
 	static bool ContainsInlineDirectCallableLambda(const FString& RegistrationSource)
 	{
-		const FRegexPattern InlineLambdaAfterArgumentSeparator(TEXT(",\\s*\\[\\s*\\]\\s*\\("));
+		const FRegexPattern InlineLambdaAfterArgumentSeparator(
+			TEXT(",\\s*\\[\\s*\\]\\s*\\((?!\\s*FAngelscriptBinds\\s*&)"));
 		FRegexMatcher Matcher(InlineLambdaAfterArgumentSeparator, RegistrationSource);
 		return Matcher.FindNext();
 	}
@@ -1444,10 +1445,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindSourceLayoutTests,
 			LoadBindRegistration(TEXT("Bind_SystemTimers.cpp"), TimerSource),
 			TEXT("SystemTimers registration source should be readable")));
 
-		auto ExtractSection = [](const FString& Source, const TCHAR* StartToken, const TCHAR* EndToken)
+		auto ExtractSection = [](const FString& Source, const TCHAR* StartToken, const TCHAR* EndToken = nullptr)
 		{
 			const int32 StartIndex = Source.Find(StartToken, ESearchCase::CaseSensitive);
-			const int32 EndIndex = Source.Find(EndToken, ESearchCase::CaseSensitive, ESearchDir::FromStart, StartIndex + 1);
+			const int32 EndIndex = EndToken != nullptr
+				? Source.Find(EndToken, ESearchCase::CaseSensitive, ESearchDir::FromStart, StartIndex + 1)
+				: Source.Len();
 			if (StartIndex == INDEX_NONE || EndIndex == INDEX_NONE || EndIndex <= StartIndex)
 			{
 				return FString();
@@ -1457,23 +1460,26 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindSourceLayoutTests,
 
 		const FString ActorManual = ExtractSection(
 			ActorSource,
-			TEXT("void BindAActor("),
-			TEXT("void BindActorPostReflectionAccessors("));
+			TEXT("AS_FORCE_LINK const FAngelscriptBind Bind_AActor("),
+			TEXT("AS_FORCE_LINK const FAngelscriptBind Bind_Actors("));
 		const FString ActorPostReflection = ExtractSection(
 			ActorSource,
-			TEXT("void BindActorPostReflectionAccessors("),
-			TEXT("AS_FORCE_LINK const FAngelscriptBind Bind_AActor"));
+			TEXT("AS_FORCE_LINK const FAngelscriptBind Bind_Actors("));
 		ASSERT_THAT(IsTrue(
-			ActorManual.Contains(TEXT("void GetAllActorsOfClass(?& OutActors)"))
+			ActorManual.Contains(TEXT("EAngelscriptBindPhase::ManualBindings"))
+				&& ActorManual.Contains(TEXT("[](FAngelscriptBinds& Binds)"))
+				&& ActorManual.Contains(TEXT("void GetAllActorsOfClass(?& OutActors)"))
 				&& ActorManual.Contains(TEXT("AActor SpawnActor(const TSubclassOf<AActor>& Class"))
 				&& ActorManual.Contains(TEXT("AActor SpawnPersistentActor(const TSubclassOf<AActor>& Class")),
-			TEXT("Ordinary actor queries and spawn helpers should register in ManualBindings")));
+			TEXT("AActor manual provider should colocate its phase, callback, queries, and spawn helpers")));
 		ASSERT_THAT(IsTrue(
-			ActorPostReflection.Contains(TEXT("TObjectRange<UClass>"))
+			ActorPostReflection.Contains(TEXT("EAngelscriptBindPhase::PostReflectionBindings"))
+				&& ActorPostReflection.Contains(TEXT("[](FAngelscriptBinds& Binds)"))
+				&& ActorPostReflection.Contains(TEXT("TObjectRange<UClass>"))
 				&& ActorPostReflection.Contains(TEXT("FAngelscriptActorBinds::SpawnActorFromMeta"))
 				&& !ActorPostReflection.Contains(TEXT("void GetAllActorsOfClass(?& OutActors)"))
 				&& !ActorPostReflection.Contains(TEXT("AActor SpawnActor(const TSubclassOf<AActor>& Class")),
-			TEXT("AActor PostReflectionBindings should contain only reflected typed-accessor synthesis")));
+			TEXT("AActor post-reflection provider should colocate its phase and typed spawn synthesis")));
 
 		const FString ComponentManual = ExtractSection(
 			ComponentSource,
@@ -1525,7 +1531,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptBindSourceLayoutTests,
 			const TCHAR* CallbackName;
 		};
 		const FProviderSource Providers[] = {
-			{TEXT("Bind_AActor.cpp"), TEXT("BindActorPostReflectionAccessors")},
+			{TEXT("Bind_AActor.cpp"), TEXT("AActor.PostReflection")},
 			{TEXT("Bind_UActorComponent.cpp"), TEXT("BindComponentPostReflectionAccessors")},
 			{TEXT("Bind_Subsystems.cpp"), TEXT("BindSubsystems")}};
 

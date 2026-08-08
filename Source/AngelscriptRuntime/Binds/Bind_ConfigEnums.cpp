@@ -3,6 +3,20 @@
 
 #include "Engine/CollisionProfile.h"
 
+/**
+ * Collision configuration enums expanded from the active UCollisionProfile.
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                              | Purpose / parameter notes                                                                                          |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | enum ETraceTypeQuery { <configured trace profile names>, Visibility, Camera };           | Script trace-query values derived from configured query profiles plus Unreal's fixed trace channels.               |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | enum ECollisionChannel { <configured profile names> };                                   | Collision-channel values derived from the active profile configuration.                                            |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ * | enum EObjectTypeQuery { <configured object profile names>, WorldStatic,                  | Script object-query values derived from configured object profiles plus the fixed common object types.             |
+ * | WorldDynamic, PhysicsBody };                                                             |                                                                                                                    |
+ * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
+ */
+
 namespace
 {
 	void BindConfigEnums(FAngelscriptBinds& Binds)

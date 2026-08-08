@@ -1,6 +1,6 @@
 #include "AngelscriptEngine.h"
 #include "ClassGenerator/ASClass.h"
-#include "Binds/Bind_Actor.h"
+#include "Binds/Bind_AActor.h"
 #include "Binds/Helper_ToString.h"
 #include "Debugging/AngelscriptDebugServer.h"
 #include "AngelscriptFunctionalTestUtils.h"

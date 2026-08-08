@@ -1,82 +1,241 @@
+#include "Bind_FCollisionQueryParams.h"
+
 #include "Misc/DefaultValueHelper.h"
 
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
-#include "Helper_CppType.h"
 
 #include "CollisionQueryParams.h"
 
-#include "Bind_FCollisionQueryParams_Functions.h"
-
-struct FCollisionQueryParamsType : TAngelscriptCppType<FCollisionQueryParams>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FCollisionQueryParams");
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
-
-struct FCollisionEnabledMaskType : TAngelscriptCppType<FCollisionEnabledMask>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FCollisionEnabledMask");
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
-
-struct FComponentQueryParamsType : TAngelscriptCppType<FComponentQueryParams>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FComponentQueryParams");
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
-
-struct FCollisionResponseParamsType : TAngelscriptCppType<FCollisionResponseParams>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FCollisionResponseParams");
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
-
-struct FCollisionObjectQueryParamsType : TAngelscriptCppType<FCollisionObjectQueryParams>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FCollisionObjectQueryParams");
-	}
-
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
+/**
+ * Collision query, object filter, and response binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | enum EQueryMobilityType;                                                                   | Declares which component mobility classes a collision query may consider.                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EQueryMobilityType::Any;                                                                   | Allows static and movable components.                                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EQueryMobilityType::Static;                                                                | Restricts the query to static components.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EQueryMobilityType::Dynamic;                                                               | Restricts the query to movable components.                                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | enum ECollisionObjectQueryInitType;                                                        | Declares preset object-channel bitfield initializers.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ECollisionObjectQueryInitType::AllObjects;                                                 | Initializes the query for all object channels.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ECollisionObjectQueryInitType::AllStaticObjects;                                           | Initializes the query for static object channels.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ECollisionObjectQueryInitType::AllDynamicObjects;                                          | Initializes the query for dynamic object channels.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FCollisionQueryParams;                                                              | Declares trace-query filtering and result options.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FCollisionEnabledMask;                                                              | Declares a compact collision-enabled mode mask.                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FComponentQueryParams;                                                              | Declares component-overlap query filtering and options.                                                              |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FCollisionResponseParams;                                                           | Declares the per-channel response parameters used by scene queries.                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | struct FCollisionObjectQueryParams;                                                        | Declares the object-channel selection bitfield used by scene queries.                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionQueryParams Params();                                                            | Constructs default collision query parameters.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionQueryParams Params(const FCollisionQueryParams& Other);                          | Copy-constructs collision query parameters.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Params = Other;                                                                            | Assigns collision query parameters.                                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FCollisionQueryParams FCollisionQueryParams::DefaultQueryParam;                      | Exposes the engine default collision query parameters.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionEnabledMask Mask();                                                              | Constructs an empty collision-enabled mode mask.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionEnabledMask Mask(ECollisionEnabled CollisionEnabled);                            | Constructs a mask containing CollisionEnabled.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int8 FCollisionEnabledMask.Bits;                                                           | Exposes the packed collision-enabled mode bits.                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FComponentQueryParams Params();                                                            | Constructs default component query parameters.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FComponentQueryParams Params(const FComponentQueryParams& Other);                          | Copy-constructs component query parameters.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Params = Other;                                                                            | Assigns component query parameters.                                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FComponentQueryParams FComponentQueryParams::DefaultComponentQueryParams;            | Exposes the engine default component query parameters.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionResponseParams Params();                                                         | Constructs response parameters from the engine default response container.                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionResponseParams Params(ECollisionResponse DefaultResponse);                       | Constructs response parameters with one default response for every channel.                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionResponseParams Params(const FCollisionResponseContainer& ResponseContainer);     | Constructs response parameters from an explicit per-channel container.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FCollisionResponseParams FCollisionResponseParams::DefaultResponseParam;             | Exposes the engine default collision response parameters.                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionObjectQueryParams Params();                                                      | Constructs an empty object-channel query.                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionObjectQueryParams Params(ECollisionChannel QueryChannel);                        | Constructs an object query containing QueryChannel.                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FCollisionObjectQueryParams FCollisionObjectQueryParams::DefaultObjectQueryParam;    | Exposes the engine default object-channel query.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionQueryParams Params(FName InTraceTag, bool bInTraceComplex, const AActor          | Constructs query parameters and optionally ignores one actor.                                                        |
+ * |     InIgnoreActor);                                                                        | @param InTraceTag Diagnostic trace tag. @param bInTraceComplex Selects complex geometry.                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName FCollisionQueryParams.TraceTag;                                                      | Exposes the diagnostic trace tag.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName FCollisionQueryParams.OwnerTag;                                                      | Exposes the diagnostic owner tag.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionQueryParams.bTraceComplex;                                                  | Selects complex rather than simple collision geometry.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionQueryParams.bFindInitialOverlaps;                                           | Requests overlaps already present at the trace start.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionQueryParams.bReturnFaceIndex;                                               | Requests triangle face indices in hit results.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionQueryParams.bReturnPhysicalMaterial;                                        | Requests physical material handles in hit results.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionQueryParams.bIgnoreBlocks;                                                  | Filters blocking hits from results.                                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionQueryParams.bIgnoreTouches;                                                 | Filters touch/overlap hits from results.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionQueryParams.bSkipNarrowPhase;                                               | Allows overlap queries to skip narrow-phase geometry tests.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EQueryMobilityType FCollisionQueryParams.MobilityType;                                     | Restricts results by component mobility.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | uint8 FCollisionQueryParams.IgnoreMask;                                                    | Exposes the extra collision mask filter bits.                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TArray<uint32> FCollisionQueryParams.GetIgnoredComponents() const;                         | Returns the stored ignored component unique IDs.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TArray<uint32> FCollisionQueryParams.GetIgnoredActors() const;                             | Returns the stored ignored actor/source-object unique IDs.                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.ClearIgnoredComponents();                                       | Clears all ignored component IDs.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.ClearIgnoredActors();                                           | Clears all ignored actor/source-object IDs.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.SetNumIgnoredComponents(int32 NewNum);                          | Sets the number of stored ignored component IDs.                                                                     |
+ * |                                                                                            | @param NewNum New ignored-component array length.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.AddIgnoredActor(const AActor InIgnoreActor);                    | Adds an actor to the ignore filter when the handle is valid.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.AddIgnoredActor(const uint32 InIgnoreActorID);                  | Adds an actor/source-object unique ID to the ignore filter.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.AddIgnoredActors(const TArray<AActor>& InIgnoreActors);         | Adds the valid actor handles to the ignore filter.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.AddIgnoredActors(const TArray<const AActor>& InIgnoreActors);   | Adds the valid const actor handles to the ignore filter.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.AddIgnoredComponent(const UPrimitiveComponent                   | Adds a primitive component to the ignore filter.                                                                     |
+ * |     InIgnoreComponent);                                                                    |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.AddIgnoredComponents(const TArray<UPrimitiveComponent>&         | Adds the valid primitive components to the ignore filter.                                                            |
+ * |     InIgnoreComponents);                                                                   |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionQueryParams.AddIgnoredComponent_LikelyDuplicatedRoot(const                  | Adds a likely duplicated root component using the engine duplicate-aware path.                                       |
+ * |     UPrimitiveComponent InIgnoreComponent);                                                | @param InIgnoreComponent Candidate root component to ignore.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FCollisionQueryParams.ToString() const;                                            | Returns the engine diagnostic representation of the query parameters.                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FComponentQueryParams Params(FName InTraceTag, const AActor InIgnoreActor,                 | Constructs component query parameters and optionally ignores one actor.                                              |
+ * |     FCollisionEnabledMask CollisionEnabledMask);                                           | @param InTraceTag Diagnostic trace tag. @param CollisionEnabledMask Allowed collision modes.                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName FComponentQueryParams.TraceTag;                                                      | Exposes the diagnostic trace tag.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FName FComponentQueryParams.OwnerTag;                                                      | Exposes the diagnostic owner tag.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FComponentQueryParams.bTraceComplex;                                                  | Selects complex rather than simple collision geometry.                                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FComponentQueryParams.bFindInitialOverlaps;                                           | Requests overlaps already present at the trace start.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FComponentQueryParams.bReturnFaceIndex;                                               | Requests triangle face indices in hit results.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FComponentQueryParams.bReturnPhysicalMaterial;                                        | Requests physical material handles in hit results.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FComponentQueryParams.bIgnoreBlocks;                                                  | Filters blocking hits from results.                                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FComponentQueryParams.bIgnoreTouches;                                                 | Filters touch/overlap hits from results.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FComponentQueryParams.bSkipNarrowPhase;                                               | Allows overlap queries to skip narrow-phase geometry tests.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | EQueryMobilityType FComponentQueryParams.MobilityType;                                     | Restricts results by component mobility.                                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | uint8 FComponentQueryParams.IgnoreMask;                                                    | Exposes the extra collision mask filter bits.                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionEnabledMask FComponentQueryParams.ShapeCollisionMask;                            | Restricts results by collision-enabled state.                                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TArray<uint32> FComponentQueryParams.GetIgnoredComponents() const;                         | Returns the stored ignored component unique IDs.                                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | TArray<uint32> FComponentQueryParams.GetIgnoredActors() const;                             | Returns the stored ignored actor/source-object unique IDs.                                                           |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.ClearIgnoredComponents();                                       | Clears all ignored component IDs.                                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.ClearIgnoredActors();                                           | Clears all ignored actor/source-object IDs.                                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.SetNumIgnoredComponents(int32 NewNum);                          | Sets the number of stored ignored component IDs.                                                                     |
+ * |                                                                                            | @param NewNum New ignored-component array length.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.AddIgnoredActor(const AActor InIgnoreActor);                    | Adds an actor to the ignore filter when the handle is valid.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.AddIgnoredActor(const uint32 InIgnoreActorID);                  | Adds an actor/source-object unique ID to the ignore filter.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.AddIgnoredActors(const TArray<AActor>& InIgnoreActors);         | Adds the valid actor handles to the ignore filter.                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.AddIgnoredActors(const TArray<const AActor>& InIgnoreActors);   | Adds the valid const actor handles to the ignore filter.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.AddIgnoredComponent(const UPrimitiveComponent                   | Adds a primitive component to the ignore filter.                                                                     |
+ * |     InIgnoreComponent);                                                                    |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.AddIgnoredComponents(const TArray<UPrimitiveComponent>&         | Adds the valid primitive components to the ignore filter.                                                            |
+ * |     InIgnoreComponents);                                                                   |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FComponentQueryParams.AddIgnoredComponent_LikelyDuplicatedRoot(const                  | Adds a likely duplicated root component using the engine duplicate-aware path.                                       |
+ * |     UPrimitiveComponent InIgnoreComponent);                                                | @param InIgnoreComponent Candidate root component to ignore.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FString FComponentQueryParams.ToString() const;                                            | Returns the engine diagnostic representation of the query parameters.                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionObjectQueryParams Params(ECollisionObjectQueryInitType QueryType);               | Constructs an object query from a static/dynamic/all preset.                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionObjectQueryParams Params(int32 InObjectTypesToQuery);                            | Constructs an object query from packed object-channel bits.                                                          |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int32 FCollisionObjectQueryParams.ObjectTypesToQuery;                                      | Exposes the packed low object-channel query bits.                                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | uint8 FCollisionObjectQueryParams.IgnoreMask;                                              | Exposes the additional object-query mask filter bits.                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionObjectQueryParams.AddObjectTypesToQuery(ECollisionChannel QueryChannel);    | Adds one collision channel to the object-query bitfield.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionObjectQueryParams.RemoveObjectTypesToQuery(ECollisionChannel QueryChannel); | Removes one collision channel from the object-query bitfield.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int64 FCollisionObjectQueryParams.GetObjectTypesToQuery() const;                           | Returns the object-query bitfield.                                                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionObjectQueryParams.SetObjectTypesToQuery(int64 InObjectTypesToQuery);        | Replaces the object-query bitfield.                                                                                  |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | int64 FCollisionObjectQueryParams.GetQueryBitfield64() const;                              | Returns the complete 64-bit object-query representation.                                                             |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionObjectQueryParams.IsValid() const;                                          | Returns whether at least one valid object channel is selected.                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FCollisionObjectQueryParams.DoVerify() const;                                         | Runs the engine debug verification for the object-query bitfield.                                                    |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionObjectQueryParams::IsValidObjectQuery(ECollisionChannel QueryChannel);      | Returns whether QueryChannel can participate in an object query.                                                     |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ECollisionObjectQueryInitType                                                              | Maps an overlap filter option to the corresponding object-query initialization preset.                               |
+ * |     FCollisionObjectQueryParams::GetCollisionChannelFromOverlapFilter(EOverlapFilterOption |                                                                                                                      |
+ * |     Filter);                                                                               |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionResponseContainer Responses(ECollisionResponse DefaultResponse);                 | Constructs a per-channel container initialized to DefaultResponse.                                                   |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionResponseContainer.SetResponse(ECollisionChannel Channel, ECollisionResponse | Sets one channel response and reports whether the container changed.                                                 |
+ * |     NewResponse);                                                                          |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionResponseContainer.SetAllChannels(ECollisionResponse NewResponse);           | Sets every channel response and reports whether the container changed.                                               |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | bool FCollisionResponseContainer.ReplaceChannels(ECollisionResponse OldResponse,           | Replaces matching channel responses and reports whether any changed.                                                 |
+ * |     ECollisionResponse NewResponse);                                                       |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | ECollisionResponse FCollisionResponseContainer.GetResponse(ECollisionChannel Channel)      | Returns the response configured for Channel.                                                                         |
+ * |     const;                                                                                 |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | Responses == Other;                                                                        | Compares every per-channel collision response.                                                                       |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | const FCollisionResponseContainer&                                                         | Returns the shared engine default response container.                                                                |
+ * |     FCollisionResponseContainer::GetDefaultResponseContainer();                            |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | FCollisionResponseContainer FCollisionResponseContainer::CreateMinContainer(const          | Returns the least blocking response from A and B for each channel.                                                   |
+ * |     FCollisionResponseContainer& A, const FCollisionResponseContainer& B);                 |                                                                                                                      |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

@@ -1,4 +1,4 @@
-#include "Bind_FAngelscriptDelegateWithPayload_Functions.h"
+#include "Bind_FAngelscriptDelegateWithPayload.h"
 
 #include "AngelscriptDelegateWithPayload.h"
 

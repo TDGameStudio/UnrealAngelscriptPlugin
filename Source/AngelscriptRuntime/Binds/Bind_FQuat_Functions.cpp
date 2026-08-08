@@ -1,4 +1,4 @@
-#include "Bind_FQuat_Functions.h"
+#include "Bind_FQuat.h"
 
 void FAngelscriptFQuatBinds::ConstructDefault(FQuat* Address)
 {

@@ -1,4 +1,4 @@
-#include "Bind_USceneComponent_Functions.h"
+#include "Bind_USceneComponent.h"
 
 #include "AngelscriptEngine.h"
 #include "AngelscriptType.h"

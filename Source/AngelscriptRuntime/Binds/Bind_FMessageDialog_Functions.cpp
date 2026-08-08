@@ -1,4 +1,4 @@
-#include "Bind_FMessageDialog_Functions.h"
+#include "Bind_FMessageDialog.h"
 
 EAppReturnType::Type FAngelscriptFMessageDialogBinds::Open(
 	EAppMsgType::Type MessageType,

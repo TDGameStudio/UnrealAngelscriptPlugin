@@ -1,8 +1,20 @@
+#include "Bind_FPlatformApplicationMisc.h"
+
 #include "AngelscriptBinds.h"
 
 #include "HAL/PlatformApplicationMisc.h"
 
-#include "Bind_FPlatformApplicationMisc_Functions.h"
+/**
+ * FPlatformApplicationMisc namespace binding surface.
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | AngelScript usage signature                                                                | Purpose / parameter notes                                                                                            |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FPlatformApplicationMisc::ClipboardCopy(const FString& Str);                          | Copies Str to the platform clipboard.                                                                                |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void FPlatformApplicationMisc::ClipboardPaste(FString& Dest);                              | Reads platform clipboard text.                                                                                       |
+ * |                                                                                            | @param Dest Receives the clipboard contents.                                                                         |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ */
 
 namespace
 {

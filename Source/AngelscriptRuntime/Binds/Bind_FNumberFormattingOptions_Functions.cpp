@@ -1,4 +1,4 @@
-#include "Bind_FNumberFormattingOptions_Functions.h"
+#include "Bind_FNumberFormattingOptions.h"
 
 void FAngelscriptFNumberFormattingOptionsBinds::Construct(FNumberFormattingOptions* Address)
 {

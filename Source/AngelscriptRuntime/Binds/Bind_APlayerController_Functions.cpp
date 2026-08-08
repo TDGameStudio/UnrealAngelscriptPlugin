@@ -1,4 +1,4 @@
-#include "Bind_APlayerController_Functions.h"
+#include "Bind_APlayerController.h"
 
 #include "GameFramework/Character.h"
 #include "GameFramework/Controller.h"

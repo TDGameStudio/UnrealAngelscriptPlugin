@@ -1,4 +1,4 @@
-#include "Bind_FGuid_Functions.h"
+#include "Bind_FGuid.h"
 
 void FAngelscriptFGuidBinds::ConstructParts(FGuid* Address, uint32 A, uint32 B, uint32 C, uint32 D)
 {

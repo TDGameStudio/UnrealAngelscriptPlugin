@@ -1,4 +1,4 @@
-#include "Bind_UProjectileMovementComponent_Functions.h"
+#include "Bind_UProjectileMovementComponent.h"
 
 #include "GameFramework/ProjectileMovementComponent.h"
 

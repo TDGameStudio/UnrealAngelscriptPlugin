@@ -1,4 +1,4 @@
-#include "Bind_FName_Functions.h"
+#include "Bind_FName.h"
 
 void FAngelscriptFNameBinds::ConstructDefault(FName* Address)
 {
