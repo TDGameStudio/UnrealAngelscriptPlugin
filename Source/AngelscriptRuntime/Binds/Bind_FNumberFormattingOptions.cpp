@@ -1,53 +1,66 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
 
 #include "Helper_CppType.h"
 
-struct FNumberFormattingOptionsType : TAngelscriptCppType<FNumberFormattingOptions>
+#include "Bind_FNumberFormattingOptions_Functions.h"
+
+namespace
 {
-	FString GetAngelscriptTypeName() const override
+	struct FNumberFormattingOptionsType : TAngelscriptCppType<FNumberFormattingOptions>
 	{
-		return TEXT("FNumberFormattingOptions");
-	}
+		FString GetAngelscriptTypeName() const override
+		{
+			return TEXT("FNumberFormattingOptions");
+		}
 
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
-	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
-};
+		bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
+		{
+			OutCppForm.CppType = GetAngelscriptTypeName();
+			return true;
+		}
+	};
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FNumberFormattingOptions(FAngelscriptBinds::EOrder::Early, []
+	void BindFNumberFormattingOptionsType(FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
+		Binds.ValueClassForTarget<FNumberFormattingOptions>("FNumberFormattingOptions", Flags);
+		Binds.RegisterTypeForTarget(MakeShared<FNumberFormattingOptionsType>());
+	}
 
-		auto FNumberFormattingOptions_ = FAngelscriptBinds::ValueClass<FNumberFormattingOptions>("FNumberFormattingOptions", Flags);
-		FAngelscriptType::Register(MakeShared<FNumberFormattingOptionsType>());
-
-		FNumberFormattingOptions_.Constructor("void f()", [](FNumberFormattingOptions* Address)
-			{
-				new(Address) FNumberFormattingOptions();
-			});
-		FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-		SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FNumberFormattingOptions_, "FNumberFormattingOptions");
-
-		FNumberFormattingOptions_.Method("FNumberFormattingOptions& SetAlwaysSign(bool InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetAlwaysSign));
-		FNumberFormattingOptions_.Method("FNumberFormattingOptions& SetUseGrouping(bool InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetUseGrouping));
-		FNumberFormattingOptions_.Method("FNumberFormattingOptions& SetRoundingMode(ERoundingMode InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetRoundingMode));
-		FNumberFormattingOptions_.Method("FNumberFormattingOptions& SetMinimumIntegralDigits(int32 InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetMinimumIntegralDigits));
-		FNumberFormattingOptions_.Method("FNumberFormattingOptions& SetMaximumIntegralDigits(int32 InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetMaximumIntegralDigits));
-		FNumberFormattingOptions_.Method("FNumberFormattingOptions& SetMinimumFractionalDigits(int32 InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetMinimumFractionalDigits));
-		FNumberFormattingOptions_.Method("FNumberFormattingOptions& SetMaximumFractionalDigits(int32 InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetMaximumFractionalDigits));
-		FNumberFormattingOptions_.Method("uint32 GetTypeHash() const", [](const FNumberFormattingOptions& Key) { return GetTypeHash(Key); });
-		FNumberFormattingOptions_.Method("bool IsIdentical( const FNumberFormattingOptions& Other ) const", METHOD_TRIVIAL(FNumberFormattingOptions, IsIdentical));
-	});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FNumberFormattingOptions_Operations(FAngelscriptBinds::EOrder::Late, []
+	void BindFNumberFormattingOptionsManual(FAngelscriptBinds& Binds)
 	{
-		auto FNumberFormattingOptions_ = FAngelscriptBinds::ExistingClass("FNumberFormattingOptions");
+		auto Options_ = Binds.ExistingClassForTarget("FNumberFormattingOptions");
+		Options_.Constructor(
+			"void f()",
+			&FAngelscriptFNumberFormattingOptionsBinds::Construct,
+			"FNumberFormattingOptions",
+			true)
+			.NoDiscard();
+		Options_.Method("FNumberFormattingOptions& SetAlwaysSign(bool InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetAlwaysSign));
+		Options_.Method("FNumberFormattingOptions& SetUseGrouping(bool InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetUseGrouping));
+		Options_.Method("FNumberFormattingOptions& SetRoundingMode(ERoundingMode InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetRoundingMode));
+		Options_.Method("FNumberFormattingOptions& SetMinimumIntegralDigits(int32 InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetMinimumIntegralDigits));
+		Options_.Method("FNumberFormattingOptions& SetMaximumIntegralDigits(int32 InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetMaximumIntegralDigits));
+		Options_.Method("FNumberFormattingOptions& SetMinimumFractionalDigits(int32 InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetMinimumFractionalDigits));
+		Options_.Method("FNumberFormattingOptions& SetMaximumFractionalDigits(int32 InValue)", METHOD_TRIVIAL(FNumberFormattingOptions, SetMaximumFractionalDigits));
+		Options_.Method("uint32 GetTypeHash() const", &FAngelscriptFNumberFormattingOptionsBinds::Hash);
+		Options_.Method("bool IsIdentical( const FNumberFormattingOptions& Other ) const", METHOD_TRIVIAL(FNumberFormattingOptions, IsIdentical));
 
-		FAngelscriptBinds::FNamespace ns("FNumberFormattingOptions");
-		FAngelscriptBinds::BindGlobalFunction("const FNumberFormattingOptions& DefaultWithGrouping() no_discard", FUNC_TRIVIAL(FNumberFormattingOptions::DefaultWithGrouping));
-		FAngelscriptBinds::BindGlobalFunction("const FNumberFormattingOptions& DefaultNoGrouping() no_discard", FUNC_TRIVIAL(FNumberFormattingOptions::DefaultNoGrouping));
-	});
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FNumberFormattingOptions");
+		Binds.BindGlobalFunctionForTarget("const FNumberFormattingOptions& DefaultWithGrouping() no_discard", &FNumberFormattingOptions::DefaultWithGrouping)
+			.NativeFunction("FNumberFormattingOptions::DefaultWithGrouping", true);
+		Binds.BindGlobalFunctionForTarget("const FNumberFormattingOptions& DefaultNoGrouping() no_discard", &FNumberFormattingOptions::DefaultNoGrouping)
+			.NativeFunction("FNumberFormattingOptions::DefaultNoGrouping", true);
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions_Type(
+	TEXT("FNumberFormattingOptions.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFNumberFormattingOptionsType);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions(
+	TEXT("FNumberFormattingOptions.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFNumberFormattingOptionsManual);

@@ -16,7 +16,8 @@ FDelegateHandle FAngelscriptEngineExtensionRegistry::RegisterExtension(TSharedRe
 		RegisteredExtensions.Add(Handle, FRegisteredExtension{ Extension });
 	}
 
-	if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
+	if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine();
+		CurrentEngine != nullptr && CurrentEngine->IsReadyForPublication())
 	{
 		Extension->OnEngineAttached(*CurrentEngine);
 	}
@@ -37,6 +38,16 @@ void FAngelscriptEngineExtensionRegistry::UnregisterExtension(FDelegateHandle Ha
 
 void FAngelscriptEngineExtensionRegistry::AttachEngine(FAngelscriptEngine& Engine)
 {
+	// A context scope can exist before its AngelScript engine has been created.
+	// Such a scope identifies initialization ownership, but it is not yet an
+	// active engine that extensions can safely observe or bind against.
+	if (!ensureMsgf(
+		Engine.GetScriptEngine() != nullptr,
+		TEXT("Extensions can only attach after the target AngelScript engine has been created.")))
+	{
+		return;
+	}
+
 	TArray<TSharedRef<IAngelscriptExtension>> Extensions;
 	{
 		FScopeLock Lock(&CriticalSection);
@@ -73,7 +84,8 @@ void FAngelscriptEngineExtensionRegistry::DetachEngine(FAngelscriptEngine& Engin
 
 void FAngelscriptEngineExtensionRegistry::ReplayCurrentEngine()
 {
-	if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
+	if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine();
+		CurrentEngine != nullptr && CurrentEngine->IsReadyForPublication())
 	{
 		AttachEngine(*CurrentEngine);
 	}

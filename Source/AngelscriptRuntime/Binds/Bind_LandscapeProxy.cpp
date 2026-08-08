@@ -1,19 +1,19 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
-#include "Runtime/Landscape/Classes/LandscapeProxy.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_ALandscapeProxy(FAngelscriptBinds::EOrder::Late, []
+#include "Bind_LandscapeProxy_Functions.h"
+
+namespace
 {
-	auto ALandscapeProxy_ = FAngelscriptBinds::ExistingClass("ALandscapeProxy");
-
-	ALandscapeProxy_.Method("bool GetHeightAtLocation(FVector Location, float32& OutHeight) const", [](const ALandscapeProxy* LandscapeProxy, FVector Location, float& OutHeight) -> bool
+	void BindALandscapeProxy(FAngelscriptBinds& Binds)
 	{
-		const TOptional<float> Height = LandscapeProxy->GetHeightAtLocation(Location);
-		if (Height.IsSet())
-		{
-			OutHeight = Height.GetValue();
-			return true;
-		}
-		return false;
-	});
-});
+		auto ALandscapeProxy_ = Binds.ExistingClassForTarget("ALandscapeProxy");
+		ALandscapeProxy_.Method(
+			"bool GetHeightAtLocation(FVector Location, float32& OutHeight) const",
+			&FAngelscriptLandscapeProxyBinds::GetHeightAtLocation);
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_ALandscapeProxy(
+	TEXT("ALandscapeProxy.GetHeightAtLocation"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindALandscapeProxy);

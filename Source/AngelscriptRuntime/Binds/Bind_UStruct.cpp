@@ -24,6 +24,7 @@
 
 #include "StaticJIT/AngelscriptStaticJIT.h"
 #include "Binds/Bind_Helpers.h"
+#include "Bind_UStruct_Functions.h"
 
 #include "ClassGenerator/ASClass.h"
 #include "ClassGenerator/ASStruct.h"
@@ -36,9 +37,15 @@ struct FUStructType : FAngelscriptType
 	UScriptStruct* Struct = nullptr;
 	asITypeInfo* ScriptTypeInfo = nullptr;
 	FString StructName;
+	const FAngelscriptBindDatabase* BindDatabase = nullptr;
 
-	FUStructType(UScriptStruct* InStruct, const FString& InStructName)
-		: Struct(InStruct), StructName(InStructName)
+	FUStructType(
+		UScriptStruct* InStruct,
+		const FString& InStructName,
+		const FAngelscriptBindDatabase& InBindDatabase)
+		: Struct(InStruct)
+		, StructName(InStructName)
+		, BindDatabase(&InBindDatabase)
 	{
 	}
 	
@@ -656,7 +663,7 @@ struct FUStructType : FAngelscriptType
 		}
 		else
 		{
-			FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Struct);
+			FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Struct, *BindDatabase);
 			if (HeaderPath.Len() != 0)
 			{
 				OutCppForm.CppType = StructName;
@@ -674,7 +681,9 @@ static void BindStructBehaviors(FAngelscriptBinds& Binds, const FString& TypeNam
 	auto* Ops = Struct->GetCppStructOps();
 
 #if AS_CAN_GENERATE_JIT
-	const ANSICHAR* AnsiTypeName = FScriptFunctionNativeForm::AllocateAnsiTypeName(TypeName);
+	const ANSICHAR* NativeTypeName = FScriptFunctionNativeForm::AllocateAnsiTypeName(TypeName);
+#else
+	const ANSICHAR* NativeTypeName = nullptr;
 #endif
 
 	if (Ops != nullptr)
@@ -685,45 +694,28 @@ static void BindStructBehaviors(FAngelscriptBinds& Binds, const FString& TypeNam
 			// Binding an empty function here is a precaution, in case we are going to be reusing
 			// the bytecode between platforms and this function isn't a no-op on other platforms, we still want to generate
 			// calls to it even if it does nothing.
-			Binds.Constructor("void f()", [](void* Ptr) {});
-			SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+			Binds.Constructor("void f()", &FAngelscriptUStructBinds::NoopConstruct).NativeConstructor(NativeTypeName, true);
 		}
 		else if (Ops->HasZeroConstructor())
 		{
-			Binds.Constructor("void f()", [](void* Ptr)
-			{
-				UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-				FMemory::Memzero(Ptr, Ops->GetSize());
-			}, Ops);
-			SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+			Binds.Constructor("void f()", &FAngelscriptUStructBinds::ZeroConstruct, Ops).NativeConstructor(NativeTypeName, true);
 		}
 		else
 		{
-			Binds.Constructor("void f()", [](void* Ptr)
-			{
-				UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-				Ops->Construct(Ptr);
-			}, Ops);
-			SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+			Binds.Constructor("void f()", &FAngelscriptUStructBinds::Construct, Ops).NativeConstructor(NativeTypeName, true);
 		}
 
 		// Bind destructor
 		if (Ops->HasDestructor())
 		{
-			Binds.Destructor("void f()", [](void* Ptr)
-			{
-				UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-				Ops->Destruct(Ptr);
-			}, Ops);
-			SCRIPT_TRIVIAL_NATIVE_DESTRUCTOR(Binds, AnsiTypeName);
+			Binds.Destructor("void f()", &FAngelscriptUStructBinds::Destruct, Ops).NativeDestructor(NativeTypeName, true);
 		}
 		else
 		{
 			// Binding an empty function here is a precaution, in case we are going to be reusing
 			// the bytecode between platforms and this function isn't a no-op on other platforms, we still want to generate
 			// calls to it even if it does nothing.
-			Binds.Destructor("void f()", [](void* Ptr) {});
-			SCRIPT_TRIVIAL_NATIVE_DESTRUCTOR(Binds, AnsiTypeName);
+			Binds.Destructor("void f()", &FAngelscriptUStructBinds::NoopDestruct).NativeDestructor(NativeTypeName, true);
 		}
 
 		// Bind copy operations
@@ -731,148 +723,141 @@ static void BindStructBehaviors(FAngelscriptBinds& Binds, const FString& TypeNam
 		FString AssignDecl = FString::Printf(TEXT("%s& opAssign(const %s& Other)"), *TypeName, *TypeName);
 		if (Ops->IsPlainOldData())
 		{
-			Binds.Constructor(CopyConstructDecl, [](void* Destination, void* Source)
-			{
-				UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-				FMemory::Memcpy(Destination, Source, Ops->GetSize());
-			}, Ops);
-			SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+			Binds.Constructor(CopyConstructDecl, &FAngelscriptUStructBinds::PodCopyConstruct, Ops)
+				.NativeConstructor(NativeTypeName, true);
 
-			Binds.Method(AssignDecl, [](void* Destination, void* Source) -> void*
-			{
-				UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-				FMemory::Memcpy(Destination, Source, Ops->GetSize());
-				return Destination;
-			}, Ops);
-			SCRIPT_TRIVIAL_NATIVE_ASSIGNMENT(Binds, AnsiTypeName);
+			Binds.Method(AssignDecl, &FAngelscriptUStructBinds::PodAssign, Ops).NativeAssignment(NativeTypeName, true);
 		}
 		else if (Ops->HasCopy())
 		{
 			if (Ops->HasNoopConstructor())
 			{
-				Binds.Constructor(CopyConstructDecl, [](void* Destination, void* Source)
-				{
-					UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-					Ops->Copy(Destination, Source, 1);
-				}, Ops);
-				SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+				Binds.Constructor(CopyConstructDecl, &FAngelscriptUStructBinds::CopyConstructWithoutInitialization, Ops)
+					.NativeConstructor(NativeTypeName, true);
 			}
 			else if (Ops->HasZeroConstructor())
 			{
-				Binds.Constructor(CopyConstructDecl, [](void* Destination, void* Source)
-				{
-					UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-					FMemory::Memzero(Destination, Ops->GetSize());
-					Ops->Copy(Destination, Source, 1);
-				}, Ops);
-				SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+				Binds.Constructor(CopyConstructDecl, &FAngelscriptUStructBinds::CopyConstructWithZeroInitialization, Ops)
+					.NativeConstructor(NativeTypeName, true);
 			}
 			else
 			{
-				Binds.Constructor(CopyConstructDecl, [](void* Destination, void* Source)
-				{
-					UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-					Ops->Construct(Destination);
-					Ops->Copy(Destination, Source, 1);
-				}, Ops);
-				SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+				Binds.Constructor(CopyConstructDecl, &FAngelscriptUStructBinds::CopyConstructWithInitialization, Ops)
+					.NativeConstructor(NativeTypeName, true);
 			}
 
-			Binds.Method(AssignDecl, [](void* Destination, void* Source) -> void*
-			{
-				UScriptStruct::ICppStructOps* Ops = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct::ICppStructOps>();
-				Ops->Copy(Destination, Source, 1);
-				return Destination;
-			}, Ops);
-			SCRIPT_TRIVIAL_NATIVE_ASSIGNMENT(Binds, AnsiTypeName);
+			Binds.Method(AssignDecl, &FAngelscriptUStructBinds::CopyAssign, Ops).NativeAssignment(NativeTypeName, true);
 		}
 	}
 	else
 	{
 		// Bind constructor
-		Binds.Constructor("void f()", [](void* Ptr)
-		{
-			UScriptStruct* Struct = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct>();
-			Struct->InitializeStruct(Ptr);
-		}, Struct);
-		SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+		Binds.Constructor("void f()", &FAngelscriptUStructBinds::GenericConstruct, Struct)
+			.NativeConstructor(NativeTypeName, true);
 
 		// Bind destructor
-		Binds.Destructor("void f()", [](void* Ptr)
-		{
-			UScriptStruct* Struct = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct>();
-			Struct->DestroyStruct(Ptr);
-		}, Struct);
-		SCRIPT_TRIVIAL_NATIVE_DESTRUCTOR(Binds, AnsiTypeName);
+		Binds.Destructor("void f()", &FAngelscriptUStructBinds::GenericDestruct, Struct)
+			.NativeDestructor(NativeTypeName, true);
 
 		// Bind copy operations
 		FString CopyConstructDecl = FString::Printf(TEXT("void f(const %s& Other)"), *TypeName);
-		Binds.Constructor(CopyConstructDecl, [](void* Destination, void* Source)
-		{
-			UScriptStruct* Struct = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct>();
-			Struct->InitializeStruct(Destination);
-			Struct->CopyScriptStruct(Destination, Source);
-		}, Struct);
-		SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, AnsiTypeName);
+		Binds.Constructor(CopyConstructDecl, &FAngelscriptUStructBinds::GenericCopyConstruct, Struct)
+			.NativeConstructor(NativeTypeName, true);
 
 		FString AssignDecl = FString::Printf(TEXT("%s& opAssign(const %s& Other)"), *TypeName, *TypeName);
-		Binds.Method(AssignDecl, [](void* Destination, void* Source) -> void*
-		{
-			UScriptStruct* Struct = FAngelscriptEngine::GetCurrentFunctionUserData<UScriptStruct>();
-			Struct->CopyScriptStruct(Destination, Source);
-			return Destination;
-		}, Struct);
-		SCRIPT_TRIVIAL_NATIVE_ASSIGNMENT(Binds, AnsiTypeName);
+		Binds.Method(AssignDecl, &FAngelscriptUStructBinds::GenericAssign, Struct).NativeAssignment(NativeTypeName, true);
 	}
 }
 
-static void BindStructType(const FString& TypeName, UScriptStruct* Struct, FBindFlags& BindFlags)
+static void DeclareStructType(
+	FAngelscriptBinds& Binds,
+	const FString& TypeName,
+	UScriptStruct* Struct,
+	FBindFlags BindFlags)
 {
-	auto Binds = FAngelscriptBinds::ValueClass(TypeName, Struct, BindFlags);
-
-	// Register angelscript type
-	auto Type = MakeShared<FUStructType>(Struct, TypeName);
-	Type->ScriptTypeInfo = Binds.GetTypeInfo();
-	Type->ScriptTypeInfo->SetUserData(Struct);
-	FAngelscriptType::Register(Type);
+	auto StructBinds = Binds.ValueClassForTarget(TypeName, Struct, BindFlags);
+	asITypeInfo* ScriptTypeInfo = StructBinds.GetTypeInfo();
+	if (ScriptTypeInfo != nullptr)
+		ScriptTypeInfo->SetUserData(Struct);
 }
 
-static void BindStructTypeLookups()
+static void RegisterStructType(
+	FAngelscriptBinds& Binds,
+	const FString& TypeName,
+	UScriptStruct* Struct)
 {
-	// Script structs should be generically typed
-	FAngelscriptType::SetScriptStruct(MakeShared<FUStructType>(nullptr, TEXT("")));
+	auto StructBinds = Binds.ExistingClassForTarget(TypeName);
+	asITypeInfo* ScriptTypeInfo = StructBinds.GetTypeInfo();
+	if (ScriptTypeInfo == nullptr)
+		return;
 
-	// Register a type finder into the type system that
-	// can look up a StructProperty's inner angelscript type.
-	FAngelscriptType::RegisterTypeFinder([](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
+	auto Type = MakeShared<FUStructType>(Struct, TypeName, Binds.GetTargetBindDatabase());
+	Type->ScriptTypeInfo = ScriptTypeInfo;
+	Binds.RegisterTypeForTarget(Type);
+}
+
+struct FUStructPropertyTypeFinder
+{
+	FAngelscriptTypeDatabase* TargetTypeDatabase = nullptr;
+
+	bool operator()(FProperty* Property, FAngelscriptTypeUsage& Usage) const
 	{
 		FStructProperty* StructProperty = CastField<FStructProperty>(Property);
 		if (StructProperty == nullptr)
 			return false;
 
-		auto Type = FAngelscriptType::GetByData(StructProperty->Struct);
-		if (Type.IsValid())
+		const TSharedRef<FAngelscriptType>* RegisteredType =
+			TargetTypeDatabase->TypesByData.Find(StructProperty->Struct);
+		if (RegisteredType != nullptr)
 		{
-			Usage.Type = Type;
+			Usage.Type = RegisteredType->ToSharedPtr();
 			return true;
 		}
 
-		auto* ASStruct = Cast<UASStruct>(StructProperty->Struct);
-		if (ASStruct != nullptr && ASStruct->ScriptType != nullptr)
+		auto* ScriptStruct = Cast<UASStruct>(StructProperty->Struct);
+		if (ScriptStruct != nullptr && ScriptStruct->ScriptType != nullptr)
 		{
-			Usage.Type = FAngelscriptType::GetScriptStruct();
-			Usage.ScriptClass = ASStruct->ScriptType;
+			Usage.Type = TargetTypeDatabase->ScriptStructType;
+			Usage.ScriptClass = ScriptStruct->ScriptType;
 			return true;
 		}
 
 		return false;
-	});
+	}
+};
+
+#if WITH_EDITOR && !AS_USE_BIND_DB
+static void AddPropertyDocumentationForTarget(
+	FAngelscriptEngine& Engine,
+	int32 TypeId,
+	int32 PropertyOffset,
+	FStringView Documentation)
+{
+	FAngelscriptDocumentationState* DocumentationState = Engine.GetDocumentationState();
+	check(DocumentationState != nullptr);
+	DocumentationState->UnrealPropertyDocumentation.Add(
+		TPair<int32, int32>(TypeId, PropertyOffset),
+		FString(Documentation));
+}
+#endif
+
+static void BindStructTypeLookups(FAngelscriptBinds& Binds)
+{
+	// Script structs should be generically typed
+	Binds.GetTargetTypeDatabase().ScriptStructType = MakeShared<FUStructType>(
+		nullptr,
+		TEXT(""),
+		Binds.GetTargetBindDatabase());
+
+	// Register a type finder into the type system that
+	// can look up a StructProperty's inner angelscript type.
+	Binds.RegisterTypeFinderForTarget(FUStructPropertyTypeFinder{&Binds.GetTargetTypeDatabase()});
 }
 
 #if AS_USE_BIND_DB
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDeclarations((int32)FAngelscriptBinds::EOrder::Early + 1, []
+static void BindStructDeclarations(FAngelscriptBinds& Binds)
 {
-	for (auto& DBBind : FAngelscriptBindDatabase::Get().Structs)
+	for (FAngelscriptStructBind& DBBind : Binds.GetTargetBindDatabase().Structs)
 	{
 		UScriptStruct* Struct = FindObject<UScriptStruct>(nullptr, *DBBind.UnrealPath);
 		if (Struct == nullptr)
@@ -884,25 +869,35 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDeclarations((int32)FAng
 		if (Struct->StructFlags & STRUCT_IsPlainOldData)
 			BindFlags.ExtraFlags |= asOBJ_POD;
 
-		BindStructType(DBBind.TypeName, Struct, BindFlags);
+		DeclareStructType(Binds, DBBind.TypeName, Struct, BindFlags);
+	}
+}
+
+static void BindStructTypeInfrastructure(FAngelscriptBinds& Binds)
+{
+	for (FAngelscriptStructBind& DBBind : Binds.GetTargetBindDatabase().Structs)
+	{
+		if (DBBind.ResolvedStruct != nullptr)
+			RegisterStructType(Binds, DBBind.TypeName, DBBind.ResolvedStruct);
 	}
 
-	BindStructTypeLookups();
-});
+	BindStructTypeLookups(Binds);
+}
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails(FAngelscriptBinds::EOrder::Late, []
+static void BindStructReflection(FAngelscriptBinds& TargetBinds)
 {
-	for (auto& DBBind : FAngelscriptBindDatabase::Get().Structs)
+	FAngelscriptTypeDatabase& TargetTypeDatabase = TargetBinds.GetTargetTypeDatabase();
+	for (FAngelscriptStructBind& DBBind : TargetBinds.GetTargetBindDatabase().Structs)
 	{
 		UScriptStruct* Struct = DBBind.ResolvedStruct;
 		if (Struct == nullptr)
 			continue;
 
-		auto Type = FAngelscriptType::GetByData(Struct);
-		if (!Type.IsValid())
+		const TSharedRef<FAngelscriptType>* Type = TargetTypeDatabase.TypesByData.Find(Struct);
+		if (Type == nullptr)
 			continue;
 
-		auto Binds = FAngelscriptBinds::ExistingClass(DBBind.TypeName);
+		auto Binds = TargetBinds.ExistingClassForTarget(DBBind.TypeName);
 		BindStructBehaviors(Binds, DBBind.TypeName, Struct);
 
 		for (auto& DBProp : DBBind.Properties)
@@ -917,7 +912,8 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails(FAngelscriptBind
 			}
 			else
 			{
-				FAngelscriptTypeUsage Usage = FAngelscriptTypeUsage::FromProperty(Property);
+				FAngelscriptTypeUsage Usage =
+					FAngelscriptTypeUsage::FromProperty(TargetTypeDatabase, Property);
 				if (!Usage.IsValid())
 					continue;
 
@@ -930,7 +926,22 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails(FAngelscriptBind
 			}
 		}
 	}
-});
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_TypeDeclarations(
+	TEXT("UStruct.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindStructDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_TypeInfrastructure(
+	TEXT("UStruct.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindStructTypeInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_ReflectionBindings(
+	TEXT("UStruct.ReflectionBindings"),
+	EAngelscriptBindPhase::ReflectionBindings,
+	&BindStructReflection);
 #else // if !AS_USE_BIND_DB
 
 static const FName NAME_Meta_ForceAngelscriptBind("ForceAngelscriptBind");
@@ -965,7 +976,7 @@ struct FGetIntVector2
 	static UScriptStruct* Get();
 };
 
-bool ShouldBindEngineType(UScriptStruct* Struct)
+static bool ShouldBindEngineType(UScriptStruct* Struct)
 {
 	if (Struct == nullptr)
 		return false;
@@ -1064,54 +1075,91 @@ bool ShouldBindEngineType(UScriptStruct* Struct)
 	return false;
 }
 
-void HardCodeCallingMetaForUnrealStructs();
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDeclarations((int32)FAngelscriptBinds::EOrder::Early+1, []
+static void ForceBindStruct(const TCHAR* Path)
 {
-	HardCodeCallingMetaForUnrealStructs();
+	if (auto* Struct = FindObject<UStruct>(nullptr, Path))
+		Struct->SetMetaData(NAME_Meta_ForceAngelscriptBind, TEXT(""));
+}
 
-	for (UScriptStruct* Struct : TObjectRange<UScriptStruct>())
+static void HardCodeCallingMetaForUnrealStructs()
+{
+	ForceBindStruct(TEXT("/Script/Engine.OverlapResult"));
+}
+
+static const TArray<TObjectPtr<UScriptStruct>>& GetOrCaptureUStructTypes(FAngelscriptBinds& Binds)
+{
+	FAngelscriptBindState& BindState = Binds.GetTargetBindState();
+	if (!BindState.bUStructTypeSnapshotCaptured)
 	{
-		if (!ShouldBindEngineType(Struct))
-			continue;
+		HardCodeCallingMetaForUnrealStructs();
 
-		FString TypeName = Struct->GetStructCPPName();
+		for (UScriptStruct* Struct : TObjectRange<UScriptStruct>())
+		{
+			if (ShouldBindEngineType(Struct))
+				BindState.UStructTypeSnapshot.Add(Struct);
+		}
+		BindState.bUStructTypeSnapshotCaptured = true;
+	}
+
+	return BindState.UStructTypeSnapshot;
+}
+
+static void BindStructDeclarations(FAngelscriptBinds& Binds)
+{
+	for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(Binds))
+	{
+		UScriptStruct* Struct = StructPtr.Get();
+		const FString TypeName = Struct->GetStructCPPName();
 
 		// Bind into angelscript engine
 		FBindFlags BindFlags;
 		if (Struct->StructFlags & STRUCT_IsPlainOldData)
 			BindFlags.ExtraFlags |= asOBJ_POD;
-		BindStructType(TypeName, Struct, BindFlags);
+		DeclareStructType(Binds, TypeName, Struct, BindFlags);
+	}
+}
+
+static void BindStructTypeInfrastructure(FAngelscriptBinds& Binds)
+{
+	for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(Binds))
+	{
+		UScriptStruct* Struct = StructPtr.Get();
+		RegisterStructType(Binds, Struct->GetStructCPPName(), Struct);
 	}
 
-	BindStructTypeLookups();
-});
+	BindStructTypeLookups(Binds);
+}
 
 static const FName NAME_Property_Struct_ScriptName("ScriptName");
 static const FName NAME_Property_Struct_DeprecatedProperty("DeprecatedProperty");
 static const FName NAME_Property_Struct_DeprecationMessage("DeprecationMessage");
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails((int32)FAngelscriptBinds::EOrder::Late+105, []
+static void BindStructReflection(FAngelscriptBinds& TargetBinds)
 {
-	for (UScriptStruct* Struct : TObjectRange<UScriptStruct>())
+	FAngelscriptTypeDatabase& TargetTypeDatabase = TargetBinds.GetTargetTypeDatabase();
+	FAngelscriptBindDatabase& TargetBindDatabase = TargetBinds.GetTargetBindDatabase();
+	FAngelscriptEngine& TargetEngine = TargetBinds.GetTargetEngine();
+
+	for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(TargetBinds))
 	{
-		if (!ShouldBindEngineType(Struct))
+		UScriptStruct* Struct = StructPtr.Get();
+
+		const TSharedRef<FAngelscriptType>* Type = TargetTypeDatabase.TypesByData.Find(Struct);
+		if (Type == nullptr)
 			continue;
 
-		auto Type = FAngelscriptType::GetByData(Struct);
-		if (!Type.IsValid())
-			continue;
-
-		FString TypeName = Type->GetAngelscriptTypeName();
-		auto Binds = FAngelscriptBinds::ExistingClass(TypeName);
+		FString TypeName = (*Type)->GetAngelscriptTypeName();
+		auto Binds = TargetBinds.ExistingClassForTarget(TypeName);
 
 		BindStructBehaviors(Binds, TypeName, Struct);
 
 		auto* ScriptType = Binds.GetTypeInfo();
-		auto ScriptFlags = ScriptType->GetFlags();
+		if (ScriptType == nullptr)
+			continue;
 
 #if WITH_EDITOR
 		const FString& Tooltip = Struct->GetMetaData(NAME_Struct_Tooltip);
 		if (Tooltip.Len() != 0)
-			FAngelscriptDocs::AddUnrealDocumentationForType(ScriptType->GetTypeId(), Tooltip);
+			FAngelscriptDocs::AddUnrealDocumentationForType(TargetEngine, ScriptType->GetTypeId(), Tooltip);
 #endif
 
 		FAngelscriptStructBind DBBind;
@@ -1130,11 +1178,12 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails((int32)FAngelscr
 				continue;
 
 			// Don't bind editor-only stuff in simulate cooked mode
-			if (!FAngelscriptEngine::ShouldUseEditorScriptsForCurrentContext() && Property->HasAnyPropertyFlags(CPF_EditorOnly))
+			if (!TargetEngine.ShouldUseEditorScripts() && Property->HasAnyPropertyFlags(CPF_EditorOnly))
 				continue;
 
 			// Bind using angelscript type system otherwise
-			FAngelscriptTypeUsage Usage = FAngelscriptTypeUsage::FromProperty(Property);
+			FAngelscriptTypeUsage Usage =
+				FAngelscriptTypeUsage::FromProperty(TargetTypeDatabase, Property);
 			if (!Usage.IsValid())
 				continue;
 
@@ -1169,7 +1218,13 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails((int32)FAngelscr
 
 			const FString& PropertyTooltip = Property->GetMetaData(NAME_Struct_Tooltip);
 			if (PropertyTooltip.Len() != 0)
-				FAngelscriptDocs::AddUnrealDocumentationForProperty(ScriptType->GetTypeId(), Property->GetOffset_ForUFunction(), PropertyTooltip);
+			{
+				AddPropertyDocumentationForTarget(
+					TargetEngine,
+					ScriptType->GetTypeId(),
+					Property->GetOffset_ForUFunction(),
+					PropertyTooltip);
+			}
 
 			bool bIsEditorOnly = false;
 			if (Property->HasAnyPropertyFlags(CPF_EditorOnly))
@@ -1221,18 +1276,22 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_StructDetails((int32)FAngelscr
 		// TODO: We need some way of determining whether this struct
 		// even exists in cooked, but I can't come up with one right now,
 		// so we'll just rely on ignoring it in cooked.
-		FAngelscriptBindDatabase::Get().Structs.Add(DBBind);
+		TargetBindDatabase.Structs.Add(DBBind);
 	}
-});
-
-void HardCodeCallingMetaForUnrealStructs()
-{
-	auto ForceBind = [](const TCHAR* Path)
-	{
-		if (auto* Struct = FindObject<UStruct>(nullptr, Path))
-			Struct->SetMetaData(NAME_Meta_ForceAngelscriptBind, TEXT(""));
-	};
-
-	ForceBind(TEXT("/Script/Engine.OverlapResult"));
 }
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_TypeDeclarations(
+	TEXT("UStruct.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindStructDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_TypeInfrastructure(
+	TEXT("UStruct.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindStructTypeInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_ReflectionBindings(
+	TEXT("UStruct.ReflectionBindings"),
+	EAngelscriptBindPhase::ReflectionBindings,
+	&BindStructReflection);
 #endif // AS_USE_BIND_DB

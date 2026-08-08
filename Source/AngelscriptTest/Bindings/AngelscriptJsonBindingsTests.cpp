@@ -7,6 +7,9 @@
 //
 // Sections:
 //   ObjectRoundTrip — Full JSON object create/serialize/parse round-trip
+//   ValueContainers  — Value extraction and object/value lifetime constructors
+//   Serialization    — Load/save entry points and malformed-input rejection
+//   IteratorBoundary — Single-element traversal and out-of-range Proceed
 //   ErrorPaths      — Type mismatch, out-of-bounds, iterator mutation exceptions
 //
 // CQTest adaptation notes:
@@ -183,6 +186,203 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptJsonBindingsTest,
 		ASSERT_THAT(IsTrue(
 			ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int RoundTrip()"), TEXT("Json object round-trip operations should preserve field values and JSON type strings"), 1),
 			TEXT("ExpectGlobalInt should pass")));
+	}
+
+	// ====================================================================
+	// Section: ValueContainers
+	// ====================================================================
+
+	TEST_METHOD(ValueContainers)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int ValueContainers()
+			{
+				FJsonValue DefaultValue;
+				FString UntouchedString = "Sentinel";
+				if (DefaultValue.GetType() != EJsonType::None || DefaultValue.TryGetString(UntouchedString) || UntouchedString != "Sentinel")
+				{
+					return 0;
+				}
+
+				FJsonObject Parsed = Json::ParseString("{\"Child\":{\"Label\":\"Nested\"},\"Values\":[\"First\",7]}");
+				FJsonObject Copy(Parsed);
+				if (!Copy.IsValid())
+				{
+					return 0;
+				}
+
+				bool bReadChild = false;
+				bool bReadArray = false;
+				FJsonObjectFieldIterator Iterator = Copy.Iterator();
+				while (Iterator.CanProceed)
+				{
+					Iterator.Proceed();
+					FJsonValue Value = Iterator.GetValue();
+					if (Iterator.GetFieldName() == "Child")
+					{
+						FJsonObject Child;
+						FJsonArray WrongArray;
+						if (!Value.TryGetObject(Child) || Value.TryGetArray(WrongArray) || Child.GetStringField("Label") != "Nested")
+						{
+							return 0;
+						}
+						bReadChild = true;
+					}
+					else if (Iterator.GetFieldName() == "Values")
+					{
+						FJsonArray Values;
+						FJsonObject WrongObject;
+						if (!Value.TryGetArray(Values) || Value.TryGetObject(WrongObject) || Values.Num() != 2)
+						{
+							return 0;
+						}
+						bReadArray = true;
+					}
+				}
+
+				return bReadChild && bReadArray ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_ValueContainers"), ScriptSource);
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("Json value container module should compile")));
+		if (!Mod.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), TEXT("int ValueContainers()"),
+				TEXT("Json value and object constructors should support nested object and array extraction"), 1),
+			TEXT("Json value containers should preserve nested extraction behavior")));
+	}
+
+	// ====================================================================
+	// Section: Serialization
+	// ====================================================================
+
+	TEST_METHOD(Serialization)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int LoadSaveAndRejectMalformedInput()
+			{
+				FJsonObject Loaded;
+				if (!Loaded.LoadFromString("{\"Name\":\"Loaded\",\"Count\":2}"))
+				{
+					return 0;
+				}
+				if (Loaded.GetStringField("Name") != "Loaded" || Loaded.GetNumberField("Count") != 2.0)
+				{
+					return 0;
+				}
+
+				FString Pretty = Loaded.SaveToString();
+				if (Pretty.IsEmpty() || !Pretty.Contains("\n") || !Pretty.Contains("\"Name\""))
+				{
+					return 0;
+				}
+
+				if (Loaded.LoadFromString("{"))
+				{
+					return 0;
+				}
+
+				FJsonObject ParseFailure = Json::ParseString("{");
+				if (ParseFailure.IsValid())
+				{
+					return 0;
+				}
+
+				if (Json::ValueTypeToString(EJsonType::None) != "None"
+					|| Json::ValueTypeToString(EJsonType::Object) != "Object"
+					|| Json::ValueTypeToString(EJsonType(255)) != "<Invalid Type>")
+				{
+					return 0;
+				}
+
+				return 1;
+			}
+			)AS");
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_Serialization"), ScriptSource);
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("Json serialization module should compile")));
+		if (!Mod.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, Mod.GetModule(), TEXT("int LoadSaveAndRejectMalformedInput()"),
+				TEXT("Json load/save entry points should serialize pretty output and reject malformed input"), 1),
+			TEXT("Json serialization entry points should handle valid and malformed input")));
+	}
+
+	// ====================================================================
+	// Section: IteratorBoundary
+	// ====================================================================
+
+	TEST_METHOD(IteratorBoundary)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int IteratesSingleValue()
+			{
+				FJsonObject Root;
+				Root.SetBoolField("Enabled", true);
+
+				FJsonObjectFieldIterator Iterator = Root.Iterator();
+				if (!Iterator.CanProceed)
+				{
+					return 0;
+				}
+
+				Iterator.Proceed();
+				if (Iterator.CanProceed || Iterator.GetFieldName() != "Enabled" || Iterator.GetType() != EJsonType::Boolean)
+				{
+					return 0;
+				}
+
+				bool Enabled = false;
+				return Iterator.GetValue().TryGetBool(Enabled) && Enabled ? 1 : 0;
+			}
+
+			void TriggerIteratorOutOfBounds()
+			{
+				FJsonObject EmptyObject;
+				FJsonObjectFieldIterator Iterator = EmptyObject.Iterator();
+				Iterator.Proceed();
+			}
+			)AS");
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASJson_IteratorBoundary"), ScriptSource);
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("Json iterator boundary module should compile")));
+		if (!Mod.IsValid())
+		{
+			return;
+		}
+
+		auto& M = Mod.GetModule();
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int IteratesSingleValue()"),
+				TEXT("Json iterator should expose the current field name, type, and value after Proceed"), 1),
+			TEXT("Json iterator should traverse a single field")));
+
+		TestRunner->AddExpectedError(TEXT("Iterator out of bounds."), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("ASJson_IteratorBoundary"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestRunner->AddExpectedError(TEXT("void TriggerIteratorOutOfBounds()"), EAutomationExpectedErrorFlags::Contains, 0, false);
+
+		ASSERT_THAT(IsTrue(
+			ExecuteAndExpectException(*TestRunner, Engine, M, TEXT("void TriggerIteratorOutOfBounds()"),
+				TEXT("Json iterator out-of-range Proceed path"), TEXT("Iterator out of bounds.")),
+			TEXT("Json iterator should report a deterministic out-of-range Proceed exception")));
 	}
 
 	// ====================================================================

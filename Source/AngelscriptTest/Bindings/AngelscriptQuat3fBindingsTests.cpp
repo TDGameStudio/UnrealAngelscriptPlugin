@@ -135,6 +135,42 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptQuat3fBindingsTest,
 			ExpectGlobalInts(*TestRunner, Engine, M,  Cases),
 			TEXT("ExpectGlobalInts should pass")));
 	}
+
+	TEST_METHOD(FVector4fBasics)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASQuat3f_Vector4f"), ASTEST_AS(R"AS(
+			int Vector4f_ConstructionAndArithmetic()
+			{
+				FVector4f Value(1.0f, 2.0f, 3.0f, 4.0f);
+				FVector4f Result = (Value + FVector4f(1.0f, 1.0f, 1.0f, 1.0f)) * 2.0f;
+				return Result == FVector4f(4.0f, 6.0f, 8.0f, 10.0f) ? 1 : 0;
+			}
+
+			int Vector4f_CrossPrecisionConversion()
+			{
+				FVector4 DoubleValue(1.0, 2.0, 3.0, 4.0);
+				FVector4f FloatValue(DoubleValue);
+				FVector4 RoundTrip(FloatValue);
+				return RoundTrip == DoubleValue ? 1 : 0;
+			}
+			)AS"));
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("FVector4f arithmetic and cross-precision constructors should compile")));
+		if (!Mod.IsValid())
+		{
+			return;
+		}
+
+		const FExpectedGlobalInt Cases[] = {
+			{TEXT("int Vector4f_ConstructionAndArithmetic()"), TEXT("FVector4f construction and arithmetic should preserve components"), 1},
+			{TEXT("int Vector4f_CrossPrecisionConversion()"), TEXT("FVector4/FVector4f cross-precision constructors should round-trip exact values"), 1},
+		};
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInts(*TestRunner, Engine, Mod.GetModule(), Cases),
+			TEXT("FVector4f behavior cases should pass")));
+	}
 };
 
 #endif // WITH_ANGELSCRIPT_UNITTESTS

@@ -19,7 +19,10 @@
 #include "FunctionBinding/NativeModuleFunctionBindingBridge.h"
 
 ANGELSCRIPTRUNTIME_API void GAngelscriptNativeModuleFunctionBindingEnsureRegisteredForTesting();
-ANGELSCRIPTRUNTIME_API int32 GAngelscriptNativeModuleFunctionBindingBindGlobalFunctionForTesting(const ANSICHAR* Signature, FAngelscriptNativeModuleFunctionBinding* Binding);
+ANGELSCRIPTRUNTIME_API int32 GAngelscriptNativeModuleFunctionBindingBindGlobalFunctionForTesting(
+	FAngelscriptEngine& Engine,
+	const ANSICHAR* Signature,
+	FAngelscriptNativeModuleFunctionBinding* Binding);
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptNativeModuleFunctionBindingRuntimeTests,
 	"Angelscript.CppTests.UHTToolResolver.NativeModuleFunctionBinding",
@@ -37,6 +40,7 @@ private:
 	static constexpr const TCHAR* MultiShardFunctionNameB = TEXT("NativeModuleFunctionBindingMultiShardAutomationProbeB");
 	static constexpr const TCHAR* DeferredUnregisterFunctionName = TEXT("NativeModuleFunctionBindingDeferredUnregisterAutomationProbe");
 	static constexpr const TCHAR* ReloadFunctionName = TEXT("NativeModuleFunctionBindingReloadAutomationProbe");
+	static constexpr const TCHAR* ExplicitTargetFunctionName = TEXT("NativeModuleFunctionBindingExplicitTargetAutomationProbe");
 
 	struct FGenericHookProbeState
 	{
@@ -151,6 +155,21 @@ private:
 		return ActorBindings != nullptr ? ActorBindings->Find(FunctionName) : nullptr;
 	}
 
+	static const FAngelscriptFunctionBinding* FindActorFunctionBinding(
+		const FAngelscriptEngine& Engine,
+		const TCHAR* FunctionName)
+	{
+		const FAngelscriptBindState* BindState = Engine.GetBindState();
+		if (BindState == nullptr)
+		{
+			return nullptr;
+		}
+
+		const TMap<FString, FAngelscriptFunctionBinding>* ActorBindings =
+			BindState->ClassFunctionBindings.Find(AActor::StaticClass());
+		return ActorBindings != nullptr ? ActorBindings->Find(FunctionName) : nullptr;
+	}
+
 	static bool IsFunctionBindingBound(const FAngelscriptFunctionBinding& FunctionBinding)
 	{
 		return const_cast<FGenericFuncPtr&>(FunctionBinding.FunctionPointer).IsBound();
@@ -252,6 +271,90 @@ public:
 	{
 		ASSERT_THAT(IsTrue(RunMalformedFeature(*TestRunner)));
 	}
+
+	TEST_METHOD(ExplicitEngineTargets_InjectDeduplicateAndRemoveWithoutCrossTalk)
+	{
+		if (!EnsureNativeModuleFunctionBindingSubscriptionReady())
+		{
+			return;
+		}
+
+		const FAngelscriptEngineConfig Config;
+		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+		TUniquePtr<FAngelscriptEngine> EngineA = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		TUniquePtr<FAngelscriptEngine> EngineB = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		ASSERT_THAT(IsNotNull(EngineA.Get(), TEXT("Explicit-target regression should create engine A")));
+		ASSERT_THAT(IsNotNull(EngineB.Get(), TEXT("Explicit-target regression should create engine B")));
+
+		const FAngelscriptFunctionBinding ExistingFunctionBinding = {
+			FGenericFuncPtr::Make(1),
+			ASAutoCaller::FunctionCaller{},
+			reinterpret_cast<void*>(0x2),
+			false,
+			false
+		};
+		FAngelscriptBinds BindsA(*EngineA);
+		BindsA.RegisterFunctionBindingForTarget(
+			AActor::StaticClass(),
+			ExplicitTargetFunctionName,
+			ExistingFunctionBinding);
+
+		const FAngelscriptNativeModuleFunctionBinding Binding = {
+			TestClassName,
+			ExplicitTargetFunctionName,
+			&NoOpThunk,
+			0,
+			0,
+			0
+		};
+		FTestNativeModuleFunctionBindingFeature Feature(
+			&Binding,
+			1,
+			TestModuleName,
+			FAngelscriptNativeModuleFunctionBindingBridge::LayoutVersionExpected);
+		bool bFeatureRegistered = true;
+		IModularFeatures::Get().RegisterModularFeature(
+			FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(),
+			&Feature);
+		ON_SCOPE_EXIT
+		{
+			if (bFeatureRegistered)
+			{
+				IModularFeatures::Get().UnregisterModularFeature(
+					FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(),
+					&Feature);
+			}
+		};
+
+		const FAngelscriptFunctionBinding* EngineABinding =
+			FindActorFunctionBinding(*EngineA, ExplicitTargetFunctionName);
+		const FAngelscriptFunctionBinding* EngineBBinding =
+			FindActorFunctionBinding(*EngineB, ExplicitTargetFunctionName);
+		ASSERT_THAT(IsNotNull(
+			EngineABinding,
+			TEXT("The feature should preserve engine A's pre-existing explicit slot")));
+		ASSERT_THAT(IsNotNull(
+			EngineBBinding,
+			TEXT("The feature should inject independently into engine B's explicit slot")));
+		ASSERT_THAT(AreEqual(
+			ExistingFunctionBinding.UserData,
+			EngineABinding->UserData,
+			TEXT("Duplicate suppression should inspect only engine A's owned function table")));
+		ASSERT_THAT(AreEqual(
+			static_cast<void*>(const_cast<FAngelscriptNativeModuleFunctionBinding*>(&Binding)),
+			EngineBBinding->UserData,
+			TEXT("Engine B should receive the descriptor even when engine A already owns the same name")));
+
+		EngineA.Reset();
+		IModularFeatures::Get().UnregisterModularFeature(
+			FAngelscriptNativeModuleFunctionBindingBridge::FeatureName(),
+			&Feature);
+		bFeatureRegistered = false;
+
+		ASSERT_THAT(IsNull(
+			FindActorFunctionBinding(*EngineB, ExplicitTargetFunctionName),
+			TEXT("Feature unload after engine A shutdown should remove only engine B's injected slot")));
+	}
 };
 
 FAngelscriptNativeModuleFunctionBindingRuntimeTests::FGenericHookProbeState* FAngelscriptNativeModuleFunctionBindingRuntimeTests::GGenericHookProbeState = nullptr;
@@ -265,7 +368,8 @@ bool FAngelscriptNativeModuleFunctionBindingRuntimeTests::RunExistingSlotPriorit
 
 	FScopedClassFuncMapRestore RestoreActorEntries(AActor::StaticClass());
 	const FAngelscriptFunctionBinding ExistingFunctionBinding = { FGenericFuncPtr::Make(1), ASAutoCaller::FunctionCaller{}, reinterpret_cast<void*>(0x1), false, false };
-	FAngelscriptBinds::RegisterFunctionBinding(AActor::StaticClass(), ExistingFunctionName, ExistingFunctionBinding);
+	FAngelscriptBinds Binds(FAngelscriptEngine::Get());
+	Binds.RegisterFunctionBindingForTarget(AActor::StaticClass(), ExistingFunctionName, ExistingFunctionBinding);
 
 	const FAngelscriptNativeModuleFunctionBinding Binding = { TestClassName, ExistingFunctionName, &NoOpThunk, 0, 0, 0 };
 	FTestNativeModuleFunctionBindingFeature Feature(&Binding, 1, TestModuleName, FAngelscriptNativeModuleFunctionBindingBridge::LayoutVersionExpected);
@@ -442,6 +546,7 @@ bool FAngelscriptNativeModuleFunctionBindingRuntimeTests::RunGenericHookFrameThu
 	};
 
 	const int32 FunctionId = GAngelscriptNativeModuleFunctionBindingBindGlobalFunctionForTesting(
+		Engine,
 		"int NativeModuleFunctionBindingGenericHookProbe(int Left, int Right)",
 		&Binding);
 	if (!Test.TestTrue(TEXT("Native module function binding generic hook should register a global function"), FunctionId >= 0))

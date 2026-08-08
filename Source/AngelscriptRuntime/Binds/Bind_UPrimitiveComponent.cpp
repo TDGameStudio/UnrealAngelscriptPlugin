@@ -1,52 +1,23 @@
-#include "CoreMinimal.h"
-
-#include "GameFramework/Actor.h"
-#include "Components/PrimitiveComponent.h"
-
-#include "UObject/UObjectIterator.h"
-#include "UObject/Class.h"
-
-#include "AngelscriptEngine.h"
-#include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
 
+#include "Bind_UPrimitiveComponent_Functions.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UPrimitiveComponent([]
+namespace
 {
-	FAngelscriptBinds UPrimitiveComponent_ = FAngelscriptBinds::ExistingClass("UPrimitiveComponent");
-
-	UPrimitiveComponent_.Method("FVector GetBoundingBoxExtents() const", [](const UPrimitiveComponent* Component)->FVector
+	void BindUPrimitiveComponent(FAngelscriptBinds& Binds)
 	{
-		return Component->GetCollisionShape().GetExtent();
-	});
+		auto PrimitiveComponent_ = Binds.ExistingClassForTarget("UPrimitiveComponent");
+		PrimitiveComponent_.Method("FVector GetBoundingBoxExtents() const", &FAngelscriptUPrimitiveComponentBinds::GetBoundingBoxExtents);
+		PrimitiveComponent_.Method("FVector GetBoundsOrigin() const", &FAngelscriptUPrimitiveComponentBinds::GetBoundsOrigin);
+		PrimitiveComponent_.Method("FVector GetBoundsExtent() const", &FAngelscriptUPrimitiveComponentBinds::GetBoundsExtent);
+		PrimitiveComponent_.Method("float64 GetBoundsRadius() const", &FAngelscriptUPrimitiveComponentBinds::GetBoundsRadius);
+		PrimitiveComponent_.Method("bool GetbSelectable() const", &FAngelscriptUPrimitiveComponentBinds::GetSelectable);
+		PrimitiveComponent_.Method("void SetbSelectable(bool bSelectable)", &FAngelscriptUPrimitiveComponentBinds::SetSelectable);
+		PrimitiveComponent_.Method("void SetLightmapType(ELightmapType Type)", &FAngelscriptUPrimitiveComponentBinds::SetLightmapType);
+	}
+}
 
-	UPrimitiveComponent_.Method("FVector GetBoundsOrigin() const", [](const UPrimitiveComponent* Component)->FVector
-	{
-		return Component->Bounds.Origin;
-	});
-
-	UPrimitiveComponent_.Method("FVector GetBoundsExtent() const", [](const UPrimitiveComponent* Component)->FVector
-	{
-		return Component->Bounds.BoxExtent;
-	});
-
-	UPrimitiveComponent_.Method("float64 GetBoundsRadius() const", [](const UPrimitiveComponent* Component)->double
-	{
-		return Component->Bounds.SphereRadius;
-	});
-
-	UPrimitiveComponent_.Method("bool GetbSelectable() const", [](const UPrimitiveComponent* Component) -> bool
-	{
-		return Component->bSelectable;
-	});
-
-	UPrimitiveComponent_.Method("void SetbSelectable(bool bSelectable)", [](UPrimitiveComponent* Component, bool bSelectable)
-	{
-		Component->bSelectable = bSelectable;
-	});
-
-	UPrimitiveComponent_.Method("void SetLightmapType(ELightmapType Type)", [](UPrimitiveComponent* Component, ELightmapType Type)
-	{
-		Component->SetLightmapType(Type);
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_UPrimitiveComponent(
+	TEXT("UPrimitiveComponent"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUPrimitiveComponent);

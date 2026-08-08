@@ -49,22 +49,41 @@ internal static partial class AngelscriptFunctionBindingCodeGenerator
 		{
 			int startIndex = helperFunctionIndex * MaxBindingsPerRuntimeLinkedHelperFunction;
 			int bindingCount = Math.Min(MaxBindingsPerRuntimeLinkedHelperFunction, bindings.Count - startIndex);
-			builder.Append("\tstatic void RegisterGeneratedFunctionBindingBatch_").Append(moduleIdentifier).Append('_').Append(helperFunctionIndex.ToString("D3", CultureInfo.InvariantCulture)).AppendLine("()");
+			builder.Append("\tstatic void RegisterGeneratedFunctionBindingBatch_")
+				.Append(moduleIdentifier)
+				.Append('_')
+				.Append(helperFunctionIndex.ToString("D3", CultureInfo.InvariantCulture))
+				.AppendLine("(FAngelscriptBinds& Binds)");
 			builder.AppendLine("\t{");
 			AppendGeneratedFunctionBindingRegistrations(builder, editorOnly, bindings, startIndex, bindingCount);
 			builder.AppendLine("\t}");
 			builder.AppendLine();
 		}
-		builder.AppendLine("}");
-		builder.AppendLine();
-		builder.Append("AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AS_FunctionBinding_").Append(moduleName).Append("(TEXT(\"UHT.FunctionBinding.").Append(moduleName).AppendLine("\"), (int32)FAngelscriptBinds::EOrder::Late + 50, []()");
-		builder.AppendLine("{");
+		builder.Append("\tstatic void BindGeneratedFunctionBindings_")
+			.Append(moduleIdentifier)
+			.AppendLine("(FAngelscriptBinds& Binds)");
+		builder.AppendLine("\t{");
 		for (int helperFunctionIndex = 0; helperFunctionIndex < helperFunctionCount; helperFunctionIndex++)
 		{
-			builder.Append("\tRegisterGeneratedFunctionBindingBatch_").Append(moduleIdentifier).Append('_').Append(helperFunctionIndex.ToString("D3", CultureInfo.InvariantCulture)).AppendLine("();");
+			builder.Append("\t\tRegisterGeneratedFunctionBindingBatch_")
+				.Append(moduleIdentifier)
+				.Append('_')
+				.Append(helperFunctionIndex.ToString("D3", CultureInfo.InvariantCulture))
+				.AppendLine("(Binds);");
 		}
-
-		builder.AppendLine("});");
+		builder.AppendLine("\t}");
+		builder.AppendLine("}");
+		builder.AppendLine();
+		builder.Append("AS_FORCE_LINK const FAngelscriptBind Bind_AS_FunctionBinding_")
+			.Append(moduleIdentifier)
+			.AppendLine("(");
+		builder.Append("\tTEXT(\"UHT.FunctionBinding.")
+			.Append(moduleName)
+			.AppendLine("\"),");
+		builder.AppendLine("\tEAngelscriptBindPhase::GeneratedBindings,");
+		builder.Append("\t&BindGeneratedFunctionBindings_")
+			.Append(moduleIdentifier)
+			.AppendLine(");");
 		builder.AppendLine("PRAGMA_ENABLE_DEPRECATION_WARNINGS");
 		if (editorOnly)
 		{

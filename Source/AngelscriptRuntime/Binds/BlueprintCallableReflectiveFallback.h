@@ -5,6 +5,8 @@
 class UFunction;
 class UObject;
 class asIScriptGeneric;
+struct FAngelscriptBinds;
+struct FAngelscriptBoundFunction;
 struct FAngelscriptType;
 struct FAngelscriptFunctionBinding;
 struct FAngelscriptFunctionSignature;
@@ -33,9 +35,12 @@ ANGELSCRIPTRUNTIME_API bool InvokeReflectionFallbackFromGenericCall(
 	UObject* TargetObject,
 	UFunction* Function,
 	bool bInjectMixinObject = false);
-bool IsScriptDeclarationAlreadyBound(TSharedRef<FAngelscriptType> InType, const FAngelscriptFunctionSignature& Signature);
+bool IsScriptDeclarationAlreadyBound(
+	FAngelscriptBinds& Binds,
+	TSharedRef<FAngelscriptType> InType,
+	const FAngelscriptFunctionSignature& Signature);
 
-// RAII guard that enables TLS caches used by Phase 2 of Bind_Defaults:
+// RAII guard that enables TLS caches used by BlueprintType ReflectionBindings:
 //   - global declaration cache for IsScriptDeclarationAlreadyBound (Opt 1)
 //   - per-class function-name cache for GetScriptNameForFunction prefix conflict detection (Opt 3)
 // Outside of the guard scope, cached lookups fall back to the original linear / FindFunctionByName path.
@@ -48,7 +53,7 @@ struct ANGELSCRIPTRUNTIME_API FScopedBindCaches
 	FScopedBindCaches& operator=(const FScopedBindCaches&) = delete;
 };
 
-// Called by FAngelscriptBinds::BindGlobalFunction (or equivalent paths) to keep the TLS global-decl cache warm.
+// Called by global-function registration paths to keep the TLS declaration cache warm.
 // Safe to call when no FScopedBindCaches is active (becomes a no-op).
 ANGELSCRIPTRUNTIME_API void AngelscriptBindCaches_NotifyGlobalFunctionRegistered(const char* Namespace, const char* Name, const char* Declaration);
 
@@ -58,7 +63,9 @@ ANGELSCRIPTRUNTIME_API void AngelscriptBindCaches_NotifyGlobalFunctionRegistered
 ANGELSCRIPTRUNTIME_API bool AngelscriptBindCaches_TryHasFunctionName(class UClass* OwningClass, FName FunctionName, bool& bOutExists);
 
 ANGELSCRIPTRUNTIME_API bool BindBlueprintCallableReflectionFallback(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
 	FAngelscriptFunctionSignature& Signature,
-	FAngelscriptFunctionBinding& Binding);
+	FAngelscriptFunctionBinding& Binding,
+	FAngelscriptBoundFunction& OutPrimaryBinding);

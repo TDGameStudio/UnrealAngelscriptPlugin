@@ -3,6 +3,7 @@
 #include "AngelscriptBinds.h"
 #include "Testing/AngelscriptScriptTestRunner.h"
 #include "Testing/AngelscriptTestSuite.h"
+#include "Testing/AngelscriptTest_Functions.h"
 #include "Testing/LatentAutomationCommand.h"
 
 #include "Components/ActorComponent.h"
@@ -295,58 +296,60 @@ FAngelscriptTestCommandBuilder::AddLatentCommand(
 	return {};
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptTest(
-	(int32)FAngelscriptBinds::EOrder::Late + 2,
-	[]
+namespace
+{
+	void BindAngelscriptTest(FAngelscriptBinds& Binds)
 	{
 		{
-			FAngelscriptBinds::FNamespace Namespace("FAngelscriptTest");
-			FAngelscriptBinds::BindGlobalFunction(
+			FAngelscriptBinds::FNamespace Namespace(
+				Binds.GetTargetEngine(),
+				"FAngelscriptTest");
+			Binds.BindGlobalFunctionForTarget(
 				"FAngelscriptTestCommandBuilder Commands()",
 				&FAngelscriptTest::Commands);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void CreateTestWorld(bool bInitializeGameSubsystems = true)",
 				&FAngelscriptTest::CreateTestWorld);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void DestroyTestWorld()",
 				&FAngelscriptTest::DestroyTestWorld);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"UWorld GetTestWorld()",
 				&FAngelscriptTest::GetTestWorld);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"UObject SpawnObject(UClass ObjectClass, UObject Outer = nullptr)",
 				&FAngelscriptTest::SpawnObject);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"AActor SpawnActor(TSubclassOf<AActor> ActorClass, FVector Location = FVector::ZeroVector, FRotator Rotation = FRotator::ZeroRotator)",
 				&FAngelscriptTest::SpawnActor);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"UActorComponent SpawnComponent(TSubclassOf<UActorComponent> ComponentClass, AActor Owner, bool bRegister = true)",
 				&FAngelscriptTest::SpawnComponent);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void BeginPlay(AActor Actor)",
 				&FAngelscriptTest::BeginPlay);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void BeginPlayAll()",
 				&FAngelscriptTest::BeginPlayAll);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void TickWorld(float32 DeltaSeconds, int NumTicks = 1)",
 				&FAngelscriptTest::TickWorld);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void TickActor(AActor Actor, float32 DeltaSeconds, int NumTicks = 1)",
 				&FAngelscriptTest::TickActor);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void TickComponent(UActorComponent Component, float32 DeltaSeconds, int NumTicks = 1)",
 				&FAngelscriptTest::TickComponent);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void AdvanceTime(float32 DeltaSeconds, int NumTicks = 1)",
 				&FAngelscriptTest::AdvanceTime);
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void DestroyActor(AActor Actor, bool bDrain = true)",
 				&FAngelscriptTest::DestroyActor);
 		}
 
 		FAngelscriptBinds Builder =
-			FAngelscriptBinds::ExistingClass(
+			Binds.ExistingClassForTarget(
 				"FAngelscriptTestCommandBuilder");
 		Builder.Method(
 			"FAngelscriptTestCommandBuilder Do(FName Action, const FString& Description = \"\") const allow_discard",
@@ -374,15 +377,15 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptTest(
 			&FAngelscriptTestCommandBuilder::AddLatentCommand);
 
 		FAngelscriptBinds LatentCommand =
-			FAngelscriptBinds::ExistingClass(
+			Binds.ExistingClassForTarget(
 				"ULatentAutomationCommand");
 		LatentCommand.Method(
 			"UAngelscriptTestSuite GetCurrentSuite() const",
-			[](const ULatentAutomationCommand* Self)
-				-> UAngelscriptTestSuite*
-			{
-				return Self != nullptr
-					? Self->GetCurrentSuite()
-					: nullptr;
-			});
-	});
+			&FAngelscriptTestBinds::GetCurrentSuite);
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptTest(
+	TEXT("AngelscriptTest.ManualBindings"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindAngelscriptTest);

@@ -28,7 +28,8 @@ struct FStartupPerformanceSample
 {
 	double StartupTotalSeconds = 0.0;
 	double BindScriptTypesSeconds = 0.0;
-	double CallBindsSeconds = 0.0;
+	double CollectionFinalizationSeconds = 0.0;
+	double CallbackExecutionSeconds = 0.0;
 };
 
 struct FShareCleanCycleSample
@@ -115,22 +116,53 @@ static FString ValidateAndWriteStartupMetrics(FAutomationTestBase& Test, const F
 
 	TArray<double> StartupTotals;
 	TArray<double> BindTotals;
-	TArray<double> CallBindTotals;
-	for (const FStartupPerformanceSample& Sample : Samples)
+	TArray<double> CollectionFinalizationTotals;
+	TArray<double> CallbackTotals;
+	for (int32 SampleIndex = 0; SampleIndex < Samples.Num(); ++SampleIndex)
 	{
+		const FStartupPerformanceSample& Sample = Samples[SampleIndex];
+		Test.TestTrue(
+			*FString::Printf(TEXT("Startup sample %d total duration should be finite and non-negative"), SampleIndex),
+			FMath::IsFinite(Sample.StartupTotalSeconds) && Sample.StartupTotalSeconds >= 0.0);
+		Test.TestTrue(
+			*FString::Printf(TEXT("Startup sample %d bind duration should fit inside full creation"), SampleIndex),
+			FMath::IsFinite(Sample.BindScriptTypesSeconds)
+				&& Sample.BindScriptTypesSeconds >= 0.0
+				&& Sample.BindScriptTypesSeconds <= Sample.StartupTotalSeconds);
+		Test.TestTrue(
+			*FString::Printf(TEXT("Startup sample %d callback duration should fit inside BindScriptTypes"), SampleIndex),
+			FMath::IsFinite(Sample.CallbackExecutionSeconds)
+				&& Sample.CallbackExecutionSeconds >= 0.0
+				&& Sample.CallbackExecutionSeconds <= Sample.BindScriptTypesSeconds);
+		Test.TestTrue(
+			*FString::Printf(TEXT("Startup sample %d collection finalization duration should be finite and non-negative"), SampleIndex),
+			FMath::IsFinite(Sample.CollectionFinalizationSeconds)
+				&& Sample.CollectionFinalizationSeconds >= 0.0);
+
 		StartupTotals.Add(Sample.StartupTotalSeconds);
 		BindTotals.Add(Sample.BindScriptTypesSeconds);
-		CallBindTotals.Add(Sample.CallBindsSeconds);
+		CollectionFinalizationTotals.Add(Sample.CollectionFinalizationSeconds);
+		CallbackTotals.Add(Sample.CallbackExecutionSeconds);
 	}
 
 	LogPerformanceMetric(TEXT("startup.total_seconds"), StartupTotals);
 	LogPerformanceMetric(TEXT("startup.bind_script_types_seconds"), BindTotals);
-	LogPerformanceMetric(TEXT("startup.call_binds_seconds"), CallBindTotals);
+	LogPerformanceMetric(
+		TEXT("startup.collection_finalization_seconds"),
+		CollectionFinalizationTotals);
+	LogPerformanceMetric(TEXT("startup.callback_execution_seconds"), CallbackTotals);
 
 	TArray<FAngelscriptPerformanceMetric> Metrics;
 	Metrics.Add({ TEXT("startup.total_seconds"), StartupTotals, ComputeMedian(StartupTotals) });
 	Metrics.Add({ TEXT("startup.bind_script_types_seconds"), BindTotals, ComputeMedian(BindTotals) });
-	Metrics.Add({ TEXT("startup.call_binds_seconds"), CallBindTotals, ComputeMedian(CallBindTotals) });
+	Metrics.Add({
+		TEXT("startup.collection_finalization_seconds"),
+		CollectionFinalizationTotals,
+		ComputeMedian(CollectionFinalizationTotals) });
+	Metrics.Add({
+		TEXT("startup.callback_execution_seconds"),
+		CallbackTotals,
+		ComputeMedian(CallbackTotals) });
 
 	const FString MetricsPath = WritePerformanceMetricsArtifact(RunId, TestGroup, Metrics, Notes);
 	FNoDiscardAsserter LocalAssert(Test);
@@ -151,7 +183,11 @@ static FStartupPerformanceSample MeasureFullStartup()
 	const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 	check(Engine.IsValid());
 	const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-	return { TotalSeconds, Snapshot.BindScriptTypesDurationSeconds, Snapshot.CallBindsDurationSeconds };
+	return {
+		TotalSeconds,
+		Snapshot.BindScriptTypesDurationSeconds,
+		Snapshot.CollectionFinalizationDurationSeconds,
+		Snapshot.CallbackExecutionDurationSeconds };
 }
 
 static FStartupPerformanceSample MeasureCloneStartup()
@@ -167,7 +203,11 @@ static FStartupPerformanceSample MeasureCloneStartup()
 	const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 	check(CloneEngine.IsValid());
 	const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-	return { TotalSeconds, Snapshot.BindScriptTypesDurationSeconds, Snapshot.CallBindsDurationSeconds };
+	return {
+		TotalSeconds,
+		Snapshot.BindScriptTypesDurationSeconds,
+		Snapshot.CollectionFinalizationDurationSeconds,
+		Snapshot.CallbackExecutionDurationSeconds };
 }
 
 static FStartupPerformanceSample MeasureCreateForTestingFallbackStartup()
@@ -180,7 +220,11 @@ static FStartupPerformanceSample MeasureCreateForTestingFallbackStartup()
 	const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 	check(Engine.IsValid());
 	const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-	return { TotalSeconds, Snapshot.BindScriptTypesDurationSeconds, Snapshot.CallBindsDurationSeconds };
+	return {
+		TotalSeconds,
+		Snapshot.BindScriptTypesDurationSeconds,
+		Snapshot.CollectionFinalizationDurationSeconds,
+		Snapshot.CallbackExecutionDurationSeconds };
 }
 
 static FStartupPerformanceSample MeasureCreateForTestingCloneStartup()
@@ -197,7 +241,11 @@ static FStartupPerformanceSample MeasureCreateForTestingCloneStartup()
 	const double TotalSeconds = FPlatformTime::Seconds() - StartTime;
 	check(Engine.IsValid());
 	const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-	return { TotalSeconds, Snapshot.BindScriptTypesDurationSeconds, Snapshot.CallBindsDurationSeconds };
+	return {
+		TotalSeconds,
+		Snapshot.BindScriptTypesDurationSeconds,
+		Snapshot.CollectionFinalizationDurationSeconds,
+		Snapshot.CallbackExecutionDurationSeconds };
 }
 
 static FString MakeShareCleanModuleName(const FShareCleanWorkload& Workload, const FString& RunSuffix, int32 CycleIndex)

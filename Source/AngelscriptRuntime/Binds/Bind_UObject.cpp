@@ -17,6 +17,7 @@
 #include "ClassGenerator/ASClass.h"
 #include "Engine/SimpleConstructionScript.h"
 
+#include "Bind_UObject_Functions.h"
 #include "Helper_ToString.h"
 
 #if WITH_EDITOR
@@ -30,391 +31,135 @@
 #include "source/as_objecttype.h"
 #include "EndAngelscriptHeaders.h"
 
+namespace
+{
+	void BindUObjectBase(FAngelscriptBinds& Binds)
+	{
+		auto UObject_ = Binds.ExistingClassForTarget("UObject");
+		UObject_.Method("void AddToRoot()", METHOD_TRIVIAL(UObject, AddToRoot));
+		UObject_.Method("void RemoveFromRoot()", METHOD_TRIVIAL(UObject, RemoveFromRoot));
+		UObject_.Method("bool GetIsRooted() const", METHOD_TRIVIAL(UObject, IsRooted));
+		UObject_.Method("bool IsTransient() const", &FAngelscriptUObjectBinds::IsTransient);
+		UObject_.Method("bool IsEditorOnly() const", METHOD_TRIVIAL(UObject, IsEditorOnly));
+		UObject_.Method("bool Modify(bool bAlwaysMarkDirty = true)", METHOD(UObject, Modify));
+		UObject_.Method("void SetTransactional(bool bTransactional)", &FAngelscriptUObjectBinds::SetTransactional);
+
+		UObject_.Method("bool IsSupportedForNetworking() const", METHOD_TRIVIAL(UObject, IsSupportedForNetworking));
+
+		UObject_.Method("UClass GetClass() const", METHOD_TRIVIAL(UObject, GetClass));
+		UObject_.Method("UObject GetOuter() const", METHOD_TRIVIAL(UObject, GetOuter));
+
+		UObject_.Method(
+			"UObject GetTypedOuter(const TSubclassOf<UObject>& Target) const",
+			&FAngelscriptUObjectBinds::GetTypedOuter)
+			.Documentation(TEXT(
+				"Traverses the outer chain searching for the next object of a certain type.\n"
+				"@param Target class to search for.\n"
+				"@return The first object in this object's Outer chain which is of the correct type.\n"))
+			.DeterminesOutputType(0);
+
+		UObject_.Method("UPackage GetOutermost() const", METHOD_TRIVIAL(UObject, GetOutermost));
+		UObject_.Method("UPackage GetPackage() const", METHOD_TRIVIAL(UObject, GetPackage));
+		UObject_.Method("bool MarkPackageDirty() const allow_discard", METHOD_TRIVIAL(UObject, MarkPackageDirty));
+		UObject_.Method("UWorld GetWorld() const", METHOD_TRIVIAL(UObject, GetWorld));
+
+		UObject_.Method("FName GetName() const", METHODPR_TRIVIAL(FName, UObject, GetFName, () const));
+		UObject_.Method("FString GetFullName(const UObject StopOuter = nullptr) const", &FAngelscriptUObjectBinds::GetFullName);
+		UObject_.Method("FString GetPathName(const UObject StopOuter = nullptr) const", METHODPR_TRIVIAL(FString, UObject, GetPathName, (const UObject*) const));
+
+		UObject_.Method("bool IsA(const UClass Class) const", &FAngelscriptUObjectBinds::IsA)
+			.Documentation(TEXT("Returns true if this object is of the specified type, or a child of that type."));
+
+		UObject_.Method("bool ImplementsInterface(const UClass InterfaceClass) const", &FAngelscriptUObjectBinds::ImplementsInterface)
+			.Documentation(TEXT("Returns true if this object's class implements the specified interface."));
+
+		// Save config property changes to ini files
+		UObject_.Method("void SaveConfig()", &FAngelscriptUObjectBinds::SaveConfig);
+
+		// Load config property changes from ini files
+		UObject_.Method("void LoadConfig()", &FAngelscriptUObjectBinds::LoadConfig);
+
+		// Reload config property changes from ini files
+		UObject_.Method("void ReloadConfig()", &FAngelscriptUObjectBinds::ReloadConfig);
+
+		// Ability to copy all properties from a different object
+		UObject_.Method("void CopyScriptPropertiesFrom(const UObject OtherObject)", &FAngelscriptUObjectBinds::CopyScriptPropertiesFrom);
+
+		// Down-casting is handled generically so we don't have to register a gajillion different functions
+		UObject_.Method("void opCast(?& Address) const", &FAngelscriptUObjectBinds::CastToType)
+			.NativeUObjectCast(TEXT("?"), false);
+
+		Binds.BindGlobalFunctionForTarget("bool IsValid(const UObject Object) no_discard", FUNCPR_TRIVIAL(bool, ::IsValid, (UObject*)))
+			.Documentation(TEXT("Returns true if the object is usable: non-null and not pending kill"));
+	}
+
+	void BindUObjectToStringContribution(FAngelscriptBinds& Binds)
+	{
+		FToStringHelper::Register(Binds, TEXT("UObject"), &FAngelscriptUObjectBinds::AppendToString,
+			/*bImplicitConversion = */false, /*bIsHandleType = */true);
+	}
+
+	void BindUClassBase(FAngelscriptBinds& Binds)
+	{
+		auto UClass_ = Binds.ExistingClassForTarget("UClass");
+		UClass_.Method("UObject GetDefaultObject() const", &FAngelscriptUObjectBinds::GetDefaultObject);
+		UClass_.Method("FString GetSourceFilePath() const", &FAngelscriptUObjectBinds::GetClassSourceFilePath);
+		UClass_.Method("FString GetScriptModuleName() const", &FAngelscriptUObjectBinds::GetScriptModuleName);
+		UClass_.Method("FString GetScriptTypeDeclaration() const", &FAngelscriptUObjectBinds::GetScriptTypeDeclaration);
+		UClass_.Method("bool IsFunctionImplementedInScript(FName InFunctionName) const", &FAngelscriptUObjectBinds::IsFunctionImplementedInScript);
+		UClass_.Method("UFunction FindFunctionByName(FName InFunctionName) const", &FAngelscriptUObjectBinds::FindFunctionByName);
+
+		UClass_.Method("bool IsChildOf(UClass Other) const", METHODPR_TRIVIAL(bool, UClass, IsChildOf, (const UStruct*) const))
+			.Documentation(TEXT("Returns true if this class either is the same class, or is a child class of the other class."));
+
+		UClass_.Method("bool IsAbstract() const", &FAngelscriptUObjectBinds::IsAbstract);
+		UClass_.Method("UClass GetSuperClass() const", &FAngelscriptUObjectBinds::GetSuperClass);
+
+		{
+			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "UClass");
+			Binds.BindGlobalFunctionForTarget("UClass FindClass(const FString& Name)", &FAngelscriptUObjectBinds::FindClassByObjectName);
+			Binds.BindGlobalFunctionForTarget("void GetAllClasses(TArray<UClass>& OutClasses)", &FAngelscriptUObjectBinds::GetAllClasses);
+			Binds.BindGlobalFunctionForTarget(
+				"TArray<UClass> GetAllSubclassesOf(UClass Class, bool bIncludeAbstractClasses = false)",
+				&FAngelscriptUObjectBinds::GetAllSubclassesOf);
+			Binds.BindGlobalFunctionForTarget("UClass __StaticClass(const FString& Name)", &FAngelscriptUObjectBinds::FindClassByScriptName);
+		}
+	}
+
+	void BindUFunctionBase(FAngelscriptBinds& Binds)
+	{
+		auto UFunction_ = Binds.ExistingClassForTarget("UFunction");
+		UFunction_.Method("FString GetSourceFilePath() const", &FAngelscriptUObjectBinds::GetFunctionSourceFilePath);
+		UFunction_.Method("int GetSourceLineNumber() const", &FAngelscriptUObjectBinds::GetFunctionSourceLineNumber);
+		UFunction_.Method("FString GetScriptFunctionDeclaration() const", &FAngelscriptUObjectBinds::GetScriptFunctionDeclaration);
+	}
+}
+
 /**
  * Binds default methods that all UObjects have
  */
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Base((int32)FAngelscriptBinds::EOrder::Late-1, []
-{
-	auto UObject_ = FAngelscriptBinds::ExistingClass("UObject");
-	UObject_.Method("void AddToRoot()", METHOD_TRIVIAL(UObject, AddToRoot));
-	UObject_.Method("void RemoveFromRoot()", METHOD_TRIVIAL(UObject, RemoveFromRoot));
-	UObject_.Method("bool GetIsRooted() const", METHOD_TRIVIAL(UObject, IsRooted));
-	UObject_.Method("bool IsTransient() const", [](UObject* Object) { return Object->HasAnyFlags(RF_Transient); });
-	UObject_.Method("bool IsEditorOnly() const", METHOD_TRIVIAL(UObject, IsEditorOnly));
-	UObject_.Method("bool Modify(bool bAlwaysMarkDirty = true)", METHOD(UObject, Modify));
-	UObject_.Method("void SetTransactional(bool bTransactional)", [](UObject* Object, bool bTransactional)
-	{
-		if (bTransactional)
-			Object->SetFlags(RF_Transactional);
-		else
-			Object->ClearFlags(RF_Transactional);
-	});
+AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Base(
+	TEXT("UObject.Base"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUObjectBase);
 
-	UObject_.Method("bool IsSupportedForNetworking() const", METHOD_TRIVIAL(UObject, IsSupportedForNetworking));
-
-	UObject_.Method("UClass GetClass() const", METHOD_TRIVIAL(UObject, GetClass));
-	UObject_.Method("UObject GetOuter() const", METHOD_TRIVIAL(UObject, GetOuter));
-
-	UObject_.Method("UObject GetTypedOuter(const TSubclassOf<UObject>& Target) const", [](const UObject* Object, const TSubclassOf<UObject>& Target) -> UObject* {
-		if (Target == nullptr)
-			return nullptr;
-
-		return Object->GetTypedOuter(Target.Get());
-	});
-	SCRIPT_BIND_DOCUMENTATION(
-		"Traverses the outer chain searching for the next object of a certain type.\n"
-		"@param Target class to search for.\n"
-		"@return The first object in this object's Outer chain which is of the correct type.\n"
-	)
-	FAngelscriptBinds::SetPreviousBindArgumentDeterminesOutputType(0);
-
-	UObject_.Method("UPackage GetOutermost() const", METHOD_TRIVIAL(UObject, GetOutermost));
-	UObject_.Method("UPackage GetPackage() const", METHOD_TRIVIAL(UObject, GetPackage));
-	UObject_.Method("bool MarkPackageDirty() const allow_discard", METHOD_TRIVIAL(UObject, MarkPackageDirty));
-	UObject_.Method("UWorld GetWorld() const", METHOD_TRIVIAL(UObject, GetWorld));
-
-	UObject_.Method("FName GetName() const", METHODPR_TRIVIAL(FName, UObject, GetFName, () const));
-
-	UObject_.Method("FString GetFullName(const UObject StopOuter = nullptr) const", [](const UObject* Object, const UObject* StopOuter) -> FString
-	{
-		return Object->GetFullName(StopOuter);
-	});
-
-	UObject_.Method("FString GetPathName(const UObject StopOuter = nullptr) const", METHODPR_TRIVIAL(FString, UObject, GetPathName, (const UObject*) const));
-
-	UObject_.Method("bool IsA(const UClass Class) const", [](UObject* Object, UClass* Class)
-	{
-		if (Class == nullptr)
-		{
-			FAngelscriptEngine::Throw("Class passed in to IsA was nullptr.");
-			return false;
-		}
-
-		return Object->IsA(Class);
-	});
-	SCRIPT_BIND_DOCUMENTATION("Returns true if this object is of the specified type, or a child of that type.")
-
-	UObject_.Method("bool ImplementsInterface(const UClass InterfaceClass) const",
-	[](UObject* Object, UClass* InterfaceClass)
-	{
-		if (Object == nullptr || InterfaceClass == nullptr)
-			return false;
-		return Object->GetClass()->ImplementsInterface(InterfaceClass);
-	});
-	SCRIPT_BIND_DOCUMENTATION("Returns true if this object's class implements the specified interface.")
-
-	// Save config property changes to ini files
-	UObject_.Method("void SaveConfig()", [](UObject* Object)
-	{
-		Object->SaveConfig();
-	});
-
-	// Load config property changes from ini files
-	UObject_.Method("void LoadConfig()", [](UObject* Object)
-	{
-		Object->LoadConfig();
-	});
-
-	// Reload config property changes from ini files
-	UObject_.Method("void ReloadConfig()", [](UObject* Object)
-	{
-		Object->ReloadConfig();
-	});
-
-	// Ability to copy all properties from a different object
-	UObject_.Method("void CopyScriptPropertiesFrom(const UObject OtherObject)",
-	[](UObject* Object, const UObject* OtherObject)
-	{
-		*(asIScriptObject*)Object = *(asIScriptObject*)OtherObject;
-	});
-
-	// Down-casting is handled generically so we don't have to register a gajillion different functions
-	UObject_.Method("void opCast(?& Address) const",
-	[](UObject* Object, void* OutAddress, int TypeId)
-	{
-		auto& Manager = FAngelscriptEngine::Get();
-		asITypeInfo* RequestedType = Manager.Engine->GetTypeInfoById(TypeId);
-		const bool bLogDamageableCast = RequestedType != nullptr && FCStringAnsi::Strstr(RequestedType->GetName(), "DamageableCast") != nullptr;
-		if (bLogDamageableCast)
-		{
-			UE_LOG(
-				Angelscript,
-				Display,
-				TEXT("UObject::opCast entry typeId=%d isHandle=%s requestedType=%hs"),
-				TypeId,
-				(TypeId & asTYPEID_OBJHANDLE) != 0 ? TEXT("true") : TEXT("false"),
-				RequestedType->GetName());
-		}
-
-		// Can't cast if it's not a handle, need to store somewhere
-		if (!(TypeId & asTYPEID_OBJHANDLE))
-		{
-			if (bLogDamageableCast)
-			{
-				UE_LOG(Angelscript, Display, TEXT("UObject::opCast rejected non-handle target typeId=%d"), TypeId);
-			}
-			return;
-		}
-
-		asCObjectType* ScriptType = (asCObjectType*)Manager.Engine->GetTypeInfoById(TypeId);
-		checkSlow(ScriptType != nullptr);
-
-		// Structs cannot be cast to uobjects
-		if (ScriptType->GetFlags() & asOBJ_VALUE)
-			return;
-
-		UClass* AssociatedClass = (UClass*)ScriptType->GetUserData();
-		checkSlow(AssociatedClass != nullptr);
-
-		const bool bIsA = Object->IsA(AssociatedClass);
-		const bool bAssociatedClassIsInterface = AssociatedClass->HasAnyClassFlags(CLASS_Interface);
-		const bool bImplementsInterface = bAssociatedClassIsInterface && Object->GetClass()->ImplementsInterface(AssociatedClass);
-
-		if (bAssociatedClassIsInterface)
-		{
-			UE_LOG(
-				Angelscript,
-				Display,
-				TEXT("UObject::opCast target=%s objectClass=%s isA=%s implements=%s"),
-				*AssociatedClass->GetName(),
-				*Object->GetClass()->GetName(),
-				bIsA ? TEXT("true") : TEXT("false"),
-				bImplementsInterface ? TEXT("true") : TEXT("false"));
-		}
-
-		// The cast is valid if the script type we're casting to
-		// has a UClass associated with it that is one of the
-		// parent classes of our UObject.
-		if (bIsA)
-		{
-			*(UObject**)OutAddress = Object;
-		}
-		else if (bImplementsInterface)
-		{
-			*(UObject**)OutAddress = Object;
-		}
-		else
-		{
-			*(UObject**)OutAddress = nullptr;
-		}
-	});
-	SCRIPT_TRIVIAL_NATIVE_UOBJECT_CAST(UObject_, TEXT("?"), false);
-
-	FToStringHelper::Register(TEXT("UObject"), [](void* Ptr, FString& Str)
-	{
-		UObject* Object = (UObject*)Ptr;
-		if (Object == nullptr)
-		{
-			Str += TEXT("{ nullptr }");
-		}
-		else
-		{
-			UClass* ObjClass = Object->GetClass();
-			const UASClass* ASClass = Cast<UASClass>(ObjClass);
-			const bool bUseClassPrefix =
-				ObjClass->HasAnyClassFlags(CLASS_Native)
-				|| (ASClass != nullptr && ASClass->bIsScriptClass);
-			const TCHAR* ClassPrefix = bUseClassPrefix ? ObjClass->GetPrefixCPP() : TEXT("");
-
-			FString Suffix;
-			auto& Delegate = FAngelscriptEngine::Get().GetDebugObjectSuffix();
-			if (Delegate.IsBound())
-			{
-				Delegate.Execute(Object, Suffix);
-			}
-
-#if WITH_EDITOR
-			if (AActor* Actor = Cast<AActor>(Object))
-			{
-				Str += FString::Printf(TEXT("{ %s %s(%s%s) (ID: %s) }"),
-					*Actor->GetActorLabel(),
-					*Suffix,
-					//(ObjClass->HasAnyClassFlags(CLASS_Native) || ObjClass->bIsScriptClass) ? ObjClass->GetPrefixCPP() : TEXT(""),
-					ClassPrefix,
-					*ObjClass->GetName(),
-					*Object->GetName());
-			}
-			else
-#endif
-			{
-
-				Str += FString::Printf(TEXT("{ %s %s(%s%s) }"),
-					*Object->GetName(),
-					*Suffix,
-					//(ObjClass->HasAnyClassFlags(CLASS_Native) || ObjClass->bIsScriptClass) ? ObjClass->GetPrefixCPP() : TEXT(""),
-					ClassPrefix,
-					*ObjClass->GetName());
-			}
-		}
-	}, /*bImplicitConversion = */false, /*bIsHandleType = */true);
-
-	FAngelscriptBinds::BindGlobalFunction("bool IsValid(const UObject Object) no_discard", FUNCPR_TRIVIAL(bool, ::IsValid, (UObject*)));
-	SCRIPT_BIND_DOCUMENTATION("Returns true if the object is usable: non-null and not pending kill");
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_UObject_ToStringContribution(
+	TEXT("UObject.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindUObjectToStringContribution);
 
 /**
  * Binds default methods that all UClasses have
  */
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UClass_Base((int32)FAngelscriptBinds::EOrder::Late-1, []
-{
-	auto UClass_ = FAngelscriptBinds::ExistingClass("UClass");
-	UClass_.Method("UObject GetDefaultObject() const", [](UClass* Class)
-	{
-		return Class->GetDefaultObject();
-	});
-	UClass_.Method("FString GetSourceFilePath() const", [](UClass* Class) -> FString
-	{
-		if (const UASClass* ScriptClass = Cast<UASClass>(Class))
-		{
-			return ScriptClass->GetSourceFilePath();
-		}
-		return FString();
-	});
-	UClass_.Method("FString GetScriptModuleName() const", [](UClass* Class) -> FString
-	{
-		const UASClass* ScriptClass = Cast<UASClass>(Class);
-		if (ScriptClass == nullptr || ScriptClass->ScriptTypePtr == nullptr)
-		{
-			return FString();
-		}
-		auto& Manager = FAngelscriptEngine::Get();
-		auto Module = Manager.GetModule(((asITypeInfo*)ScriptClass->ScriptTypePtr)->GetModule());
-		return Module.IsValid() ? Module->ModuleName : FString();
-	});
-	UClass_.Method("FString GetScriptTypeDeclaration() const", [](UClass* Class) -> FString
-	{
-		return Cast<UASClass>(Class) != nullptr ? FString::Printf(TEXT("%s%s"), Class->GetPrefixCPP(), *Class->GetName()) : FString();
-	});
-	UClass_.Method("bool IsFunctionImplementedInScript(FName InFunctionName) const", [](UClass* Class, FName InFunctionName) -> bool
-	{
-		if (const UASClass* ScriptClass = Cast<UASClass>(Class))
-		{
-			return ScriptClass->IsFunctionImplementedInScript(InFunctionName);
-		}
-		return false;
-	});
-	UClass_.Method("UFunction FindFunctionByName(FName InFunctionName) const", [](UClass* Class, FName InFunctionName) -> UFunction*
-	{
-		return Class != nullptr ? Class->FindFunctionByName(InFunctionName) : nullptr;
-	});
+AS_FORCE_LINK const FAngelscriptBind Bind_UClass_Base(
+	TEXT("UClass.Base"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUClassBase);
 
-	UClass_.Method("bool IsChildOf(UClass Other) const", METHODPR_TRIVIAL(bool, UClass, IsChildOf, (const UStruct*) const));
-	SCRIPT_BIND_DOCUMENTATION("Returns true if this class either is the same class, or is a child class of the other class.")
-
-	UClass_.Method("bool IsAbstract() const", [](UClass* Class)
-	{
-		return Class->HasAnyClassFlags(CLASS_Abstract);
-	});
-
-	UClass_.Method("UClass GetSuperClass() const", [](UClass* Class) -> UClass*
-	{
-		return Class->GetSuperClass();
-	});
-
-	{
-		FAngelscriptBinds::FNamespace ns("UClass");
-		FAngelscriptBinds::BindGlobalFunction("UClass FindClass(const FString& Name)",
-		[](const FString& Name) -> UClass*
-		{
-			return FindObject<UClass>(nullptr, *Name);
-		});
-
-		FAngelscriptBinds::BindGlobalFunction("void GetAllClasses(TArray<UClass>& OutClasses)",
-		[](TArray<UClass*>& OutClasses)
-		{
-			OutClasses.Reset();
-			for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
-			{
-				UClass* Class = *ClassIt;
-				if (Class == nullptr)
-				{
-					continue;
-				}
-				if (Class->HasAnyClassFlags(CLASS_Deprecated | CLASS_NewerVersionExists))
-				{
-					continue;
-				}
-				OutClasses.Add(Class);
-			}
-		});
-
-		FAngelscriptBinds::BindGlobalFunction("TArray<UClass> GetAllSubclassesOf(UClass Class, bool bIncludeAbstractClasses = false)",
-		[](UClass* ParentClass, bool bIncludeAbstractClasses) -> TArray<UClass*>
-		{
-			TArray<UClass*> Subclasses;
-			if (ParentClass == nullptr)
-				return Subclasses;
-
-			for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
-			{
-				UClass* Class = *ClassIt;
-				if (!ensure(Class))
-					continue;
-				if (Class->HasAnyClassFlags(CLASS_Deprecated | CLASS_NewerVersionExists))
-					continue;
-				if (!bIncludeAbstractClasses && Class->HasAnyClassFlags(CLASS_Abstract))
-					continue;
-
-				if (!Class->IsChildOf(ParentClass))
-					continue;
-
-				Subclasses.Add(Class);
-			}
-
-			return Subclasses;
-		});
-
-		FAngelscriptBinds::BindGlobalFunction("UClass __StaticClass(const FString& Name)",
-		[](const FString& Name) -> UClass*
-		{
-			for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
-			{
-				UClass* Class = *ClassIt;
-				if (Class == nullptr)
-				{
-					continue;
-				}
-				if (Class->GetName() == Name || FAngelscriptType::GetBoundClassName(Class) == Name)
-				{
-					return Class;
-				}
-			}
-			return nullptr;
-		});
-	}
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UFunction_Base((int32)FAngelscriptBinds::EOrder::Late-1, []
-{
-	auto UFunction_ = FAngelscriptBinds::ExistingClass("UFunction");
-	UFunction_.Method("FString GetSourceFilePath() const", [](UFunction* Function) -> FString
-	{
-		if (const UASFunction* ScriptFunction = Cast<UASFunction>(Function))
-		{
-			return ScriptFunction->GetSourceFilePath();
-		}
-		return FString();
-	});
-	UFunction_.Method("int GetSourceLineNumber() const", [](UFunction* Function) -> int32
-	{
-		if (const UASFunction* ScriptFunction = Cast<UASFunction>(Function))
-		{
-			return ScriptFunction->GetSourceLineNumber();
-		}
-		return -1;
-	});
-	UFunction_.Method("FString GetScriptFunctionDeclaration() const", [](UFunction* Function) -> FString
-	{
-		if (const UASFunction* ScriptFunction = Cast<UASFunction>(Function))
-		{
-			if (ScriptFunction->ScriptFunction != nullptr)
-			{
-				return UTF8_TO_TCHAR(ScriptFunction->ScriptFunction->GetDeclaration(false, false, false));
-			}
-		}
-		return FString();
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_UFunction_Base(
+	TEXT("UFunction.Base"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUFunctionBase);
 
 static UObject* GetASConstructionScriptObject()
 {
@@ -492,197 +237,49 @@ static bool IsPlayingPIE()
  * Bind global operations manipulating or finding UObjects.
  */
 static IAssetRegistry* GetBindAssetRegistry();
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UObject_Operations((int32)FAngelscriptBinds::EOrder::Late-1, []
+namespace
 {
-	FAngelscriptBinds::BindGlobalVariable("const UObject null", &GAngelscriptNullObject);
-
-	FAngelscriptBinds::BindGlobalFunction("UPackage GetTransientPackage()", FUNC_TRIVIAL(GetTransientPackage));
-	FAngelscriptBinds::BindGlobalFunction("UPackage GetAngelscriptPackage()", []() {
-		return FAngelscriptEngine::GetPackage();
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("UClass FindClass(const FString& Name)",
-	[](const FString& Name) -> UClass*
+	void BindUObjectOperations(FAngelscriptBinds& Binds)
 	{
-		for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
-		{
-			UClass* Class = *ClassIt;
-			if (Class == nullptr)
-			{
-				continue;
-			}
-			if (Class->GetName() == Name || FAngelscriptType::GetBoundClassName(Class) == Name)
-			{
-				return Class;
-			}
-		}
-		return nullptr;
-	});
+		Binds.BindGlobalVariableForTarget("const UObject null", &GAngelscriptNullObject);
 
-	FAngelscriptBinds::BindGlobalFunction("void GetAllClasses(TArray<UClass>& OutClasses)",
-	[](TArray<UClass*>& OutClasses)
-	{
-		OutClasses.Reset();
-		for (TObjectIterator<UClass> ClassIt; ClassIt; ++ClassIt)
-		{
-			UClass* Class = *ClassIt;
-			if (Class == nullptr)
-			{
-				continue;
-			}
-			if (Class->HasAnyClassFlags(CLASS_Deprecated | CLASS_NewerVersionExists))
-			{
-				continue;
-			}
-			OutClasses.Add(Class);
-		}
-	});
+		Binds.BindGlobalFunctionForTarget("UPackage GetTransientPackage()", FUNC_TRIVIAL(GetTransientPackage));
+		Binds.BindGlobalFunctionForTarget("UPackage GetAngelscriptPackage()", &FAngelscriptUObjectBinds::GetAngelscriptPackage);
+		Binds.BindGlobalFunctionForTarget("UClass FindClass(const FString& Name)", &FAngelscriptUObjectBinds::FindClassByScriptName);
+		Binds.BindGlobalFunctionForTarget("void GetAllClasses(TArray<UClass>& OutClasses)", &FAngelscriptUObjectBinds::GetAllClasses);
 
-	FAngelscriptBinds::BindGlobalFunction(
-	  "UObject NewObject(UObject Outer, const TSubclassOf<UObject>& Class, FName Name = NAME_None, bool bTransient = false)",
-	[](UObject* Outer, const TSubclassOf<UObject>& Class, FName Name, bool bTransient) -> UObject*
-	{
-		if (Class.Get() == nullptr)
-		{
-			FAngelscriptEngine::Throw("Class was nullptr.");
-			return nullptr;
-		}
+		Binds.BindGlobalFunctionForTarget(
+			"UObject NewObject(UObject Outer, const TSubclassOf<UObject>& Class, FName Name = NAME_None, bool bTransient = false)",
+			&FAngelscriptUObjectBinds::CreateObject)
+			.DeterminesOutputType(1);
 
-		if (Outer == nullptr)
-		{
-			Outer = GetTransientPackage();
-			bTransient = true;
-		}
+		Binds.BindGlobalFunctionForTarget(
+			"UObject LoadObject(UObject Outer, const FString& Name)",
+			&FAngelscriptUObjectBinds::LoadObjectByName);
 
-		EObjectFlags Flags = RF_NoFlags;
-		if (bTransient)
-			Flags |= RF_Transient;
+		Binds.BindGlobalFunctionForTarget(
+			"UObject FindObject(const FString& Name)",
+			&FAngelscriptUObjectBinds::FindObjectByName);
 
-		FAngelscriptExcludeScopeFromLoopTimeout TimeoutExclusion;
-		return NewObject<UObject>(Outer, Class.Get(), Name, Flags);
-	});
-	FAngelscriptBinds::SetPreviousBindArgumentDeterminesOutputType(1);
+		Binds.BindGlobalFunctionForTarget(
+			"UObject FindObject(UObject Outer, const FString& Name)",
+			&FAngelscriptUObjectBinds::FindObjectWithinOuter);
 
-	FAngelscriptBinds::BindGlobalFunction(
-  	  "UObject LoadObject(UObject Outer, const FString& Name)",
-	[](UObject* Outer, const FString& Name) -> UObject*
-	{
-		FAngelscriptExcludeScopeFromLoopTimeout TimeoutExclusion;
-		return LoadObject<UObject>(Outer, *Name);
-	});
+		// Used by asset literal blocks to create their asset objects
+		Binds.BindGlobalFunctionForTarget(
+			"UObject __CreateLiteralAsset(UClass AssetClass, const FString& Name)",
+			&FAngelscriptUObjectBinds::CreateLiteralAsset);
 
-	FAngelscriptBinds::BindGlobalFunction(
-  	  "UObject FindObject(const FString& Name)",
-	[](const FString& Name) -> UObject*
-	{
-		return FindObject<UObject>(nullptr, *Name);
-	});
+		Binds.BindGlobalFunctionForTarget(
+			"void __PostLiteralAssetSetup(UObject Asset, const FString& Name)",
+			&FAngelscriptUObjectBinds::PostLiteralAssetSetup);
+	}
+}
 
-	FAngelscriptBinds::BindGlobalFunction(
-	  "UObject FindObject(UObject Outer, const FString& Name)",
-	[](UObject* Outer, const FString& Name) -> UObject*
-	{
-		return FindObject<UObject>(Outer, *Name);
-	});
-
-	// Used by asset literal blocks to create their asset objects
-	FAngelscriptBinds::BindGlobalFunction(
-	  "UObject __CreateLiteralAsset(UClass AssetClass, const FString& Name)",
-	[](UClass* AssetClass, const FString& AssetName) -> UObject*
-	{
-		auto* AssetsPackage = FAngelscriptEngine::Get().AssetsPackage;
-		auto* ExistingObject = FindObject<UObject>(AssetsPackage, *AssetName);
-
-#if AS_CAN_HOTRELOAD
-		UObject* ReloadedObject = nullptr;
-#endif
-
-		if (ExistingObject != nullptr)
-		{
-#if AS_CAN_HOTRELOAD
-			if (ExistingObject->GetClass()->HasAnyClassFlags(CLASS_NewerVersionExists))
-			{
-				static int32 AssetReplacementCounter = 1;
-				FString NewName = FString::Printf(TEXT("REPLACED_ASSET_%s_%d"), *AssetName, AssetReplacementCounter++);
-				ExistingObject->Rename(*NewName, GetTransientPackage(), REN_DontCreateRedirectors);
-
-				ReloadedObject = ExistingObject;
-				ExistingObject = nullptr;
-			}
-			else
-#endif
-			if (!ExistingObject->IsA(AssetClass))
-			{
-				FAngelscriptEngine::Throw(TCHAR_TO_ANSI(*FString::Printf(TEXT("Script literal asset %s of type %s was already declared before as a different type (%s)."),
-					*AssetName, *AssetClass->GetName(),
-					*ExistingObject->GetClass()->GetName())));
-				return nullptr;
-			}
-		}
-
-		if (ExistingObject == nullptr)
-		{
-			// Create a new object for this asset
-			ExistingObject = NewObject<UObject>(
-				AssetsPackage,
-				AssetClass,
-				*AssetName,
-				RF_Public | RF_Standalone | RF_MarkAsRootSet);
-
-#if WITH_EDITOR
-			// Add a redirector from the old location where these assets used to live
-			auto* ScriptPackage = FAngelscriptEngine::Get().AngelscriptPackage;
-
-			FString RedirectorName = TEXT("Asset_") + AssetName;
-			UObjectRedirector* Redirector = FindObject<UObjectRedirector>(ScriptPackage, *RedirectorName);
-			if (Redirector == nullptr)
-				Redirector = NewObject<UObjectRedirector>(ScriptPackage, *RedirectorName, RF_Standalone | RF_Public);
-			Redirector->DestinationObject = ExistingObject;
-
-			// Add metadata so the script can be located
-			FString Filename;
-			int LineNumber;
-
-			FAngelscriptEngine::GetAngelscriptExecutionFileAndLine(Filename, LineNumber);
-
-			AssetsPackage->GetMetaData().SetValue(ExistingObject, TEXT("ScriptAssetFilename"), *Filename);
-			AssetsPackage->GetMetaData().SetValue(ExistingObject, TEXT("ScriptAssetLineNumber"), *FString::Printf(TEXT("%d"), LineNumber));
-#endif
-
-#if AS_CAN_HOTRELOAD
-			if (ReloadedObject != nullptr)
-			{
-				if (FAngelscriptEngine* HookEngine = FAngelscriptEngine::TryGetCurrentEngine())
-					HookEngine->GetOnLiteralAssetReload().Broadcast(ReloadedObject, ExistingObject);
-			}
-#endif
-		}
-		else
-		{
-			// Reset all the properties in the asset, we're soft reloading it and want new data
-			auto* CDO = AssetClass->GetDefaultObject();
-			for (TFieldIterator<FProperty> It(AssetClass); It; ++It)
-			{
-				FProperty* Prop = *It;
-				Prop->CopyCompleteValue_InContainer(ExistingObject, CDO);
-			}
-		}
-
-		FAngelscriptEngine::Get().GetOnLiteralAssetCreated().Broadcast(ExistingObject, AssetName);
-		return ExistingObject;
-	});
-
-	FAngelscriptBinds::BindGlobalFunction(
-	  "void __PostLiteralAssetSetup(UObject Asset, const FString& Name)",
-	[](UObject* Asset, const FString& Name)
-	{
-		// Tell the loading system the literal asset exists
-		NotifyRegistrationEvent(TEXT("/Script/AngelscriptAssets"), *Asset->GetName(), ENotifyRegistrationType::NRT_NoExportObject,
-			ENotifyRegistrationPhase::NRP_Finished, nullptr, false, Asset);
-
-		FAngelscriptEngine::Get().GetPostLiteralAssetSetup().Broadcast(Asset, Name);
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Operations(
+	TEXT("UObject.Operations"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUObjectOperations);
 
 IAssetRegistry* GetBindAssetRegistry()
 {

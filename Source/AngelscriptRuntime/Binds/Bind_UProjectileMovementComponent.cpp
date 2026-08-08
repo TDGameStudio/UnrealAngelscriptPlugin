@@ -1,25 +1,27 @@
-#include "GameFramework/ProjectileMovementComponent.h"
-
-#include "AngelscriptEngine.h"
-#include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
 
+#include "Bind_UProjectileMovementComponent_Functions.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UProjectileMovementComponent([]
+namespace
 {
-	FAngelscriptBinds Binds = FAngelscriptBinds::ExistingClass("UProjectileMovementComponent");
-
-	if (Binds.GetTypeInfo() == nullptr)
-		return;
-
-	Binds.Method("const USceneComponent GetHomingTargetComponent() const",
-	[](const UProjectileMovementComponent* Component) -> const USceneComponent*
+	void BindUProjectileMovementComponent(FAngelscriptBinds& Binds)
 	{
-		return Component->HomingTargetComponent.Get();
-	});
-	Binds.Method("void SetHomingTargetComponent(USceneComponent HomingTargetComponent)",
-	[](UProjectileMovementComponent* Component, USceneComponent* HomingTargetComponent) -> void
-	{
-		Component->HomingTargetComponent = HomingTargetComponent;
-	});
-});
+		auto ProjectileMovement_ = Binds.ExistingClassForTarget("UProjectileMovementComponent");
+		if (ProjectileMovement_.GetTypeInfo() == nullptr)
+		{
+			return;
+		}
+
+		ProjectileMovement_.Method(
+			"const USceneComponent GetHomingTargetComponent() const",
+			&FAngelscriptUProjectileMovementComponentBinds::GetHomingTargetComponent);
+		ProjectileMovement_.Method(
+			"void SetHomingTargetComponent(USceneComponent HomingTargetComponent)",
+			&FAngelscriptUProjectileMovementComponentBinds::SetHomingTargetComponent);
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UProjectileMovementComponent(
+	TEXT("UProjectileMovementComponent"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUProjectileMovementComponent);

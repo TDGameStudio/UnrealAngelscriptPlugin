@@ -4,16 +4,20 @@
 // Collision params binding coverage �?CQTest refactor. Automation ID:
 //   Angelscript.TestModule.Bindings.CollisionParams.FAngelscriptCollisionParamsBindingsTest.*
 //
-// Sections:
-//   CollisionQueryParamsBehaviour �?full parity test for FCollisionQueryParams,
-//     FComponentQueryParams, FCollisionObjectQueryParams, FCollisionResponseContainer
+// Scenarios:
+//   CollisionQueryParamsBehaviour �?legacy parity coverage for FCollisionQueryParams,
+//     FComponentQueryParams, FCollisionObjectQueryParams, and FCollisionResponseContainer.
+//   IgnoredActorAndComponentArrayOverloadsRoundTripIds �?array overload and copied-ID
+//     wrapper coverage for both query-param types.
+//   ConstructorsDefaultsAssignmentsAndNamespaceHelpersDispatch �?migrated constructor,
+//     assignment, namespace-global, and namespace-helper dispatch coverage.
+//   NoDiscardConstructorsWarnWhenTemporaryValuesAreUnused �?nodiscard compiler metadata.
 //
 // CQTest adaptation notes:
 //   One legacy automation test merged into one TEST_CLASS.
-//   This test retains its custom execution pattern (parameterised function with
-//   out-ref arguments) because the script populates multiple struct outputs that
-//   are compared against native equivalents. The original helper namespace is
-//   preserved intact.
+//   The scenarios retain custom parameterised execution where script structs are
+//   compared with native equivalents. The original helper namespace is preserved
+//   intact.
 // ============================================================================
 
 #include "CQTest.h"
@@ -431,6 +435,260 @@ public:
 			NativeMinResponseContainer.GetResponse(ECC_WorldStatic),
 			ScriptMinResponseContainer.GetResponse(ECC_WorldStatic),
 			TEXT("CollisionQueryParamsBehaviour should preserve min WorldStatic response")));
+	}
+
+	TEST_METHOD(IgnoredActorAndComponentArrayOverloadsRoundTripIds)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int PopulateIgnoredArrayOverloads(
+				AActor IgnoredActor,
+				UPrimitiveComponent IgnoredComponent,
+				FCollisionQueryParams& OutQueryParams,
+				FComponentQueryParams& OutComponentQueryParams)
+			{
+				TArray<AActor> IgnoredActors;
+				IgnoredActors.Add(IgnoredActor);
+
+				TArray<UPrimitiveComponent> IgnoredComponents;
+				IgnoredComponents.Add(IgnoredComponent);
+
+				FCollisionQueryParams QueryParams;
+				QueryParams.AddIgnoredActors(IgnoredActors);
+				QueryParams.AddIgnoredComponents(IgnoredComponents);
+
+				FComponentQueryParams ComponentQueryParams;
+				ComponentQueryParams.AddIgnoredActors(IgnoredActors);
+				ComponentQueryParams.AddIgnoredComponents(IgnoredComponents);
+
+				OutQueryParams = QueryParams;
+				OutComponentQueryParams = ComponentQueryParams;
+
+				return QueryParams.GetIgnoredActors().Num() == 1
+					&& QueryParams.GetIgnoredComponents().Num() == 1
+					&& ComponentQueryParams.GetIgnoredActors().Num() == 1
+					&& ComponentQueryParams.GetIgnoredComponents().Num() == 1 ? 0 : 1;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCollisionParams_IgnoredArrayOverloads"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Ignored actor and component array overload module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		AActor* TestActor = NewObject<AActor>(GetTransientPackage(), NAME_None, RF_Transient);
+		UBoxComponent* TestComponent = NewObject<UBoxComponent>(TestActor, NAME_None, RF_Transient);
+		ASSERT_THAT(IsNotNull(TestActor, TEXT("Ignored actor and component array overload test should create a transient actor")));
+		ASSERT_THAT(IsNotNull(TestComponent, TEXT("Ignored actor and component array overload test should create a transient primitive component")));
+		if (TestActor == nullptr || TestComponent == nullptr)
+		{
+			return;
+		}
+
+		FCollisionQueryParams ScriptQueryParams;
+		FComponentQueryParams ScriptComponentQueryParams;
+		int32 ResultMask = INDEX_NONE;
+		asIScriptModule& Module = ModuleScope.GetModule();
+		if (!WorldCollisionExecuteIntFunction(
+			*TestRunner,
+			Engine,
+			Module,
+			TEXT("int PopulateIgnoredArrayOverloads(AActor IgnoredActor, UPrimitiveComponent IgnoredComponent, FCollisionQueryParams& OutQueryParams, FComponentQueryParams& OutComponentQueryParams)"),
+			[this, TestActor, TestComponent, &ScriptQueryParams, &ScriptComponentQueryParams](asIScriptContext& Context)
+			{
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, TestActor, TEXT("PopulateIgnoredArrayOverloads"))
+					&& WorldCollisionSetArgObjectChecked(*TestRunner, Context, 1, TestComponent, TEXT("PopulateIgnoredArrayOverloads"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 2, &ScriptQueryParams, TEXT("PopulateIgnoredArrayOverloads"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 3, &ScriptComponentQueryParams, TEXT("PopulateIgnoredArrayOverloads"));
+			},
+			TEXT("PopulateIgnoredArrayOverloads"),
+			ResultMask))
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(0, ResultMask, TEXT("Ignored actor and component array overloads should be callable from AngelScript")));
+
+		const uint32 ExpectedActorId = TestActor->GetUniqueID();
+		const uint32 ExpectedComponentId = TestComponent->GetUniqueID();
+		ASSERT_THAT(IsTrue(ExpectSingleIgnoredId(
+			*TestRunner,
+			TEXT("Ignored actor array overload query params"),
+			CopyIgnoredIds(ScriptQueryParams.GetIgnoredSourceObjects()),
+			ExpectedActorId), TEXT("Ignored actor array overload query params should preserve the actor ID")));
+		ASSERT_THAT(IsTrue(ExpectSingleIgnoredId(
+			*TestRunner,
+			TEXT("Ignored component array overload query params"),
+			CopyIgnoredIds(ScriptQueryParams.GetIgnoredComponents()),
+			ExpectedComponentId), TEXT("Ignored component array overload query params should preserve the component ID")));
+		ASSERT_THAT(IsTrue(ExpectSingleIgnoredId(
+			*TestRunner,
+			TEXT("Ignored actor array overload component query params"),
+			CopyIgnoredIds(ScriptComponentQueryParams.GetIgnoredSourceObjects()),
+			ExpectedActorId), TEXT("Ignored actor array overload component query params should preserve the actor ID")));
+		ASSERT_THAT(IsTrue(ExpectSingleIgnoredId(
+			*TestRunner,
+			TEXT("Ignored component array overload component query params"),
+			CopyIgnoredIds(ScriptComponentQueryParams.GetIgnoredComponents()),
+			ExpectedComponentId), TEXT("Ignored component array overload component query params should preserve the component ID")));
+	}
+
+	TEST_METHOD(ConstructorsDefaultsAssignmentsAndNamespaceHelpersDispatch)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int ExerciseCollisionParameterConstruction(
+				AActor IgnoredActor,
+				FCollisionQueryParams& OutDefaultQueryParams,
+				FComponentQueryParams& OutDefaultComponentParams,
+				FCollisionObjectQueryParams& OutDefaultObjectParams,
+				FCollisionResponseContainer& OutDefaultResponseContainer)
+			{
+				FCollisionQueryParams QueryParams(n"ConstructorQuery", true, IgnoredActor);
+				FCollisionQueryParams QueryCopy(QueryParams);
+				FCollisionQueryParams QueryAssignment;
+				QueryAssignment = QueryCopy;
+
+				FCollisionEnabledMask EmptyMask;
+				FCollisionEnabledMask QueryOnlyMask(ECollisionEnabled::QueryOnly);
+				FComponentQueryParams ComponentQueryParams(n"ConstructorComponent", IgnoredActor, QueryOnlyMask);
+				FComponentQueryParams ComponentCopy(ComponentQueryParams);
+				FComponentQueryParams ComponentAssignment;
+				ComponentAssignment = ComponentCopy;
+
+				FCollisionResponseContainer ResponseContainer(ECollisionResponse::ECR_Ignore);
+				ResponseContainer.SetResponse(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+				FCollisionResponseParams DefaultResponseParams;
+				FCollisionResponseParams BlockResponseParams(ECollisionResponse::ECR_Block);
+				FCollisionResponseParams ContainerResponseParams(ResponseContainer);
+
+				FCollisionObjectQueryParams EmptyObjectParams;
+				FCollisionObjectQueryParams ChannelObjectParams(ECollisionChannel::ECC_WorldStatic);
+				FCollisionObjectQueryParams AllObjects(ECollisionObjectQueryInitType::AllObjects);
+				FCollisionObjectQueryParams AllStaticObjects(ECollisionObjectQueryInitType::AllStaticObjects);
+				FCollisionObjectQueryParams AllDynamicObjects(ECollisionObjectQueryInitType::AllDynamicObjects);
+				FCollisionObjectQueryParams BitfieldObjectParams(1);
+
+				FCollisionQueryParams DefaultQueryParams = FCollisionQueryParams::DefaultQueryParam;
+				FComponentQueryParams DefaultComponentParams = FComponentQueryParams::DefaultComponentQueryParams;
+				FCollisionResponseParams DefaultResponseParam = FCollisionResponseParams::DefaultResponseParam;
+				FCollisionObjectQueryParams DefaultObjectParams = FCollisionObjectQueryParams::DefaultObjectQueryParam;
+				FCollisionResponseContainer DefaultResponseContainer = FCollisionResponseContainer::GetDefaultResponseContainer();
+				OutDefaultQueryParams = DefaultQueryParams;
+				OutDefaultComponentParams = DefaultComponentParams;
+				OutDefaultObjectParams = DefaultObjectParams;
+				OutDefaultResponseContainer = DefaultResponseContainer;
+
+				const bool bAssignmentsPreservedValues =
+					QueryAssignment.TraceTag == n"ConstructorQuery"
+					&& QueryAssignment.bTraceComplex
+					&& QueryAssignment.GetIgnoredActors().Num() == 1
+					&& ComponentAssignment.TraceTag == n"ConstructorComponent"
+					&& ComponentAssignment.ShapeCollisionMask.Bits == QueryOnlyMask.Bits
+					&& ComponentAssignment.GetIgnoredActors().Num() == 1;
+				const bool bQueryConstructorsAreUsable =
+					EmptyMask.Bits == 0
+					&& QueryOnlyMask.Bits != 0
+					&& ChannelObjectParams.IsValid()
+					&& AllObjects.IsValid()
+					&& AllStaticObjects.IsValid()
+					&& AllDynamicObjects.IsValid()
+					&& BitfieldObjectParams.IsValid();
+				const bool bNamespaceHelpersAreUsable =
+					FCollisionObjectQueryParams::IsValidObjectQuery(ECollisionChannel::ECC_WorldStatic)
+					&& FCollisionObjectQueryParams::GetCollisionChannelFromOverlapFilter(EOverlapFilterOption::OverlapFilter_All) == ECollisionObjectQueryInitType::AllObjects
+					&& DefaultResponseContainer.GetResponse(ECollisionChannel::ECC_Visibility) == FCollisionResponseContainer::GetDefaultResponseContainer().GetResponse(ECollisionChannel::ECC_Visibility);
+				return bAssignmentsPreservedValues && bQueryConstructorsAreUsable && bNamespaceHelpersAreUsable ? 0 : 1;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCollisionParams_ConstructorsDefaultsHelpers"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Collision parameter constructors, defaults, assignments, and namespace helpers should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		AActor* TestActor = NewObject<AActor>(GetTransientPackage(), NAME_None, RF_Transient);
+		ASSERT_THAT(IsNotNull(TestActor, TEXT("Collision parameter constructor test should create a transient actor")));
+		if (TestActor == nullptr)
+		{
+			return;
+		}
+
+		FCollisionQueryParams ScriptDefaultQueryParams;
+		FComponentQueryParams ScriptDefaultComponentParams;
+		FCollisionObjectQueryParams ScriptDefaultObjectParams;
+		FCollisionResponseContainer ScriptDefaultResponseContainer;
+		int32 ResultMask = INDEX_NONE;
+		asIScriptModule& Module = ModuleScope.GetModule();
+		if (!WorldCollisionExecuteIntFunction(
+			*TestRunner,
+			Engine,
+			Module,
+			TEXT("int ExerciseCollisionParameterConstruction(AActor IgnoredActor, FCollisionQueryParams& OutDefaultQueryParams, FComponentQueryParams& OutDefaultComponentParams, FCollisionObjectQueryParams& OutDefaultObjectParams, FCollisionResponseContainer& OutDefaultResponseContainer)"),
+			[this, TestActor, &ScriptDefaultQueryParams, &ScriptDefaultComponentParams, &ScriptDefaultObjectParams, &ScriptDefaultResponseContainer](asIScriptContext& Context)
+			{
+				return WorldCollisionSetArgObjectChecked(*TestRunner, Context, 0, TestActor, TEXT("ExerciseCollisionParameterConstruction"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 1, &ScriptDefaultQueryParams, TEXT("ExerciseCollisionParameterConstruction"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 2, &ScriptDefaultComponentParams, TEXT("ExerciseCollisionParameterConstruction"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 3, &ScriptDefaultObjectParams, TEXT("ExerciseCollisionParameterConstruction"))
+					&& WorldCollisionSetArgAddressChecked(*TestRunner, Context, 4, &ScriptDefaultResponseContainer, TEXT("ExerciseCollisionParameterConstruction"));
+			},
+			TEXT("ExerciseCollisionParameterConstruction"),
+			ResultMask))
+		{
+			return;
+		}
+
+		ASSERT_THAT(AreEqual(0, ResultMask, TEXT("Collision parameter constructors, defaults, assignments, and namespace helpers should dispatch successfully")));
+		ASSERT_THAT(AreEqual(
+			FCollisionQueryParams::DefaultQueryParam.TraceTag,
+			ScriptDefaultQueryParams.TraceTag,
+			TEXT("DefaultQueryParam should round-trip through its AngelScript namespace global")));
+		ASSERT_THAT(AreEqual(
+			CopyIgnoredIds(FCollisionQueryParams::DefaultQueryParam.GetIgnoredSourceObjects()),
+			CopyIgnoredIds(ScriptDefaultQueryParams.GetIgnoredSourceObjects()),
+			TEXT("DefaultQueryParam should preserve ignored actor IDs through its AngelScript namespace global")));
+		ASSERT_THAT(AreEqual(
+			FComponentQueryParams::DefaultComponentQueryParams.ShapeCollisionMask.Bits,
+			ScriptDefaultComponentParams.ShapeCollisionMask.Bits,
+			TEXT("DefaultComponentQueryParams should round-trip through its AngelScript namespace global")));
+		ASSERT_THAT(AreEqual(
+			CopyIgnoredIds(FComponentQueryParams::DefaultComponentQueryParams.GetIgnoredComponents()),
+			CopyIgnoredIds(ScriptDefaultComponentParams.GetIgnoredComponents()),
+			TEXT("DefaultComponentQueryParams should preserve ignored component IDs through its AngelScript namespace global")));
+		ASSERT_THAT(AreEqual(
+			FCollisionObjectQueryParams::DefaultObjectQueryParam.GetObjectTypesToQuery(),
+			ScriptDefaultObjectParams.GetObjectTypesToQuery(),
+			TEXT("DefaultObjectQueryParam should round-trip through its AngelScript namespace global")));
+		ASSERT_THAT(IsTrue(
+			ScriptDefaultResponseContainer == FCollisionResponseContainer::GetDefaultResponseContainer(),
+			TEXT("GetDefaultResponseContainer should round-trip through its AngelScript namespace helper")));
+	}
+
+	TEST_METHOD(NoDiscardConstructorsWarnWhenTemporaryValuesAreUnused)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			void ConstructUnusedCollisionParams(AActor IgnoredActor)
+			{
+				FCollisionQueryParams(n"UnusedQuery", false, IgnoredActor);
+				FComponentQueryParams(n"UnusedComponent", IgnoredActor, FCollisionEnabledMask(ECollisionEnabled::QueryOnly));
+			}
+			)AS");
+
+		TestRunner->AddExpectedError(TEXT("function is nodiscard"), EAutomationExpectedErrorFlags::Contains, 2);
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASCollisionParams_NoDiscardConstructors"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Unused collision parameter constructor values should compile with nodiscard warnings")));
 	}
 };
 

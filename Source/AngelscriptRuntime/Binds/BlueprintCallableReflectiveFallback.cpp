@@ -32,6 +32,7 @@ namespace
 	{
 		// Opt 1: namespace -> (names, decls)
 		TMap<FString, FGlobalDeclCacheEntry> GlobalDecls;
+		asIScriptEngine* GlobalDeclsScriptEngine = nullptr;
 		asUINT LastSyncedGlobalFunctionCount = 0;
 		bool bGlobalDeclsActive = false;
 
@@ -49,6 +50,13 @@ namespace
 		if (GBindCachesTLS == nullptr || !GBindCachesTLS->bGlobalDeclsActive || ScriptEngine == nullptr)
 		{
 			return;
+		}
+
+		if (GBindCachesTLS->GlobalDeclsScriptEngine != ScriptEngine)
+		{
+			GBindCachesTLS->GlobalDecls.Reset();
+			GBindCachesTLS->GlobalDeclsScriptEngine = ScriptEngine;
+			GBindCachesTLS->LastSyncedGlobalFunctionCount = 0;
 		}
 
 		const asUINT Count = ScriptEngine->GetGlobalFunctionCount();
@@ -764,9 +772,11 @@ namespace
 	}
 
 	bool BindReflectiveFunction(
+		FAngelscriptBinds& Binds,
 		TSharedRef<FAngelscriptType> InType,
 		FAngelscriptFunctionSignature& Signature,
-		FBlueprintCallableReflectiveSignature* ReflectiveSignature)
+		FBlueprintCallableReflectiveSignature* ReflectiveSignature,
+		FAngelscriptBoundFunction& OutPrimaryBinding)
 	{
 		if (Signature.bStaticInScript)
 		{
@@ -778,24 +788,24 @@ namespace
 
 			if (Signature.bGlobalScope)
 			{
-				const int32 GlobalFunctionId = FAngelscriptBinds::BindGlobalFunctionDirect(
+				FAngelscriptBoundFunction GlobalBinding = Binds.BindGlobalFunctionDirectForTarget(
 					Signature.Declaration,
 					asFUNCTION(CallBlueprintCallableReflectiveFallback),
 					asCALL_GENERIC,
 					ASAutoCaller::FunctionCaller::Make(),
 					ReflectiveSignature);
-				Signature.ModifyScriptFunction(GlobalFunctionId);
+				Signature.ModifyScriptFunction(GlobalBinding);
 			}
 
-			FAngelscriptBinds::FNamespace Namespace(Signature.ClassName);
-			const int32 NamespacedFunctionId = FAngelscriptBinds::BindGlobalFunctionDirect(
+			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), Signature.ClassName);
+			OutPrimaryBinding = Binds.BindGlobalFunctionDirectForTarget(
 				Signature.Declaration,
 				asFUNCTION(CallBlueprintCallableReflectiveFallback),
 				asCALL_GENERIC,
 				ASAutoCaller::FunctionCaller::Make(),
 				ReflectiveSignature);
-			Signature.ModifyScriptFunction(NamespacedFunctionId);
-			return true;
+			Signature.ModifyScriptFunction(OutPrimaryBinding);
+			return OutPrimaryBinding.IsValid();
 		}
 
 		if (Signature.bStaticInUnreal)
@@ -807,35 +817,34 @@ namespace
 			}
 
 			ReflectiveSignature->bInjectMixinObject = true;
-			const int32 FunctionId = FAngelscriptBinds::BindMethodDirect(
+			OutPrimaryBinding = Binds.BindMethodDirectForTarget(
 				Signature.ClassName,
 				Signature.Declaration,
 				asFUNCTION(CallBlueprintCallableReflectiveFallback),
 				asCALL_GENERIC,
 				ASAutoCaller::FunctionCaller::Make(),
 				ReflectiveSignature);
-			Signature.ModifyScriptFunction(FunctionId);
-			return true;
+			Signature.ModifyScriptFunction(OutPrimaryBinding);
+			return OutPrimaryBinding.IsValid();
 		}
 
-		const int32 FunctionId = FAngelscriptBinds::BindMethodDirect(
+		OutPrimaryBinding = Binds.BindMethodDirectForTarget(
 			InType->GetAngelscriptTypeName(),
 			Signature.Declaration,
 			asFUNCTION(CallBlueprintCallableReflectiveFallback),
 			asCALL_GENERIC,
 			ASAutoCaller::FunctionCaller::Make(),
 			ReflectiveSignature);
-		Signature.ModifyScriptFunction(FunctionId);
-		return true;
+		Signature.ModifyScriptFunction(OutPrimaryBinding);
+		return OutPrimaryBinding.IsValid();
 	}
 
-	bool IsScriptDeclarationAlreadyBoundImpl(TSharedRef<FAngelscriptType> InType, const FAngelscriptFunctionSignature& Signature)
+	bool IsScriptDeclarationAlreadyBoundImpl(
+		FAngelscriptBinds& Binds,
+		TSharedRef<FAngelscriptType> InType,
+		const FAngelscriptFunctionSignature& Signature)
 	{
-		auto* ScriptEngine = FAngelscriptEngine::Get().GetScriptEngine();
-		if (ScriptEngine == nullptr)
-		{
-			return false;
-		}
+		asIScriptEngine* ScriptEngine = &Binds.GetTargetScriptEngine();
 
 		auto HasGlobalDeclaration = [&](const FString& Namespace) -> bool
 		{
@@ -930,9 +939,12 @@ namespace
 	}
 }
 
-bool IsScriptDeclarationAlreadyBound(TSharedRef<FAngelscriptType> InType, const FAngelscriptFunctionSignature& Signature)
+bool IsScriptDeclarationAlreadyBound(
+	FAngelscriptBinds& Binds,
+	TSharedRef<FAngelscriptType> InType,
+	const FAngelscriptFunctionSignature& Signature)
 {
-	return IsScriptDeclarationAlreadyBoundImpl(InType, Signature);
+	return IsScriptDeclarationAlreadyBoundImpl(Binds, InType, Signature);
 }
 
 EReflectionFallbackResult EvaluateReflectionFallback(const UFunction* Function)
@@ -993,10 +1005,12 @@ bool InvokeReflectionFallbackFromGenericCall(
 }
 
 bool BindBlueprintCallableReflectionFallback(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
 	FAngelscriptFunctionSignature& Signature,
-	FAngelscriptFunctionBinding& Binding)
+	FAngelscriptFunctionBinding& Binding,
+	FAngelscriptBoundFunction& OutPrimaryBinding)
 {
 	Binding.bReflectiveFallbackBound = false;
 
@@ -1010,7 +1024,7 @@ bool BindBlueprintCallableReflectionFallback(
 		return false;
 	}
 
-	if (IsScriptDeclarationAlreadyBound(InType, Signature))
+	if (IsScriptDeclarationAlreadyBound(Binds, InType, Signature))
 	{
 		return false;
 	}
@@ -1031,18 +1045,25 @@ bool BindBlueprintCallableReflectionFallback(
 		ReflectiveSignature->bZeroReturnPtr = !ReflectiveSignature->bInitReturn && ReflectiveSignature->ReturnType.Type->IsObjectPointer();
 	}
 
-	if (!BindReflectiveFunction(InType, Signature, ReflectiveSignature))
+	if (!BindReflectiveFunction(Binds, InType, Signature, ReflectiveSignature, OutPrimaryBinding))
 	{
-		delete ReflectiveSignature;
+		// The global alias may already own this user data when the namespaced
+		// primary registration fails. Keep it alive in that fail-closed case.
+		if (!Signature.bStaticInScript || !Signature.bGlobalScope)
+		{
+			delete ReflectiveSignature;
+		}
 		return false;
 	}
 
 	Binding.bReflectiveFallbackBound = true;
+	Binding.bUsesGenericCall = true;
+	Binding.UserData = ReflectiveSignature;
 	Binding.Origin = EAngelscriptFunctionBindingOrigin::Reflective;
 	return true;
 }
 
-// ---- Opt 1 / Opt 3: Scoped bind caches used during Phase 2 of Bind_Defaults ----
+// ---- Opt 1 / Opt 3: scoped caches used by BlueprintType ReflectionBindings ----
 FScopedBindCaches::FScopedBindCaches()
 {
 	// Nested guards would silently clobber TLS state; forbid re-entry.
@@ -1051,6 +1072,7 @@ FScopedBindCaches::FScopedBindCaches()
 	static thread_local FBindCachesTLS TlsStorage;
 	TlsStorage.GlobalDecls.Reset();
 	TlsStorage.ClassFuncNames.Reset();
+	TlsStorage.GlobalDeclsScriptEngine = nullptr;
 	TlsStorage.LastSyncedGlobalFunctionCount = 0;
 	TlsStorage.bGlobalDeclsActive = true;
 	TlsStorage.bClassFuncNamesActive = true;
@@ -1068,6 +1090,7 @@ FScopedBindCaches::~FScopedBindCaches()
 	GBindCachesTLS->bGlobalDeclsActive = false;
 	GBindCachesTLS->bClassFuncNamesActive = false;
 	GBindCachesTLS->GlobalDecls.Reset();
+	GBindCachesTLS->GlobalDeclsScriptEngine = nullptr;
 	GBindCachesTLS->ClassFuncNames.Reset();
 	GBindCachesTLS = nullptr;
 }

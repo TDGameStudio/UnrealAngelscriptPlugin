@@ -6,6 +6,8 @@
 #include "Engine/EngineTypes.h"
 #include "GameFramework/Actor.h"
 #include "HAL/FileManager.h"
+#include "Internationalization/Regex.h"
+#include "Misc/FileHelper.h"
 #include "Misc/Guid.h"
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
@@ -31,6 +33,24 @@ struct FBindDatabaseContextStackGuard
 static FString MakeBindDatabaseAutomationDirectory()
 {
 	return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation"), TEXT("BindDatabase"), FGuid::NewGuid().ToString(EGuidFormats::Digits));
+}
+
+static bool LoadBindDatabaseRuntimeSource(const TCHAR* RelativePath, FString& OutSource)
+{
+	return FFileHelper::LoadFileToString(
+		OutSource,
+		*FPaths::Combine(
+			FPaths::ProjectPluginsDir(),
+			TEXT("Angelscript/Source/AngelscriptRuntime"),
+			RelativePath));
+}
+
+static bool ContainsAmbientSourceHeaderLookup(const FString& Source)
+{
+	const FRegexPattern OneArgumentLookup(
+		TEXT("FAngelscriptBindDatabase::GetSourceHeader\\([^,\\r\\n]*\\)"));
+	FRegexMatcher Matcher(OneArgumentLookup, Source);
+	return Matcher.FindNext();
 }
 
 static FAngelscriptPropertyBind MakeSamplePropertyBind(const FString& Declaration, const FString& UnrealPath)
@@ -130,6 +150,44 @@ static UDelegateFunction* GetSampleDelegateFunction()
 }
 
 public:
+	TEST_METHOD(TestingAccessorUsesOwnedDatabaseWithoutAmbientEngine)
+	{
+		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
+		FBindDatabaseContextStackGuard ContextGuard;
+		DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		ContextGuard.DiscardSavedStack();
+		ON_SCOPE_EXIT
+		{
+			if (FAngelscriptEngine::IsInitialized())
+			{
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			}
+			DestroySharedTestEngine();
+		};
+
+		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
+		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
+		ASSERT_THAT(IsTrue(
+			EngineA.IsValid() && EngineB.IsValid(),
+			TEXT("BindDatabase explicit-access test should create two independent engines")));
+		ASSERT_THAT(IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("BindDatabase explicit-access test should not have an ambient engine")));
+		ASSERT_THAT(IsTrue(
+			&EngineA->GetBindDatabaseForTesting() == EngineA->GetBindDatabase(),
+			TEXT("Engine A testing accessor should return its owned database without ambient resolution")));
+		ASSERT_THAT(IsTrue(
+			&EngineB->GetBindDatabaseForTesting() == EngineB->GetBindDatabase(),
+			TEXT("Engine B testing accessor should return its owned database without ambient resolution")));
+		ASSERT_THAT(IsTrue(
+			&EngineA->GetBindDatabaseForTesting() != &EngineB->GetBindDatabaseForTesting(),
+			TEXT("Independent engines should expose distinct owned bind databases")));
+	}
+
 	TEST_METHOD(SaveLoadRoundTripsClassesAndHeaders)
 	{
 FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
@@ -239,76 +297,136 @@ FAngelscriptTestFixture Fixture(*TestRunner, ETestEngineMode::IsolatedFull);
 		(void)bOk;
 	}
 
-	TEST_METHOD(GetPrefersCurrentEngineSharedDatabaseAndFallsBackToLegacySingleton)
+	TEST_METHOD(GetRoutesOnlyThroughScopedEngineDatabases)
 	{
 		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
-FBindDatabaseContextStackGuard ContextGuard;
+		FBindDatabaseContextStackGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); }
 		ContextGuard.DiscardSavedStack();
 
-		static const FString LegacySentinelTypeName(TEXT("BindDatabaseLegacySentinel"));
 		static const FString EngineASentinelTypeName(TEXT("BindDatabaseEngineASentinel"));
-		FAngelscriptBindDatabase* LegacyDatabase = &FAngelscriptBindDatabase::Get();
-		if (!this->Assert.IsNotNull(LegacyDatabase, TEXT("should expose a legacy database without a current engine"))) { return; }
-
-		ON_SCOPE_EXIT { LegacyDatabase->Clear(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine(); } DestroySharedTestEngine(); };
-
-		LegacyDatabase->Clear();
-		LegacyDatabase->Classes.Add(MakeNamedSampleClassBind(AActor::StaticClass(), LegacySentinelTypeName));
-		FAngelscriptBindDatabase* LegacyDatabaseSecondRead = &FAngelscriptBindDatabase::Get();
-
-		bool bOk = true;
-		bOk &= this->Assert.IsNull(FAngelscriptTestEngineScopeAccess::GetCurrentEngine(), TEXT("should start without a current engine"));
-		bOk &= this->Assert.IsTrue(LegacyDatabaseSecondRead == LegacyDatabase, TEXT("should reuse the same legacy singleton"));
-		bOk &= this->Assert.IsTrue(DatabaseContainsClassBindNamed(*LegacyDatabase, LegacySentinelTypeName), TEXT("should preserve legacy sentinel data"));
+		static const FString EngineBSentinelTypeName(TEXT("BindDatabaseEngineBSentinel"));
+		ON_SCOPE_EXIT
+		{
+			if (FAngelscriptEngine::IsInitialized())
+			{
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			}
+			DestroySharedTestEngine();
+		};
 
 		TUniquePtr<FAngelscriptEngine> EngineA = CreateFullTestEngine();
-		if (!this->Assert.IsNotNull(EngineA.Get(), TEXT("should create engine A"))) { return; }
-		FAngelscriptBindDatabase* EngineADatabaseFromGet = nullptr;
-		FAngelscriptBindDatabase* EngineADirectDatabase = nullptr;
+		TUniquePtr<FAngelscriptEngine> EngineB = CreateFullTestEngine();
+		ASSERT_THAT(IsTrue(
+			EngineA.IsValid() && EngineB.IsValid(),
+			TEXT("Scoped BindDatabase routing should create two independent engines")));
+		ASSERT_THAT(IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("Scoped BindDatabase routing should begin without an ambient engine")));
+
+		FAngelscriptBindDatabase* EngineADatabase = EngineA->GetBindDatabase();
+		FAngelscriptBindDatabase* EngineBDatabase = EngineB->GetBindDatabase();
+		ASSERT_THAT(IsNotNull(EngineADatabase, TEXT("Engine A should own a bind database")));
+		ASSERT_THAT(IsNotNull(EngineBDatabase, TEXT("Engine B should own a bind database")));
+		ASSERT_THAT(AreNotEqual(
+			EngineADatabase,
+			EngineBDatabase,
+			TEXT("Independent engines should never share a bind database")));
+
+		EngineADatabase->Clear();
+		EngineBDatabase->Clear();
+		EngineADatabase->Classes.Add(
+			MakeNamedSampleClassBind(AActor::StaticClass(), EngineASentinelTypeName));
+		EngineBDatabase->Classes.Add(
+			MakeNamedSampleClassBind(AActor::StaticClass(), EngineBSentinelTypeName));
 
 		{
 			FAngelscriptEngineScope ScopeA(*EngineA);
-			EngineADirectDatabase = EngineA->GetBindDatabase();
-			EngineADatabaseFromGet = &FAngelscriptBindDatabase::Get();
-			FAngelscriptBindDatabase& EngineADatabaseFromTesting = EngineA->GetBindDatabaseForTesting();
-			bOk &= this->Assert.IsNotNull(EngineADirectDatabase, TEXT("should expose an engine-owned bind database"));
-			bOk &= this->Assert.IsTrue(EngineADatabaseFromGet == EngineADirectDatabase, TEXT("should prefer current engine bind database"));
-			bOk &= this->Assert.IsTrue(&EngineADatabaseFromTesting == EngineADirectDatabase, TEXT("should align GetBindDatabaseForTesting"));
-			bOk &= this->Assert.IsTrue(EngineADirectDatabase != LegacyDatabase, TEXT("should not alias legacy singleton"));
-
-			EngineADirectDatabase->Clear();
-			EngineADirectDatabase->Classes.Add(MakeNamedSampleClassBind(AActor::StaticClass(), EngineASentinelTypeName));
-			bOk &= this->Assert.IsTrue(DatabaseContainsClassBindNamed(*EngineADirectDatabase, EngineASentinelTypeName), TEXT("should keep engine A sentinel in engine-owned database"));
-			bOk &= this->Assert.IsFalse(DatabaseContainsClassBindNamed(*LegacyDatabase, EngineASentinelTypeName), TEXT("should keep engine A sentinel out of legacy singleton"));
-
-			// Clone-shares-database sub-test removed alongside the Clone
-			// engine mechanism; independent Full engines have independent
-			// bind databases, which is covered by the engine A vs C
-			// recreation block below.
+			ASSERT_THAT(IsTrue(
+				&FAngelscriptBindDatabase::Get() == EngineADatabase,
+				TEXT("Get should resolve Engine A's owned database inside ScopeA")));
+			ASSERT_THAT(IsTrue(
+				DatabaseContainsClassBindNamed(*EngineADatabase, EngineASentinelTypeName)
+					&& !DatabaseContainsClassBindNamed(*EngineADatabase, EngineBSentinelTypeName),
+				TEXT("Engine A should expose only its own sentinel")));
 		}
 
-		EngineA.Reset();
-		bOk &= this->Assert.IsNull(FAngelscriptTestEngineScopeAccess::GetCurrentEngine(), TEXT("should restore no-current-engine baseline after destroying engine A"));
-
-		TUniquePtr<FAngelscriptEngine> EngineC = CreateFullTestEngine();
-		if (!this->Assert.IsNotNull(EngineC.Get(), TEXT("should create engine C"))) { return; }
 		{
-			FAngelscriptEngineScope ScopeC(*EngineC);
-			FAngelscriptBindDatabase* EngineCDirectDatabase = EngineC->GetBindDatabase();
-			FAngelscriptBindDatabase* EngineCDatabaseFromGet = &FAngelscriptBindDatabase::Get();
-			bOk &= this->Assert.IsNotNull(EngineCDirectDatabase, TEXT("should expose bind database for engine C"));
-			bOk &= this->Assert.IsTrue(EngineCDatabaseFromGet == EngineCDirectDatabase, TEXT("Get() should route through engine C database"));
-			bOk &= this->Assert.IsTrue(EngineCDirectDatabase != EngineADatabaseFromGet, TEXT("should allocate fresh bind database for recreated full engine"));
-			bOk &= this->Assert.IsFalse(DatabaseContainsClassBindNamed(*EngineCDirectDatabase, EngineASentinelTypeName), TEXT("should not leak engine A sentinel into recreated engine C"));
+			FAngelscriptEngineScope ScopeB(*EngineB);
+			ASSERT_THAT(IsTrue(
+				&FAngelscriptBindDatabase::Get() == EngineBDatabase,
+				TEXT("Get should resolve Engine B's owned database inside ScopeB")));
+			ASSERT_THAT(IsTrue(
+				DatabaseContainsClassBindNamed(*EngineBDatabase, EngineBSentinelTypeName)
+					&& !DatabaseContainsClassBindNamed(*EngineBDatabase, EngineASentinelTypeName),
+				TEXT("Engine B should expose only its own sentinel")));
 		}
-		EngineC.Reset();
 
-		bOk &= this->Assert.IsNull(FAngelscriptTestEngineScopeAccess::GetCurrentEngine(), TEXT("should end without a current engine"));
-		bOk &= this->Assert.IsTrue(&FAngelscriptBindDatabase::Get() == LegacyDatabase, TEXT("should fall back to legacy singleton after all engines gone"));
-		bOk &= this->Assert.IsTrue(DatabaseContainsClassBindNamed(*LegacyDatabase, LegacySentinelTypeName), TEXT("should preserve legacy sentinel after scoped engine lifetimes end"));
-		(void)bOk;
+		ASSERT_THAT(IsNull(
+			FAngelscriptEngine::TryGetCurrentEngine(),
+			TEXT("Scoped BindDatabase routing should restore the no-current-engine baseline")));
+	}
+
+	TEST_METHOD(LegacySingletonIsAbsentAndSourceHeaderConsumersUseExplicitDatabases)
+	{
+		FString DatabaseHeader;
+		FString DatabaseImplementation;
+		FString OfflineMetadata;
+		ASSERT_THAT(IsTrue(
+			LoadBindDatabaseRuntimeSource(TEXT("Core/AngelscriptBindDatabase.h"), DatabaseHeader),
+			TEXT("BindDatabase header should be readable")));
+		ASSERT_THAT(IsTrue(
+			LoadBindDatabaseRuntimeSource(TEXT("Core/AngelscriptBindDatabase.cpp"), DatabaseImplementation),
+			TEXT("BindDatabase implementation should be readable")));
+		ASSERT_THAT(IsTrue(
+			LoadBindDatabaseRuntimeSource(TEXT("Dump/AngelscriptOfflineSymbolMetadata.cpp"), OfflineMetadata),
+			TEXT("Offline symbol metadata implementation should be readable")));
+
+		ASSERT_THAT(IsFalse(
+			DatabaseImplementation.Contains(TEXT("LegacyBindDatabase")),
+			TEXT("BindDatabase Get must not retain a process-wide fallback singleton")));
+		ASSERT_THAT(IsTrue(
+			DatabaseImplementation.Contains(TEXT("FAngelscriptEngine::TryGetCurrentEngine()"))
+				&& DatabaseImplementation.Contains(TEXT("checkf(CurrentEngine != nullptr"))
+				&& DatabaseImplementation.Contains(TEXT("checkf(BindDatabase != nullptr")),
+			TEXT("BindDatabase Get should fail loudly when current-engine resolution is invalid")));
+		ASSERT_THAT(IsTrue(
+			DatabaseHeader.Contains(
+				TEXT("GetSourceHeader(UField* Field, const FAngelscriptBindDatabase& Database)")),
+			TEXT("GetSourceHeader should expose an explicit database overload")));
+		ASSERT_THAT(IsTrue(
+			OfflineMetadata.Contains(TEXT("FAngelscriptEngine::TryGetCurrentEngine()"))
+				&& OfflineMetadata.Contains(TEXT("CurrentEngine->GetBindDatabase()"))
+				&& !OfflineMetadata.Contains(TEXT("FAngelscriptBindDatabase::Get()")),
+			TEXT("Offline symbol metadata should read the existing current engine database explicitly")));
+
+		static const TCHAR* BindProviderFiles[] = {
+			TEXT("Bind_BlueprintType.cpp"),
+			TEXT("Bind_Delegates.cpp"),
+			TEXT("Bind_TSoftObjectPtr.cpp"),
+			TEXT("Bind_UEnum.cpp"),
+			TEXT("Bind_UStruct.cpp"),
+		};
+		for (const TCHAR* BindProviderFile : BindProviderFiles)
+		{
+			FString ProviderSource;
+			ASSERT_THAT(IsTrue(
+				LoadBindDatabaseRuntimeSource(
+					*FString::Printf(TEXT("Binds/%s"), BindProviderFile),
+					ProviderSource),
+				FString::Printf(TEXT("%s should be readable"), BindProviderFile)));
+			ASSERT_THAT(IsFalse(
+				ContainsAmbientSourceHeaderLookup(ProviderSource),
+				FString::Printf(
+					TEXT("%s should not resolve source headers through the ambient database"),
+					BindProviderFile)));
+			ASSERT_THAT(IsTrue(
+				ProviderSource.Contains(TEXT("Binds.GetTargetBindDatabase()")),
+				FString::Printf(
+					TEXT("%s should capture its explicit target database for source-header lookup"),
+					BindProviderFile)));
+		}
 	}
 
 	TEST_METHOD(LoadWithoutHeadersSidecarLeavesHeaderLinksEmptyButRestoresBinds)

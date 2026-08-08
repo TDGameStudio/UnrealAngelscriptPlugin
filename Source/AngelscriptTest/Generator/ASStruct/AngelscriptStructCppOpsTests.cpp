@@ -91,7 +91,9 @@ struct FScopeConstructStruct
 		ASSERT_THAT(IsTrue(Ops->HasDestructor(),
 			TEXT("StructCppOps fixture should expose destructor support through cpp ops")));
 
-		FAngelscriptBinds BoundType = FAngelscriptBinds::ValueClass("FStructCppOpsLifecycleFixtureNative", Struct, FBindFlags());
+		FAngelscriptBinds Binds(Engine);
+		FAngelscriptBinds BoundType =
+			Binds.ValueClassForTarget("FStructCppOpsLifecycleFixtureNative", Struct, FBindFlags());
 		asITypeInfo* TypeInfo = BoundType.GetTypeInfo();
 		ASSERT_THAT(IsNotNull(TypeInfo,
 			TEXT("ValueClass should register a script type for the native struct")));

@@ -1,6 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "Binds/Bind_Helpers.h"
+#include "Binds/Bind_FInstancedStruct_Functions.h"
 #include "Binds/Bind_TSubclassOf.h"
 #include "Binds/Bind_TMap.h"
 #include "Binds/Bind_TSet.h"

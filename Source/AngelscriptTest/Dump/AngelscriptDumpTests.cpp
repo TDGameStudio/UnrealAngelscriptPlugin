@@ -2,6 +2,9 @@
 #include "Dump/AngelscriptDumpCommand.h"
 #include "Dump/AngelscriptStateDump.h"
 
+#include "Core/AngelscriptBinds.h"
+#include "Testing/AngelscriptBindExecutionObservation.h"
+
 #include "AngelscriptTestUtilities.h"
 #include "CQTest.h"
 
@@ -255,6 +258,144 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStateDumpTest,
 					*FString::Printf(TEXT("'%s' should report the expected summary status"), *ExpectedFilename)));
 			}
 			ASSERT_THAT(IsTrue(SummaryRow->Key >= 0, *FString::Printf(TEXT("'%s' should report a non-negative row count"), *ExpectedFilename)));
+		}
+	}
+
+	TEST_METHOD(BindRegistrationsAreDeterministicAndReadOnly)
+	{
+		FResolvedProductionLikeEngine ResolvedEngine;
+		ASSERT_THAT(IsTrue(
+			AcquireProductionLikeEngine(
+				*TestRunner,
+				TEXT("Expected a production-like engine for bind registration dump tests"),
+				ResolvedEngine),
+			TEXT("Bind registration dump tests should acquire a production-like engine")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptBind::IsRegisteredCollectionSealedForTesting(),
+			TEXT("Bind registration dump should observe the sealed process collection")));
+
+		const int32 ExecutionInvocationCountBeforeDump =
+			FAngelscriptBindExecutionObservation::GetInvocationCount();
+
+		const FString FirstOutputDir = FAngelscriptStateDump::DumpAll(
+			ResolvedEngine.Get(),
+			FAngelscriptDumpTestHelpers::MakeUniqueDumpTestPath(TEXT("BindRegistrationsFirst")));
+		const FString SecondOutputDir = FAngelscriptStateDump::DumpAll(
+			ResolvedEngine.Get(),
+			FAngelscriptDumpTestHelpers::MakeUniqueDumpTestPath(TEXT("BindRegistrationsSecond")));
+
+		FString FirstContents;
+		FString SecondContents;
+		ASSERT_THAT(IsTrue(
+			FAngelscriptDumpTestHelpers::LoadFileContents(
+				*TestRunner,
+				FPaths::Combine(FirstOutputDir, TEXT("BindRegistrations.csv")),
+				FirstContents),
+			TEXT("First BindRegistrations.csv should be readable")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptDumpTestHelpers::LoadFileContents(
+				*TestRunner,
+				FPaths::Combine(SecondOutputDir, TEXT("BindRegistrations.csv")),
+				SecondContents),
+			TEXT("Second BindRegistrations.csv should be readable")));
+
+		ASSERT_THAT(AreEqual(
+			FirstContents,
+			SecondContents,
+			TEXT("BindRegistrations.csv should be byte-deterministic for one sealed collection")));
+		ASSERT_THAT(AreEqual(
+			ExecutionInvocationCountBeforeDump,
+			FAngelscriptBindExecutionObservation::GetInvocationCount(),
+			TEXT("DumpAll should not execute bind callbacks while observing registrations")));
+
+		TArray<FString> Lines;
+		FirstContents.ParseIntoArrayLines(Lines, true);
+		ASSERT_THAT(IsTrue(Lines.Num() > 1, TEXT("BindRegistrations.csv should contain registered bind rows")));
+		ASSERT_THAT(AreEqual(
+			FString(TEXT("OwnerModule,BindName,Phase,SourceFile,SourceLine,ExecutionStatus,DurationSeconds,FailureDiagnostic,ExecutionEpoch,PublicationEligibility,PublicationResult")),
+			Lines[0],
+			TEXT("BindRegistrations.csv should preserve its exact metadata and engine-result schema")));
+		ASSERT_THAT(AreEqual(
+			FAngelscriptBind::GetRegisteredBindCountForTesting(),
+			Lines.Num() - 1,
+			TEXT("BindRegistrations.csv should contain one row per sealed callback record")));
+
+		const TMap<FString, int32> PhaseRanks = {
+			{ TEXT("TypeDeclarations"), 0 },
+			{ TEXT("TypeInfrastructure"), 1 },
+			{ TEXT("ManualBindings"), 2 },
+			{ TEXT("GeneratedBindings"), 3 },
+			{ TEXT("ReflectionBindings"), 4 },
+			{ TEXT("PostReflectionBindings"), 5 },
+			{ TEXT("Finalization"), 6 },
+		};
+
+		int32 PreviousPhaseRank = INDEX_NONE;
+		int32 ObservedExecutionRowCount = 0;
+		for (int32 LineIndex = 1; LineIndex < Lines.Num(); ++LineIndex)
+		{
+			TArray<FString> Columns;
+			Lines[LineIndex].ParseIntoArray(Columns, TEXT(","), false);
+			ASSERT_THAT(AreEqual(
+				11,
+				Columns.Num(),
+				*FString::Printf(TEXT("Bind registration row %d should match the exact schema"), LineIndex)));
+			ASSERT_THAT(IsFalse(Columns[0].IsEmpty(), TEXT("Bind registration owner module should not be empty")));
+			ASSERT_THAT(IsFalse(Columns[1].IsEmpty(), TEXT("Bind registration name should not be empty")));
+			ASSERT_THAT(IsFalse(Columns[3].IsEmpty(), TEXT("Bind registration source file should not be empty")));
+			ASSERT_THAT(IsTrue(
+				FCString::Atoi(*Columns[4]) > 0,
+				TEXT("Bind registration source line should be positive")));
+
+			const int32* PhaseRank = PhaseRanks.Find(Columns[2]);
+			ASSERT_THAT(IsNotNull(
+				PhaseRank,
+				*FString::Printf(TEXT("Bind registration row %d should use a known semantic phase"), LineIndex)));
+			ASSERT_THAT(IsTrue(
+				*PhaseRank >= PreviousPhaseRank,
+				TEXT("Bind registration rows should preserve sealed semantic phase order")));
+			PreviousPhaseRank = *PhaseRank;
+
+			const bool bExecutionStatusIsKnown = Columns[5] == TEXT("Succeeded")
+				|| Columns[5] == TEXT("Failed")
+				|| Columns[5] == TEXT("NotExecuted")
+				|| Columns[5] == TEXT("NotObserved");
+			ASSERT_THAT(IsTrue(
+				bExecutionStatusIsKnown,
+				TEXT("Bind registration execution status should use the stable diagnostic vocabulary")));
+			if (Columns[5] == TEXT("Succeeded") || Columns[5] == TEXT("Failed"))
+			{
+				++ObservedExecutionRowCount;
+				ASSERT_THAT(IsTrue(
+					FCString::Atod(*Columns[6]) >= 0.0,
+					TEXT("Observed bind callback duration should be non-negative")));
+				ASSERT_THAT(IsTrue(
+					FCString::Atoi64(*Columns[8]) > 0,
+					TEXT("Observed bind callback should retain its execution epoch")));
+			}
+
+			const bool bPublicationEligibilityIsKnown = Columns[9] == TEXT("Pending")
+				|| Columns[9] == TEXT("Eligible")
+				|| Columns[9] == TEXT("Blocked");
+			ASSERT_THAT(IsTrue(
+				bPublicationEligibilityIsKnown,
+				TEXT("Bind registration publication eligibility should use the stable diagnostic vocabulary")));
+			const bool bPublicationResultIsKnown = Columns[10] == TEXT("Published")
+				|| Columns[10] == TEXT("NotPublished");
+			ASSERT_THAT(IsTrue(
+				bPublicationResultIsKnown,
+				TEXT("Bind registration publication result should use the stable diagnostic vocabulary")));
+		}
+
+		const FAngelscriptBindExecutionSnapshot Snapshot =
+			FAngelscriptBindExecutionObservation::GetLastSnapshot();
+		if (Snapshot.EngineIdentity == reinterpret_cast<UPTRINT>(&ResolvedEngine.Get())
+			&& !Snapshot.ProviderRecords.IsEmpty())
+		{
+			ASSERT_THAT(AreEqual(
+				Snapshot.ProviderRecords.Num(),
+				ObservedExecutionRowCount,
+				TEXT("Matching engine observations should be joined to deterministic provider rows")));
 		}
 	}
 };

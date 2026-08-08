@@ -21,10 +21,12 @@ public:
 	FDelegateHandle RegisterExtension(TSharedRef<IAngelscriptExtension> Extension);
 	void UnregisterExtension(FDelegateHandle Handle);
 
+	// Explicit lifecycle attach: the target must already own an AngelScript engine.
 	void AttachEngine(FAngelscriptEngine& Engine);
 	void DetachEngine(FAngelscriptEngine& Engine);
 
-	// Replays the current engine to every registered extension.
+	// Replays the current published engine to every registered extension.
+	// Initialization-only context scopes are not active extension targets.
 	void ReplayCurrentEngine();
 
 	// Detaches every registered extension from the current engine. This is the

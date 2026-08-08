@@ -174,16 +174,16 @@ RunBoundedCycleProbe(
 			[]() { return GetBlueprintEventsByScriptNameTotalCount(); });
 	}
 
-	// Regression for the `GScriptNativeForms` map. Only meaningful when JIT
-	// is on AND `IsGeneratingPrecompiledData()` is true (binds are gated by
-	// that). Under regular headless test runs the table is empty -we still
-	// assert it stays stable across cycles, so a future bind-path change
-	// that *does* populate it cannot regress silently.
+	// Regression for the native-form entries owned by live engine states. Only
+	// meaningful when JIT is on AND `IsGeneratingPrecompiledData()` is true
+	// (binds are gated by that). Under regular headless test runs the tables are
+	// empty -we still assert they stay stable across cycles, so a future bind-path
+	// change that *does* populate them cannot regress silently.
 	TEST_METHOD(ScriptNativeForms_BoundedAcrossCycles)
 	{
 #if AS_CAN_GENERATE_JIT
 RunBoundedCycleProbe(
-			TEXT("GScriptNativeForms"),
+			TEXT("LiveEngineNativeForms"),
 			/*NumCycles=*/5,
 			/*TolerancePerCycle=*/4,
 			[]() { return FScriptFunctionNativeForm::NumNativeForms(); },

@@ -114,7 +114,20 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFStringBindingsTest,
 			int VerifyTypeConcatContract()
 			{
 				FString Value = "Count=" + 42 + " Name=" + FName("BoundName") + " Flag=" + true;
-				return Value.Contains("Count=42") && Value.Contains("BoundName") && Value.Contains("True") ? 1 : 0;
+				FString Mutable = "Index=";
+				Mutable += 7;
+				Mutable
+					.Append(" Flag=")
+					.Append(true);
+
+				FString ConvertedName(FName("ConvertedName"));
+				FString DirectName = FName("DirectName").ToString();
+				return Value.Contains("Count=42")
+					&& Value.Contains("BoundName")
+					&& Value.Contains("True")
+					&& Mutable == "Index=7 Flag=True"
+					&& ConvertedName == "ConvertedName"
+					&& DirectName == "DirectName" ? 1 : 0;
 			}
 			)AS"));
 		if (!ModuleScope.IsValid()) return;
@@ -124,7 +137,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFStringBindingsTest,
 			Engine,
 			ModuleScope.GetModule(),
 			TEXT("int VerifyTypeConcatContract()"),
-			TEXT("FString mixed-type opAdd bindings should dispatch through FToStringHelper paths"),
+			TEXT("FString mixed-type operators, append, implicit construction, and ToString should dispatch through FToStringHelper paths"),
 			1)));
 	}
 
@@ -157,6 +170,49 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFStringBindingsTest,
 			ModuleScope.GetModule(),
 			TEXT("int VerifyStaticFunctionContract()"),
 			TEXT("FString namespace/static helpers should resolve and dispatch"),
+			1)));
+	}
+
+	TEST_METHOD(ManipulationAndParsing)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int VerifyManipulationAndParsingContract()
+			{
+				FString Clean = "\t  Alpha-Beta  "
+					.ConvertTabsToSpaces(2)
+					.TrimStartAndEnd()
+					.Replace("Beta", "Gamma", ESearchCase::CaseSensitive);
+
+				TArray<FString> Parts;
+				const int Count = Clean.ParseIntoArray(Parts, "-", true);
+
+				bool bQuotesRemoved = false;
+				const FString Unquoted = "\"Quoted\"".TrimQuotes(bQuotesRemoved);
+
+				return Clean == "Alpha-Gamma"
+					&& Count == 2
+					&& Parts[0] == "Alpha"
+					&& Parts[1] == "Gamma"
+					&& bQuotesRemoved
+					&& Unquoted == "Quoted" ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(
+			*TestRunner,
+			Engine,
+			TEXT("ASFString_ManipulationAndParsingContract"),
+			ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("FString manipulation and parsing surface should compile")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(
+			*TestRunner,
+			Engine,
+			ModuleScope.GetModule(),
+			TEXT("int VerifyManipulationAndParsingContract()"),
+			TEXT("FString manipulation and parsing callables should dispatch"),
 			1)));
 	}
 

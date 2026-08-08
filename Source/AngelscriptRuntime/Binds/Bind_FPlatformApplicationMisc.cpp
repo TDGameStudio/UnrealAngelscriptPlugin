@@ -1,13 +1,21 @@
-#include "AngelscriptEngine.h"
-#include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
 
 #include "HAL/PlatformApplicationMisc.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FPlatformApplicationMisc((int32)FAngelscriptBinds::EOrder::Late, [] {
+#include "Bind_FPlatformApplicationMisc_Functions.h"
+
+namespace
+{
+	void BindFPlatformApplicationMisc(FAngelscriptBinds& Binds)
 	{
-		FAngelscriptBinds::FNamespace ns("FPlatformApplicationMisc");
-		FAngelscriptBinds::BindGlobalFunction("void ClipboardCopy(const FString& Str)", [](const FString& Str) { FPlatformApplicationMisc::ClipboardCopy(*Str); });
-		FAngelscriptBinds::BindGlobalFunction("void ClipboardPaste(FString&	Dest)", FUNC_TRIVIAL(FPlatformApplicationMisc::ClipboardPaste));
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FPlatformApplicationMisc");
+		Binds.BindGlobalFunctionForTarget("void ClipboardCopy(const FString& Str)", &FAngelscriptFPlatformApplicationMiscBinds::ClipboardCopy);
+		Binds.BindGlobalFunctionForTarget("void ClipboardPaste(FString&\tDest)", &FPlatformApplicationMisc::ClipboardPaste)
+			.NativeFunction("FPlatformApplicationMisc::ClipboardPaste", true);
 	}
-});
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FPlatformApplicationMisc(
+	TEXT("FPlatformApplicationMisc"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFPlatformApplicationMisc);

@@ -62,7 +62,6 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptBindHelpers
 		return NativeAddress != nullptr ? NativeAddress : static_cast<void*>(Object);
 	}
 };
-
 struct FScriptStructType
 {
 	UScriptStruct* Struct = nullptr;
@@ -99,30 +98,5 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptStructTypeHelpers
 	static bool OpEqualsStruct(FScriptStructType* Ptr, UScriptStruct* Other)
 	{
 		return Ptr->Struct == Other;
-	}
-};
-
-struct ANGELSCRIPTRUNTIME_API FAngelscriptInstancedStructHelpers
-{
-	static FInstancedStruct Make(void* Data, const int TypeId);
- 	static void ImplicitConstructAnyStruct(FAngelscriptAnyStructParameter* Self, void* Data, const int TypeId);
-	static void ImplicitConstructAnyStructFromInstancedStruct(FAngelscriptAnyStructParameter* Self, const FInstancedStruct& InstancedStruct);
-	static void InitializeAs_Struct(FInstancedStruct* Self, void* Data, const int TypeId);
-	static void InitializeAs_Default(FInstancedStruct* Self, UScriptStruct* StructType)
-	{
-		Self->InitializeAs(StructType);
-	}
-
-	static struct FScriptStructWildcard& GetMemory(FInstancedStruct* Self, const UScriptStruct* StructType);
-
-	static bool Contains(FInstancedStruct* Self, const UScriptStruct* StructType)
-	{
-		if (!Self->IsValid())
-			return false;
-
-		if (StructType != Self->GetScriptStruct())
-			return false;
-
-		return true;
 	}
 };

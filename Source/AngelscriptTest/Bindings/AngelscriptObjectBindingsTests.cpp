@@ -307,6 +307,68 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptObjectBindingsTest,
 		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_ArrayOperations()"), TEXT("TSoftObjectPtr TArray Add/Contains"), 1), TEXT("TSoftObjectPtr TArray Add/Contains")));
 		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int SoftPtr_Reset()"), TEXT("TSoftObjectPtr Reset clears to null"), 1), TEXT("TSoftObjectPtr Reset clears to null")));
 	}
+
+	TEST_METHOD(SoftObjectPtrReportsPathAndResolvesLoadedAsset)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int SoftObjectPtr_ToString()
+			{
+				FSoftObjectPath Path("/Engine/EngineResources/DefaultTexture.DefaultTexture");
+				TSoftObjectPtr<UTexture2D> TextureReference(Path);
+				return TextureReference.ToString() == Path.ToString() ? 1 : 0;
+			}
+
+			int SoftObjectPtr_LongPackageName()
+			{
+				FSoftObjectPath Path("/Engine/EngineResources/DefaultTexture.DefaultTexture");
+				TSoftObjectPtr<UTexture2D> TextureReference(Path);
+				return TextureReference.GetLongPackageName() == "/Engine/EngineResources/DefaultTexture" ? 1 : 0;
+			}
+
+			int SoftObjectPtr_AssetName()
+			{
+				FSoftObjectPath Path("/Engine/EngineResources/DefaultTexture.DefaultTexture");
+				TSoftObjectPtr<UTexture2D> TextureReference(Path);
+				return TextureReference.GetAssetName() == "DefaultTexture" ? 1 : 0;
+			}
+
+			int SoftObjectPtr_ResolvesAfterPathLoad()
+			{
+				FSoftObjectPath Path("/Engine/EngineResources/DefaultTexture.DefaultTexture");
+				TSoftObjectPtr<UTexture2D> TextureReference(Path);
+				UTexture2D LoadedTexture = Cast<UTexture2D>(Path.TryLoad());
+				return LoadedTexture != null
+					&& TextureReference.IsValid()
+					&& TextureReference.Get() == LoadedTexture ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASObject_SoftObjectPtrReportsPathAndResolvesLoadedAsset"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("TSoftObjectPtr path accessor and resolution module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, ModuleScope.GetModule(),
+			TEXT("int SoftObjectPtr_ToString()"),
+			TEXT("TSoftObjectPtr ToString should preserve the source object path"), 1),
+			TEXT("TSoftObjectPtr ToString should dispatch through the manual binding")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, ModuleScope.GetModule(),
+			TEXT("int SoftObjectPtr_LongPackageName()"),
+			TEXT("TSoftObjectPtr GetLongPackageName should return the source package"), 1),
+			TEXT("TSoftObjectPtr GetLongPackageName should dispatch through the manual binding")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, ModuleScope.GetModule(),
+			TEXT("int SoftObjectPtr_AssetName()"),
+			TEXT("TSoftObjectPtr GetAssetName should return the source asset name"), 1),
+			TEXT("TSoftObjectPtr GetAssetName should dispatch through the manual binding")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, ModuleScope.GetModule(),
+			TEXT("int SoftObjectPtr_ResolvesAfterPathLoad()"),
+			TEXT("TSoftObjectPtr IsValid and Get should resolve an asset loaded through its path"), 1),
+			TEXT("TSoftObjectPtr loaded-asset resolution should dispatch through the manual binding")));
+	}
 };
 
 #endif

@@ -18,17 +18,39 @@
 #include "source/as_scriptfunction.h"
 #include "EndAngelscriptHeaders.h"
 
-struct FPassedDoc
+namespace
 {
-	FString Tooltip;
-	FString Category;
-	UFunction* Function = nullptr;
-};
+	FAngelscriptDocumentationState LegacyDocumentationState;
 
-static TMap<int, FPassedDoc> UnrealDocumentation;
-static TMap<int, FString> UnrealTypeDocumentation;
-static TMap<int, FString> GlobalVariableDocumentation;
-static TMap<TPair<int, int>, FString> UnrealPropertyDocumentation;
+	FAngelscriptDocumentationState& ResolveDocumentationState()
+	{
+		if (FAngelscriptEngine* Engine = FAngelscriptEngine::TryGetCurrentEngine())
+		{
+			if (FAngelscriptDocumentationState* State = Engine->GetDocumentationState())
+			{
+				return *State;
+			}
+		}
+		return LegacyDocumentationState;
+	}
+
+	FAngelscriptDocumentationState& ResolveDocumentationState(const FAngelscriptEngine& Engine)
+	{
+		FAngelscriptDocumentationState* State = Engine.GetDocumentationState();
+		check(State != nullptr);
+		return *State;
+	}
+}
+
+void FAngelscriptDocs::AddUnrealDocumentation(FAngelscriptEngine& Engine, int FunctionId, FStringView Documentation, FStringView Category, UFunction* Function)
+{
+	FPassedDoc Doc;
+	Doc.Tooltip = Documentation;
+	Doc.Category = Category;
+	Doc.Function = Function;
+
+	ResolveDocumentationState(Engine).UnrealDocumentation.Add(FunctionId, MoveTemp(Doc));
+}
 
 void FAngelscriptDocs::AddUnrealDocumentation(int FunctionId, FStringView Documentation, FStringView Category, UFunction* Function)
 {
@@ -37,27 +59,48 @@ void FAngelscriptDocs::AddUnrealDocumentation(int FunctionId, FStringView Docume
 	Doc.Category = Category;
 	Doc.Function = Function;
 
-	UnrealDocumentation.Add(FunctionId, Doc);
+	ResolveDocumentationState().UnrealDocumentation.Add(FunctionId, MoveTemp(Doc));
+}
+
+void FAngelscriptDocs::AddUnrealDocumentationForType(FAngelscriptEngine& Engine, int TypeId, FStringView Documentation)
+{
+	ResolveDocumentationState(Engine).UnrealTypeDocumentation.Add(TypeId, FString(Documentation));
 }
 
 void FAngelscriptDocs::AddUnrealDocumentationForType(int TypeId, FStringView Documentation)
 {
-	UnrealTypeDocumentation.Add(TypeId, FString(Documentation));
+	ResolveDocumentationState().UnrealTypeDocumentation.Add(TypeId, FString(Documentation));
+}
+
+void FAngelscriptDocs::AddUnrealDocumentationForProperty(
+	FAngelscriptEngine& Engine,
+	int TypeId,
+	int PropertyOffset,
+	FStringView Documentation)
+{
+	ResolveDocumentationState(Engine).UnrealPropertyDocumentation.Add(
+		TPair<int, int>(TypeId, PropertyOffset),
+		FString(Documentation));
 }
 
 void FAngelscriptDocs::AddUnrealDocumentationForProperty(int TypeId, int PropertyOffset, FStringView Documentation)
 {
-	UnrealPropertyDocumentation.Add(TPair<int,int>(TypeId, PropertyOffset), FString(Documentation));
+	ResolveDocumentationState().UnrealPropertyDocumentation.Add(TPair<int,int>(TypeId, PropertyOffset), FString(Documentation));
+}
+
+void FAngelscriptDocs::AddDocumentationForGlobalVariable(FAngelscriptEngine& Engine, int GlobalVariableId, FStringView Documentation)
+{
+	ResolveDocumentationState(Engine).GlobalVariableDocumentation.Add(GlobalVariableId, FString(Documentation));
 }
 
 void FAngelscriptDocs::AddDocumentationForGlobalVariable(int GlobalVariableId, FStringView Documentation)
 {
-	GlobalVariableDocumentation.Add(GlobalVariableId, FString(Documentation));
+	ResolveDocumentationState().GlobalVariableDocumentation.Add(GlobalVariableId, FString(Documentation));
 }
 
 const FString& FAngelscriptDocs::GetUnrealDocumentationForType(int TypeId)
 {
-	FString* Found = UnrealTypeDocumentation.Find(TypeId);
+	FString* Found = ResolveDocumentationState().UnrealTypeDocumentation.Find(TypeId);
 	if (Found == nullptr)
 	{
 		static const FString EmptyString;
@@ -71,7 +114,7 @@ const FString& FAngelscriptDocs::GetUnrealDocumentationForType(int TypeId)
 
 const FString& FAngelscriptDocs::GetUnrealDocumentationForProperty(int TypeId, int PropertyOffset)
 {
-	FString* Found = UnrealPropertyDocumentation.Find(TPair<int,int>(TypeId, PropertyOffset));
+	FString* Found = ResolveDocumentationState().UnrealPropertyDocumentation.Find(TPair<int,int>(TypeId, PropertyOffset));
 	if (Found == nullptr)
 	{
 		static const FString EmptyString;
@@ -85,7 +128,7 @@ const FString& FAngelscriptDocs::GetUnrealDocumentationForProperty(int TypeId, i
 
 const FString& FAngelscriptDocs::GetDocumentationForGlobalVariable(int GlobalVariableId)
 {
-	FString* Found = GlobalVariableDocumentation.Find(GlobalVariableId);
+	FString* Found = ResolveDocumentationState().GlobalVariableDocumentation.Find(GlobalVariableId);
 	if (Found == nullptr)
 	{
 		static const FString EmptyString;
@@ -99,35 +142,36 @@ const FString& FAngelscriptDocs::GetDocumentationForGlobalVariable(int GlobalVar
 
 int32 FAngelscriptDocs::GetUnrealDocumentationCount()
 {
-	return UnrealDocumentation.Num();
+	return ResolveDocumentationState().UnrealDocumentation.Num();
 }
 
 int32 FAngelscriptDocs::GetUnrealTypeDocumentationCount()
 {
-	return UnrealTypeDocumentation.Num();
+	return ResolveDocumentationState().UnrealTypeDocumentation.Num();
 }
 
 int32 FAngelscriptDocs::GetGlobalVariableDocumentationCount()
 {
-	return GlobalVariableDocumentation.Num();
+	return ResolveDocumentationState().GlobalVariableDocumentation.Num();
 }
 
 int32 FAngelscriptDocs::GetUnrealPropertyDocumentationCount()
 {
-	return UnrealPropertyDocumentation.Num();
+	return ResolveDocumentationState().UnrealPropertyDocumentation.Num();
 }
 
 void FAngelscriptDocs::ResetAllDocumentation()
 {
-	UnrealDocumentation.Empty();
-	UnrealTypeDocumentation.Empty();
-	GlobalVariableDocumentation.Empty();
-	UnrealPropertyDocumentation.Empty();
+	FAngelscriptDocumentationState& State = ResolveDocumentationState();
+	State.UnrealDocumentation.Empty();
+	State.UnrealTypeDocumentation.Empty();
+	State.GlobalVariableDocumentation.Empty();
+	State.UnrealPropertyDocumentation.Empty();
 }
 
 UFunction* FAngelscriptDocs::LookupAngelscriptFunction(int FunctionId)
 {
-	FPassedDoc* Found = UnrealDocumentation.Find(FunctionId);
+	FPassedDoc* Found = ResolveDocumentationState().UnrealDocumentation.Find(FunctionId);
 	if (Found == nullptr)
 		return nullptr;
 	else
@@ -136,7 +180,7 @@ UFunction* FAngelscriptDocs::LookupAngelscriptFunction(int FunctionId)
 
 const FPassedDoc& FAngelscriptDocs::GetFullUnrealDocumentation(int FunctionId)
 {
-	FPassedDoc* Found = UnrealDocumentation.Find(FunctionId);
+	FPassedDoc* Found = ResolveDocumentationState().UnrealDocumentation.Find(FunctionId);
 	if (Found == nullptr)
 	{
 		static const FPassedDoc EmptyDoc;
@@ -148,9 +192,20 @@ const FPassedDoc& FAngelscriptDocs::GetFullUnrealDocumentation(int FunctionId)
 	}
 }
 
+const FString& FAngelscriptDocs::GetUnrealDocumentation(const FAngelscriptEngine& Engine, int FunctionId)
+{
+	FPassedDoc* Found = ResolveDocumentationState(Engine).UnrealDocumentation.Find(FunctionId);
+	if (Found == nullptr)
+	{
+		static const FString EmptyString;
+		return EmptyString;
+	}
+	return Found->Tooltip;
+}
+
 const FString& FAngelscriptDocs::GetUnrealDocumentation(int FunctionId)
 {
-	FPassedDoc* Found = UnrealDocumentation.Find(FunctionId);
+	FPassedDoc* Found = ResolveDocumentationState().UnrealDocumentation.Find(FunctionId);
 	if (Found == nullptr)
 	{
 		static const FString EmptyString;

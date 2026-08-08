@@ -21,22 +21,27 @@ namespace DeprecationBind
 		Function->SetMetaData(NAME_META_DeprecatedFunction, TEXT(""));
 		Function->SetMetaData(NAME_META_DeprecationMessage, DeprecationMessage);
 	}
+
+	void BindDeprecations(FAngelscriptBinds&)
+	{
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableLinearColor"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableVec4"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableQuat"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableMatrix"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableVec3"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariablePosition"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableVec2"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableFloat"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableInt"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableBool"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableActor"), TEXT("Use the SetVariable variant that takes FName instead"));
+		DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableObject"), TEXT("Use the SetVariable variant that takes FName instead"));
+	}
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Deprecations(FAngelscriptBinds::EOrder::Early, []
-{
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableLinearColor"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableVec4"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableQuat"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableMatrix"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableVec3"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariablePosition"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableVec2"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableFloat"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableInt"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableBool"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableActor"), TEXT("Use the SetVariable variant that takes FName instead"));
-	DeprecationBind::DeprecateMethod(TEXT("/Script/Niagara.NiagaraComponent:SetNiagaraVariableObject"), TEXT("Use the SetVariable variant that takes FName instead"));
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_Deprecations(
+	TEXT("Deprecations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&DeprecationBind::BindDeprecations);
 
 #endif

@@ -2,10 +2,17 @@
 #include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FGenericPlatformMisc((int32)FAngelscriptBinds::EOrder::Late, []
+namespace
 {
+	void BindFGenericPlatformMisc(FAngelscriptBinds& Binds)
 	{
-		FAngelscriptBinds::FNamespace ns("FGenericPlatformMisc");
-		FAngelscriptBinds::BindGlobalFunction("void RequestExit(bool Force)", FUNC_TRIVIAL(FGenericPlatformMisc::RequestExit));
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FGenericPlatformMisc");
+		Binds.BindGlobalFunctionForTarget("void RequestExit(bool Force)", &FGenericPlatformMisc::RequestExit)
+			.NativeFunction("FGenericPlatformMisc::RequestExit", true);
 	}
-});
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FGenericPlatformMisc(
+	TEXT("FGenericPlatformMisc"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFGenericPlatformMisc);

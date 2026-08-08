@@ -3,10 +3,16 @@
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestEngineAcquisition.h"
 
+#include "AngelscriptBinds.h"
+#include "AngelscriptType.h"
+#include "Binds/Helper_FunctionSignature.h"
 #include "EnhancedInputComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/BlueprintPathsLibrary.h"
 #include "StaticJIT/StaticJITBinds.h"
 
 #include "StartAngelscriptHeaders.h"
+#include "source/as_callfunc.h"
 #include "source/as_objecttype.h"
 #include "source/as_scriptengine.h"
 #include "source/as_scriptfunction.h"
@@ -127,6 +133,236 @@ public:
 	TEST_METHOD(EnhancedInputGetHandleNoJit)
 	{
 		ASSERT_THAT(IsTrue(RunEnhancedInputGetHandleNoJit(*TestRunner)));
+	}
+
+	TEST_METHOD(ReflectedBlueprintCallableRetainsExactUFunctionGenericRoute)
+	{
+		FAngelscriptEngineConfig Config;
+		Config.bGeneratePrecompiledData = true;
+
+		FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		ASSERT_THAT(IsNotNull(OwnedEngine.Get(),
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should create a dedicated engine")));
+
+		FAngelscriptEngine& Engine = *OwnedEngine;
+		FAngelscriptEngineScope EngineScope(Engine);
+
+		UClass* LibraryClass = UBlueprintPathsLibrary::StaticClass();
+		UFunction* BaseFilenameFunction = LibraryClass->FindFunctionByName(TEXT("GetBaseFilename"));
+		ASSERT_THAT(IsNotNull(BaseFilenameFunction,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should resolve GetBaseFilename")));
+
+		FAngelscriptBindState* BindState = Engine.GetBindState();
+		ASSERT_THAT(IsNotNull(BindState,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should expose engine-local bind state")));
+
+		const TMap<FString, FAngelscriptFunctionBinding>* LibraryBindings =
+			BindState->ClassFunctionBindings.Find(LibraryClass);
+		ASSERT_THAT(IsNotNull(LibraryBindings,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain BlueprintPathsLibrary bindings")));
+
+		const FAngelscriptFunctionBinding* FunctionBinding = LibraryBindings->Find(TEXT("GetBaseFilename"));
+		ASSERT_THAT(IsNotNull(FunctionBinding,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain the exact GetBaseFilename binding")));
+		ASSERT_THAT(IsTrue(FunctionBinding->bReflectiveFallbackBound,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should remain on reflective fallback")));
+		ASSERT_THAT(IsTrue(FunctionBinding->bUsesGenericCall,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should record the generic call route")));
+		ASSERT_THAT(AreEqual(
+			EAngelscriptFunctionBindingOrigin::Reflective,
+			FunctionBinding->Origin,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain reflective provenance")));
+		ASSERT_THAT(IsNotNull(FunctionBinding->UserData,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain reflective signature userdata")));
+
+		FAngelscriptTypeDatabase* TypeDatabase = Engine.GetTypeDatabase();
+		ASSERT_THAT(IsNotNull(TypeDatabase,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should expose the engine-local type database")));
+		const TSharedRef<FAngelscriptType>* LibraryType = TypeDatabase->TypesByClass.Find(LibraryClass);
+		ASSERT_THAT(IsNotNull(LibraryType,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should resolve the engine-local library script type")));
+
+		FAngelscriptFunctionSignature Signature(
+			*TypeDatabase,
+			*LibraryType,
+			BaseFilenameFunction);
+		ASSERT_THAT(IsTrue(Signature.bAllTypesValid,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain a valid exact signature")));
+		ASSERT_THAT(IsTrue(Signature.bStaticInScript,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should remain namespaced in script")));
+
+		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should expose the script engine")));
+
+		asIScriptFunction* ScriptFunction = nullptr;
+		const FTCHARToUTF8 ExpectedNamespace(*Signature.ClassName);
+		const FTCHARToUTF8 ExpectedScriptName(*Signature.ScriptName);
+		for (asUINT FunctionIndex = 0; FunctionIndex < ScriptEngine->GetGlobalFunctionCount(); ++FunctionIndex)
+		{
+			asIScriptFunction* Candidate = ScriptEngine->GetGlobalFunctionByIndex(FunctionIndex);
+			if (Candidate == nullptr)
+			{
+				continue;
+			}
+
+			const char* CandidateNamespace = Candidate->GetNamespace();
+			const char* CandidateName = Candidate->GetName();
+			if (FCStringAnsi::Strcmp(CandidateNamespace != nullptr ? CandidateNamespace : "", ExpectedNamespace.Get()) == 0
+				&& FCStringAnsi::Strcmp(CandidateName != nullptr ? CandidateName : "", ExpectedScriptName.Get()) == 0
+				&& Candidate->GetUserData() == FunctionBinding->UserData)
+			{
+				ScriptFunction = Candidate;
+				break;
+			}
+		}
+		ASSERT_THAT(IsNotNull(ScriptFunction,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should resolve the namespaced primary by exact userdata")));
+		ASSERT_THAT(IsTrue(ScriptFunction->GetUserData() == FunctionBinding->UserData,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should preserve exact userdata identity")));
+
+		auto* InternalFunction = static_cast<asCScriptFunction*>(ScriptFunction);
+		ASSERT_THAT(IsNotNull(InternalFunction->sysFuncIntf,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should remain a registered system function")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(ICC_GENERIC_FUNC),
+			static_cast<int32>(InternalFunction->sysFuncIntf->callConv),
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain generic function callconv")));
+
+		FScriptFunctionNativeForm* NativeForm = FScriptFunctionNativeForm::GetNativeForm(ScriptFunction);
+		ASSERT_THAT(IsNotNull(NativeForm,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain its native form")));
+
+		const FAngelscriptNativeFormDebugInfo NativeFormInfo = NativeForm->GetDebugInfoForTesting();
+		ASSERT_THAT(AreEqual(
+			EAngelscriptNativeFormKind::UFunction,
+			NativeFormInfo.Kind,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain UFunction native-form kind")));
+		ASSERT_THAT(IsTrue(NativeFormInfo.UnrealFunction == BaseFilenameFunction,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain the exact UFunction")));
+		ASSERT_THAT(AreEqual(
+			BaseFilenameFunction->GetName(),
+			NativeFormInfo.Name,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should retain the exact native name")));
+		ASSERT_THAT(IsFalse(NativeFormInfo.bTrivial,
+			TEXT("StaticJIT.NativeForms.ReflectedBlueprintCallable should remain nontrivial")));
+	}
+
+	TEST_METHOD(NetUFunctionRetainsReflectiveGenericMethodRoute)
+	{
+		FAngelscriptEngineConfig Config;
+		Config.bGeneratePrecompiledData = true;
+
+		FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+		TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
+		ASSERT_THAT(IsNotNull(OwnedEngine.Get(),
+			TEXT("StaticJIT.NativeForms.NetUFunction should create a dedicated engine")));
+
+		FAngelscriptEngine& Engine = *OwnedEngine;
+		FAngelscriptEngineScope EngineScope(Engine);
+
+		UClass* ControllerClass = APlayerController::StaticClass();
+		UFunction* ClientSetHUDFunction = ControllerClass->FindFunctionByName(TEXT("ClientSetHUD"));
+		ASSERT_THAT(IsNotNull(ClientSetHUDFunction,
+			TEXT("StaticJIT.NativeForms.NetUFunction should resolve APlayerController.ClientSetHUD")));
+		ASSERT_THAT(IsTrue(ClientSetHUDFunction->HasAnyFunctionFlags(FUNC_Net),
+			TEXT("StaticJIT.NativeForms.NetUFunction fixture must remain an RPC")));
+		ASSERT_THAT(IsTrue(ClientSetHUDFunction->HasAnyFunctionFlags(FUNC_NetClient),
+			TEXT("StaticJIT.NativeForms.NetUFunction fixture must remain a client RPC")));
+		ASSERT_THAT(IsTrue(ClientSetHUDFunction->HasAnyFunctionFlags(FUNC_NetReliable),
+			TEXT("StaticJIT.NativeForms.NetUFunction fixture must remain reliable")));
+
+		FAngelscriptBindState* BindState = Engine.GetBindState();
+		ASSERT_THAT(IsNotNull(BindState,
+			TEXT("StaticJIT.NativeForms.NetUFunction should expose engine-local bind state")));
+
+		const TMap<FString, FAngelscriptFunctionBinding>* ControllerBindings =
+			BindState->ClassFunctionBindings.Find(ControllerClass);
+		ASSERT_THAT(IsNotNull(ControllerBindings,
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain APlayerController bindings")));
+
+		const FAngelscriptFunctionBinding* FunctionBinding = ControllerBindings->Find(TEXT("ClientSetHUD"));
+		ASSERT_THAT(IsNotNull(FunctionBinding,
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain the exact ClientSetHUD binding")));
+		ASSERT_THAT(IsFalse(FunctionBinding->FunctionPointer.IsBound(),
+			TEXT("StaticJIT.NativeForms.NetUFunction must not expose a raw direct-call pointer")));
+
+		FAngelscriptTypeDatabase* TypeDatabase = Engine.GetTypeDatabase();
+		ASSERT_THAT(IsNotNull(TypeDatabase,
+			TEXT("StaticJIT.NativeForms.NetUFunction should expose the engine-local type database")));
+		const TSharedRef<FAngelscriptType>* ControllerType = TypeDatabase->TypesByClass.Find(ControllerClass);
+		ASSERT_THAT(IsNotNull(ControllerType,
+			TEXT("StaticJIT.NativeForms.NetUFunction should resolve the engine-local controller script type")));
+
+		FAngelscriptFunctionSignature Signature(
+			*TypeDatabase,
+			*ControllerType,
+			ClientSetHUDFunction);
+		ASSERT_THAT(IsTrue(Signature.bAllTypesValid,
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain a valid exact signature")));
+		ASSERT_THAT(IsFalse(Signature.bStaticInScript,
+			TEXT("StaticJIT.NativeForms.NetUFunction should remain an instance method")));
+		ASSERT_THAT(IsFalse(Signature.bStaticInUnreal,
+			TEXT("StaticJIT.NativeForms.NetUFunction should remain an Unreal instance method")));
+
+		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
+		ASSERT_THAT(IsNotNull(ScriptEngine,
+			TEXT("StaticJIT.NativeForms.NetUFunction should expose the script engine")));
+
+		const FTCHARToUTF8 ControllerScriptName(*(*ControllerType)->GetAngelscriptTypeName());
+		asITypeInfo* ControllerTypeInfo = ScriptEngine->GetTypeInfoByDecl(ControllerScriptName.Get());
+		ASSERT_THAT(IsNotNull(ControllerTypeInfo,
+			TEXT("StaticJIT.NativeForms.NetUFunction should resolve the controller script type info")));
+
+		asIScriptFunction* ScriptFunction = nullptr;
+		const FTCHARToUTF8 ExpectedScriptName(*Signature.ScriptName);
+		for (asUINT MethodIndex = 0; MethodIndex < ControllerTypeInfo->GetMethodCount(); ++MethodIndex)
+		{
+			asIScriptFunction* Candidate = ControllerTypeInfo->GetMethodByIndex(MethodIndex);
+			if (Candidate == nullptr || FCStringAnsi::Strcmp(Candidate->GetName(), ExpectedScriptName.Get()) != 0)
+			{
+				continue;
+			}
+
+			FScriptFunctionNativeForm* CandidateNativeForm = FScriptFunctionNativeForm::GetNativeForm(Candidate);
+			if (CandidateNativeForm != nullptr
+				&& CandidateNativeForm->GetDebugInfoForTesting().UnrealFunction == ClientSetHUDFunction)
+			{
+				ScriptFunction = Candidate;
+				break;
+			}
+		}
+		ASSERT_THAT(IsNotNull(ScriptFunction,
+			TEXT("StaticJIT.NativeForms.NetUFunction should resolve ClientSetHUD by exact native form")));
+		ASSERT_THAT(IsNotNull(ScriptFunction->GetUserData(),
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain event-signature userdata")));
+
+		auto* InternalFunction = static_cast<asCScriptFunction*>(ScriptFunction);
+		ASSERT_THAT(IsNotNull(InternalFunction->sysFuncIntf,
+			TEXT("StaticJIT.NativeForms.NetUFunction should remain a registered system method")));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(ICC_GENERIC_METHOD),
+			static_cast<int32>(InternalFunction->sysFuncIntf->callConv),
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain generic method callconv")));
+
+		FScriptFunctionNativeForm* NativeForm = FScriptFunctionNativeForm::GetNativeForm(ScriptFunction);
+		ASSERT_THAT(IsNotNull(NativeForm,
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain its native form")));
+
+		const FAngelscriptNativeFormDebugInfo NativeFormInfo = NativeForm->GetDebugInfoForTesting();
+		ASSERT_THAT(AreEqual(
+			EAngelscriptNativeFormKind::UFunction,
+			NativeFormInfo.Kind,
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain UFunction native-form kind")));
+		ASSERT_THAT(IsTrue(NativeFormInfo.UnrealFunction == ClientSetHUDFunction,
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain the exact RPC UFunction")));
+		ASSERT_THAT(AreEqual(
+			ClientSetHUDFunction->GetName(),
+			NativeFormInfo.Name,
+			TEXT("StaticJIT.NativeForms.NetUFunction should retain the exact native name")));
+		ASSERT_THAT(IsFalse(NativeFormInfo.bTrivial,
+			TEXT("StaticJIT.NativeForms.NetUFunction should remain nontrivial")));
 	}
 };
 

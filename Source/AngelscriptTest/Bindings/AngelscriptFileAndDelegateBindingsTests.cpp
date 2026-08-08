@@ -132,6 +132,56 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFileAndDelegateBindingsTest,
 		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, M,  TEXT("int DelegateBind_ClearMakesUnbound()"), TEXT("Clear should make delegate unbound"), 1), TEXT("Clear should make delegate unbound")));
 	}
 
+	TEST_METHOD(ScriptDelegateConstructionCopyAndUnbindObject)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			delegate int FNativeCallback(int Value, const FString& Label);
+			event void FNativeEvent(int Value, const FString& Label);
+
+			int DelegateCopy_ConstructorAssignmentAndObject()
+			{
+				UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();
+				FNativeCallback Constructed(TestObject, n"NativeIntStringEvent");
+				if (!Constructed.IsBound() || Constructed.GetUObject() != TestObject)
+				{
+					return 0;
+				}
+
+				FNativeCallback Copy(Constructed);
+				FNativeCallback Assigned;
+				Assigned = Copy;
+				if (!Assigned.IsBound() || !Assigned.GetFunctionName().IsEqual(n"NativeIntStringEvent"))
+				{
+					return 0;
+				}
+				return Assigned.Execute(3, "Gamma") == 8 ? 1 : 0;
+			}
+
+			int DelegateCopy_MulticastUnbindObject()
+			{
+				UObject TestObject = FindClass("UAngelscriptNativeScriptTestObject").GetDefaultObject();
+				FNativeEvent Multi;
+				Multi.AddUFunction(TestObject, n"SetIntStringFromDelegate");
+				Multi.UnbindObject(TestObject);
+				return Multi.IsBound() ? 0 : 1;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(*TestRunner, Engine, TEXT("ASFileDelegate_DelegateConstructionCopy"), ScriptSource);
+		ASSERT_THAT(IsTrue(ModuleScope.IsValid(), TEXT("Delegate construction, copy, and unbind-object module should compile")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, ModuleScope.GetModule(),
+			TEXT("int DelegateCopy_ConstructorAssignmentAndObject()"),
+			TEXT("Delegate constructor, copy constructor, assignment, GetUObject, and Execute should dispatch"), 1),
+			TEXT("Delegate constructor, copy constructor, assignment, GetUObject, and Execute should dispatch")));
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(*TestRunner, Engine, ModuleScope.GetModule(),
+			TEXT("int DelegateCopy_MulticastUnbindObject()"),
+			TEXT("Multicast UnbindObject should remove all bindings for the object"), 1),
+			TEXT("Multicast UnbindObject should remove all bindings for the object")));
+	}
+
 	// ====================================================================
 	// Section: ScriptDelegateExecuteCompat
 	// ====================================================================

@@ -7,9 +7,12 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-namespace
+TEST_CLASS_WITH_FLAGS(FAngelscriptTArrayBindingsTest,
+	"Angelscript.TestModule.Bindings.Container.TArray",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
-	bool CompileSummaryHasErrorContaining(
+private:
+	static bool CompileSummaryHasErrorContaining(
 		const FAngelscriptCompileTraceSummary& Summary,
 		const FString& ExpectedFragment)
 	{
@@ -18,12 +21,8 @@ namespace
 			return Diagnostic.bIsError && Diagnostic.Message.Contains(ExpectedFragment);
 		});
 	}
-}
 
-TEST_CLASS_WITH_FLAGS(FAngelscriptTArrayBindingsTest,
-	"Angelscript.TestModule.Bindings.Container.TArray",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-{
+public:
 	BEFORE_ALL()
 	{
 		ASTEST_CREATE_ENGINE();
@@ -70,6 +69,65 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTArrayBindingsTest,
 			ModuleScope.GetModule(),
 			TEXT("int VerifyTArrayContractSmoke()"),
 			TEXT("TArray construction, indexing, iteration, and mutation bindings should dispatch"),
+			1)));
+	}
+
+	TEST_METHOD(TemplateNativeOperationsAndExplicitIterator)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int VerifyTemplateNativeOperationsAndExplicitIterator()
+			{
+				TArray<int> Values;
+				Values.Add(10);
+				Values.Add(20);
+				Values.Add(30);
+
+				const bool bAddedDuplicate = Values.AddUnique(20);
+				const bool bAddedUnique = Values.AddUnique(40);
+				Values.Swap(0, 2);
+
+				const int LastValue = Values.Last();
+				const int PreviousValue = Values.Last(1);
+				const int FoundIndex = Values.FindIndex(20);
+
+				int Sum = 0;
+				{
+					TArrayIterator<int> Iterator = Values.Iterator();
+					while (Iterator.CanProceed)
+					{
+						Sum += Iterator.Proceed();
+					}
+				}
+
+				TArray<int> MovedValues;
+				MovedValues.MoveAssignFrom(Values);
+				return !bAddedDuplicate
+					&& bAddedUnique
+					&& LastValue == 40
+					&& PreviousValue == 10
+					&& FoundIndex == 1
+					&& Sum == 100
+					&& Values.IsEmpty()
+					&& MovedValues.Num() == 4 ? 1 : 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(
+			*TestRunner,
+			Engine,
+			TEXT("ASTArray_TemplateNativeOperationsAndExplicitIterator"),
+			ScriptSource);
+		if (!ModuleScope.IsValid()) return;
+
+		ASSERT_THAT(IsTrue(ExpectGlobalInt(
+			*TestRunner,
+			Engine,
+			ModuleScope.GetModule(),
+			TEXT("int VerifyTemplateNativeOperationsAndExplicitIterator()"),
+			TEXT("TArray template-native operations and explicit iterator should preserve script-object injection"),
 			1)));
 	}
 

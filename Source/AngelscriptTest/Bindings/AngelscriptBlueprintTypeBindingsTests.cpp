@@ -2,9 +2,11 @@
 #include "AngelscriptTestEngineHelper.h"
 #include "AngelscriptTestExecute.h"
 #include "AngelscriptTestMacros.h"
+#include "AngelscriptTestModuleScope.h"
 
 #include "Misc/ScopeExit.h"
 #include "UObject/Class.h"
+#include "UObject/GarbageCollection.h"
 #include "UObject/UObjectGlobals.h"
 #include "UObject/UnrealType.h"
 
@@ -150,6 +152,193 @@ public:
 				FindFProperty<FIntProperty>(StoredProperty->Struct, TEXT("Value")),
 				TEXT("Generated UScriptStruct should preserve its reflected Value field")));
 		}
+	}
+
+	TEST_METHOD(ObjectTemplateMethodSurfaceExecutes)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int RunObjectTemplateMethodSurface()
+			{
+				TSubclassOf<UObject> ClassValue;
+				ClassValue.Set(UTexture2D::StaticClass());
+				if (ClassValue.Get() != UTexture2D::StaticClass())
+				{
+					return 1;
+				}
+
+				TWeakObjectPtr<UObject> EmptyWeak;
+				if (!EmptyWeak.IsExplicitlyNull() || EmptyWeak.IsStale())
+				{
+					return 2;
+				}
+
+				UObject StrongObject = NewObject(GetTransientPackage(), UTexture2D::StaticClass());
+				TObjectPtr<UObject> ObjectPtr = StrongObject;
+				TObjectPtr<UObject> CopiedObjectPtr = ObjectPtr;
+				if (CopiedObjectPtr.Get() != StrongObject
+					|| CopiedObjectPtr != ObjectPtr
+					|| CopiedObjectPtr != StrongObject)
+				{
+					return 3;
+				}
+
+				CopiedObjectPtr = nullptr;
+				if (CopiedObjectPtr.Get() != nullptr)
+				{
+					return 4;
+				}
+
+				TWeakObjectPtr<UObject> LiveWeak = StrongObject;
+				if (!LiveWeak.IsValid() || LiveWeak.IsStale() || LiveWeak.IsExplicitlyNull())
+				{
+					return 5;
+				}
+
+				return 0;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(
+			*TestRunner,
+			Engine,
+			TEXT("ASBlueprintType_ObjectTemplateMethodSurface"),
+			ScriptSource);
+		ASSERT_THAT(IsTrue(
+			ModuleScope.IsValid(),
+			TEXT("Object template method-surface module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(
+				*TestRunner,
+				Engine,
+				ModuleScope.GetModule(),
+				TEXT("int RunObjectTemplateMethodSurface()"),
+				TEXT("TSubclassOf and TWeakObjectPtr method surfaces should execute"),
+				0),
+			TEXT("TSubclassOf.Set and weak-pointer state queries should execute through their bindings")));
+	}
+
+	TEST_METHOD(TObjectPtrRejectsValueTypeTemplateArgument)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ExpectedDiagnostics[] = {
+			TEXT("Attempting to instantiate invalid template type 'TObjectPtr<FVector>'"),
+		};
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			void ConstructInvalidObjectPtr()
+			{
+				TObjectPtr<FVector> InvalidObjectPtr;
+			}
+			)AS");
+
+		ASSERT_THAT(IsTrue(
+			CompileAndExpectFailure(
+				*TestRunner,
+				Engine,
+				TEXT("ASBlueprintType_TObjectPtrValueTypeRejection"),
+				ScriptSource,
+				TEXT("TObjectPtr should reject value-type template arguments"),
+				MakeArrayView(ExpectedDiagnostics)),
+			TEXT("TObjectPtr<FVector> should fail with the template callback diagnostic")));
+	}
+
+	TEST_METHOD(WeakObjectPtrDistinguishesLiveStaleAndExplicitNullStates)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			void CaptureWeakObject(TWeakObjectPtr<UObject>& ObservedWeak)
+			{
+				UObject TemporaryObject = NewObject(
+					GetTransientPackage(),
+					UTexture2D,
+					n"BlueprintTypeWeakStateObject");
+				ObservedWeak = TemporaryObject;
+			}
+
+			void ResetWeakObject(TWeakObjectPtr<UObject>& ObservedWeak)
+			{
+				ObservedWeak = nullptr;
+			}
+
+			int ObserveWeakState(const TWeakObjectPtr<UObject>& ObservedWeak)
+			{
+				int Result = ObservedWeak.IsValid() ? 1 : 0;
+				Result |= ObservedWeak.IsStale() ? 2 : 0;
+				Result |= ObservedWeak.IsExplicitlyNull() ? 4 : 0;
+				return Result;
+			}
+			)AS");
+
+		FScopedAngelscriptModule ModuleScope(
+			*TestRunner,
+			Engine,
+			TEXT("ASBlueprintType_WeakObjectPtrStates"),
+			ScriptSource);
+		ASSERT_THAT(IsTrue(
+			ModuleScope.IsValid(),
+			TEXT("Weak-object-pointer state module should compile")));
+		if (!ModuleScope.IsValid())
+		{
+			return;
+		}
+
+		TWeakObjectPtr<UObject> ObservedWeak;
+		FASGlobalFunctionInvoker CaptureInvoker(
+			*TestRunner,
+			Engine,
+			ModuleScope.GetModule(),
+			TEXT("void CaptureWeakObject(TWeakObjectPtr<UObject>&)"));
+		CaptureInvoker.AddArgRef(ObservedWeak);
+		ASSERT_THAT(IsTrue(
+			CaptureInvoker.Call(),
+			TEXT("Weak-object-pointer fixture should capture an unrooted live object")));
+
+		auto ObserveWeakState = [&]()
+		{
+			FASGlobalFunctionInvoker ObserveInvoker(
+				*TestRunner,
+				Engine,
+				ModuleScope.GetModule(),
+				TEXT("int ObserveWeakState(const TWeakObjectPtr<UObject>&)"));
+			ObserveInvoker.AddArgRef(ObservedWeak);
+			return ObserveInvoker.CallAndReturn<int32>(INDEX_NONE);
+		};
+
+		ASSERT_THAT(AreEqual(
+			1,
+			ObserveWeakState(),
+			TEXT("Live weak-object-pointer state should be observable")));
+
+		CollectGarbage(RF_NoFlags, true);
+		ASSERT_THAT(AreEqual(
+			2,
+			ObserveWeakState(),
+			TEXT("Stale weak-object-pointer state should remain distinguishable")));
+
+		FASGlobalFunctionInvoker ResetInvoker(
+			*TestRunner,
+			Engine,
+			ModuleScope.GetModule(),
+			TEXT("void ResetWeakObject(TWeakObjectPtr<UObject>&)"));
+		ResetInvoker.AddArgRef(ObservedWeak);
+		ASSERT_THAT(IsTrue(
+			ResetInvoker.Call(),
+			TEXT("Weak-object-pointer fixture should reset the stale pointer")));
+		ASSERT_THAT(AreEqual(
+			4,
+			ObserveWeakState(),
+			TEXT("Explicit-null weak-object-pointer state should be observable")));
 	}
 };
 

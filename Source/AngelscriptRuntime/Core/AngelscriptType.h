@@ -6,6 +6,7 @@
 struct FAngelscriptTypeUsage;
 struct FDebugValuePrototype;
 struct FASDebugValue;
+struct FAngelscriptTypeDatabase;
 
 namespace UE { namespace GC {
 	class FPropertyStack; class FSchemaBuilder;
@@ -31,17 +32,21 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptType : TSharedFromThis<FAngelscriptTyp
 
 	// Find the angelscript type that implements the given UClass.
 	static TSharedPtr<FAngelscriptType> GetByClass(UClass* ForClass);
+	static TSharedPtr<FAngelscriptType> GetByClass(FAngelscriptTypeDatabase& Database, UClass* ForClass);
 
 	// Find the angelscript type that specified the given data.
 	static TSharedPtr<FAngelscriptType> GetByData(void* ForData);
+	static TSharedPtr<FAngelscriptType> GetByData(FAngelscriptTypeDatabase& Database, void* ForData);
 
 	// Find the angelscript type known to angelscript by the given name.
 	static TSharedPtr<FAngelscriptType> GetByAngelscriptTypeName(const FString& Name);
+	static TSharedPtr<FAngelscriptType> GetByAngelscriptTypeName(FAngelscriptTypeDatabase& Database, const FString& Name);
 
 	// Find the angelscript type that implements the given Property.
 	//  This does not take into account any qualifiers or wrappers,
 	//  use FAngelscriptTypeUsage::FromProperty() to get the fully qualified type.
 	static TSharedPtr<FAngelscriptType> GetByProperty(FProperty* Property, bool bQueryTypeFinders = true);
+	static TSharedPtr<FAngelscriptType> GetByProperty(FAngelscriptTypeDatabase& Database, FProperty* Property, bool bQueryTypeFinders = true);
 
 	static TSharedPtr<FAngelscriptType>& GetScriptObject();
 	static void SetScriptObject(TSharedPtr<FAngelscriptType> Type);
@@ -70,15 +75,18 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptType : TSharedFromThis<FAngelscriptTyp
 
 	// Register a new type to be usable by the system
 	static void Register(TSharedRef<FAngelscriptType> Type);
+	static void Register(FAngelscriptTypeDatabase& Database, TSharedRef<FAngelscriptType> Type);
 
 	static void ResetTypeDatabase();
 
 	// Register an alias for a specific type
 	static void RegisterAlias(const FString& Alias, TSharedRef<FAngelscriptType> Type);
+	static void RegisterAlias(FAngelscriptTypeDatabase& Database, const FString& Alias, TSharedRef<FAngelscriptType> Type);
 
 	// Register a 'type finder' function that can find FAngelscriptTypes for UProperties.
 	typedef TFunction<bool(FProperty*,FAngelscriptTypeUsage&)> FTypeFinder;
 	static void RegisterTypeFinder(FTypeFinder Finder);
+	static void RegisterTypeFinder(FAngelscriptTypeDatabase& Database, FTypeFinder Finder);
 
 	/**
 	 * Helper statics
@@ -398,6 +406,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptTypeUsage
 
 	// Match a type usage to a FProperty
 	static FAngelscriptTypeUsage FromProperty(FProperty* Property);
+	static FAngelscriptTypeUsage FromProperty(FAngelscriptTypeDatabase& Database, FProperty* Property);
 
 	// Match a type usage to an angelscript Property
 	static FAngelscriptTypeUsage FromProperty(class asITypeInfo* ScriptType, int32 PropertyIndex);

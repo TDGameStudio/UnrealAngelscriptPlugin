@@ -28,9 +28,11 @@ namespace AngelscriptNativeInterfaceTestHelpers
 		if (!InterfaceClass->HasAnyClassFlags(CLASS_Interface | CLASS_Native))
 			return;
 
-		auto* ScriptEngine = FAngelscriptEngine::Get().Engine;
+		FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
+		auto* ScriptEngine = Engine.Engine;
 		if (ScriptEngine == nullptr)
 			return;
+		FAngelscriptBinds Binds(Engine);
 
 		const FString TypeName = FAngelscriptType::GetBoundClassName(InterfaceClass);
 
@@ -41,13 +43,13 @@ namespace AngelscriptNativeInterfaceTestHelpers
 		// Register the interface type if not yet registered
 		if (bNewlyRegistered)
 		{
-			FAngelscriptBinds Binds = FAngelscriptBinds::ReferenceClass(TypeName, InterfaceClass);
-			auto* TypeInfo = (asCTypeInfo*)Binds.GetTypeInfo();
+			FAngelscriptBinds InterfaceBinds = Binds.ReferenceClassForTarget(TypeName, InterfaceClass);
+			auto* TypeInfo = (asCTypeInfo*)InterfaceBinds.GetTypeInfo();
 			if (TypeInfo != nullptr)
 			{
 				TypeInfo->plainUserData = (SIZE_T)InterfaceClass;
 			}
-			ExistingType = Binds.GetTypeInfo();
+			ExistingType = InterfaceBinds.GetTypeInfo();
 
 			// Set up UObject shadowType for newly registered types so opCast works.
 			if (ExistingType != nullptr)
@@ -69,7 +71,7 @@ namespace AngelscriptNativeInterfaceTestHelpers
 		// Register methods — uses IncludeSuper to get all methods including
 		// inherited ones from parent interfaces, then registers each directly
 		// on this type. The GetMethodByName skip check avoids duplicates.
-		FAngelscriptBinds Binds = FAngelscriptBinds::ExistingClass(TypeName);
+		FAngelscriptBinds InterfaceBinds = Binds.ExistingClassForTarget(TypeName);
 
 		for (TFieldIterator<UFunction> FuncIt(InterfaceClass); FuncIt; ++FuncIt)
 		{
@@ -120,8 +122,8 @@ namespace AngelscriptNativeInterfaceTestHelpers
 				ReturnType, FuncName, ArgumentTypes, ArgumentNames, ArgumentDefaults,
 				Function->HasAnyFunctionFlags(FUNC_Const));
 
-			FInterfaceMethodSignature* Sig = FAngelscriptEngine::Get().RegisterInterfaceMethodSignature(FName(*FuncName));
-			Binds.GenericMethod(Declaration, CallInterfaceMethod, Sig);
+			FInterfaceMethodSignature* Sig = Engine.RegisterInterfaceMethodSignature(FName(*FuncName));
+			InterfaceBinds.GenericMethod(Declaration, CallInterfaceMethod, Sig);
 		}
 
 		// Link parent interface methods

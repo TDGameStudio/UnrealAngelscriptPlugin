@@ -1,7 +1,6 @@
 #include "AngelscriptEngine.h"
 #include "AngelscriptBinds.h"
 #include "CQTest.h"
-#include "Misc/Guid.h"
 #include "Misc/ScopeExit.h"
 #include "AngelscriptTestEngine.h"
 #include "Testing/AngelscriptBindExecutionObservation.h"
@@ -79,11 +78,6 @@ if (FAngelscriptEngine::IsInitialized())
 {
 	FAngelscriptMultiEngineTestAccess::DestroyGlobalEngine();
 }
-}
-
-static FName MakeUniqueStartupBindName(const TCHAR* Prefix)
-{
-return FName(*FString::Printf(TEXT("%s.%s"), Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits)));
 }
 
 static bool RunCloneModuleIsolation(FAutomationTestBase& Test)
@@ -271,10 +265,9 @@ static bool RunStartupBindObservationFullCreate(FAutomationTestBase& Test)
 FNoDiscardAsserter LocalAssert(Test);
 ResetToIsolatedEngineState();
 
-const FName FirstBindName = MakeUniqueStartupBindName(TEXT("Automation.StartupBind.Full.First"));
-const FName SecondBindName = MakeUniqueStartupBindName(TEXT("Automation.StartupBind.Full.Second"));
-FAngelscriptBinds::FBind FirstBind(FirstBindName, -25, []() {});
-FAngelscriptBinds::FBind SecondBind(SecondBindName, 25, []() {});
+const FName DeclarationBindName(TEXT("FVector.TypeDeclarations"));
+const FName InfrastructureBindName(TEXT("FVector.TypeInfrastructure"));
+const FName ManualBindName(TEXT("FVector"));
 
 FAngelscriptBindExecutionObservation::Reset();
 
@@ -292,15 +285,19 @@ if (!LocalAssert.AreEqual(1, FAngelscriptBindExecutionObservation::GetInvocation
 	return false;
 }
 
-const int32 FirstIndex = Snapshot.ExecutedBindNames.IndexOfByKey(FirstBindName);
-const int32 SecondIndex = Snapshot.ExecutedBindNames.IndexOfByKey(SecondBindName);
-if (!LocalAssert.IsTrue(FirstIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the first named bind"))
-	|| !LocalAssert.IsTrue(SecondIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the second named bind")))
+const int32 DeclarationIndex = Snapshot.ExecutedBindNames.IndexOfByKey(DeclarationBindName);
+const int32 InfrastructureIndex = Snapshot.ExecutedBindNames.IndexOfByKey(InfrastructureBindName);
+const int32 ManualIndex = Snapshot.ExecutedBindNames.IndexOfByKey(ManualBindName);
+if (!LocalAssert.IsTrue(DeclarationIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the FVector declaration provider"))
+	|| !LocalAssert.IsTrue(InfrastructureIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the FVector infrastructure provider"))
+	|| !LocalAssert.IsTrue(ManualIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should observe the FVector manual provider")))
 {
 	return false;
 }
 
-return LocalAssert.IsTrue(FirstIndex < SecondIndex, TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should preserve bind order in the observed startup pass"));
+return LocalAssert.IsTrue(
+	DeclarationIndex < InfrastructureIndex && InfrastructureIndex < ManualIndex,
+	TEXT("MultiEngine.StartupBindObservation.FullCreateRecordsOrderedBinds should preserve phase order in the observed startup pass"));
 }
 
 static bool RunStartupBindObservationCloneCreate(FAutomationTestBase& Test)
@@ -324,10 +321,9 @@ FNoDiscardAsserter LocalAssert(Test);
 ResetToIsolatedEngineState();
 FMultiEngineContextStackGuard StackGuard;
 
-const FName FirstBindName = MakeUniqueStartupBindName(TEXT("Automation.StartupBind.CreateForTesting.FullFallback.First"));
-const FName SecondBindName = MakeUniqueStartupBindName(TEXT("Automation.StartupBind.CreateForTesting.FullFallback.Second"));
-FAngelscriptBinds::FBind FirstBind(FirstBindName, -50, []() {});
-FAngelscriptBinds::FBind SecondBind(SecondBindName, 50, []() {});
+const FName DeclarationBindName(TEXT("FVector.TypeDeclarations"));
+const FName InfrastructureBindName(TEXT("FVector.TypeInfrastructure"));
+const FName ManualBindName(TEXT("FVector"));
 
 FAngelscriptBindExecutionObservation::Reset();
 
@@ -346,15 +342,19 @@ if (!LocalAssert.AreEqual(1, FAngelscriptBindExecutionObservation::GetInvocation
 }
 
 const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-const int32 FirstIndex = Snapshot.ExecutedBindNames.IndexOfByKey(FirstBindName);
-const int32 SecondIndex = Snapshot.ExecutedBindNames.IndexOfByKey(SecondBindName);
-if (!LocalAssert.IsTrue(FirstIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the first bind"))
-	|| !LocalAssert.IsTrue(SecondIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the second bind")))
+const int32 DeclarationIndex = Snapshot.ExecutedBindNames.IndexOfByKey(DeclarationBindName);
+const int32 InfrastructureIndex = Snapshot.ExecutedBindNames.IndexOfByKey(InfrastructureBindName);
+const int32 ManualIndex = Snapshot.ExecutedBindNames.IndexOfByKey(ManualBindName);
+if (!LocalAssert.IsTrue(DeclarationIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the FVector declaration provider"))
+	|| !LocalAssert.IsTrue(InfrastructureIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the FVector infrastructure provider"))
+	|| !LocalAssert.IsTrue(ManualIndex != INDEX_NONE, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should observe the FVector manual provider")))
 {
 	return false;
 }
 
-return LocalAssert.IsTrue(FirstIndex < SecondIndex, TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should preserve order for the fallback full startup pass"));
+return LocalAssert.IsTrue(
+	DeclarationIndex < InfrastructureIndex && InfrastructureIndex < ManualIndex,
+	TEXT("MultiEngine.StartupBindObservation.CreateForTestingFullFallbackReplaysBinds should preserve phase order for the fallback full startup pass"));
 }
 
 public:

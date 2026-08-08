@@ -556,174 +556,189 @@ struct FAngelscriptSetConstIteratorType : public FAngelscriptType
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TSet((int32)FAngelscriptBinds::EOrder::Early+1, []
+namespace
 {
-	FBindFlags Flags;
-	Flags.bTemplate = true;
-	Flags.TemplateType = "<T>";
-	Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
-
-	auto TSet_ = FAngelscriptBinds::ValueClass<FScriptSet>("TSet<class T>", Flags);
-	TSet_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptSetBinds::Construct));
-
-	TSet_.Destructor("void f()", &FAngelscriptSetBinds::Destruct);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TSet_, "FAngelscriptSetBinds::Destruct", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TSet_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)",
-	[](asITypeInfo* TemplateType, asCString* ErrorMessage) -> bool
+	struct FAngelscriptSetIterationBinds
 	{
-		return ValidateSetOperations(TemplateType, ErrorMessage);
-	});
+		static int32 OpForBegin(FScriptSet& Set, asCObjectType* Meta)
+		{
+			return FSetOperations::GetSetOperations(Meta)->FindNextIndex(Set, -1);
+		}
 
-	TSet_.Method("void Add(const T&in if_handle_then_const Value)", &FAngelscriptSetBinds::Add);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TSet_, "FAngelscriptSetBinds::Add", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		static bool OpForEnd(FScriptSet&, int32 Iterator)
+		{
+			return Iterator == -1;
+		}
 
-	TSet_.Method("void Append(const TArray<T>& Array)", &FAngelscriptSetBinds::AppendArray);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TSet_, "FAngelscriptSetBinds::AppendArray", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		static void OpForNext(FScriptSet& Set, asCObjectType* Meta, int32& Iterator)
+		{
+			if (Iterator == -1)
+				return;
+			Iterator = FSetOperations::GetSetOperations(Meta)->FindNextIndex(Set, Iterator);
+		}
 
-	TSet_.Method("void Append(const TSet<T>& Set)", &FAngelscriptSetBinds::AppendSet);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TSet_, "FAngelscriptSetBinds::AppendSet", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		static void* OpForValue(FScriptSet& Set, asCObjectType* Meta, int32 Iterator)
+		{
+			auto* Ops = FSetOperations::GetSetOperations(Meta);
+			if (!Set.IsValidIndex(Iterator))
+			{
+				FAngelscriptEngine::Throw("Iterator out of bounds.");
+				return nullptr;
+			}
+			return Ops->GetElement(Set, Iterator);
+		}
+	};
 
-	TSet_.Method("bool Contains(const T&in if_handle_then_const Value) const", &FAngelscriptSetBinds::Contains);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(TSet_, "FAngelscriptSetBinds::Contains", true);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TSet_.Method("bool Remove(const T&in if_handle_then_const Value)", &FAngelscriptSetBinds::Remove);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TSet_, "FAngelscriptSetBinds::Remove", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TSet_.Method("TSet<T>& opAssign(const TSet<T>& Other)", &FAngelscriptSetBinds::Assign);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TSet_, "FAngelscriptSetBinds::Assign", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TSet_.Method("bool opEquals(const TSet<T>& Other) const", &FAngelscriptSetBinds::OpEquals);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(TSet_, "FAngelscriptSetBinds::OpEquals", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TSet_.Method("void Empty(int32 Slack = 0)", &FAngelscriptSetBinds::Empty);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TSet_, "FAngelscriptSetBinds::Empty", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TSet_.Method("void Reset()", &FAngelscriptSetBinds::Reset);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TSet_, "FAngelscriptSetBinds::Reset", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TSet_.Method("int32 Num() const", FUNC_TRIVIAL(FAngelscriptSetBinds::Num));
-	TSet_.Method("bool IsEmpty() const", FUNC_TRIVIAL(FAngelscriptSetBinds::IsEmpty));
-
-	auto SetType = MakeShared<FAngelscriptSetType>();
-	FAngelscriptType::Register(SetType);
-
-	FAngelscriptType::RegisterTypeFinder([SetType](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
+	void BindTSetTypeDeclarations(FAngelscriptBinds& Binds)
 	{
-		FSetProperty* SetProp = CastField<FSetProperty>(Property);
-		if (SetProp == nullptr)
-			return false;
+		FBindFlags SetFlags;
+		SetFlags.bTemplate = true;
+		SetFlags.TemplateType = "<T>";
+		SetFlags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
+		Binds.ValueClassForTarget<FScriptSet>("TSet<class T>", SetFlags);
 
-		FAngelscriptTypeUsage InnerUsage = FAngelscriptTypeUsage::FromProperty(SetProp->ElementProp);
-		if (!InnerUsage.IsValid())
-			return false;
+		FBindFlags IteratorFlags;
+		IteratorFlags.bTemplate = true;
+		IteratorFlags.TemplateType = "<T>";
+		Binds.ValueClassForTarget<FSetIterator>("TSetIterator<class T>", IteratorFlags);
+		Binds.ValueClassForTarget<FSetIterator>("TSetConstIterator<class T>", IteratorFlags);
+	}
 
-		Usage.Type = SetType;
-		Usage.SubTypes.Add(InnerUsage);
-		return true;
-	});
+	void BindTSetMethodSurface(FAngelscriptBinds& Binds)
+	{
+		auto TSet_ = Binds.ExistingClassForTarget("TSet<T>");
+		TSet_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptSetBinds::Construct));
 
-	auto SetIteratorType = MakeShared<FAngelscriptSetIteratorType>();
-	FAngelscriptType::Register(SetIteratorType);
+		TSet_.Destructor("void f()", &FAngelscriptSetBinds::Destruct)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::Destruct", false, false, false);
 
-	FBindFlags ItFlags;
-	ItFlags.bTemplate = true;
-	ItFlags.TemplateType = "<T>";
+		TSet_.TemplateCallback(
+			"bool f(int&in Type, int&out ErrorMessage)",
+			&ValidateSetOperations);
 
-	auto TSetIterator_ = FAngelscriptBinds::ValueClass<FSetIterator>("TSetIterator<class T>", ItFlags);
-	TSetIterator_.Constructor("void f(const TSetIterator<T>& Other)", FUNC_TRIVIAL(FSetIterator::CopyConstruct));
+		TSet_.Method("void Add(const T&in if_handle_then_const Value)", &FAngelscriptSetBinds::Add)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::Add", false, true, true);
+
+		TSet_.Method("void Append(const TArray<T>& Array)", &FAngelscriptSetBinds::AppendArray)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::AppendArray", false, true, true);
+
+		TSet_.Method("void Append(const TSet<T>& Set)", &FAngelscriptSetBinds::AppendSet)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::AppendSet", false, true, true);
+
+		TSet_.Method("bool Contains(const T&in if_handle_then_const Value) const", &FAngelscriptSetBinds::Contains)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::Contains", true, true, false);
+
+		TSet_.Method("bool Remove(const T&in if_handle_then_const Value)", &FAngelscriptSetBinds::Remove)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::Remove", false, true, true);
+
+		TSet_.Method("TSet<T>& opAssign(const TSet<T>& Other)", &FAngelscriptSetBinds::Assign)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::Assign", false, true, true);
+
+		TSet_.Method("bool opEquals(const TSet<T>& Other) const", &FAngelscriptSetBinds::OpEquals)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::OpEquals", false, true, false);
+
+		TSet_.Method("void Empty(int32 Slack = 0)", &FAngelscriptSetBinds::Empty)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::Empty", false, false, false);
+
+		TSet_.Method("void Reset()", &FAngelscriptSetBinds::Reset)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptSetBinds::Reset", false, false, false);
+
+		TSet_.Method("int32 Num() const", FUNC_TRIVIAL(FAngelscriptSetBinds::Num));
+		TSet_.Method("bool IsEmpty() const", FUNC_TRIVIAL(FAngelscriptSetBinds::IsEmpty));
+
+		auto TSetIterator_ = Binds.ExistingClassForTarget("TSetIterator<T>");
+		TSetIterator_.Constructor("void f(const TSetIterator<T>& Other)", FUNC_TRIVIAL(FSetIterator::CopyConstruct));
 
 #if AS_ITERATOR_DEBUGGING
-	TSetIterator_.Destructor("void f()", &FSetIterator::Destruct);
+		TSetIterator_.Destructor("void f()", &FSetIterator::Destruct);
 #endif
 
-	TSetIterator_.Method("TSetIterator<T>& opAssign(const TSetIterator<T>& Other)", METHOD_TRIVIAL(FSetIterator, Assignment));
-	TSetIterator_.Property("bool CanProceed", &FSetIterator::bCanProceed);
-	TSetIterator_.Method("const T& Proceed()", METHOD(FSetIterator, Proceed));
+		TSetIterator_.Method("TSetIterator<T>& opAssign(const TSetIterator<T>& Other)", METHOD_TRIVIAL(FSetIterator, Assignment));
+		TSetIterator_.Property("bool CanProceed", &FSetIterator::bCanProceed);
+		TSetIterator_.Method("const T& Proceed()", METHOD(FSetIterator, Proceed));
 
-	auto SetConstIteratorType = MakeShared<FAngelscriptSetConstIteratorType>();
-	FAngelscriptType::Register(SetConstIteratorType);
-
-	auto TSetConstIterator_ = FAngelscriptBinds::ValueClass<FSetIterator>("TSetConstIterator<class T>", ItFlags);
-	TSetConstIterator_.Constructor("void f(const TSetConstIterator<T>& Other)", FUNC_TRIVIAL(FSetIterator::CopyConstruct));
+		auto TSetConstIterator_ = Binds.ExistingClassForTarget("TSetConstIterator<T>");
+		TSetConstIterator_.Constructor("void f(const TSetConstIterator<T>& Other)", FUNC_TRIVIAL(FSetIterator::CopyConstruct));
 
 #if AS_ITERATOR_DEBUGGING
-	TSetConstIterator_.Destructor("void f()", &FSetIterator::Destruct);
+		TSetConstIterator_.Destructor("void f()", &FSetIterator::Destruct);
 #endif
 
-	TSetConstIterator_.Method("TSetConstIterator<T>& opAssign(const TSetConstIterator<T>& Other)", METHOD_TRIVIAL(FSetIterator, Assignment));
-	TSetConstIterator_.Property("bool CanProceed", &FSetIterator::bCanProceed);
-	TSetConstIterator_.Method("const T& Proceed()", METHOD(FSetIterator, Proceed));
+		TSetConstIterator_.Method("TSetConstIterator<T>& opAssign(const TSetConstIterator<T>& Other)", METHOD_TRIVIAL(FSetIterator, Assignment));
+		TSetConstIterator_.Property("bool CanProceed", &FSetIterator::bCanProceed);
+		TSetConstIterator_.Method("const T& Proceed()", METHOD(FSetIterator, Proceed));
 
-	TSet_.Method("int opForBegin()", [](FScriptSet& Set, asCObjectType* Meta) -> int32
-	{
-		return FSetOperations::GetSetOperations(Meta)->FindNextIndex(Set, -1);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	TSet_.Method("int opForBegin() const", [](FScriptSet& Set, asCObjectType* Meta) -> int32
-	{
-		return FSetOperations::GetSetOperations(Meta)->FindNextIndex(Set, -1);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		TSet_.Method("int opForBegin()", &FAngelscriptSetIterationBinds::OpForBegin).PassScriptObjectTypeAsFirstParam();
+		TSet_.Method("int opForBegin() const", &FAngelscriptSetIterationBinds::OpForBegin).PassScriptObjectTypeAsFirstParam();
+		TSet_.Method("bool opForEnd(const int Iterator) const", &FAngelscriptSetIterationBinds::OpForEnd);
+		TSet_.Method("void opForNext(int&inout Iterator)", &FAngelscriptSetIterationBinds::OpForNext)
+			.PassScriptObjectTypeAsFirstParam();
+		TSet_.Method("void opForNext(int&inout Iterator) const", &FAngelscriptSetIterationBinds::OpForNext)
+			.PassScriptObjectTypeAsFirstParam();
+		TSet_.Method("T& opForValue(const int Iterator)", &FAngelscriptSetIterationBinds::OpForValue)
+			.PassScriptObjectTypeAsFirstParam();
+		TSet_.Method("const T& opForValue(const int Iterator) const", &FAngelscriptSetIterationBinds::OpForValue)
+			.PassScriptObjectTypeAsFirstParam();
 
-	TSet_.Method("bool opForEnd(const int Iterator) const", [](FScriptSet&, int32 Iterator) -> bool { return Iterator == -1; });
+		TSet_.Method("TSetIterator<T> Iterator()", FUNC_TRIVIAL(FSetIterator::Create))
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTArrayIteratorCreate();
 
-	TSet_.Method("void opForNext(int&inout Iterator)", [](FScriptSet& Set, asCObjectType* Meta, int32& Iterator)
-	{
-		if (Iterator == -1)
-			return;
-		Iterator = FSetOperations::GetSetOperations(Meta)->FindNextIndex(Set, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	TSet_.Method("void opForNext(int&inout Iterator) const", [](FScriptSet& Set, asCObjectType* Meta, int32& Iterator)
-	{
-		if (Iterator == -1)
-			return;
-		Iterator = FSetOperations::GetSetOperations(Meta)->FindNextIndex(Set, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		TSet_.Method("TSetConstIterator<T> Iterator() const", FUNC_TRIVIAL(FSetIterator::Create))
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTArrayIteratorCreate();
+	}
 
-	TSet_.Method("T& opForValue(const int Iterator)", [](FScriptSet& Set, asCObjectType* Meta, int32 Iterator) -> void*
+	void BindTSetTypeInfrastructure(FAngelscriptBinds& Binds)
 	{
-		auto* Ops = FSetOperations::GetSetOperations(Meta);
-		if (!Set.IsValidIndex(Iterator))
+		auto SetType = MakeShared<FAngelscriptSetType>();
+		Binds.RegisterTypeForTarget(SetType);
+
+		FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
+		Binds.RegisterTypeFinderForTarget([SetType, TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
 		{
-			FAngelscriptEngine::Throw("Iterator out of bounds.");
-			return nullptr;
-		}
-		return Ops->GetElement(Set, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	TSet_.Method("const T& opForValue(const int Iterator) const", [](FScriptSet& Set, asCObjectType* Meta, int32 Iterator) -> void*
-	{
-		auto* Ops = FSetOperations::GetSetOperations(Meta);
-		if (!Set.IsValidIndex(Iterator))
-		{
-			FAngelscriptEngine::Throw("Iterator out of bounds.");
-			return nullptr;
-		}
-		return Ops->GetElement(Set, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+			FSetProperty* SetProp = CastField<FSetProperty>(Property);
+			if (SetProp == nullptr)
+				return false;
 
-	TSet_.Method("TSetIterator<T> Iterator()", FUNC_TRIVIAL(FSetIterator::Create));
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_NATIVE_TARRAY_ITERATOR_CREATE(TSet_);
+			FAngelscriptTypeUsage InnerUsage = FAngelscriptTypeUsage::FromProperty(*TargetTypeDatabase, SetProp->ElementProp);
+			if (!InnerUsage.IsValid())
+				return false;
 
-	TSet_.Method("TSetConstIterator<T> Iterator() const", FUNC_TRIVIAL(FSetIterator::Create));
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_NATIVE_TARRAY_ITERATOR_CREATE(TSet_);
-});
+			Usage.Type = SetType;
+			Usage.SubTypes.Add(InnerUsage);
+			return true;
+		});
+
+		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptSetIteratorType>());
+		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptSetConstIteratorType>());
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TSet_TypeDeclarations(
+	TEXT("TSet.Declaration"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindTSetTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TSet_MethodSurface(
+	TEXT("TSet.MethodSurface"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTSetMethodSurface);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TSet_TypeInfrastructure(
+	TEXT("TSet.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTSetTypeInfrastructure);
 
 bool ValidateSetOperations(asITypeInfo* TemplateType, asCString* ErrorMessage)
 {

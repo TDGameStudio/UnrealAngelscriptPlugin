@@ -1,18 +1,27 @@
 #include "AngelscriptBinds.h"
+
 #include "AngelscriptEngine.h"
+#include "Bind_FAngelscriptGameThreadScopeWorldContext_Functions.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FAngelscriptGameThreadScopeWorldContext(FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	auto Bind_ = FAngelscriptBinds::ValueClass<FAngelscriptGameThreadScopeWorldContext>("FAngelscriptGameThreadScopeWorldContext", FBindFlags());
-
-	Bind_.Constructor("void f(const UObject WorldContext)", [](FAngelscriptGameThreadScopeWorldContext* Address, UObject* WorldContext)
+	void BindFAngelscriptGameThreadScopeWorldContext(FAngelscriptBinds& Binds)
 	{
-		new(Address) FAngelscriptGameThreadScopeWorldContext(WorldContext);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
+		auto Scope_ = Binds.ValueClassForTarget<FAngelscriptGameThreadScopeWorldContext>(
+			"FAngelscriptGameThreadScopeWorldContext",
+			FBindFlags());
 
-	Bind_.Destructor("void f()", [](FAngelscriptGameThreadScopeWorldContext& Scope)
-	{
-		Scope.~FAngelscriptGameThreadScopeWorldContext();
-	});
-});
+		Scope_.Constructor(
+			"void f(const UObject WorldContext)",
+			&FAngelscriptFAngelscriptGameThreadScopeWorldContextBinds::Construct)
+			.NoDiscard();
+		Scope_.Destructor(
+			"void f()",
+			&FAngelscriptFAngelscriptGameThreadScopeWorldContextBinds::Destruct);
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FAngelscriptGameThreadScopeWorldContext(
+	TEXT("FAngelscriptGameThreadScopeWorldContext"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFAngelscriptGameThreadScopeWorldContext);

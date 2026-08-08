@@ -68,6 +68,15 @@ private:
 		return FText::Format(Pattern, Args).ToString().ReplaceCharWithEscapedChar();
 	}
 
+	static FString BuildGenericExpected()
+	{
+		const FText Pattern = FText::FromString(TEXT("{0}|{1}"));
+		FFormatOrderedArguments Args;
+		Args.Add(FFormatArgumentValue(int32(-7)));
+		Args.Add(FFormatArgumentValue(FText::FromString(TEXT("Alpha"))));
+		return FText::Format(Pattern, Args).ToString().ReplaceCharWithEscapedChar();
+	}
+
 public:
 	BEFORE_ALL()
 	{
@@ -161,6 +170,35 @@ public:
 
 		ASSERT_THAT(IsTrue(
 			ExpectGlobalInt(*TestRunner, Engine, M, TEXT("int NamedFormat_Match()"), TEXT("Named FFormatArgumentValue args should produce expected FText::Format output"), 1),
+			TEXT("ExpectGlobalInt should pass")));
+	}
+
+	TEST_METHOD(GenericFormat)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString GenericExpected = BuildGenericExpected();
+		FString GenericFormatSource = ASTEST_AS(R"AS(
+			int GenericFormat_Match()
+			{
+				FText Result = FText::Format(FText::FromString("{0}|{1}"), int32(-7), FText::FromString("Alpha"));
+				return Result.ToString() == "__GENERIC_EXPECTED__" ? 1 : 0;
+			}
+			)AS");
+		GenericFormatSource.ReplaceInline(TEXT("__GENERIC_EXPECTED__"), *GenericExpected, ESearchCase::CaseSensitive);
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASTextFormatting_GenericFormat"), GenericFormatSource);
+		if (!Mod.IsValid()) return;
+
+		ASSERT_THAT(IsTrue(
+			ExpectGlobalInt(
+				*TestRunner,
+				Engine,
+				Mod.GetModule(),
+				TEXT("int GenericFormat_Match()"),
+				TEXT("Generic FText::Format should marshal primitive and FText wildcard arguments"),
+				1),
 			TEXT("ExpectGlobalInt should pass")));
 	}
 };

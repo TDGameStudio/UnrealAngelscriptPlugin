@@ -2,6 +2,7 @@
 #include "AngelscriptEngine.h"
 #include "StaticJIT/StaticJITHelperFunctions.h"
 
+#include "Bind_FName_Functions.h"
 #include "Helper_ToString.h"
 #include "Binds/Helper_PODType.h"
 
@@ -126,83 +127,84 @@ struct FNameType : TAngelscriptPODPropertyType<FNameProperty>
 	}
 };
 
-static FName SCRIPT_NAME_None(NAME_None);
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FName((int32)FAngelscriptBinds::EOrder::Early+1, []
+namespace
 {
-	FBindFlags Flags;
-	Flags.bPOD = true;
+	FName ScriptNameNone(NAME_None);
 
-	auto FName_ = FAngelscriptBinds::ValueClass<FName>("FName", Flags);
-	FAngelscriptType::Register(MakeShared<FNameType>());
-
-	FName_.Constructor("void f()", [](FName* Address)
+	void BindFNameType(FAngelscriptBinds& Binds)
 	{
-		new(Address) FName();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FName_, "FName");
+		FBindFlags Flags;
+		Flags.bPOD = true;
+		Binds.ValueClassForTarget<FName>("FName", Flags);
+	}
 
-	FName_.Constructor("void f(const FName& Other)", [](FName* Address, const FName& Other)
+	void BindFNameInfrastructure(FAngelscriptBinds& Binds)
 	{
-		new(Address) FName(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FName_, "FName");
+		Binds.RegisterTypeForTarget(MakeShared<FNameType>());
+		FToStringHelper::Register(Binds, TEXT("FName"), &FAngelscriptFNameBinds::AppendToString, true);
+	}
 
-	FName_.Constructor("void f(const FString& Other)", [](FName* Address, const FString& Other)
+	void BindFNameFunctions(FAngelscriptBinds& Binds)
 	{
-		new(Address) FName(*Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
+		auto FName_ = Binds.ExistingClassForTarget("FName");
 
-	FName_.Method("FName& opAssign(const FName& Other)", METHODPR_TRIVIAL(FName&, FName, operator=, (const FName&)));
-	FName_.Method("bool opEquals(const FName& Other) const", FUNC_TRIVIAL(FStaticJITHelperFunctions::FName_Equals));
-	FName_.Method("int32 Compare(const FName& Other) const", METHODPR_TRIVIAL(int32, FName, Compare, (const FName&) const));
+		FName_.Constructor(
+			"void f()",
+			&FAngelscriptFNameBinds::ConstructDefault,
+			"FName",
+			true)
+			.NoDiscard();
 
-	FName_.Method("bool IsNone() const", METHODPR_TRIVIAL(bool, FName, IsNone, () const));
-	FName_.Method("int32 GetNumber() const", METHODPR_TRIVIAL(int32, FName, GetNumber, () const));
-	FName_.Method("void SetNumber(int32 NewNumber)", METHODPR_TRIVIAL(void, FName, SetNumber, (const int32)));
+		FName_.Constructor(
+			"void f(const FName& Other)",
+			&FAngelscriptFNameBinds::ConstructCopy,
+			"FName",
+			true)
+			.NoDiscard();
 
-	FName_.Method("FString GetPlainNameString() const", METHODPR_TRIVIAL(FString, FName, GetPlainNameString, () const));
+		FName_.Constructor("void f(const FString& Other)", &FAngelscriptFNameBinds::ConstructFromString).NoDiscard();
 
-	FName_.Method("bool IsEqual(const FName& Other, bool bIgnoreCase = true, bool bCompareNumber = true) const",
-	[](const FName& Self, const FName& Other, bool bIgnoreCase, bool bCompareNumber)
-	{
-		return Self.IsEqual(Other, bIgnoreCase ? ENameCase::IgnoreCase : ENameCase::CaseSensitive, bCompareNumber);
-	});
+		FName_.Method("FName& opAssign(const FName& Other)", METHODPR_TRIVIAL(FName&, FName, operator=, (const FName&)));
+		FName_.Method("bool opEquals(const FName& Other) const", FUNC_TRIVIAL(FStaticJITHelperFunctions::FName_Equals));
+		FName_.Method("int32 Compare(const FName& Other) const", METHODPR_TRIVIAL(int32, FName, Compare, (const FName&) const));
 
-	FName_.Method("uint GetHash() const", [](const FName& Name) -> uint32
-	{
-		return GetTypeHash(Name);
-	});
+		FName_.Method("bool IsNone() const", METHODPR_TRIVIAL(bool, FName, IsNone, () const));
+		FName_.Method("int32 GetNumber() const", METHODPR_TRIVIAL(int32, FName, GetNumber, () const));
+		FName_.Method("void SetNumber(int32 NewNumber)", METHODPR_TRIVIAL(void, FName, SetNumber, (const int32)));
 
-	FAngelscriptBinds::BindGlobalVariable("const FName NAME_None", &SCRIPT_NAME_None);
+		FName_.Method("FString GetPlainNameString() const", METHODPR_TRIVIAL(FString, FName, GetPlainNameString, () const));
 
-	FToStringHelper::Register(TEXT("FName"), [](void* Ptr, FString& Str)
-	{
-		Str += ((FName*)Ptr)->ToString();
-	}, true);
+		FName_.Method(
+			"bool IsEqual(const FName& Other, bool bIgnoreCase = true, bool bCompareNumber = true) const",
+			&FAngelscriptFNameBinds::IsEqual);
 
-	auto FString_ = FAngelscriptBinds::ExistingClass("FString");
-	FString_.Method("FString opAdd_r(const FName& Value) const",
-	[](FString& Str, const FName& Value) -> FString
-	{
-		return Value.ToString() + Str;
-	});
+		FName_.Method("uint GetHash() const", &FAngelscriptFNameBinds::GetHash);
 
-	FString_.Method("FString& opAddAssign_r(const FName& Value) const",
-	[](FString& Str, const FName& Value) -> FString&
-	{
-		Str = Value.ToString() + Str;
-		return Str;
-	});
+		Binds.BindGlobalVariableForTarget("const FName NAME_None", &ScriptNameNone);
 
-	FName_.Method("bool opEquals(const FString& Other) const",
-	[](const FName& Name, const FString& Str) -> bool
-	{
-		return Name == *Str;
-	});
+		auto FString_ = Binds.ExistingClassForTarget("FString");
+		FString_.Method("FString opAdd_r(const FName& Value) const", &FAngelscriptFNameBinds::PrefixName);
+		FString_.Method("FString& opAddAssign_r(const FName& Value) const", &FAngelscriptFNameBinds::PrefixNameAssign);
 
-	FAngelscriptBinds::BindGlobalFunction("const FName& __STATIC_NAME(int Id) no_discard", FUNC_TRIVIAL(FAngelscriptEngine::GetStaticName));
-});
+		FName_.Method("bool opEquals(const FString& Other) const", &FAngelscriptFNameBinds::EqualsString);
+
+		Binds.BindGlobalFunctionForTarget(
+			"const FName& __STATIC_NAME(int Id) no_discard",
+			FUNC_TRIVIAL(FAngelscriptEngine::GetStaticName));
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FName_Type(
+	TEXT("FName.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFNameType);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FName_Infrastructure(
+	TEXT("FName.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFNameInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FName(
+	TEXT("FName.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFNameFunctions);

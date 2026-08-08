@@ -499,11 +499,29 @@ void* FAngelscriptOptionalBinds::Get(FAngelscriptOptional& Optional, asCObjectTy
 	return Ops->GetValuePtr(Optional);
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TOptional(FAngelscriptBinds::EOrder::Early, []
+bool FAngelscriptOptionalBinds::ValidateTemplate(asITypeInfo* TemplateType, asCString* ErrorMessage)
+{
+	return FOptionalOperations::ValidateOptionalOperations(TemplateType, ErrorMessage) != nullptr;
+}
+
+static void BindTOptionalTypeDeclarations(FAngelscriptBinds& Binds)
+{
+	FBindFlags Flags;
+	Flags.bTemplate = true;
+	Flags.TemplateType = "<T>";
+	Flags.ExtraFlags |= asOBJ_TEMPLATE_SUBTYPE_DETERMINES_SIZE;
+	Flags.ExtraFlags |= asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
+	Flags.Alignment = 1;
+	Binds.ValueClassForTarget("TOptional<class T>", sizeof(bool), Flags);
+}
+
+static void BindTOptionalTypeInfrastructure(FAngelscriptBinds& Binds)
 {
 	auto OptionalType = MakeShared<FAngelscriptOptionalType>();
-	FAngelscriptType::Register(OptionalType);
-	FAngelscriptType::RegisterTypeFinder([OptionalType](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
+	Binds.RegisterTypeForTarget(OptionalType);
+
+	FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
+	Binds.RegisterTypeFinderForTarget([OptionalType, TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
 	{
 		FOptionalProperty* OptionalProp = CastField<FOptionalProperty>(Property);
 		if (OptionalProp == nullptr)
@@ -511,7 +529,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TOptional(FAngelscriptBinds::E
 		if ((OptionalProp->GetPropertyFlags() & CPF_NonNullable) != 0)
 			return false;
 
-		FAngelscriptTypeUsage InnerUsage = FAngelscriptTypeUsage::FromProperty(OptionalProp->GetValueProperty());
+		FAngelscriptTypeUsage InnerUsage = FAngelscriptTypeUsage::FromProperty(*TargetTypeDatabase, OptionalProp->GetValueProperty());
 		if (!InnerUsage.IsValid())
 			return false;
 
@@ -519,77 +537,86 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TOptional(FAngelscriptBinds::E
 		Usage.SubTypes.Add(InnerUsage);
 		return true;
 	});
+}
 
-	FBindFlags Flags;
-	Flags.bTemplate = true;
-	Flags.TemplateType = "<T>";
-	Flags.ExtraFlags |= asOBJ_TEMPLATE_SUBTYPE_DETERMINES_SIZE;
-	Flags.ExtraFlags |= asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
-	Flags.Alignment = 1;
-	auto TOptional_ = FAngelscriptBinds::ValueClass("TOptional<class T>", sizeof(bool), Flags);
+static void BindTOptionalMethodSurface(FAngelscriptBinds& Binds)
+{
+	auto TOptional_ = Binds.ExistingClassForTarget("TOptional<T>");
 
-	TOptional_.Constructor("void f()", &FAngelscriptOptionalBinds::Construct);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TOptional_, "FAngelscriptOptionalBinds::Construct", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+	TOptional_.Constructor("void f()", &FAngelscriptOptionalBinds::Construct)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::Construct", false, false, false);
 
-	TOptional_.ImplicitConstructor("void f(const T&in if_handle_then_const Other)", &FAngelscriptOptionalBinds::InitConstruct);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY(TOptional_, "FAngelscriptOptionalBinds::InitConstruct", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Initialize the optional with a valid value.\n")
+	TOptional_.ImplicitConstructor("void f(const T&in if_handle_then_const Other)", &FAngelscriptOptionalBinds::InitConstruct)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::InitConstruct", false, false, true)
+		.Documentation(TEXT("Initialize the optional with a valid value.\n"));
 
-	TOptional_.Constructor("void f(const TOptional<T>& Other)", &FAngelscriptOptionalBinds::CopyConstruct);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY(TOptional_, "FAngelscriptOptionalBinds::CopyConstruct", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+	TOptional_.Constructor("void f(const TOptional<T>& Other)", &FAngelscriptOptionalBinds::CopyConstruct)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::CopyConstruct", false, false, true);
 
-	TOptional_.Destructor("void f()", &FAngelscriptOptionalBinds::Destruct);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TOptional_, "FAngelscriptOptionalBinds::Destruct", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+	TOptional_.Destructor("void f()", &FAngelscriptOptionalBinds::Destruct)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::Destruct", false, false, false);
 
-	TOptional_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)",
-		[](asITypeInfo* TemplateType, asCString* ErrorMessage) -> bool
-	{
-		return FOptionalOperations::ValidateOptionalOperations(TemplateType, ErrorMessage) != nullptr;
-	});
+	TOptional_.TemplateCallback(
+		"bool f(int&in Type, int&out ErrorMessage)",
+		&FAngelscriptOptionalBinds::ValidateTemplate);
 
-	TOptional_.Method("TOptional<T>& opAssign(const TOptional<T>& Other)", &FAngelscriptOptionalBinds::OpAssign);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY(TOptional_, "FAngelscriptOptionalBinds::OpAssign", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+	TOptional_.Method("TOptional<T>& opAssign(const TOptional<T>& Other)", &FAngelscriptOptionalBinds::OpAssign)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::OpAssign", false, false, true);
 
-	TOptional_.Method("TOptional<T>& opAssign(const T&in if_handle_then_const Value)", &FAngelscriptOptionalBinds::OpAssignValue);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY(TOptional_, "FAngelscriptOptionalBinds::OpAssignValue", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+	TOptional_.Method("TOptional<T>& opAssign(const T&in if_handle_then_const Value)", &FAngelscriptOptionalBinds::OpAssignValue)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::OpAssignValue", false, false, true);
 
-	TOptional_.Method("bool opEquals(const TOptional<T>& Other) const", &FAngelscriptOptionalBinds::OpEquals);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(TOptional_, "FAngelscriptOptionalBinds::OpEquals", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+	TOptional_.Method("bool opEquals(const TOptional<T>& Other) const", &FAngelscriptOptionalBinds::OpEquals)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::OpEquals", false, true, false);
 
-	TOptional_.Method("bool IsSet() const", &FAngelscriptOptionalBinds::IsSet);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TOptional_, "FAngelscriptOptionalBinds::IsSet", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Returns if the optional has a valid value. This must be true in order for Get() or GetValue() to be called.\n")
+	TOptional_.Method("bool IsSet() const", &FAngelscriptOptionalBinds::IsSet)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::IsSet", false, false, false)
+		.Documentation(TEXT("Returns if the optional has a valid value. This must be true in order for Get() or GetValue() to be called.\n"));
 
-	TOptional_.Method("void Set(const T&in if_handle_then_const Value) const", &FAngelscriptOptionalBinds::Set);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY(TOptional_, "FAngelscriptOptionalBinds::Set", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+	TOptional_.Method("void Set(const T&in if_handle_then_const Value) const", &FAngelscriptOptionalBinds::Set)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::Set", false, false, true);
 
-	TOptional_.Method("const T& GetValue() const", &FAngelscriptOptionalBinds::GetValue);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TOptional_, "FAngelscriptOptionalBinds::GetValue", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Gets a const reference to the optional's set value. IsSet() must return true for this function to be called.\n")
+	TOptional_.Method("const T& GetValue() const", &FAngelscriptOptionalBinds::GetValue)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::GetValue", false, false, false)
+		.Documentation(TEXT("Gets a const reference to the optional's set value. IsSet() must return true for this function to be called.\n"));
 
-	TOptional_.Method("T& GetValue()", &FAngelscriptOptionalBinds::GetValue);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TOptional_, "FAngelscriptOptionalBinds::GetValue", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Gets a non-const reference to the optional's set value. IsSet() must return true for this function to be called.\n")
+	TOptional_.Method("T& GetValue()", &FAngelscriptOptionalBinds::GetValue)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::GetValue", false, false, false)
+		.Documentation(TEXT("Gets a non-const reference to the optional's set value. IsSet() must return true for this function to be called.\n"));
 
-	TOptional_.Method("const T& Get(const T&in if_handle_then_const DefaultValue) const", &FAngelscriptOptionalBinds::Get);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY(TOptional_, "FAngelscriptOptionalBinds::Get", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("If set returns the optional's set value, otherwise returns DefaultValue")
+	TOptional_.Method("const T& Get(const T&in if_handle_then_const DefaultValue) const", &FAngelscriptOptionalBinds::Get)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::Get", false, false, true)
+		.Documentation(TEXT("If set returns the optional's set value, otherwise returns DefaultValue"));
 
-	TOptional_.Method("void Reset()", &FAngelscriptOptionalBinds::Reset);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TOptional_, "FAngelscriptOptionalBinds::Reset", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Destruct the value inside the optional and unset it.\n")
+	TOptional_.Method("void Reset()", &FAngelscriptOptionalBinds::Reset)
+		.PassScriptObjectTypeAsFirstParam()
+		.NativeTemplateInstantiatedCall("FAngelscriptOptionalBinds::Reset", false, false, false)
+		.Documentation(TEXT("Destruct the value inside the optional and unset it.\n"));
+}
 
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_TOptional_TypeDeclarations(
+	TEXT("TOptional.Declaration"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindTOptionalTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TOptional_MethodSurface(
+	TEXT("TOptional.MethodSurface"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTOptionalMethodSurface);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TOptional_TypeInfrastructure(
+	TEXT("TOptional.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTOptionalTypeInfrastructure);

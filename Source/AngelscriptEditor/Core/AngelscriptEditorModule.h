@@ -85,11 +85,7 @@ public:
 		FString ModuleName,
 		TSet<FString>& ModuleSet
 	);
-	//Not Currently Used - Kept for Reference
-	static void GenerateSourceFiles(FString NewModuleName, TArray<FString> IncludeList, bool bIsEditor, TArray<FString>& Header, TArray<FString>& CPPFile);
 	static void GeneratePluginDirectory(FString PluginName, TArray<FString>& PluginFile, TArray<FString> ModuleNames);
-	static void GenerateFunctionEntriesOld2(UClass* Class, TArray<FString>& File, FString HeaderPath, FString ModuleName);
-	static void GenerateFunctionEntriesOld(UClass* Class, TArray<FString>& File, FString HeaderPath, FString ModuleName);
 	static bool FindFunctionDefinitionLine(const FString& FunctionSymbolName, const FString& FunctionModuleName, uint32& OutLineNumber, FString& OutSourceFile);
 	static void OriginalGenerate();
 

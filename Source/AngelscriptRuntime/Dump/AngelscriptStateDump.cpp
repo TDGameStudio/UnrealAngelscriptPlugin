@@ -18,6 +18,8 @@
 #include "StaticJIT/AngelscriptStaticJIT.h"
 #include "StaticJIT/PrecompiledData.h"
 
+#include "Testing/AngelscriptBindExecutionObservation.h"
+
 #include "HAL/FileManager.h"
 #include "Logging/LogMacros.h"
 #include "Misc/DateTime.h"
@@ -38,17 +40,59 @@ namespace
 		return FString::Join(Values, TEXT(";"));
 	}
 
-	FString JoinNames(const TSet<FName>& Values)
+	FString BindPhaseToString(const EAngelscriptBindPhase Phase)
 	{
-		TArray<FString> AsStrings;
-		AsStrings.Reserve(Values.Num());
-		for (const FName Value : Values)
+		switch (Phase)
 		{
-			AsStrings.Add(Value.ToString());
+		case EAngelscriptBindPhase::TypeDeclarations:
+			return TEXT("TypeDeclarations");
+		case EAngelscriptBindPhase::TypeInfrastructure:
+			return TEXT("TypeInfrastructure");
+		case EAngelscriptBindPhase::ManualBindings:
+			return TEXT("ManualBindings");
+		case EAngelscriptBindPhase::GeneratedBindings:
+			return TEXT("GeneratedBindings");
+		case EAngelscriptBindPhase::ReflectionBindings:
+			return TEXT("ReflectionBindings");
+		case EAngelscriptBindPhase::PostReflectionBindings:
+			return TEXT("PostReflectionBindings");
+		case EAngelscriptBindPhase::Finalization:
+			return TEXT("Finalization");
+		default:
+			return TEXT("Invalid");
 		}
-		AsStrings.Sort();
-		return JoinStrings(AsStrings);
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FString BindProviderStatusToString(const EAngelscriptBindProviderStatus Status)
+	{
+		switch (Status)
+		{
+		case EAngelscriptBindProviderStatus::Succeeded:
+			return TEXT("Succeeded");
+		case EAngelscriptBindProviderStatus::Failed:
+			return TEXT("Failed");
+		default:
+			return TEXT("Unknown");
+		}
+	}
+
+	FString BindPublicationEligibilityToString(
+		const EAngelscriptBindPublicationEligibility Eligibility)
+	{
+		switch (Eligibility)
+		{
+		case EAngelscriptBindPublicationEligibility::Pending:
+			return TEXT("Pending");
+		case EAngelscriptBindPublicationEligibility::Eligible:
+			return TEXT("Eligible");
+		case EAngelscriptBindPublicationEligibility::Blocked:
+			return TEXT("Blocked");
+		default:
+			return TEXT("Unknown");
+		}
+	}
+#endif
 
 	FAngelscriptStateDump::FTableResult SaveTable(const FString& OutputDir, const FString& TableName, const FCSVWriter& Writer)
 	{
@@ -502,7 +546,7 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpEngineOverview(FA
 		LexToString(TotalEnumCount),
 		LexToString(TotalDelegateCount),
 		LexToString(FAngelscriptType::GetTypes().Num()),
-		LexToString(FAngelscriptBinds::GetAllRegisteredBindNames().Num()),
+		LexToString(FAngelscriptBind::GetRegisteredBindMetadata().Num()),
 		LexToString(FJITDatabase::Get().Functions.Num()),
 		MoveTemp(DebugServerClientState),
 		JoinStrings(Engine.AllRootPaths),
@@ -546,7 +590,6 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpRuntimeConfig(FAn
 	AddConfigValue(TEXT("DebugServerPort"), LexToString(Config.DebugServerPort));
 	AddConfigValue(TEXT("bIsEditor"), BoolToString(Config.bIsEditor));
 	AddConfigValue(TEXT("bRunningCommandlet"), BoolToString(Config.bRunningCommandlet));
-	AddConfigValue(TEXT("DisabledBindNames"), JoinNames(Config.DisabledBindNames));
 
 	return SaveTable(OutputDir, TEXT("RuntimeConfig.csv"), Writer);
 }
@@ -986,25 +1029,95 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpSummary(const TAr
 
 FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpBindRegistrations(FAngelscriptEngine& Engine, const FString& OutputDir)
 {
-	const TSet<FName>& DisabledBindNames = Engine.GetRuntimeConfig().DisabledBindNames;
-	const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList(DisabledBindNames);
+	const TArray<FAngelscriptBindMetadata> BindMetadata =
+		FAngelscriptBind::GetRegisteredBindMetadata();
+	const FAngelscriptBindState* BindState = Engine.GetBindState();
+	FString PublicationEligibility = TEXT("Pending");
+	if (BindState != nullptr && BindState->bDirectBindFailed)
+	{
+		PublicationEligibility = TEXT("Blocked");
+	}
+	else if (Engine.IsReadyForPublication())
+	{
+		PublicationEligibility = TEXT("Eligible");
+	}
+	const FString PublicationResult = Engine.IsReadyForPublication()
+		? TEXT("Published")
+		: TEXT("NotPublished");
+
+#if WITH_DEV_AUTOMATION_TESTS
+	const FAngelscriptBindExecutionSnapshot ExecutionSnapshot =
+		FAngelscriptBindExecutionObservation::GetLastSnapshot();
+	const bool bSnapshotMatchesEngine = ExecutionSnapshot.EngineIdentity
+		== reinterpret_cast<UPTRINT>(&Engine);
+	if (bSnapshotMatchesEngine)
+	{
+		PublicationEligibility =
+			BindPublicationEligibilityToString(ExecutionSnapshot.PublicationEligibility);
+	}
+#endif
 
 	FCSVWriter Writer;
 	Writer.AddHeader({
+		TEXT("OwnerModule"),
 		TEXT("BindName"),
-		TEXT("BindModule"),
-		TEXT("bIsSkipped"),
-		TEXT("SkipReason")
+		TEXT("Phase"),
+		TEXT("SourceFile"),
+		TEXT("SourceLine"),
+		TEXT("ExecutionStatus"),
+		TEXT("DurationSeconds"),
+		TEXT("FailureDiagnostic"),
+		TEXT("ExecutionEpoch"),
+		TEXT("PublicationEligibility"),
+		TEXT("PublicationResult")
 	});
 
-	for (const FAngelscriptBinds::FBindInfo& BindInfo : BindInfos)
+	for (const FAngelscriptBindMetadata& Bind : BindMetadata)
 	{
-		const bool bIsSkipped = !BindInfo.bEnabled;
+		FString ExecutionStatus = TEXT("NotObserved");
+		FString DurationSeconds;
+		FString FailureDiagnostic;
+		FString ExecutionEpoch;
+#if WITH_DEV_AUTOMATION_TESTS
+		if (bSnapshotMatchesEngine)
+		{
+			const FAngelscriptBindProviderExecutionRecord* ExecutionRecord =
+				ExecutionSnapshot.ProviderRecords.FindByPredicate(
+					[&Bind](const FAngelscriptBindProviderExecutionRecord& Candidate)
+					{
+						return Candidate.OwnerModule == Bind.OwnerModule
+							&& Candidate.BindName == Bind.BindName
+							&& Candidate.Phase == Bind.Phase
+							&& Candidate.SourceFile == Bind.SourceFile
+							&& Candidate.SourceLine == Bind.SourceLine;
+					});
+			if (ExecutionRecord != nullptr)
+			{
+				ExecutionStatus = BindProviderStatusToString(ExecutionRecord->Status);
+				DurationSeconds = FString::Printf(TEXT("%.9f"), ExecutionRecord->DurationSeconds);
+				FailureDiagnostic = ExecutionRecord->FailureDiagnostic;
+				ExecutionEpoch = LexToString(ExecutionRecord->ExecutionEpoch);
+			}
+			else
+			{
+				ExecutionStatus = TEXT("NotExecuted");
+				ExecutionEpoch = LexToString(ExecutionSnapshot.ExecutionEpoch);
+			}
+		}
+#endif
+
 		Writer.AddRow({
-			BindInfo.BindName.ToString(),
-			FString(),
-			BoolToString(bIsSkipped),
-			bIsSkipped && DisabledBindNames.Contains(BindInfo.BindName) ? FString(TEXT("DisabledBindNames")) : FString()
+			Bind.OwnerModule.ToString(),
+			Bind.BindName.ToString(),
+			BindPhaseToString(Bind.Phase),
+			FPaths::GetCleanFilename(Bind.SourceFile),
+			LexToString(Bind.SourceLine),
+			MoveTemp(ExecutionStatus),
+			MoveTemp(DurationSeconds),
+			MoveTemp(FailureDiagnostic),
+			MoveTemp(ExecutionEpoch),
+			PublicationEligibility,
+			PublicationResult
 		});
 	}
 
@@ -1013,7 +1126,8 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpBindRegistrations
 
 FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpBindDatabaseStructs(FAngelscriptEngine& Engine, const FString& OutputDir)
 {
-	const FAngelscriptBindDatabase& BindDatabase = FAngelscriptBindDatabase::Get();
+	const FAngelscriptBindDatabase& BindDatabase =
+		FAngelscriptBinds(Engine).GetTargetBindDatabase();
 
 	FCSVWriter Writer;
 	Writer.AddHeader({
@@ -1038,7 +1152,8 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpBindDatabaseStruc
 
 FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpBindDatabaseClasses(FAngelscriptEngine& Engine, const FString& OutputDir)
 {
-	const FAngelscriptBindDatabase& BindDatabase = FAngelscriptBindDatabase::Get();
+	const FAngelscriptBindDatabase& BindDatabase =
+		FAngelscriptBinds(Engine).GetTargetBindDatabase();
 
 	FCSVWriter Writer;
 	Writer.AddHeader({

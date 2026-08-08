@@ -395,16 +395,26 @@ ASSERT_THAT(IsNotNull(Engine));
 	{
 ASSERT_THAT(IsNotNull(Engine));
 
-		const TArray<FName> RegisteredBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
-		const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList();
-		ASSERT_THAT(IsTrue(RegisteredBindNames.Num() > 0));
-		ASSERT_THAT(IsTrue(BindInfos.Num() == RegisteredBindNames.Num()));
+		const TArray<FAngelscriptBindMetadata> BindMetadata =
+			FAngelscriptBind::GetRegisteredBindMetadata();
+		ASSERT_THAT(IsTrue(BindMetadata.Num() > 0));
 
-		for (int32 BindIndex = 1; BindIndex < BindInfos.Num(); ++BindIndex)
+		for (int32 BindIndex = 0; BindIndex < BindMetadata.Num(); ++BindIndex)
 		{
+			const FAngelscriptBindMetadata& Bind = BindMetadata[BindIndex];
 			ASSERT_THAT(IsTrue(
-				BindInfos[BindIndex - 1].BindOrder <= BindInfos[BindIndex].BindOrder,
-				TEXT("Bind info should be sorted by bind order")));
+				!Bind.OwnerModule.IsNone()
+					&& !Bind.BindName.IsNone()
+					&& !Bind.SourceFile.IsEmpty()
+					&& Bind.SourceLine > 0,
+				TEXT("Sealed bind metadata should retain identity and source provenance")));
+			if (BindIndex > 0)
+			{
+				ASSERT_THAT(IsTrue(
+					static_cast<uint8>(BindMetadata[BindIndex - 1].Phase)
+						<= static_cast<uint8>(Bind.Phase),
+					TEXT("Sealed bind metadata should be sorted by semantic phase")));
+			}
 		}
 
 		CompileSnippet(*TestRunner, *Engine, "StartupBindRegistryParity",

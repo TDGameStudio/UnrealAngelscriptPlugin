@@ -24,6 +24,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionBindingTests,
 	"Angelscript.TestModule.Engine.GeneratedFunctionBinding",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	static int32 CountOccurrences(const FString& Source, const FString& Needle)
+	{
+		int32 Count = 0;
+		int32 SearchFrom = 0;
+		while (true)
+		{
+			const int32 FoundAt = Source.Find(Needle, ESearchCase::CaseSensitive, ESearchDir::FromStart, SearchFrom);
+			if (FoundAt == INDEX_NONE)
+			{
+				return Count;
+			}
+
+			++Count;
+			SearchFrom = FoundAt + Needle.Len();
+		}
+	}
+
+public:
 	TEST_METHOD(GeneratedRuntimeModulesUseSingleNamedBindingFile)
 	{
 		TArray<FString> GeneratedFiles;
@@ -69,6 +87,65 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionBindingTests,
 		TestRunner->TestTrue(TEXT("Generated Runtime-linked module output contract should pass"), bPassed);
 	}
 
+	TEST_METHOD(RuntimeLinkedShardUsesOneExplicitGeneratedCallback)
+	{
+		FString RuntimeShardContents;
+		const FString RuntimeShardPath = FPaths::Combine(
+			GetGeneratedDirectory(),
+			TEXT("AS_FunctionBinding_Engine.gen.cpp"));
+		ASSERT_THAT(IsTrue(
+			FFileHelper::LoadFileToString(RuntimeShardContents, *RuntimeShardPath),
+			*FString::Printf(TEXT("Runtime-linked shard should be readable: %s"), *RuntimeShardPath)));
+
+		ASSERT_THAT(AreEqual(
+			1,
+			CountOccurrences(
+				RuntimeShardContents,
+				TEXT("AS_FORCE_LINK const FAngelscriptBind Bind_AS_FunctionBinding_")),
+			TEXT("Runtime-linked shard should own exactly one direct bind record")));
+		ASSERT_THAT(IsTrue(
+			RuntimeShardContents.Contains(
+				TEXT("static void BindGeneratedFunctionBindings_Engine(FAngelscriptBinds& Binds)")),
+			TEXT("Runtime-linked shard should expose one named explicit-target callback")));
+		ASSERT_THAT(IsTrue(
+			RuntimeShardContents.Contains(
+				TEXT("static void RegisterGeneratedFunctionBindingBatch_Engine_000(FAngelscriptBinds& Binds)")),
+			TEXT("Runtime-linked shard batches should receive the explicit bind context")));
+		ASSERT_THAT(IsTrue(
+			RuntimeShardContents.Contains(
+				TEXT("RegisterGeneratedFunctionBindingBatch_Engine_000(Binds);")),
+			TEXT("Runtime-linked callback should forward its explicit context to each batch")));
+		ASSERT_THAT(IsTrue(
+			RuntimeShardContents.Contains(TEXT("EAngelscriptBindPhase::GeneratedBindings")),
+			TEXT("Runtime-linked shard should execute in GeneratedBindings")));
+		ASSERT_THAT(IsTrue(
+			RuntimeShardContents.Contains(TEXT("Binds.RegisterGeneratedFunctionBindingForTarget(")),
+			TEXT("Runtime-linked registrations should target the callback's engine")));
+		ASSERT_THAT(IsFalse(
+			RuntimeShardContents.Contains(TEXT("FAngelscriptBinds::FBind"))
+				|| RuntimeShardContents.Contains(TEXT("FAngelscriptBinds::EOrder"))
+				|| RuntimeShardContents.Contains(TEXT("FAngelscriptBinds::RegisterGeneratedFunctionBinding("))
+				|| RuntimeShardContents.Contains(TEXT("[]()")),
+			TEXT("Runtime-linked shard should not retain legacy provider or ambient registration syntax")));
+	}
+
+	TEST_METHOD(RuntimeLinkedShardPreservesNativeAndRpcRows)
+	{
+		FString RuntimeShardContents;
+		ASSERT_THAT(IsTrue(
+			LoadGeneratedFile(TEXT("AS_FunctionBinding_Engine.gen.cpp"), RuntimeShardContents, *TestRunner),
+			TEXT("Runtime-linked Engine shard should be available")));
+
+		ASSERT_THAT(IsTrue(
+			RuntimeShardContents.Contains(TEXT(
+				"Binds.RegisterGeneratedFunctionBindingForTarget(AGameModeBase::StaticClass(), \"GetNumPlayers\", { ERASE_AUTO_METHOD_PTR(AGameModeBase, GetNumPlayers) });")),
+			TEXT("Runtime-linked shard should preserve direct native caller metadata")));
+		ASSERT_THAT(IsTrue(
+			RuntimeShardContents.Contains(TEXT(
+				"Binds.RegisterGeneratedFunctionBindingForTarget(APlayerController::StaticClass(), \"ClientSetHUD\", { ERASE_NO_FUNCTION() });")),
+			TEXT("Runtime-linked shard should preserve the RPC reflective-fallback placeholder")));
+	}
+
 	TEST_METHOD(StatisticsUseAnalyzedFunctionDenominator)
 	{
 		FString StatisticsContents;
@@ -98,6 +175,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptGeneratedFunctionBindingTests,
 		bPassed &= TestRunner->TestTrue(TEXT("Diagnostics should name FunctionBindingCategory"), DiagnosticsContents.StartsWith(TEXT("ModuleName,EditorOnly,ClassName,FunctionName,FunctionBindingCategory")));
 		bPassed &= TestRunner->TestTrue(TEXT("Diagnostics should contain Runtime-linked category"), DiagnosticsContents.Contains(TEXT(",NativeRuntimeLinked,")));
 		bPassed &= TestRunner->TestTrue(TEXT("Diagnostics should contain reflective fallback category"), DiagnosticsContents.Contains(TEXT(",ReflectiveFallback,")));
+		bPassed &= TestRunner->TestTrue(TEXT("Diagnostics should preserve the RPC reflective-fallback decision"), DiagnosticsContents.Contains(TEXT("Engine,false,APlayerController,ClientSetHUD,ReflectiveFallback,rpc-net-function,ERASE_NO_FUNCTION(),AS_FunctionBinding_Engine.gen.cpp,1")));
 		bPassed &= TestRunner->TestFalse(TEXT("Diagnostics should not contain legacy categories"), DiagnosticsContents.Contains(TEXT(",Direct,")) || DiagnosticsContents.Contains(TEXT(",Stub,")) || DiagnosticsContents.Contains(TEXT(",ModuleBinding,")));
 		TestRunner->TestTrue(TEXT("Function binding diagnostics contract should pass"), bPassed);
 	}

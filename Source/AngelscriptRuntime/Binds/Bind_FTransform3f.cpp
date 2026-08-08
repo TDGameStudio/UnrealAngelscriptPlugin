@@ -1,6 +1,7 @@
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 
+#include "Bind_FTransform3f_Functions.h"
 #include "Helper_StructType.h"
 #include "Helper_ToString.h"
 #include "AngelscriptDocs.h"
@@ -25,95 +26,93 @@ struct FTransform3fType : TAngelscriptVariantStructType<FTransform3f>
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FTransform3f(FAngelscriptBinds::EOrder::Early, []
+namespace
 {
-	FBindFlags Flags;
-	Flags.bPOD = true;
-	Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
-
-	auto FTransform3f_ = FAngelscriptBinds::ValueClass<FTransform3f>("FTransform3f", Flags);
-	FAngelscriptType::Register(MakeShared<FTransform3fType>());
-
-	FTransform3f_.Constructor("void f()", [](FTransform3f* Address)
+	void BindFTransform3fType(FAngelscriptBinds& Binds)
 	{
-		new(Address) FTransform3f();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
-
-	FTransform3f_.Constructor("void f(const FTransform3f& Other)", [](FTransform3f* Address, const FTransform3f& Other)
-	{
-		new(Address) FTransform3f(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
-
-	{
-		FAngelscriptBinds::FNamespace ns("FTransform3f");
-		FAngelscriptBinds::BindGlobalVariable("const FTransform3f Identity", &FTransform3f::Identity);
+		FBindFlags Flags;
+		Flags.bPOD = true;
+		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
+		Binds.ValueClassForTarget<FTransform3f>("FTransform3f", Flags);
 	}
 
-	FToStringHelper::Register(TEXT("FTransform3f"), [](void* Ptr, FString& Str)
+	void BindFTransform3fInfrastructure(FAngelscriptBinds& Binds)
 	{
-		Str += ((FTransform3f*)Ptr)->ToString();
-	});
-});
+		Binds.RegisterTypeForTarget(MakeShared<FTransform3fType>());
+		FToStringHelper::Register(Binds, TEXT("FTransform3f"), &FAngelscriptFTransform3fBinds::AppendToString);
+	}
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FTransform3f_Interactions(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FTransform3f_ = FAngelscriptBinds::ExistingClass("FTransform3f");
-
-	FTransform3f_.Constructor("void f(const FVector3f& InTranslation)", [](FTransform3f* Address, const FVector3f& InTranslation)
+	void BindFTransform3fFunctions(FAngelscriptBinds& Binds)
 	{
-		new(Address) FTransform3f(InTranslation);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
+		auto FTransform3f_ = Binds.ExistingClassForTarget("FTransform3f");
 
-	FTransform3f_.Constructor("void f(const FQuat4f& InRotation)", [](FTransform3f* Address, const FQuat4f& InRotation)
-	{
-		new(Address) FTransform3f(InRotation);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
+		FTransform3f_.Constructor(
+			"void f()",
+			&FAngelscriptFTransform3fBinds::ConstructDefault,
+			"FTransform3f",
+			true)
+			.NoDiscard();
 
-	FTransform3f_.Constructor("void f(const FRotator3f& InRotation)", [](FTransform3f* Address, const FRotator3f& InRotation)
-	{
-		new(Address) FTransform3f(InRotation);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
+		FTransform3f_.Constructor(
+			"void f(const FTransform3f& Other)",
+			&FAngelscriptFTransform3fBinds::ConstructCopy,
+			"FTransform3f",
+			true)
+			.NoDiscard();
 
-	FTransform3f_.Constructor("void f(const FQuat4f& InRotation, const FVector3f& InTranslation, const FVector3f& InScale3D = FVector3f::OneVector)",
-	[](FTransform3f* Address, const FQuat4f& InRotation, const FVector3f& InTranslation, const FVector3f& InScale3D)
-	{
-		new(Address) FTransform3f(InRotation, InTranslation, InScale3D);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
+		{
+			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FTransform3f");
+			Binds.BindGlobalVariableForTarget("const FTransform3f Identity", &FTransform3f::Identity);
+		}
 
-	FTransform3f_.Constructor("void f(const FRotator3f& InRotation, const FVector3f& InTranslation, const FVector3f& InScale3D = FVector3f::OneVector)",
-	[](FTransform3f* Address, const FRotator3f& InRotation, const FVector3f& InTranslation, const FVector3f& InScale3D)
-	{
-		new(Address) FTransform3f(InRotation, InTranslation, InScale3D);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
+		FTransform3f_.Constructor(
+			"void f(const FVector3f& InTranslation)",
+			&FAngelscriptFTransform3fBinds::ConstructFromTranslation,
+			"FTransform3f",
+			true)
+			.NoDiscard();
 
-	FTransform3f_.Constructor("void f(const FVector3f& InX, const FVector3f& InY, const FVector3f& InZ, const FVector3f& InTranslation)",
-	[](FTransform3f* Address, const FVector3f& InX, const FVector3f& InY, const FVector3f& InZ, const FVector3f& InTranslation)
-	{
-		new(Address) FTransform3f(InX, InY, InZ, InTranslation);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
+		FTransform3f_.Constructor(
+			"void f(const FQuat4f& InRotation)",
+			&FAngelscriptFTransform3fBinds::ConstructFromQuat,
+			"FTransform3f",
+			true)
+			.NoDiscard();
 
-	FTransform3f_.Constructor("void f(const FTransform& Transform)", [](FTransform3f* Address, const FTransform& Transform)
-	{
-		new(Address) FTransform3f(Transform);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTransform3f_, "FTransform3f");
+		FTransform3f_.Constructor(
+			"void f(const FRotator3f& InRotation)",
+			&FAngelscriptFTransform3fBinds::ConstructFromRotator,
+			"FTransform3f",
+			true)
+			.NoDiscard();
+
+		FTransform3f_.Constructor(
+			"void f(const FQuat4f& InRotation, const FVector3f& InTranslation, const FVector3f& InScale3D = FVector3f::OneVector)",
+			&FAngelscriptFTransform3fBinds::ConstructFromQuatTranslationScale,
+			"FTransform3f",
+			true)
+			.NoDiscard();
+
+		FTransform3f_.Constructor(
+			"void f(const FRotator3f& InRotation, const FVector3f& InTranslation, const FVector3f& InScale3D = FVector3f::OneVector)",
+			&FAngelscriptFTransform3fBinds::ConstructFromRotatorTranslationScale,
+			"FTransform3f",
+			true)
+			.NoDiscard();
+
+		FTransform3f_.Constructor(
+			"void f(const FVector3f& InX, const FVector3f& InY, const FVector3f& InZ, const FVector3f& InTranslation)",
+			&FAngelscriptFTransform3fBinds::ConstructFromAxes,
+			"FTransform3f",
+			true)
+			.NoDiscard();
+
+		FTransform3f_.Constructor(
+			"void f(const FTransform& Transform)",
+			&FAngelscriptFTransform3fBinds::ConstructFromTransform,
+			"FTransform3f",
+			true)
+			.NoDiscard();
 
 	FTransform3f_.Method("FTransform3f& opAssign(const FTransform3f& Other)", METHODPR_TRIVIAL(FTransform3f&, FTransform3f, operator=, (const FTransform3f&)));
 	FTransform3f_.Method("FTransform3f Inverse() const", METHOD_TRIVIAL(FTransform3f, Inverse));
@@ -132,14 +131,14 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FTransform3f_Interactions(FAng
 
 	FTransform3f_.Method("void SetToRelativeTransform(const FTransform3f& Other)", METHOD_TRIVIAL(FTransform3f, SetToRelativeTransform));
 	
-	FTransform3f_.Method("void Accumulate(const FTransform3f& SourceAtom)", METHODPR_TRIVIAL(void, FTransform3f, Accumulate, (const FTransform3f&)));
-	SCRIPT_BIND_DOCUMENTATION(
+	FTransform3f_.Method("void Accumulate(const FTransform3f& SourceAtom)", METHODPR_TRIVIAL(void, FTransform3f, Accumulate, (const FTransform3f&)))
+		.Documentation(TEXT(
 	"Accumulates another transform with this one\n"
     "Rotation is accumulated multiplicatively (Rotation = SourceAtom.Rotation * Rotation)\n"
     "Translation is accumulated additively (Translation += SourceAtom.Translation)\n"
     "Scale3D is accumulated multiplicatively (Scale3D *= SourceAtom.Scale3D)\n"
     "@param SourceAtom The other transform to accumulate into this one"
-     );
+     ));
 
 	FTransform3f_.Method("float32 GetMaximumAxisScale() const", METHODPR_TRIVIAL(float, FTransform3f, GetMaximumAxisScale, () const));
 	FTransform3f_.Method("float32 GetMinimumAxisScale() const", METHODPR_TRIVIAL(float, FTransform3f, GetMinimumAxisScale, () const));
@@ -191,15 +190,31 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FTransform3f_Interactions(FAng
 
 	FTransform3f_.Method("void AddToTranslation(const FVector3f& Origin)", METHOD_TRIVIAL(FTransform3f, AddToTranslation));
 
-	FTransform3f_.Method("void ConcatenateRotation(const FQuat4f& DeltaRotation)", METHOD_TRIVIAL(FTransform3f, ConcatenateRotation));
-	SCRIPT_BIND_DOCUMENTATION(
+	FTransform3f_.Method("void ConcatenateRotation(const FQuat4f& DeltaRotation)", METHOD_TRIVIAL(FTransform3f, ConcatenateRotation))
+		.Documentation(TEXT(
 	"Concatenates another rotation to this transformation\n"
     "@param DeltaRotation The rotation to concatenate in the following fashion: Rotation = Rotation * DeltaRotation"
-    );
+    ));
 
 	FTransform3f_.Method("void SetRotation(const FQuat4f& NewRotation)", METHOD_TRIVIAL(FTransform3f, SetRotation));
 	FTransform3f_.Method("void SetScale3D(const FVector3f& NewScale3D)", METHOD_TRIVIAL(FTransform3f, SetScale3D));
 	FTransform3f_.Method("void SetTranslationAndScale3D(const FVector3f& NewTranslation, const FVector3f& NewScale3D)", METHOD_TRIVIAL(FTransform3f, SetTranslationAndScale3D));
 
 	FTransform3f_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FTransform3f, InitFromString));
-});
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f_Type(
+	TEXT("FTransform3f.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFTransform3fType);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f_Infrastructure(
+	TEXT("FTransform3f.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFTransform3fInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f(
+	TEXT("FTransform3f.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFTransform3fFunctions);

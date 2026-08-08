@@ -1,172 +1,88 @@
-#include "StructUtils/InstancedStruct.h"
-#include "Binds/Bind_Helpers.h"
-#include "ClassGenerator/ASStruct.h"
-
-#include "AngelscriptAnyStructParameter.h"
-#include "AngelscriptDocs.h"
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
 
-void FAngelscriptInstancedStructHelpers::InitializeAs_Struct(FInstancedStruct* Self, void* Data, const int TypeId)
+#include "StructUtils/InstancedStruct.h"
+
+#include "Bind_FInstancedStruct_Functions.h"
+
+namespace
 {
-	const UStruct* StructDef = FAngelscriptEngine::Get().GetUnrealStructFromAngelscriptTypeId(TypeId);
-	if (StructDef == nullptr)
+	void BindFInstancedStructFunctions(FAngelscriptBinds& Binds)
 	{
-		FAngelscriptEngine::Throw("Not a valid USTRUCT");
-		return;
-	}
+		auto FAngelscriptAnyStructParameter_ = Binds.ExistingClassForTarget("FAngelscriptAnyStructParameter");
+		FAngelscriptAnyStructParameter_
+			.ImplicitConstructor(
+				"void f(const ?&in Struct)",
+				FUNC(FAngelscriptFInstancedStructBinds::ImplicitConstructAnyStruct))
+			.NoDiscard();
+		FAngelscriptAnyStructParameter_
+			.ImplicitConstructor(
+				"void f(const FInstancedStruct& Struct)",
+				FUNC(FAngelscriptFInstancedStructBinds::ImplicitConstructAnyStructFromInstancedStruct))
+			.NoDiscard();
 
-	const UScriptStruct* ScriptStructDef = Cast<UScriptStruct>(StructDef);
-	if (ScriptStructDef == nullptr)
-	{
-		FAngelscriptEngine::Throw("Not a valid UScriptStruct");
-		return;
-	}
+		auto FInstancedStruct_ = Binds.ExistingClassForTarget("FInstancedStruct");
 
-	Self->InitializeAs(ScriptStructDef, (uint8*)Data);
-}
+		FInstancedStruct_
+			.Method(
+				"bool opEquals(const FInstancedStruct& Other) const",
+				METHODPR(bool, FInstancedStruct, operator==, (const FInstancedStruct&) const))
+			.Documentation(TEXT("Comparison operators. Deep compares the struct instance when identical."));
 
-static FScriptStructWildcard InstancedStructEmptyWildcard;
-FScriptStructWildcard& FAngelscriptInstancedStructHelpers::GetMemory(FInstancedStruct* Self, const UScriptStruct* StructType)
-{
-	if (!Self->IsValid())
-	{
-		FAngelscriptEngine::Throw("Source is empty or not valid. Check `IsValid()` before trying to `Get()` the underlying struct.");
-		return InstancedStructEmptyWildcard;
-	}
+		FInstancedStruct_
+			.Method(
+				"void InitializeAs(const ?&in Struct)",
+				FUNC(FAngelscriptFInstancedStructBinds::InitializeAsStruct))
+			.Documentation(TEXT("Initializes from struct type and emplace construct."));
 
-	if (StructType != Self->GetScriptStruct())
-	{
-		const FString Debug = FString::Printf(TEXT("Mismatching types. FInstancedStruct contains a %s but tried to Get a %s."), *Self->GetScriptStruct()->GetStructCPPName(), *StructType->GetStructCPPName());
-		FAngelscriptEngine::Throw(TCHAR_TO_ANSI(*Debug));
-		return InstancedStructEmptyWildcard;
-	}
+		FInstancedStruct_
+			.Method(
+				"void InitializeAs(const UScriptStruct StructType)",
+				FUNC(FAngelscriptFInstancedStructBinds::InitializeAsDefault))
+			.Documentation(TEXT("Default initializes a struct of this type"));
 
-	return *(FScriptStructWildcard*)Self->GetMemory();
-}
+		FInstancedStruct_
+			.Method(
+				"const FScriptStructWildcard& Get(const UScriptStruct StructType) const no_discard",
+				FUNC(FAngelscriptFInstancedStructBinds::GetMemory))
+			.Documentation(TEXT("Returns struct data of a particular type. Throws an exception if the instanced struct does not contain a struct of this type."))
+			.DeterminesOutputType(0);
 
-FInstancedStruct FAngelscriptInstancedStructHelpers::Make(void* Data, const int TypeId)
-{
-	const UStruct* StructDef = FAngelscriptEngine::Get().GetUnrealStructFromAngelscriptTypeId(TypeId);
-	if (StructDef == nullptr)
-	{
-		FAngelscriptEngine::Throw("Not a valid USTRUCT");
-		return FInstancedStruct();
-	}
+		FInstancedStruct_
+			.Method(
+				"FScriptStructWildcard& GetMutable(const UScriptStruct StructType) no_discard",
+				FUNC(FAngelscriptFInstancedStructBinds::GetMemory))
+			.Documentation(TEXT("Returns struct data of a particular type. Throws an exception if the instanced struct does not contain a struct of this type."))
+			.DeterminesOutputType(0);
 
-	const UScriptStruct* ScriptStructDef = Cast<UScriptStruct>(StructDef);
-	if (ScriptStructDef == nullptr)
-	{
-		FAngelscriptEngine::Throw("Not a valid UScriptStruct");
-		return FInstancedStruct();
-	}
-
-	FInstancedStruct InstancedStruct;
-	InstancedStruct.InitializeAs(ScriptStructDef, (uint8*)Data);
-	return InstancedStruct;
-}
-
-void FAngelscriptInstancedStructHelpers::ImplicitConstructAnyStruct(FAngelscriptAnyStructParameter* Self, void* Data, const int TypeId)
-{
-	new (Self) FAngelscriptAnyStructParameter();
-
-	const UStruct* StructDef = FAngelscriptEngine::Get().GetUnrealStructFromAngelscriptTypeId(TypeId);
-	if (StructDef == nullptr)
-	{
-		FAngelscriptEngine::Throw("Not a valid USTRUCT");
-		return;
-	}
-
-	const UScriptStruct* ScriptStructDef = Cast<UScriptStruct>(StructDef);
-	if (ScriptStructDef == nullptr)
-	{
-		FAngelscriptEngine::Throw("Not a valid UScriptStruct");
-		return;
-	}
-
-	Self->InstancedStruct.InitializeAs(ScriptStructDef, (uint8*)Data);
-}
-
-void FAngelscriptInstancedStructHelpers::ImplicitConstructAnyStructFromInstancedStruct(FAngelscriptAnyStructParameter* Self, const FInstancedStruct& InstancedStruct)
-{
-	new (Self) FAngelscriptAnyStructParameter();
-	Self->InstancedStruct = InstancedStruct;
-}
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FInstancedStruct(
-	FAngelscriptBinds::EOrder::Late,
-	[]
-	{
-		auto FAngelscriptAnyStructParameter_ = FAngelscriptBinds::ExistingClass("FAngelscriptAnyStructParameter");
-		FAngelscriptAnyStructParameter_.ImplicitConstructor("void f(const ?&in Struct)", FUNC(FAngelscriptInstancedStructHelpers::ImplicitConstructAnyStruct));
-		FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-		FAngelscriptAnyStructParameter_.ImplicitConstructor("void f(const FInstancedStruct& Struct)", FUNC(FAngelscriptInstancedStructHelpers::ImplicitConstructAnyStructFromInstancedStruct));
-		FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-
-		auto FInstancedStruct_ = FAngelscriptBinds::ExistingClass("FInstancedStruct");
-
-		FInstancedStruct_.Method("bool opEquals(const FInstancedStruct& Other) const", METHODPR(bool, FInstancedStruct, operator==, (const FInstancedStruct&) const));
-		SCRIPT_BIND_DOCUMENTATION("Comparison operators. Deep compares the struct instance when identical.")
-
-		FInstancedStruct_.Method("void InitializeAs(const ?&in Struct)", FUNC(FAngelscriptInstancedStructHelpers::InitializeAs_Struct));
-		SCRIPT_BIND_DOCUMENTATION("Initializes from struct type and emplace construct.")
-
-		FInstancedStruct_.Method("void InitializeAs(const UScriptStruct StructType)", FUNC(FAngelscriptInstancedStructHelpers::InitializeAs_Default));
-		SCRIPT_BIND_DOCUMENTATION("Default initializes a struct of this type")
-
-		FInstancedStruct_.Method("const FScriptStructWildcard& Get(const UScriptStruct StructType) const no_discard", FUNC(FAngelscriptInstancedStructHelpers::GetMemory));
-		SCRIPT_BIND_DOCUMENTATION("Returns struct data of a particular type. Throws an exception if the instanced struct does not contain a struct of this type.");
-		FAngelscriptBinds::SetPreviousBindArgumentDeterminesOutputType(0);
-
-		FInstancedStruct_.Method("FScriptStructWildcard& GetMutable(const UScriptStruct StructType) no_discard", FUNC(FAngelscriptInstancedStructHelpers::GetMemory));
-		SCRIPT_BIND_DOCUMENTATION("Returns struct data of a particular type. Throws an exception if the instanced struct does not contain a struct of this type.");
-		FAngelscriptBinds::SetPreviousBindArgumentDeterminesOutputType(0);
-
-		FInstancedStruct_.Method("void Get(?&out Struct) const", [](const FInstancedStruct* Self, void* Data, int TypeId)
-		{
-			if (!Self->IsValid())
-			{
-				FAngelscriptEngine::Throw("Source is empty or not valid. Check `IsValid()` before trying to `Get()` the underlying struct.");
-				return;
-			}
-
-			const UStruct* StructDef = FAngelscriptEngine::Get().GetUnrealStructFromAngelscriptTypeId(TypeId);
-			if (StructDef == nullptr)
-			{
-				FAngelscriptEngine::Throw("Not a valid USTRUCT");
-				return;
-			}
-
-			const UScriptStruct* ScriptStructDef = Cast<UScriptStruct>(StructDef);
-			if (ScriptStructDef == nullptr)
-			{
-				FAngelscriptEngine::Throw("Not a valid UScriptStruct");
-				return;
-			}
-
-			if (ScriptStructDef != Self->GetScriptStruct())
-			{
-				const FString Debug = FString::Printf(TEXT("\nMismatching types. Got %s but expected %s."), *ScriptStructDef->GetStructCPPName(), *Self->GetScriptStruct()->GetStructCPPName());
-				FAngelscriptEngine::Throw(TCHAR_TO_ANSI(*Debug));
-				return;
-			}
-
-			ScriptStructDef->CopyScriptStruct(Data, Self->GetMemory());
-		});
-		SCRIPT_BIND_DOCUMENTATION("Returns a copy of the struct. This getter assumes that all data is valid.");
-		FInstancedStruct_.DeprecatePreviousBind("Use Get() or GetMutable() that returns a reference instead of copying");
+		FInstancedStruct_
+			.Method("void Get(?&out Struct) const", &FAngelscriptFInstancedStructBinds::CopyTo)
+			.Documentation(TEXT("Returns a copy of the struct. This getter assumes that all data is valid."))
+			.Deprecated("Use Get() or GetMutable() that returns a reference instead of copying");
 
 		FInstancedStruct_.Method("void Reset()", METHOD(FInstancedStruct, Reset));
-		FInstancedStruct_.Method("bool Contains(const UScriptStruct StructType) const", FUNC(FAngelscriptInstancedStructHelpers::Contains));
-		SCRIPT_BIND_DOCUMENTATION("Check whether the instanced struct contains a struct of this type");
+		FInstancedStruct_
+			.Method(
+				"bool Contains(const UScriptStruct StructType) const",
+				FUNC(FAngelscriptFInstancedStructBinds::Contains))
+			.Documentation(TEXT("Check whether the instanced struct contains a struct of this type"));
 
-		FInstancedStruct_.Method("bool IsValid() const", METHOD_TRIVIAL(FInstancedStruct, IsValid));
-		SCRIPT_BIND_DOCUMENTATION("Returns True if the struct is valid.");
+		FInstancedStruct_
+			.Method("bool IsValid() const", METHOD_TRIVIAL(FInstancedStruct, IsValid))
+			.Documentation(TEXT("Returns True if the struct is valid."));
 
-		FInstancedStruct_.Method("UScriptStruct GetScriptStruct() const", METHOD_TRIVIAL(FInstancedStruct, GetScriptStruct));
-		SCRIPT_BIND_DOCUMENTATION("Get the type of struct contained within the instanced struct");
+		FInstancedStruct_
+			.Method("UScriptStruct GetScriptStruct() const", METHOD_TRIVIAL(FInstancedStruct, GetScriptStruct))
+			.Documentation(TEXT("Get the type of struct contained within the instanced struct"));
 
-		FAngelscriptBinds::FNamespace Ns("FInstancedStruct");
-		FAngelscriptBinds::BindGlobalFunction("FInstancedStruct Make(const ?&in Struct) no_discard", FUNC(FAngelscriptInstancedStructHelpers::Make));
-		SCRIPT_BIND_DOCUMENTATION("Creates a new FInstancedStruct from struct.");
-	});
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FInstancedStruct");
+		Binds.BindGlobalFunctionForTarget(
+			"FInstancedStruct Make(const ?&in Struct) no_discard",
+			FUNC(FAngelscriptFInstancedStructBinds::Make))
+			.Documentation(TEXT("Creates a new FInstancedStruct from struct."));
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FInstancedStruct(
+	TEXT("FInstancedStruct.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFInstancedStructFunctions);

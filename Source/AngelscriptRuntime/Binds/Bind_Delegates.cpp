@@ -58,16 +58,22 @@ struct FScriptDelegateType : TAngelscriptCppType<FScriptDelegate>
 {
 	FString Name;
 	UDelegateFunction* Function;
+	const FAngelscriptBindDatabase* BindDatabase;
 
-	FScriptDelegateType(const FString& InName, UDelegateFunction* InFunction)
+	FScriptDelegateType(
+		const FString& InName,
+		UDelegateFunction* InFunction,
+		const FAngelscriptBindDatabase& InBindDatabase)
 		: Name(InName)
 		, Function(InFunction)
+		, BindDatabase(&InBindDatabase)
 	{
 	}
 
-	FScriptDelegateType()
+	explicit FScriptDelegateType(const FAngelscriptBindDatabase& InBindDatabase)
 		: Name(TEXT("_FScriptDelegate"))
 		, Function(nullptr)
+		, BindDatabase(&InBindDatabase)
 	{}
 
 	FORCEINLINE UDelegateFunction* GetSignature(const FAngelscriptTypeUsage& Usage) const
@@ -211,7 +217,7 @@ struct FScriptDelegateType : TAngelscriptCppType<FScriptDelegate>
 		}
 
 		OutCppForm.CppType = CreateCppNameForDelegate(Function);
-		FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Function);
+		FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Function, *BindDatabase);
 		if (HeaderPath.Len() != 0 && !HeaderPath.Contains(TEXT("NoExportTypes.h")))
 		{
 			OutCppForm.CppHeader = FString::Printf(TEXT("#include \"%s\""), *HeaderPath);
@@ -429,24 +435,25 @@ bool CheckAngelscriptDelegateCompatibility(UFunction* Signature, UFunction* Chec
 	return !(IteratorB && (IteratorB->PropertyFlags & CPF_Parm));
 }
 
-void DeclareDelegate(UDelegateFunction* Function)
+void DeclareDelegate(FAngelscriptBinds& Binds, UDelegateFunction* Function)
 {
 	FString Decl = CreateAngelscriptNameForDelegate(Function);
 
-	auto& BindDB = FAngelscriptBindDatabase::Get();
+	FAngelscriptBindDatabase& BindDB = Binds.GetTargetBindDatabase();
 	BindDB.BoundDelegateFunctions.Add(Function);
 
-	FAngelscriptType::Register(MakeShared<FScriptDelegateType>(Decl, Function));
+	Binds.RegisterTypeForTarget(MakeShared<FScriptDelegateType>(
+		Decl,
+		Function,
+		Binds.GetTargetBindDatabase()));
 
 	FBindFlags BindFlags;
-	auto Delegate_ = FAngelscriptBinds::ValueClass<FScriptDelegate>(Decl, BindFlags);
-	Delegate_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Construct));
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
+	auto Delegate_ = Binds.ValueClassForTarget<FScriptDelegate>(Decl, BindFlags);
+	Delegate_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Construct)).NoDiscard();
 	Delegate_.Destructor("void f()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Destruct));
 
 	FString CopyDecl = FString::Printf(TEXT("void f(const %s& Other)"), *Decl);
-	Delegate_.Constructor(CopyDecl, FUNC_TRIVIAL(FAngelscriptDelegateOperations::CopyConstruct));
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
+	Delegate_.Constructor(CopyDecl, FUNC_TRIVIAL(FAngelscriptDelegateOperations::CopyConstruct)).NoDiscard();
 
 	FString AssignDecl = FString::Printf(TEXT("%s& opAssign(const %s& Other)"), *Decl, *Decl);
 	Delegate_.Method(AssignDecl, FUNC_TRIVIAL(FAngelscriptDelegateOperations::Assign));
@@ -605,14 +612,14 @@ void FAngelscriptDelegateOperations::ConstructFromFunction_Signature(FScriptDele
 	Delegate->BindUFunction(InObject, InFunctionName);
 }
 
-void DeclareDelegateOperations(UDelegateFunction* Function)
+void DeclareDelegateOperations(FAngelscriptBinds& Binds, UDelegateFunction* Function)
 {
 	FDelegateOps* Ops = new FDelegateOps;
 	Ops->SignatureFunction = Function;
 
 	FString Decl = CreateAngelscriptNameForDelegate(Function);
 
-	auto Delegate_ = FAngelscriptBinds::ExistingClass(Decl);
+	auto Delegate_ = Binds.ExistingClassForTarget(Decl);
 
 	Delegate_.Method("bool IsBound() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::IsBound));
 	Delegate_.Method("UObject GetUObject() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetUObject));
@@ -620,12 +627,12 @@ void DeclareDelegateOperations(UDelegateFunction* Function)
 
 	Delegate_.Method("void Clear()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Clear));
 
-	Delegate_.Constructor("void f(UObject Object, const FName& FunctionName)", FUNC(FAngelscriptDelegateOperations::ConstructFromFunction), Ops);
-	FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
+	Delegate_.Constructor("void f(UObject Object, const FName& FunctionName)", FUNC(FAngelscriptDelegateOperations::ConstructFromFunction), Ops)
+		.PassScriptFunctionAsFirstParam()
+		.NoDiscard();
 
-	Delegate_.Method("void BindUFunction(UObject Object, const FName& FunctionName)", FUNC(FAngelscriptDelegateOperations::BindUFunction), Ops);
-	FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+	Delegate_.Method("void BindUFunction(UObject Object, const FName& FunctionName)", FUNC(FAngelscriptDelegateOperations::BindUFunction), Ops)
+		.PassScriptFunctionAsFirstParam();
 
 	BindDelegateEvent(Delegate_, Function, false, false);
 }
@@ -634,16 +641,22 @@ struct FMulticastScriptDelegateType : TAngelscriptCppType<FMulticastScriptDelega
 {
 	FString Name;
 	UDelegateFunction* Function;
+	const FAngelscriptBindDatabase* BindDatabase;
 
-	FMulticastScriptDelegateType(const FString& InName, UDelegateFunction* InFunction)
+	FMulticastScriptDelegateType(
+		const FString& InName,
+		UDelegateFunction* InFunction,
+		const FAngelscriptBindDatabase& InBindDatabase)
 		: Name(InName)
 		, Function(InFunction)
+		, BindDatabase(&InBindDatabase)
 	{
 	}
 
-	FMulticastScriptDelegateType()
+	explicit FMulticastScriptDelegateType(const FAngelscriptBindDatabase& InBindDatabase)
 		: Name(TEXT("_FMulticastScriptDelegate"))
 		, Function(nullptr)
+		, BindDatabase(&InBindDatabase)
 	{}
 
 	FORCEINLINE UDelegateFunction* GetSignature(const FAngelscriptTypeUsage& Usage) const
@@ -788,7 +801,7 @@ struct FMulticastScriptDelegateType : TAngelscriptCppType<FMulticastScriptDelega
 		}
 
 		OutCppForm.CppType = CreateCppNameForDelegate(Function);
-		FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Function);
+		FString HeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Function, *BindDatabase);
 		if (HeaderPath.Len() != 0 && !HeaderPath.Contains(TEXT("NoExportTypes.h")))
 		{
 			OutCppForm.CppHeader = FString::Printf(TEXT("#include \"%s\""), *HeaderPath);
@@ -1012,18 +1025,21 @@ struct FMulticastScriptDelegateType : TAngelscriptCppType<FMulticastScriptDelega
 	}
 };
 
-void DeclareMulticastDelegate(UDelegateFunction* Function)
+void DeclareMulticastDelegate(FAngelscriptBinds& Binds, UDelegateFunction* Function)
 {
 	FString Decl = CreateAngelscriptNameForDelegate(Function);
-	if (FAngelscriptType::GetByAngelscriptTypeName(Decl).IsValid())
+	if (Binds.GetTargetTypeDatabase().TypesByAngelscriptName.Contains(Decl))
 		return;
 
-	auto& BindDB = FAngelscriptBindDatabase::Get();
+	FAngelscriptBindDatabase& BindDB = Binds.GetTargetBindDatabase();
 	BindDB.BoundDelegateFunctions.Add(Function);
 
-	FAngelscriptType::Register(MakeShared<FMulticastScriptDelegateType>(Decl, Function));
+	Binds.RegisterTypeForTarget(MakeShared<FMulticastScriptDelegateType>(
+		Decl,
+		Function,
+		Binds.GetTargetBindDatabase()));
 
-	auto Delegate_ = FAngelscriptBinds::ValueClass<FMulticastScriptDelegate>(Decl, FBindFlags());
+	auto Delegate_ = Binds.ValueClassForTarget<FMulticastScriptDelegate>(Decl, FBindFlags());
 	Delegate_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Construct));
 	Delegate_.Destructor("void f()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Destruct));
 
@@ -1099,22 +1115,23 @@ void FAngelscriptMulticastDelegateOperations::AddUFunction_Signature(FMulticastS
 	Delegate->AddUnique(InnerDelegate);
 }
 
-void DeclareMulticastDelegateOperations(UDelegateFunction* Function)
+void DeclareMulticastDelegateOperations(FAngelscriptBinds& Binds, UDelegateFunction* Function)
 {
-	auto Type = FAngelscriptType::GetByData(Function);
-	if (!Type.IsValid())
+	const TSharedRef<FAngelscriptType>* RegisteredType = Binds.GetTargetTypeDatabase().TypesByData.Find(Function);
+	if (RegisteredType == nullptr)
 		return;
+	const TSharedPtr<FAngelscriptType> Type = RegisteredType->ToSharedPtr();
 
 	FDelegateOps* Ops = new FDelegateOps;
 	Ops->SignatureFunction = Function;
 
-	auto Delegate_ = FAngelscriptBinds::ExistingClass(Type->GetAngelscriptTypeName());
+	auto Delegate_ = Binds.ExistingClassForTarget(Type->GetAngelscriptTypeName());
 
 	Delegate_.Method("bool IsBound() const", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::IsBound));
 	Delegate_.Method("void Clear()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Clear));
 
-	Delegate_.Method("void AddUFunction(const UObject Object, const FName& FunctionName)", FUNC(FAngelscriptMulticastDelegateOperations::AddUFunction), Ops);
-	FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+	Delegate_.Method("void AddUFunction(const UObject Object, const FName& FunctionName)", FUNC(FAngelscriptMulticastDelegateOperations::AddUFunction), Ops)
+		.PassScriptFunctionAsFirstParam();
 
 	Delegate_.Method("void Unbind(UObject Object, const FName& FunctionName)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Unbind));
 	Delegate_.Method("void UnbindObject(UObject Object)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::UnbindObject));
@@ -1215,28 +1232,36 @@ struct FScriptSparseDelegateType : public FAngelscriptType
 	}
 };
 
-void DeclareSparseDelegate(USparseDelegateFunction* Function)
+void DeclareSparseDelegate(FAngelscriptBinds& Binds, USparseDelegateFunction* Function)
 {
 	FString Decl = CreateAngelscriptNameForDelegate(Function);
 
-	FAngelscriptType::Register(MakeShared<FScriptSparseDelegateType>(Decl, Function));
+	Binds.RegisterTypeForTarget(MakeShared<FScriptSparseDelegateType>(Decl, Function));
 
-	auto& BindDB = FAngelscriptBindDatabase::Get();
+	FAngelscriptBindDatabase& BindDB = Binds.GetTargetBindDatabase();
 	BindDB.BoundDelegateFunctions.Add(Function);
 
-	auto Delegate_ = FAngelscriptBinds::ValueClass<FSparseDelegate>(Decl, FBindFlags());
-	Delegate_.Constructor("void f()", [](FSparseDelegate* Delegate)
-	{
-		new(Delegate) FSparseDelegate();
-	});
-
-	Delegate_.Destructor("void f()", [](FSparseDelegate* Delegate)
-	{
-		Delegate->~FSparseDelegate();
-	});
+	auto Delegate_ = Binds.ValueClassForTarget<FSparseDelegate>(Decl, FBindFlags());
+	Delegate_.Constructor("void f()", &FAngelscriptSparseDelegateOperations::Construct);
+	Delegate_.Destructor("void f()", &FAngelscriptSparseDelegateOperations::Destruct);
 }
 
-void AddSparseDelegateUFunction(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* InObject, const FName& InFunctionName)
+void FAngelscriptSparseDelegateOperations::Construct(FSparseDelegate* Delegate)
+{
+	new (Delegate) FSparseDelegate();
+}
+
+void FAngelscriptSparseDelegateOperations::Destruct(FSparseDelegate* Delegate)
+{
+	Delegate->~FSparseDelegate();
+}
+
+bool FAngelscriptSparseDelegateOperations::IsBound(FSparseDelegate* Delegate)
+{
+	return Delegate->IsBound();
+}
+
+void FAngelscriptSparseDelegateOperations::AddUFunction(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* InObject, const FName& InFunctionName)
 {
 	if (InObject == nullptr)
 	{
@@ -1269,174 +1294,183 @@ void AddSparseDelegateUFunction(FSparseDelegate* Delegate, asCScriptFunction* Sc
 	Delegate->__Internal_AddUnique(OwningObject, SparseDelegateFunc->DelegateName, InnerDelegate);
 }
 
-void DeclareSparseDelegateOperations(USparseDelegateFunction* Function)
+void FAngelscriptSparseDelegateOperations::Clear(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction)
+{
+	FDelegateOps* Ops = static_cast<FDelegateOps*>(ScriptFunction->userData);
+
+	USparseDelegateFunction* SparseDelegateFunc = CastChecked<USparseDelegateFunction>(Ops->SignatureFunction);
+	UObject* OwningObject = FSparseDelegateStorage::ResolveSparseOwner(*Delegate, SparseDelegateFunc->OwningClassName, SparseDelegateFunc->DelegateName);
+
+	Delegate->__Internal_Clear(OwningObject, SparseDelegateFunc->DelegateName);
+}
+
+void FAngelscriptSparseDelegateOperations::Unbind(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& InFunctionName)
+{
+	FDelegateOps* Ops = static_cast<FDelegateOps*>(ScriptFunction->userData);
+
+	FScriptDelegate InnerDelegate;
+	InnerDelegate.BindUFunction(Object, InFunctionName);
+
+	USparseDelegateFunction* SparseDelegateFunc = CastChecked<USparseDelegateFunction>(Ops->SignatureFunction);
+	UObject* OwningObject = FSparseDelegateStorage::ResolveSparseOwner(*Delegate, SparseDelegateFunc->OwningClassName, SparseDelegateFunc->DelegateName);
+
+	Delegate->__Internal_Remove(OwningObject, SparseDelegateFunc->DelegateName, InnerDelegate);
+}
+
+void FAngelscriptSparseDelegateOperations::UnbindObject(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName&)
+{
+	FDelegateOps* Ops = static_cast<FDelegateOps*>(ScriptFunction->userData);
+
+	USparseDelegateFunction* SparseDelegateFunc = CastChecked<USparseDelegateFunction>(Ops->SignatureFunction);
+	UObject* OwningObject = FSparseDelegateStorage::ResolveSparseOwner(*Delegate, SparseDelegateFunc->OwningClassName, SparseDelegateFunc->DelegateName);
+
+	FSparseDelegateStorage::RemoveAll(OwningObject, SparseDelegateFunc->DelegateName, Object);
+}
+
+void DeclareSparseDelegateOperations(FAngelscriptBinds& Binds, USparseDelegateFunction* Function)
 {
 	FDelegateOps* Ops = new FDelegateOps;
 	Ops->SignatureFunction = Function;
 
 	FString Decl = CreateAngelscriptNameForDelegate(Function);
 
-	auto Delegate_ = FAngelscriptBinds::ExistingClass(Decl);
+	auto Delegate_ = Binds.ExistingClassForTarget(Decl);
 
-	Delegate_.Method("bool IsBound() const", [](FSparseDelegate* Delegate)
-	{
-		return Delegate->IsBound();
-	});
-
-	Delegate_.Method("void Clear()", [](FSparseDelegate* Delegate, asCScriptFunction* Function)
-	{
-		FDelegateOps* Ops = (FDelegateOps*)Function->userData;
-
-		USparseDelegateFunction* SparseDelegateFunc = CastChecked<USparseDelegateFunction>(Ops->SignatureFunction);
-		UObject* OwningObject = FSparseDelegateStorage::ResolveSparseOwner(*Delegate, SparseDelegateFunc->OwningClassName, SparseDelegateFunc->DelegateName);
-
-		Delegate->__Internal_Clear(OwningObject, SparseDelegateFunc->DelegateName);
-	}, Ops);
-	FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-
-	Delegate_.Method("void AddUFunction(UObject Object, const FName& FunctionName)", AddSparseDelegateUFunction, Ops);
-	FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-
-	Delegate_.Method("void Unbind(UObject Object, const FName& FunctionName)",
-	[](FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& InFunctionName)
-	{
-		FDelegateOps* Ops = (FDelegateOps*)ScriptFunction->userData;
-
-		FScriptDelegate InnerDelegate;
-		InnerDelegate.BindUFunction(Object, InFunctionName);
-
-		USparseDelegateFunction* SparseDelegateFunc = CastChecked<USparseDelegateFunction>(Ops->SignatureFunction);
-		UObject* OwningObject = FSparseDelegateStorage::ResolveSparseOwner(*Delegate, SparseDelegateFunc->OwningClassName, SparseDelegateFunc->DelegateName);
-
-		Delegate->__Internal_Remove(OwningObject, SparseDelegateFunc->DelegateName, InnerDelegate);
-
-	}, Ops);
-	FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
-
-	Delegate_.Method("void UnbindObject(UObject Object)",
-	[](FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& InFunctionName)
-	{
-		FDelegateOps* Ops = (FDelegateOps*)ScriptFunction->userData;
-
-		USparseDelegateFunction* SparseDelegateFunc = CastChecked<USparseDelegateFunction>(Ops->SignatureFunction);
-		UObject* OwningObject = FSparseDelegateStorage::ResolveSparseOwner(*Delegate, SparseDelegateFunc->OwningClassName, SparseDelegateFunc->DelegateName);
-
-		FSparseDelegateStorage::RemoveAll(OwningObject, SparseDelegateFunc->DelegateName, Object);
-	}, Ops);
-	FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+	Delegate_.Method("bool IsBound() const", &FAngelscriptSparseDelegateOperations::IsBound);
+	Delegate_.Method("void Clear()", &FAngelscriptSparseDelegateOperations::Clear, Ops).PassScriptFunctionAsFirstParam();
+	Delegate_.Method("void AddUFunction(UObject Object, const FName& FunctionName)", &FAngelscriptSparseDelegateOperations::AddUFunction, Ops)
+		.PassScriptFunctionAsFirstParam();
+	Delegate_.Method("void Unbind(UObject Object, const FName& FunctionName)", &FAngelscriptSparseDelegateOperations::Unbind, Ops)
+		.PassScriptFunctionAsFirstParam();
+	Delegate_.Method("void UnbindObject(UObject Object)", &FAngelscriptSparseDelegateOperations::UnbindObject, Ops)
+		.PassScriptFunctionAsFirstParam();
 
 	BindDelegateEvent(Delegate_, Function, true, true);
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Delegate_Declarations(FAngelscriptBinds::EOrder::Early, []
+namespace
 {
-	FAngelscriptScopeTimer Timer(TEXT("delegate declarations"));
-
-	auto DelegateInternal = MakeShared<FScriptDelegateType>();
-	FAngelscriptType::SetScriptDelegate(DelegateInternal);
-	FAngelscriptType::Register(DelegateInternal);
-
-	auto MulticastInternal = MakeShared<FMulticastScriptDelegateType>();
-	FAngelscriptType::SetScriptMulticastDelegate(MulticastInternal);
-	FAngelscriptType::Register(MulticastInternal);
-
-	for (UDelegateFunction* Function : TObjectRange<UDelegateFunction>())
+	void BindDelegateDeclarations(FAngelscriptBinds& Binds)
 	{
-		if (!Function->HasAnyFunctionFlags(FUNC_Delegate))
-			continue;
-		if (auto* SparseFunction = Cast<USparseDelegateFunction>(Function))
-			DeclareSparseDelegate(SparseFunction);
-		else if (Function->HasAnyFunctionFlags(FUNC_MulticastDelegate))
-			DeclareMulticastDelegate(Function);
-		else
-			DeclareDelegate(Function);
-	}
+		FAngelscriptScopeTimer Timer(TEXT("delegate declarations"));
 
-	FAngelscriptType::RegisterTypeFinder([](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
-	{
-		FDelegateProperty* DelegateProperty = CastField<FDelegateProperty>(Property);
-		if (DelegateProperty == nullptr)
-			return false;
+		auto DelegateInternal = MakeShared<FScriptDelegateType>(Binds.GetTargetBindDatabase());
+		Binds.GetTargetTypeDatabase().ScriptDelegateType = DelegateInternal;
+		Binds.RegisterTypeForTarget(DelegateInternal);
 
-		auto Type = FAngelscriptType::GetByData(DelegateProperty->SignatureFunction);
-		if (Type.IsValid())
+		auto MulticastInternal = MakeShared<FMulticastScriptDelegateType>(Binds.GetTargetBindDatabase());
+		Binds.GetTargetTypeDatabase().ScriptMulticastDelegateType = MulticastInternal;
+		Binds.RegisterTypeForTarget(MulticastInternal);
+
+		for (UDelegateFunction* Function : TObjectRange<UDelegateFunction>())
 		{
-			Usage.Type = Type;
-			return true;
+			if (!Function->HasAnyFunctionFlags(FUNC_Delegate))
+				continue;
+			if (auto* SparseFunction = Cast<USparseDelegateFunction>(Function))
+				DeclareSparseDelegate(Binds, SparseFunction);
+			else if (Function->HasAnyFunctionFlags(FUNC_MulticastDelegate))
+				DeclareMulticastDelegate(Binds, Function);
+			else
+				DeclareDelegate(Binds, Function);
 		}
 
-		return false;
-	});
-
-	FAngelscriptType::RegisterTypeFinder([](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
-	{
-		FMulticastDelegateProperty* DelegateProperty = CastField<FMulticastDelegateProperty>(Property);
-		if (DelegateProperty == nullptr)
-			return false;
-
-		auto Type = FAngelscriptType::GetByData(DelegateProperty->SignatureFunction);
-		if (Type.IsValid())
+		FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
+		Binds.RegisterTypeFinderForTarget([TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
 		{
-			Usage.Type = Type;
-			return true;
-		}
+			FDelegateProperty* DelegateProperty = CastField<FDelegateProperty>(Property);
+			if (DelegateProperty == nullptr)
+				return false;
 
-		return false;
-	});
+			const TSharedRef<FAngelscriptType>* RegisteredType = TargetTypeDatabase->TypesByData.Find(DelegateProperty->SignatureFunction);
+			if (RegisteredType != nullptr)
+			{
+				Usage.Type = RegisteredType->ToSharedPtr();
+				return true;
+			}
 
-	FBindFlags BindFlags;
+			return false;
+		});
 
-	auto Delegate_ = FAngelscriptBinds::ValueClass<FScriptDelegate>("_FScriptDelegate", BindFlags);
-	Delegate_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Construct));
-	Delegate_.Destructor("void f()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Destruct));
+		Binds.RegisterTypeFinderForTarget([TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
+		{
+			FMulticastDelegateProperty* DelegateProperty = CastField<FMulticastDelegateProperty>(Property);
+			if (DelegateProperty == nullptr)
+				return false;
 
-	Delegate_.Constructor("void f(const _FScriptDelegate& Other)", FUNC_TRIVIAL(FAngelscriptDelegateOperations::CopyConstruct));
-	Delegate_.Method("_FScriptDelegate& opAssign(const _FScriptDelegate& Other)", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Assign));
+			const TSharedRef<FAngelscriptType>* RegisteredType = TargetTypeDatabase->TypesByData.Find(DelegateProperty->SignatureFunction);
+			if (RegisteredType != nullptr)
+			{
+				Usage.Type = RegisteredType->ToSharedPtr();
+				return true;
+			}
 
-	Delegate_.Method("bool IsBound() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::IsBound));
-	Delegate_.Method("void Clear() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Clear));
+			return false;
+		});
 
-	auto MulticastDelegate_ = FAngelscriptBinds::ValueClass<FMulticastScriptDelegate>("_FMulticastScriptDelegate", FBindFlags());
-	MulticastDelegate_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Construct));
-	MulticastDelegate_.Destructor("void f()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Destruct));
+		FBindFlags BindFlags;
 
-	MulticastDelegate_.Constructor("void f(const _FMulticastScriptDelegate& Other)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::CopyConstruct));
-	MulticastDelegate_.Method("_FMulticastScriptDelegate& opAssign(const _FMulticastScriptDelegate& Other)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Assign));
+		auto Delegate_ = Binds.ValueClassForTarget<FScriptDelegate>("_FScriptDelegate", BindFlags);
+		Delegate_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Construct));
+		Delegate_.Destructor("void f()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Destruct));
 
-	MulticastDelegate_.Method("bool IsBound() const", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::IsBound));
-	MulticastDelegate_.Method("void Clear()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Clear));
-});
+		Delegate_.Constructor("void f(const _FScriptDelegate& Other)", FUNC_TRIVIAL(FAngelscriptDelegateOperations::CopyConstruct));
+		Delegate_.Method("_FScriptDelegate& opAssign(const _FScriptDelegate& Other)", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Assign));
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Delegates(FAngelscriptBinds::EOrder::Late, []
-{
-	FAngelscriptScopeTimer Timer(TEXT("delegate bindings"));
+		Delegate_.Method("bool IsBound() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::IsBound));
+		Delegate_.Method("void Clear() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Clear));
 
-	for (UDelegateFunction* Function : TObjectRange<UDelegateFunction>())
-	{
-		if (!Function->HasAnyFunctionFlags(FUNC_Delegate))
-			continue;
-		if (auto* SparseFunction = Cast<USparseDelegateFunction>(Function))
-			DeclareSparseDelegateOperations(SparseFunction);
-		else if (Function->HasAnyFunctionFlags(FUNC_MulticastDelegate))
-			DeclareMulticastDelegateOperations(Function);
-		else
-			DeclareDelegateOperations(Function);
+		auto MulticastDelegate_ = Binds.ValueClassForTarget<FMulticastScriptDelegate>("_FMulticastScriptDelegate", FBindFlags());
+		MulticastDelegate_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Construct));
+		MulticastDelegate_.Destructor("void f()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Destruct));
+
+		MulticastDelegate_.Constructor("void f(const _FMulticastScriptDelegate& Other)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::CopyConstruct));
+		MulticastDelegate_.Method("_FMulticastScriptDelegate& opAssign(const _FMulticastScriptDelegate& Other)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Assign));
+
+		MulticastDelegate_.Method("bool IsBound() const", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::IsBound));
+		MulticastDelegate_.Method("void Clear()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Clear));
 	}
 
-	// A way to look up the delegate signature from an arbitrary script delegate type,
-	// this is used by auto-generated code to bind to generic script delegates.
-	FAngelscriptBinds::BindGlobalFunction("UDelegateFunction __DelegateSignature(?& Delegate)", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetDelegateSignature));
+	void BindDelegateFunctions(FAngelscriptBinds& Binds)
+	{
+		FAngelscriptScopeTimer Timer(TEXT("delegate bindings"));
 
-	auto MulticastDelegate_ = FAngelscriptBinds::ExistingClass("_FMulticastScriptDelegate");
+		for (UDelegateFunction* Function : TObjectRange<UDelegateFunction>())
+		{
+			if (!Function->HasAnyFunctionFlags(FUNC_Delegate))
+				continue;
+			if (auto* SparseFunction = Cast<USparseDelegateFunction>(Function))
+				DeclareSparseDelegateOperations(Binds, SparseFunction);
+			else if (Function->HasAnyFunctionFlags(FUNC_MulticastDelegate))
+				DeclareMulticastDelegateOperations(Binds, Function);
+			else
+				DeclareDelegateOperations(Binds, Function);
+		}
 
-	MulticastDelegate_.Method("void AddUFunction(const UObject Object, const FName& FunctionName, UDelegateFunction Signature)", FUNC(FAngelscriptMulticastDelegateOperations::AddUFunction_Signature));
-	MulticastDelegate_.Method("void Unbind(UObject Object, const FName& FunctionName)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Unbind));
-	MulticastDelegate_.Method("void UnbindObject(UObject Object)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::UnbindObject));
+		// A way to look up the delegate signature from an arbitrary script delegate type,
+		// this is used by auto-generated code to bind to generic script delegates.
+		Binds.BindGlobalFunctionForTarget("UDelegateFunction __DelegateSignature(?& Delegate)", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetDelegateSignature));
 
-	auto Delegate_ = FAngelscriptBinds::ExistingClass("_FScriptDelegate");
-	Delegate_.Method("void BindUFunction(UObject Object, const FName& FunctionName, UDelegateFunction Signature)", FUNC(FAngelscriptDelegateOperations::BindUFunction_Signature));
+		auto MulticastDelegate_ = Binds.ExistingClassForTarget("_FMulticastScriptDelegate");
 
-	Delegate_.Constructor("void f(UObject Object, const FName& FunctionName, UDelegateFunction Signature)", FUNC(FAngelscriptDelegateOperations::ConstructFromFunction_Signature));
-	Delegate_.Method("UObject GetUObject() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetUObject));
-	Delegate_.Method("FName GetFunctionName() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetFunctionName));
-});
+		MulticastDelegate_.Method("void AddUFunction(const UObject Object, const FName& FunctionName, UDelegateFunction Signature)", FUNC(FAngelscriptMulticastDelegateOperations::AddUFunction_Signature));
+		MulticastDelegate_.Method("void Unbind(UObject Object, const FName& FunctionName)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Unbind));
+		MulticastDelegate_.Method("void UnbindObject(UObject Object)", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::UnbindObject));
+
+		auto Delegate_ = Binds.ExistingClassForTarget("_FScriptDelegate");
+		Delegate_.Method("void BindUFunction(UObject Object, const FName& FunctionName, UDelegateFunction Signature)", FUNC(FAngelscriptDelegateOperations::BindUFunction_Signature));
+
+		Delegate_.Constructor("void f(UObject Object, const FName& FunctionName, UDelegateFunction Signature)", FUNC(FAngelscriptDelegateOperations::ConstructFromFunction_Signature));
+		Delegate_.Method("UObject GetUObject() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetUObject));
+		Delegate_.Method("FName GetFunctionName() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetFunctionName));
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_Delegate_Declarations(
+	TEXT("Delegates.Declarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindDelegateDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_Delegates(
+	TEXT("Delegates.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindDelegateFunctions);

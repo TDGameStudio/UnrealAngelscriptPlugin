@@ -6,6 +6,7 @@
 #include "AngelscriptDocs.h"
 #include "AngelscriptEngine.h"
 
+#include "Bind_FVector_Functions.h"
 #include "Helper_StructType.h"
 #include "Helper_ToString.h"
 
@@ -111,41 +112,52 @@ struct FVectorType : TAngelscriptBaseStructType<FVector>
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector(FAngelscriptBinds::EOrder::Early, []
+static void BindFVectorTypeDeclarations(FAngelscriptBinds& Binds)
 {
 	FBindFlags Flags;
 	Flags.bPOD = true;
 	Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
+	Binds.ValueClassForTarget<FVector>("FVector", Flags);
+}
 
-	auto FVector_ = FAngelscriptBinds::ValueClass<FVector>("FVector", Flags);
-
-	FVector_.Constructor("void f(float64 X, float64 Y, float64 Z)", [](FVector* Address, double X, double Y, double Z)
+static void BindFVectorInfrastructure(FAngelscriptBinds& Binds)
+{
+	auto VectorType = MakeShared<FVectorType>();
+	Binds.RegisterTypeForTarget(VectorType);
+	Binds.RegisterTypeFinderForTarget([VectorType](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
 	{
-		new(Address) FVector(X, Y, Z);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FVector_, "FVector");
+		FStructProperty* StructProp = CastField<FStructProperty>(Property);
+		if (StructProp == nullptr)
+			return false;
 
-	FVector_.Constructor("void f()", [](FVector* Address)
-	{
-		new(Address) FVector(0.f);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR_CUSTOMFORM(FVector_, "FVector", "0.f");
+		if (StructProp->Struct == FVector_NetQuantize::StaticStruct()
+			|| StructProp->Struct == FVector_NetQuantize10::StaticStruct()
+			|| StructProp->Struct == FVector_NetQuantize100::StaticStruct()
+			|| StructProp->Struct == FVector_NetQuantizeNormal::StaticStruct())
+		{
+			Usage.Type = VectorType;
+			return true;
+		}
 
-	FVector_.Constructor("void f(float64 F)", [](FVector* Address, double F)
-	{
-		new(Address) FVector(F);
+		return false;
 	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FVector_, "FVector");
+}
 
-	FVector_.Constructor("void f(const FVector& Other)", [](FVector* Address, const FVector& Other)
-	{
-		new(Address) FVector(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FVector_, "FVector");
+static void BindFVectorManual(FAngelscriptBinds& Binds)
+{
+	auto FVector_ = Binds.ExistingClassForTarget("FVector");
+
+	FVector_.Constructor("void f(float64 X, float64 Y, float64 Z)", &FAngelscriptFVectorBinds::ConstructXYZ, "FVector", true)
+		.NoDiscard();
+
+	FVector_.Constructor("void f()", &FAngelscriptFVectorBinds::ConstructZero)
+		.NoDiscard()
+		.NativeConstructor("FVector", true, "0.f");
+
+	FVector_.Constructor("void f(float64 F)", &FAngelscriptFVectorBinds::ConstructScalar, "FVector", true).NoDiscard();
+
+	FVector_.Constructor("void f(const FVector& Other)", &FAngelscriptFVectorBinds::ConstructCopy, "FVector", true)
+		.NoDiscard();
 
 	FVector_.Property("float64 X", &FVector::X);
 	FVector_.Property("float64 Y", &FVector::Y);
@@ -184,32 +196,38 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector(FAngelscriptBinds::EOr
 
 	FVector_.Method("bool AllComponentsEqual(float64 Tolerance = KINDA_SMALL_NUMBER) const", METHOD_TRIVIAL(FVector, AllComponentsEqual));
 
-	FVector_.Method("bool Parallel(const FVector& Normal2, float64 ParallelCosineThreshold = THRESH_NORMALS_ARE_PARALLEL) const", FUNC_TRIVIAL(FVector::Parallel));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector_.Method(
+		"bool Parallel(const FVector& Normal2, float64 ParallelCosineThreshold = THRESH_NORMALS_ARE_PARALLEL) const",
+		FUNC_TRIVIAL(FVector::Parallel))
+		.Documentation(UTF8_TO_TCHAR(
 	 "* See if two normal vectors are nearly parallel, meaning the angle between them is close to 0 degrees. \n"
 	 "* @param  Normal1 First normalized vector.\n"
 	 "* @param  Normal1 Second normalized vector.\n"
 	 "* @param  ParallelCosineThreshold Normals are parallel if absolute value of dot product (cosine of angle between them) is greater than or equal to this. For example: cos(1.0 degrees). \n"
 	 "* @return true if vectors are nearly parallel, false otherwise. \n"
-	)
+	));
 
-	FVector_.Method("bool Coincident(const FVector& Normal2, float64 ParallelCosineThreshold = THRESH_NORMALS_ARE_PARALLEL) const", FUNC_TRIVIAL(FVector::Coincident));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector_.Method(
+		"bool Coincident(const FVector& Normal2, float64 ParallelCosineThreshold = THRESH_NORMALS_ARE_PARALLEL) const",
+		FUNC_TRIVIAL(FVector::Coincident))
+		.Documentation(UTF8_TO_TCHAR(
 	 "* See if two normal vectors are coincident (nearly parallel and point in the same direction).\n"
 	 "* @param  Normal1 First normalized vector.\n"
 	 "* @param  Normal2 Second normalized vector.\n"
 	 "* @param  ParallelCosineThreshold Normals are coincident if dot product (cosine of angle between them) is greater than or equal to this. For example: cos(1.0 degrees).\n"
 	 "* @return true if vectors are coincident (nearly parallel and point in the same direction), false otherwise.\n"
-	)
+	));
 
-	FVector_.Method("bool Orthogonal(const FVector& Normal2, float64 OrthogonalCosineThreshold = THRESH_NORMALS_ARE_ORTHOGONAL) const", FUNC_TRIVIAL(FVector::Orthogonal));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector_.Method(
+		"bool Orthogonal(const FVector& Normal2, float64 OrthogonalCosineThreshold = THRESH_NORMALS_ARE_ORTHOGONAL) const",
+		FUNC_TRIVIAL(FVector::Orthogonal))
+		.Documentation(UTF8_TO_TCHAR(
 	 "* See if two normal vectors are nearly orthogonal (perpendicular), meaning the angle between them is close to 90 degrees.\n"
 	 "* @param  Normal1 First normalized vector.\n"
 	 "* @param  Normal2 Second normalized vector.\n"
 	 "* @param  OrthogonalCosineThreshold Normals are orthogonal if absolute value of dot product (cosine of angle between them) is less than or equal to this. For example: cos(89.0 degrees).\n"
 	 "* @return true if vectors are orthogonal (perpendicular), false otherwise.\n"
-	)
+	));
 
 	FVector_.Method("float64 GetMax() const", METHOD_TRIVIAL(FVector, GetMax));
 	FVector_.Method("float64 GetAbsMax() const", METHOD_TRIVIAL(FVector, GetAbsMax));
@@ -264,19 +282,23 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector(FAngelscriptBinds::EOr
 
 	FVector_.Method("float64 CosineAngle2D(FVector B) const", METHOD_TRIVIAL(FVector, CosineAngle2D));
 
-	FVector_.Method("FVector ProjectOnTo(const FVector& A) const", METHOD_TRIVIAL(FVector, ProjectOnTo));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector_.Method(
+		"FVector ProjectOnTo(const FVector& A) const",
+		METHOD_TRIVIAL(FVector, ProjectOnTo))
+		.Documentation(UTF8_TO_TCHAR(
 	 "Gets a copy of this vector projected onto the input vector.\n\n"
 	 "@param A	Vector to project onto, does not assume it is normalized.\n"
 	 "@return Projected vector."
-	)
+	));
 
-	FVector_.Method("FVector ProjectOnToNormal(const FVector& Normal) const", METHOD_TRIVIAL(FVector, ProjectOnToNormal));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector_.Method(
+		"FVector ProjectOnToNormal(const FVector& Normal) const",
+		METHOD_TRIVIAL(FVector, ProjectOnToNormal))
+		.Documentation(UTF8_TO_TCHAR(
 	 "Gets a copy of this vector projected onto the input vector, which is assumed to be unit length.\n\n"
 	 "@param A	Normal vector to project onto (assumed to be unit length).\n"
 	 "@return Projected vector."
-	)
+	));
 
 	FVector_.Method("void FindBestAxisVectors(FVector& Axis1, FVector& Axis2) const", METHOD_TRIVIAL(FVector, FindBestAxisVectors));
 	FVector_.Method("void UnwindEuler() const", METHOD_TRIVIAL(FVector, UnwindEuler));
@@ -296,59 +318,51 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector(FAngelscriptBinds::EOr
 	FVector_.Method("float64 DistSquared2D(const FVector& Other) const", FUNC_TRIVIAL(FVector::DistSquared2D));
 
 	{
-		FAngelscriptBinds::FNamespace ns("FVector");
-		FAngelscriptBinds::BindGlobalVariable("const FVector ZeroVector", &FVector::ZeroVector);
-		FAngelscriptBinds::BindGlobalVariable("const FVector OneVector", &FVector::OneVector);
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FVector");
+		Binds.BindGlobalVariableForTarget("const FVector ZeroVector", &FVector::ZeroVector);
+		Binds.BindGlobalVariableForTarget("const FVector OneVector", &FVector::OneVector);
 		
-		FAngelscriptBinds::BindGlobalVariable("const FVector UpVector", &FVector::UpVector);
-		FAngelscriptBinds::BindGlobalVariable("const FVector DownVector", &FVector::DownVector);
+		Binds.BindGlobalVariableForTarget("const FVector UpVector", &FVector::UpVector);
+		Binds.BindGlobalVariableForTarget("const FVector DownVector", &FVector::DownVector);
 		
-		FAngelscriptBinds::BindGlobalVariable("const FVector ForwardVector", &FVector::ForwardVector);
-		FAngelscriptBinds::BindGlobalVariable("const FVector BackwardVector", &FVector::BackwardVector);
+		Binds.BindGlobalVariableForTarget("const FVector ForwardVector", &FVector::ForwardVector);
+		Binds.BindGlobalVariableForTarget("const FVector BackwardVector", &FVector::BackwardVector);
 		
-		FAngelscriptBinds::BindGlobalVariable("const FVector RightVector", &FVector::RightVector);
-		FAngelscriptBinds::BindGlobalVariable("const FVector LeftVector", &FVector::LeftVector);
+		Binds.BindGlobalVariableForTarget("const FVector RightVector", &FVector::RightVector);
+		Binds.BindGlobalVariableForTarget("const FVector LeftVector", &FVector::LeftVector);
 	}
 
-	FToStringHelper::Register(TEXT("FVector"), [](void* Ptr, FString& Str)
-	{
-		Str += ((FVector*)Ptr)->ToString();
-	});
-
-	auto VectorType = MakeShared<FVectorType>();
-	FAngelscriptType::Register(VectorType);
-	FAngelscriptType::RegisterTypeFinder([VectorType](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
-	{
-		FStructProperty* StructProp = CastField<FStructProperty>(Property);
-		if (StructProp == nullptr)
-			return false;
-
-		if (StructProp->Struct == FVector_NetQuantize::StaticStruct()
-			|| StructProp->Struct == FVector_NetQuantize10::StaticStruct()
-			|| StructProp->Struct == FVector_NetQuantize100::StaticStruct()
-			|| StructProp->Struct == FVector_NetQuantizeNormal::StaticStruct())
-		{
-			Usage.Type = VectorType;
-			return true;
-		}
-
-		return false;
-	});
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector_Conversion(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FVector_ = FAngelscriptBinds::ExistingClass("FVector");
 	FVector_.Method("FRotator ToOrientationRotator() const", METHOD_TRIVIAL(FVector, ToOrientationRotator));
 	FVector_.Method("FQuat ToOrientationQuat() const", METHOD_TRIVIAL(FVector, ToOrientationQuat));
 	FVector_.Method("FRotator Rotation() const", METHOD_TRIVIAL(FVector, Rotation));
 
 	FVector_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FVector, InitFromString));
 
-	FVector_.Constructor("void f(const FVector3f& Other)", [](FVector* Address, const FVector3f& Other)
-	{
-		new(Address) FVector(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FVector_, "FVector");
-});
+	FVector_.Constructor("void f(const FVector3f& Other)", &FAngelscriptFVectorBinds::ConstructFromVector3f, "FVector", true)
+		.NoDiscard();
+}
+
+static void BindFVectorToStringContribution(FAngelscriptBinds& Binds)
+{
+	FToStringHelper::Register(Binds, TEXT("FVector"), &FAngelscriptFVectorBinds::AppendToString);
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector_TypeDeclarations(
+	TEXT("FVector.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFVectorTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector_TypeInfrastructure(
+	TEXT("FVector.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFVectorInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector(
+	TEXT("FVector"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFVectorManual);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector_ToStringContribution(
+	TEXT("FVector.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFVectorToStringContribution);

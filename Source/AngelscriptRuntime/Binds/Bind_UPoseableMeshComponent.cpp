@@ -1,18 +1,18 @@
-#include "Components/PoseableMeshComponent.h"
-
 #include "AngelscriptBinds.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UPoseableMeshComponent(FAngelscriptBinds::EOrder::Late, []
+#include "Bind_UPoseableMeshComponent_Functions.h"
+
+namespace
 {
-	FAngelscriptBinds UPoseableMeshComponent_ = FAngelscriptBinds::ExistingClass("UPoseableMeshComponent");
-
-	UPoseableMeshComponent_.Method("void AllocateTransformData()", [](UPoseableMeshComponent* Component)
+	void BindUPoseableMeshComponent(FAngelscriptBinds& Binds)
 	{
-		Component->AllocateTransformData();
-	});
+		auto UPoseableMeshComponent_ = Binds.ExistingClassForTarget("UPoseableMeshComponent");
+		UPoseableMeshComponent_.Method("void AllocateTransformData()", &FAngelscriptUPoseableMeshComponentBinds::AllocateTransformData);
+		UPoseableMeshComponent_.Method("void RefreshBoneTransforms()", &FAngelscriptUPoseableMeshComponentBinds::RefreshBoneTransforms);
+	}
+}
 
-	UPoseableMeshComponent_.Method("void RefreshBoneTransforms()", [](UPoseableMeshComponent* Component)
-	{
-		Component->RefreshBoneTransforms();
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_UPoseableMeshComponent(
+	TEXT("UPoseableMeshComponent"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUPoseableMeshComponent);

@@ -220,9 +220,21 @@ Rules:
 - Consume return values from `ExpectGlobalInts`, `Execute...`, or similar
   helpers with `ASSERT_THAT(IsTrue(...))` or an equivalent assertion.
 - File-level native bind registration objects such as
-  `AS_FORCE_LINK const FAngelscriptBinds::FBind ...` are allowed because they
-  must register during AS bind initialization. The test flow, fixtures, and
-  assertions still belong inside `TEST_CLASS_WITH_FLAGS`.
+  `AS_FORCE_LINK const FAngelscriptBind ...` are allowed because their
+  metadata must enter the process collection before it is sealed. Give each
+  one an explicit `EAngelscriptBindPhase` and a callback receiving
+  `FAngelscriptBinds&`; test flow, fixtures, and assertions still belong inside
+  `TEST_CLASS_WITH_FLAGS`.
+- Focused DSL compatibility fixtures may keep supported non-capturing lambda
+  callables. Production-style fixtures should mirror the named-callable rule:
+  custom callable bodies use a semantic owner, while pointer-only bindings do
+  not create empty `_Functions.h/.cpp` companions.
+- When a registration has exactly one short fluent trait, it may stay on one
+  physical line only when the complete raw line is at most 120 columns. Close
+  long registrations on their own line; for multiple traits, put every trait
+  on its own equally indented continuation line. Assertions that inspect
+  traits must use the exact returned `FAngelscriptBoundFunction` or
+  `FAngelscriptBoundProperty`, never implicit previous-bind state.
 
 ## Inline AngelScript Fixture Rules
 

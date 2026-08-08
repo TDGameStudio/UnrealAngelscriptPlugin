@@ -34,15 +34,12 @@ FString FAngelscriptType::GetBoundClassName(UClass* Class)
 
 static FAngelscriptTypeDatabase& GetTypeDatabase()
 {
-	if (FAngelscriptEngine* Engine = FAngelscriptEngine::TryGetCurrentEngine())
-	{
-		if (FAngelscriptTypeDatabase* DB = Engine->GetTypeDatabase())
-		{
-			return *DB;
-		}
-	}
-	static FAngelscriptTypeDatabase LegacyDatabase;
-	return LegacyDatabase;
+	FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
+	FAngelscriptTypeDatabase* Database = Engine.GetTypeDatabase();
+	checkf(
+		Database != nullptr,
+		TEXT("The current AngelScript engine has no type database."));
+	return *Database;
 }
 
 const TArray<TSharedRef<FAngelscriptType>>& FAngelscriptType::GetTypes()
@@ -53,8 +50,11 @@ const TArray<TSharedRef<FAngelscriptType>>& FAngelscriptType::GetTypes()
 
 void FAngelscriptType::Register(TSharedRef<FAngelscriptType> Type)
 {
-	auto& Database = GetTypeDatabase();
+	Register(GetTypeDatabase(), Type);
+}
 
+void FAngelscriptType::Register(FAngelscriptTypeDatabase& Database, TSharedRef<FAngelscriptType> Type)
+{
 	FString AngelscriptName = Type->GetAngelscriptTypeName();
 	if (Database.TypesByAngelscriptName.Contains(AngelscriptName))
 	{
@@ -107,19 +107,37 @@ void FAngelscriptType::ResetTypeDatabase()
 
 void FAngelscriptType::RegisterAlias(const FString& Alias, TSharedRef<FAngelscriptType> Type)
 {
-	auto& Database = GetTypeDatabase();
+	RegisterAlias(GetTypeDatabase(), Alias, Type);
+}
+
+void FAngelscriptType::RegisterAlias(
+	FAngelscriptTypeDatabase& Database,
+	const FString& Alias,
+	TSharedRef<FAngelscriptType> Type)
+{
 	Database.TypesByAngelscriptName.Add(Alias, Type);
 }
 
 void FAngelscriptType::RegisterTypeFinder(FTypeFinder Finder)
 {
-	auto& Database = GetTypeDatabase();
-	Database.TypeFinders.Add(Finder);
+	RegisterTypeFinder(GetTypeDatabase(), MoveTemp(Finder));
+}
+
+void FAngelscriptType::RegisterTypeFinder(FAngelscriptTypeDatabase& Database, FTypeFinder Finder)
+{
+	Database.TypeFinders.Add(MoveTemp(Finder));
 }
 
 TSharedPtr<FAngelscriptType> FAngelscriptType::GetByAngelscriptTypeName(const FString& Name)
 {
-	auto* Found = GetTypeDatabase().TypesByAngelscriptName.Find(Name);
+	return GetByAngelscriptTypeName(GetTypeDatabase(), Name);
+}
+
+TSharedPtr<FAngelscriptType> FAngelscriptType::GetByAngelscriptTypeName(
+	FAngelscriptTypeDatabase& Database,
+	const FString& Name)
+{
+	auto* Found = Database.TypesByAngelscriptName.Find(Name);
 	if (Found == nullptr)
 		return nullptr;
 	else
@@ -128,7 +146,14 @@ TSharedPtr<FAngelscriptType> FAngelscriptType::GetByAngelscriptTypeName(const FS
 
 TSharedPtr<FAngelscriptType> FAngelscriptType::GetByClass(UClass* ForClass)
 {
-	auto* Found = GetTypeDatabase().TypesByClass.Find(ForClass);
+	return GetByClass(GetTypeDatabase(), ForClass);
+}
+
+TSharedPtr<FAngelscriptType> FAngelscriptType::GetByClass(
+	FAngelscriptTypeDatabase& Database,
+	UClass* ForClass)
+{
+	auto* Found = Database.TypesByClass.Find(ForClass);
 	if (Found == nullptr)
 		return nullptr;
 	else
@@ -137,7 +162,14 @@ TSharedPtr<FAngelscriptType> FAngelscriptType::GetByClass(UClass* ForClass)
 
 TSharedPtr<FAngelscriptType> FAngelscriptType::GetByData(void* ForData)
 {
-	auto* Found = GetTypeDatabase().TypesByData.Find(ForData);
+	return GetByData(GetTypeDatabase(), ForData);
+}
+
+TSharedPtr<FAngelscriptType> FAngelscriptType::GetByData(
+	FAngelscriptTypeDatabase& Database,
+	void* ForData)
+{
+	auto* Found = Database.TypesByData.Find(ForData);
 	if (Found == nullptr)
 		return nullptr;
 	else
@@ -146,8 +178,11 @@ TSharedPtr<FAngelscriptType> FAngelscriptType::GetByData(void* ForData)
 
 TSharedPtr<FAngelscriptType> FAngelscriptType::GetByProperty(FProperty* Property, bool bQueryTypeFinders)
 {
-	auto& Database = GetTypeDatabase();
+	return GetByProperty(GetTypeDatabase(), Property, bQueryTypeFinders);
+}
 
+TSharedPtr<FAngelscriptType> FAngelscriptType::GetByProperty(FAngelscriptTypeDatabase& Database, FProperty* Property, bool bQueryTypeFinders)
+{
 	// Query any Type Finders that were registered for a type
 	if (bQueryTypeFinders)
 	{
@@ -233,10 +268,14 @@ UClass* FAngelscriptTypeUsage::GetClass() const
 
 FAngelscriptTypeUsage FAngelscriptTypeUsage::FromProperty(FProperty* Property)
 {
+	return FromProperty(GetTypeDatabase(), Property);
+}
+
+FAngelscriptTypeUsage FAngelscriptTypeUsage::FromProperty(FAngelscriptTypeDatabase& Database, FProperty* Property)
+{
 	FAngelscriptTypeUsage Usage;
 
 	// Query any Type Finders that were registered for a type
-	auto& Database = GetTypeDatabase();
 	for (auto& Finder : Database.TypeFinders)
 	{
 		if (Finder(Property, Usage))
@@ -245,7 +284,7 @@ FAngelscriptTypeUsage FAngelscriptTypeUsage::FromProperty(FProperty* Property)
 
 	if (!Usage.Type.IsValid())
 	{
-		Usage.Type = FAngelscriptType::GetByProperty(Property, false);
+		Usage.Type = FAngelscriptType::GetByProperty(Database, Property, false);
 	}
 
 	if (Property->HasAnyPropertyFlags(CPF_ConstParm))

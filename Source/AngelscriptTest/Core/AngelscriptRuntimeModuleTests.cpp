@@ -1,9 +1,11 @@
 #include "AngelscriptEngine.h"
+#include "AngelscriptBinds.h"
 #include "AngelscriptSubsystem.h"
 #include "AngelscriptRuntimeModule.h"
 #include "AngelscriptTestUtilities.h"
 
 #include "CQTest.h"
+#include "Engine/Engine.h"
 #include "Misc/ScopeExit.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
@@ -238,6 +240,80 @@ public:
 			0,
 			StackAfterSecondShutdown.Num(),
 			TEXT("RuntimeModule subsystem-route test should keep the context stack empty after manual clear and repeated shutdown"));
+		(void)bOk;
+	}
+
+	TEST_METHOD(NoGEngineCompatibilityUsesTheSingleIdempotentBindCollection)
+	{
+		FRuntimeModuleContextStackGuard ContextGuard;
+		DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		ContextGuard.DiscardSavedStack();
+
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+			FAngelscriptBind::ResetPrepareInvocationCountForTesting();
+			FAngelscriptEngineContextStack::SnapshotAndClear();
+			if (FAngelscriptEngine::IsInitialized())
+			{
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			}
+			DestroySharedTestEngine();
+		};
+
+		FAngelscriptRuntimeModuleTickTestAccess::ResetInitializeState();
+		TUniquePtr<FAngelscriptEngine> CompatibilityEngine = CreateFullTestEngine();
+		ASSERT_THAT(IsNotNull(
+			CompatibilityEngine.Get(),
+			TEXT("No-GEngine compatibility test should create an initialized ambient engine")));
+
+		FAngelscriptEngineScope CompatibilityScope(*CompatibilityEngine);
+		FAngelscriptBind::ResetPrepareInvocationCountForTesting();
+
+		const void* CollectionIdentityBefore = FAngelscriptBind::GetRegisteredCollectionIdentityForTesting();
+		const int32 BindCountBefore = FAngelscriptBind::GetRegisteredBindCountForTesting();
+		FString PreparationDiagnostic;
+		ASSERT_THAT(IsTrue(
+			FAngelscriptBind::PrepareForEngineInitialization(PreparationDiagnostic),
+			TEXT("The normal preparation entry point should succeed before compatibility initialization")));
+
+		bool bHadNoGEngine = false;
+		bool bKeptAmbientEngine = false;
+		{
+			TGuardValue<UEngine*> NoEngineGuard(GEngine, nullptr);
+			bHadNoGEngine = GEngine == nullptr;
+			FAngelscriptRuntimeModule::InitializeAngelscript();
+			bKeptAmbientEngine = FAngelscriptEngine::TryGetCurrentEngine() == CompatibilityEngine.Get();
+		}
+
+		bool bOk = true;
+		bOk &= this->Assert.IsTrue(
+			bHadNoGEngine,
+			TEXT("Compatibility initialization should execute while GEngine is unavailable"));
+		bOk &= this->Assert.AreEqual(
+			2,
+			FAngelscriptBind::GetPrepareInvocationCountForTesting(),
+			TEXT("RuntimeModule compatibility initialization should call the same preparation entry point after normal preparation"));
+		bOk &= this->Assert.IsTrue(
+			FAngelscriptBind::IsRegisteredCollectionSealedForTesting(),
+			TEXT("Repeated preparation through the compatibility path should leave the global collection sealed"));
+		bOk &= this->Assert.IsTrue(
+			FAngelscriptBind::GetRegisteredCollectionIdentityForTesting() == CollectionIdentityBefore,
+			TEXT("Compatibility initialization must reuse the single process bind collection"));
+		bOk &= this->Assert.AreEqual(
+			BindCountBefore,
+			FAngelscriptBind::GetRegisteredBindCountForTesting(),
+			TEXT("Idempotent compatibility preparation must not copy or append a second bind collection"));
+		bOk &= this->Assert.IsTrue(
+			bKeptAmbientEngine,
+			TEXT("No-GEngine compatibility initialization should adopt the initialized ambient engine"));
+		bOk &= this->Assert.IsFalse(
+			FAngelscriptRuntimeModuleTickTestAccess::HasOwnedPrimaryEngine(),
+			TEXT("No-GEngine compatibility initialization should not create a second primary engine when an ambient engine exists"));
 		(void)bOk;
 	}
 

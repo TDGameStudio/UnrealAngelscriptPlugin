@@ -1,19 +1,20 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
-#include "Engine/EngineTypes.h"
-#include "Runtime/Core/Public/Misc/CommandLine.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCommandLine(FAngelscriptBinds::EOrder::Late, []
+#include "Bind_FCommandLine_Functions.h"
+
+namespace
 {
-	FAngelscriptBinds::FNamespace ns("FCommandLine");
-
-	FAngelscriptBinds::BindGlobalFunction("FString Get()", []()
+	void BindFCommandLine(FAngelscriptBinds& Binds)
 	{
-		return FString(FCommandLine::Get());
-	});
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FCommandLine");
+		Binds.BindGlobalFunctionForTarget("FString Get()", &FAngelscriptFCommandLineBinds::Get);
+		Binds.BindGlobalFunctionForTarget(
+			"void Parse(const FString& CmdLine, TArray<FString>& OutTokens, TArray<FString>& OutSwitches)",
+			&FAngelscriptFCommandLineBinds::Parse);
+	}
+}
 
-	FAngelscriptBinds::BindGlobalFunction("void Parse(const FString& CmdLine, TArray<FString>& OutTokens, TArray<FString>& OutSwitches)", [](const FString& CmdLine, TArray<FString>& OutTokens, TArray<FString>& OutSwitches)
-	{
-		FCommandLine::Parse(*CmdLine, OutTokens, OutSwitches);
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_FCommandLine(
+	TEXT("FCommandLine"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFCommandLine);

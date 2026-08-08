@@ -19,15 +19,17 @@ static UObject* GetOptionalNullNativeRefForTesting()
 	return nullptr;
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptOptionalNullNativeRefForTesting(
-	TEXT("AngelscriptOptionalNullNativeRefForTesting"),
-	(int32)FAngelscriptBinds::EOrder::Late + 101,
-	[]
-	{
-		FAngelscriptBinds::BindGlobalFunction(
-			"UObject& OptionalNullNativeRefForTesting()",
-			FUNC_TRIVIAL(GetOptionalNullNativeRefForTesting));
-	});
+static void BindAngelscriptOptionalNullNativeRefForTesting(FAngelscriptBinds& Binds)
+{
+	Binds.BindGlobalFunctionForTarget(
+		"UObject& OptionalNullNativeRefForTesting()",
+		FUNC_TRIVIAL(GetOptionalNullNativeRefForTesting));
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptOptionalNullNativeRefForTesting(
+	TEXT("AngelscriptOptionalNullNativeRefForTesting.PostReflection"),
+	EAngelscriptBindPhase::PostReflectionBindings,
+	&BindAngelscriptOptionalNullNativeRefForTesting);
 
 TEST_CLASS_WITH_FLAGS(FAngelscriptOptionalBindingsTest,
 	"Angelscript.TestModule.Bindings.Container.Optional",

@@ -1,501 +1,239 @@
-#include "Engine/Engine.h"
-#include "Engine/World.h"
-
-#include "FunctionLibraries/WorldCollisionStatics.h"
-
-#include "AngelscriptEngine.h"
-#include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
-
+#include "AngelscriptType.h"
+#include "Bind_WorldCollision_Functions.h"
 #include "Helper_CppType.h"
 
-namespace WorldCollision
+#include "WorldCollision.h"
+
+namespace
 {
-	UWorld* GetWorld()
+	struct FTraceHandleType : TAngelscriptCppType<FTraceHandle>
 	{
-		return GEngine->GetWorldFromContextObject(FAngelscriptEngine::TryGetCurrentWorldContextObject(), EGetWorldErrorMode::LogAndReturnNull);
-	}
-};
+		FString GetAngelscriptTypeName() const override
+		{
+			return TEXT("FTraceHandle");
+		}
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AsyncTraceType((int32)FAngelscriptBinds::EOrder::Early, []
-{
-	auto TraceType_ = FAngelscriptBinds::Enum("EAsyncTraceType");
-	TraceType_["Test"]	 = EAsyncTraceType::Test;
-	TraceType_["Single"] = EAsyncTraceType::Single;
-	TraceType_["Multi"]	 = EAsyncTraceType::Multi;
-});
+		bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
+		{
+			OutCppForm.CppType = GetAngelscriptTypeName();
+			return true;
+		}
 
-struct FTraceHandleType : TAngelscriptCppType<FTraceHandle>
-{
-	FString GetAngelscriptTypeName() const override
+		bool NeverRequiresGC(const FAngelscriptTypeUsage& Usage) const override { return true; }
+	};
+
+	struct FTraceDatumType : TAngelscriptCppType<FTraceDatum>
 	{
-		return TEXT("FTraceHandle");
-	}
+		FString GetAngelscriptTypeName() const override
+		{
+			return TEXT("FTraceDatum");
+		}
 
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
+		bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
+		{
+			OutCppForm.CppType = GetAngelscriptTypeName();
+			return true;
+		}
+
+		bool NeverRequiresGC(const FAngelscriptTypeUsage& Usage) const override { return true; }
+	};
+
+	struct FOverlapDatumType : TAngelscriptCppType<FOverlapDatum>
 	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
-	}
+		FString GetAngelscriptTypeName() const override
+		{
+			return TEXT("FOverlapDatum");
+		}
 
-	bool NeverRequiresGC(const FAngelscriptTypeUsage& Usage) const override { return true; }
-};
+		bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
+		{
+			OutCppForm.CppType = GetAngelscriptTypeName();
+			return true;
+		}
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FTraceHandle(FAngelscriptBinds::EOrder::Early, []
-{
-	FBindFlags Flags;
-	Flags.bPOD = true;
+		bool NeverRequiresGC(const FAngelscriptTypeUsage& Usage) const override { return true; }
+	};
 
-	auto FTraceHandle_ = FAngelscriptBinds::ValueClass<FTraceHandle>("FTraceHandle", Flags);
-	FAngelscriptType::Register(MakeShared<FTraceHandleType>());
-
-	FTraceHandle_.Constructor("void f()", [](FTraceHandle* Address)
+	void BindAsyncTraceTypeDeclarations(FAngelscriptBinds& Binds)
 	{
-		new(Address) FTraceHandle();
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTraceHandle_, "FTraceHandle");
-
-	FTraceHandle_.Constructor("void f(uint64 InHandle)", [](FTraceHandle* Address, uint64 InHandle)
-	{
-		FTraceHandle* TraceHandle = new(Address) FTraceHandle();
-		TraceHandle->_Handle = InHandle;
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTraceHandle_, "FTraceHandle");
-
-	FTraceHandle_.Method("bool opEquals(const FTraceHandle& Other) const", METHODPR_TRIVIAL(bool, FTraceHandle, operator==, (const FTraceHandle&) const));
-	FTraceHandle_.Method("bool IsValid() const", METHOD_TRIVIAL(FTraceHandle, IsValid));
-	FTraceHandle_.Property("uint64 _Handle", &FTraceHandle::_Handle);
-	FTraceHandle_.Property("uint32 _FrameNumber", (size_t)&(((FTraceHandle*)nullptr)->_Data.FrameNumber));
-	FTraceHandle_.Property("uint32 _Index", (size_t)& (((FTraceHandle*)nullptr)->_Data.Index));
-});
-
-struct FTraceDatumType : TAngelscriptCppType<FTraceDatum>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FTraceDatum");
+		auto TraceType = Binds.EnumForTarget("EAsyncTraceType");
+		TraceType["Test"] = EAsyncTraceType::Test;
+		TraceType["Single"] = EAsyncTraceType::Single;
+		TraceType["Multi"] = EAsyncTraceType::Multi;
 	}
 
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
+	void BindTraceHandleTypeDeclarations(FAngelscriptBinds& Binds)
 	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
+		FBindFlags Flags;
+		Flags.bPOD = true;
+		Binds.ValueClassForTarget<FTraceHandle>("FTraceHandle", Flags);
 	}
 
-	bool NeverRequiresGC(const FAngelscriptTypeUsage& Usage) const override { return true; }
-};
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FTraceDatum_Early(FAngelscriptBinds::EOrder::Early, []
-{
-	FBindFlags Flags;
-	auto FTraceDatum_ = FAngelscriptBinds::ValueClass<FTraceDatum>("FTraceDatum", Flags);
-	FAngelscriptType::Register(MakeShared<FTraceDatumType>());
-
-	FTraceDatum_.Constructor("void f()", [](FTraceDatum* Address)
+	void BindTraceHandleTypeInfrastructure(FAngelscriptBinds& Binds)
 	{
-		new(Address) FTraceDatum();
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FTraceDatum_, "FTraceDatum");
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FTraceDatum_Late(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FTraceDatum_ = FAngelscriptBinds::ExistingClass("FTraceDatum");
-
-	FTraceDatum_.Property("FVector Start", &FTraceDatum::Start);
-	FTraceDatum_.Property("FVector End", &FTraceDatum::End);
-	FTraceDatum_.Property("FQuat Rot", &FTraceDatum::Rot);
-	FTraceDatum_.Property("TArray<FHitResult> OutHits", &FTraceDatum::OutHits);
-	FTraceDatum_.Property("EAsyncTraceType TraceType", &FTraceDatum::TraceType);
-	FTraceDatum_.Property("ECollisionChannel TraceChannel", &FOverlapDatum::TraceChannel);
-	FTraceDatum_.Property("uint32 UserData", &FTraceDatum::UserData);
-});
-
-struct FOverlapDatumType : TAngelscriptCppType<FOverlapDatum>
-{
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FOverlapDatum");
+		Binds.RegisterTypeForTarget(MakeShared<FTraceHandleType>());
 	}
 
-	bool GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const override
+	void BindTraceHandle(FAngelscriptBinds& Binds)
 	{
-		OutCppForm.CppType = GetAngelscriptTypeName();
-		return true;
+		auto TraceHandle = Binds.ExistingClassForTarget("FTraceHandle");
+		TraceHandle.Constructor("void f()", &FAngelscriptWorldCollisionBinds::ConstructTraceHandle)
+			.NativeConstructor("FTraceHandle", true);
+		TraceHandle.Constructor("void f(uint64 InHandle)", &FAngelscriptWorldCollisionBinds::ConstructTraceHandleFromValue)
+			.NativeConstructor("FTraceHandle", true);
+		TraceHandle.Method("bool opEquals(const FTraceHandle& Other) const", METHODPR_TRIVIAL(bool, FTraceHandle, operator==, (const FTraceHandle&) const));
+		TraceHandle.Method("bool IsValid() const", METHOD_TRIVIAL(FTraceHandle, IsValid));
+		TraceHandle.Property("uint64 _Handle", &FTraceHandle::_Handle);
+		TraceHandle.Property("uint32 _FrameNumber", (size_t)&(((FTraceHandle*)nullptr)->_Data.FrameNumber));
+		TraceHandle.Property("uint32 _Index", (size_t)&(((FTraceHandle*)nullptr)->_Data.Index));
 	}
 
-	bool NeverRequiresGC(const FAngelscriptTypeUsage& Usage) const override { return true; }
-};
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FOverlapDatum_Early(FAngelscriptBinds::EOrder::Early, []
-{
-	FBindFlags Flags;
-	auto FOverlapDatum_ = FAngelscriptBinds::ValueClass<FOverlapDatum>("FOverlapDatum", Flags);
-	FAngelscriptType::Register(MakeShared<FOverlapDatumType>());
-
-	FOverlapDatum_.Constructor("void f()", [](FOverlapDatum* Address)
+	void BindTraceDatumTypeDeclarations(FAngelscriptBinds& Binds)
 	{
-		new(Address) FOverlapDatum();
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FOverlapDatum_, "FOverlapDatum");
-});
+		FBindFlags Flags;
+		Binds.ValueClassForTarget<FTraceDatum>("FTraceDatum", Flags);
+	}
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FOverlapDatum_Late(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FOverlapDatum_ = FAngelscriptBinds::ExistingClass("FOverlapDatum");
+	void BindTraceDatumTypeInfrastructure(FAngelscriptBinds& Binds)
+	{
+		Binds.RegisterTypeForTarget(MakeShared<FTraceDatumType>());
+	}
 
-	FOverlapDatum_.Property("FVector Pos", &FOverlapDatum::Pos);
-	FOverlapDatum_.Property("FQuat Rot", &FOverlapDatum::Rot);
-	FOverlapDatum_.Property("TArray<FOverlapResult> OutOverlaps", &FOverlapDatum::OutOverlaps);
-	FOverlapDatum_.Property("ECollisionChannel TraceChannel", &FOverlapDatum::TraceChannel);
-	FOverlapDatum_.Property("uint32 UserData", &FOverlapDatum::UserData);
-});
+	void BindTraceDatum(FAngelscriptBinds& Binds)
+	{
+		auto TraceDatum = Binds.ExistingClassForTarget("FTraceDatum");
+		TraceDatum.Constructor("void f()", &FAngelscriptWorldCollisionBinds::ConstructTraceDatum)
+			.NativeConstructor("FTraceDatum", true);
+		TraceDatum.Property("FVector Start", &FTraceDatum::Start);
+		TraceDatum.Property("FVector End", &FTraceDatum::End);
+		TraceDatum.Property("FQuat Rot", &FTraceDatum::Rot);
+		TraceDatum.Property("TArray<FHitResult> OutHits", &FTraceDatum::OutHits);
+		TraceDatum.Property("EAsyncTraceType TraceType", &FTraceDatum::TraceType);
+		TraceDatum.Property("ECollisionChannel TraceChannel", &FOverlapDatum::TraceChannel);
+		TraceDatum.Property("uint32 UserData", &FTraceDatum::UserData);
+	}
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Traces((int32)FAngelscriptBinds::EOrder::Late, []
-{
-	FAngelscriptBinds::FNamespace ns("System");
+	void BindOverlapDatumTypeDeclarations(FAngelscriptBinds& Binds)
+	{
+		FBindFlags Flags;
+		Binds.ValueClassForTarget<FOverlapDatum>("FOverlapDatum", Flags);
+	}
 
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceTestByChannel(const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->LineTraceTestByChannel(Start, End, TraceChannel, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceTestByObjectType(const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->LineTraceTestByObjectType(Start, End, ObjectQueryParams, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceTestByProfile(const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->LineTraceTestByProfile(Start, End, ProfileName, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceSingleByChannel(FHitResult& OutHit, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](FHitResult& OutHit, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->LineTraceSingleByChannel(OutHit, Start, End, TraceChannel, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceSingleByObjectType(FHitResult& OutHit, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](FHitResult& OutHit, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->LineTraceSingleByObjectType(OutHit, Start, End, ObjectQueryParams, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceSingleByProfile(FHitResult& OutHit, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](FHitResult& OutHit, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->LineTraceSingleByProfile(OutHit, Start, End, ProfileName, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceMultiByChannel(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->LineTraceMultiByChannel(OutHits, Start, End, TraceChannel, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceMultiByObjectType(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->LineTraceMultiByObjectType(OutHits, Start, End, ObjectQueryParams, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool LineTraceMultiByProfile(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->LineTraceMultiByProfile(OutHits, Start, End, ProfileName, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepTestByChannel(const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->SweepTestByChannel(Start, End, Rot, TraceChannel, CollisionShape, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepTestByObjectType(const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->SweepTestByObjectType(Start, End, Rot, ObjectQueryParams, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepTestByProfile(const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->SweepTestByProfile(Start, End, Rot, ProfileName, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepSingleByChannel(FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->SweepSingleByChannel(OutHit, Start, End, Rot, TraceChannel, CollisionShape, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepSingleByObjectType(FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->SweepSingleByObjectType(OutHit, Start, End, Rot, ObjectQueryParams, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepSingleByProfile(FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->SweepSingleByProfile(OutHit, Start, End, Rot, ProfileName, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepMultiByChannel(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->SweepMultiByChannel(OutHits, Start, End, Rot, TraceChannel, CollisionShape, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepMultiByObjectType(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->SweepMultiByObjectType(OutHits, Start, End, Rot, ObjectQueryParams, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool SweepMultiByProfile(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->SweepMultiByProfile(OutHits, Start, End, Rot, ProfileName, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool OverlapBlockingTestByChannel(const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->OverlapBlockingTestByChannel(Pos, Rot, TraceChannel, CollisionShape, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool OverlapAnyTestByChannel(const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->OverlapAnyTestByChannel(Pos, Rot, TraceChannel, CollisionShape, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool OverlapAnyTestByObjectType(const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->OverlapAnyTestByObjectType(Pos, Rot, ObjectQueryParams, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool OverlapBlockingTestByProfile(const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->OverlapBlockingTestByProfile(Pos, Rot, ProfileName, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool OverlapAnyTestByProfile(const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->OverlapAnyTestByProfile(Pos, Rot, ProfileName, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool OverlapMultiByChannel(TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)",
-		[](TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam)
-		{
-			return WorldCollision::GetWorld()->OverlapMultiByChannel(OutOverlaps, Pos, Rot, TraceChannel, CollisionShape, Params, ResponseParam);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool OverlapMultiByObjectType(TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->OverlapMultiByObjectType(OutOverlaps, Pos, Rot, ObjectQueryParams, CollisionShape, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool OverlapMultiByProfile(TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)",
-		[](TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->OverlapMultiByProfile(OutOverlaps, Pos, Rot, ProfileName, CollisionShape, Params);
-		});
+	void BindOverlapDatumTypeInfrastructure(FAngelscriptBinds& Binds)
+	{
+		Binds.RegisterTypeForTarget(MakeShared<FOverlapDatumType>());
+	}
 
-	FAngelscriptBinds::BindGlobalFunction("bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent PrimComp, const FVector& Start, const FVector& End, const FQuat& Rot, const FComponentQueryParams& Params)",
-		[](TArray<FHitResult>& OutHits, UPrimitiveComponent* PrimComp, const FVector& Start, const FVector& End, const FQuat& Rot, const FComponentQueryParams& Params)
-		{
-			if (PrimComp == nullptr)
-			{
-				OutHits.Reset();
-				return false;
-			}
+	void BindOverlapDatum(FAngelscriptBinds& Binds)
+	{
+		auto OverlapDatum = Binds.ExistingClassForTarget("FOverlapDatum");
+		OverlapDatum.Constructor("void f()", &FAngelscriptWorldCollisionBinds::ConstructOverlapDatum)
+			.NativeConstructor("FOverlapDatum", true);
+		OverlapDatum.Property("FVector Pos", &FOverlapDatum::Pos);
+		OverlapDatum.Property("FQuat Rot", &FOverlapDatum::Rot);
+		OverlapDatum.Property("TArray<FOverlapResult> OutOverlaps", &FOverlapDatum::OutOverlaps);
+		OverlapDatum.Property("ECollisionChannel TraceChannel", &FOverlapDatum::TraceChannel);
+		OverlapDatum.Property("uint32 UserData", &FOverlapDatum::UserData);
+	}
 
-			return WorldCollision::GetWorld()->ComponentSweepMulti(OutHits, PrimComp, Start, End, Rot, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent PrimComp, const FVector& Start, const FVector& End, const FRotator& Rot, const FComponentQueryParams& Params)",
-		[](TArray<FHitResult>& OutHits, UPrimitiveComponent* PrimComp, const FVector& Start, const FVector& End, const FRotator& Rot, const FComponentQueryParams& Params)
-		{
-			if (PrimComp == nullptr)
-			{
-				OutHits.Reset();
-				return false;
-			}
+	void BindSyncQueries(FAngelscriptBinds& Binds)
+	{
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "System");
 
-			return WorldCollision::GetWorld()->ComponentSweepMulti(OutHits, PrimComp, Start, End, Rot, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool ComponentSweepMultiByChannel(TArray<FHitResult>& OutHits, UPrimitiveComponent PrimComp, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params)",
-		[](TArray<FHitResult>& OutHits, UPrimitiveComponent* PrimComp, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->ComponentSweepMultiByChannel(OutHits, PrimComp, Start, End, Rot, TraceChannel, Params);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool ComponentSweepMultiByChannel(TArray<FHitResult>& OutHits, UPrimitiveComponent PrimComp, const FVector& Start, const FVector& End, const FRotator& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params)",
-		[](TArray<FHitResult>& OutHits, UPrimitiveComponent* PrimComp, const FVector& Start, const FVector& End, const FRotator& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params)
-		{
-			return WorldCollision::GetWorld()->ComponentSweepMultiByChannel(OutHits, PrimComp, Start, End, Rot, TraceChannel, Params);
-		});
+		Binds.BindGlobalFunctionForTarget("bool LineTraceTestByChannel(const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::LineTraceTestByChannel);
+		Binds.BindGlobalFunctionForTarget("bool LineTraceTestByObjectType(const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::LineTraceTestByObjectType);
+		Binds.BindGlobalFunctionForTarget("bool LineTraceTestByProfile(const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::LineTraceTestByProfile);
+		Binds.BindGlobalFunctionForTarget("bool LineTraceSingleByChannel(FHitResult& OutHit, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::LineTraceSingleByChannel);
+		Binds.BindGlobalFunctionForTarget("bool LineTraceSingleByObjectType(FHitResult& OutHit, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::LineTraceSingleByObjectType);
+		Binds.BindGlobalFunctionForTarget("bool LineTraceSingleByProfile(FHitResult& OutHit, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::LineTraceSingleByProfile);
+		Binds.BindGlobalFunctionForTarget("bool LineTraceMultiByChannel(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::LineTraceMultiByChannel);
+		Binds.BindGlobalFunctionForTarget("bool LineTraceMultiByObjectType(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::LineTraceMultiByObjectType);
+		Binds.BindGlobalFunctionForTarget("bool LineTraceMultiByProfile(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::LineTraceMultiByProfile);
 
-	FAngelscriptBinds::BindGlobalFunction("bool ComponentOverlapMulti(TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent PrimComp, const FVector& Pos, const FQuat& Rot, const FComponentQueryParams& Params = FComponentQueryParams::DefaultComponentQueryParams, const FCollisionObjectQueryParams& ObjectQueryParams = FCollisionObjectQueryParams::DefaultObjectQueryParam)",
-		[](TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent* PrimComp, const FVector& Pos, const FQuat& Rot, const FComponentQueryParams& Params, const FCollisionObjectQueryParams& ObjectQueryParams)
-		{
-			if (PrimComp == nullptr)
-			{
-				OutOverlaps.Reset();
-				return false;
-			}
+		Binds.BindGlobalFunctionForTarget("bool SweepTestByChannel(const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::SweepTestByChannel);
+		Binds.BindGlobalFunctionForTarget("bool SweepTestByObjectType(const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::SweepTestByObjectType);
+		Binds.BindGlobalFunctionForTarget("bool SweepTestByProfile(const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::SweepTestByProfile);
+		Binds.BindGlobalFunctionForTarget("bool SweepSingleByChannel(FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::SweepSingleByChannel);
+		Binds.BindGlobalFunctionForTarget("bool SweepSingleByObjectType(FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::SweepSingleByObjectType);
+		Binds.BindGlobalFunctionForTarget("bool SweepSingleByProfile(FHitResult& OutHit, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::SweepSingleByProfile);
+		Binds.BindGlobalFunctionForTarget("bool SweepMultiByChannel(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::SweepMultiByChannel);
+		Binds.BindGlobalFunctionForTarget("bool SweepMultiByObjectType(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::SweepMultiByObjectType);
+		Binds.BindGlobalFunctionForTarget("bool SweepMultiByProfile(TArray<FHitResult>& OutHits, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::SweepMultiByProfile);
 
-			return WorldCollision::GetWorld()->ComponentOverlapMulti(OutOverlaps, PrimComp, Pos, Rot, Params, ObjectQueryParams);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool ComponentOverlapMulti(TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent PrimComp, const FVector& Pos, const FRotator& Rot, const FComponentQueryParams& Params = FComponentQueryParams::DefaultComponentQueryParams, const FCollisionObjectQueryParams& ObjectQueryParams = FCollisionObjectQueryParams::DefaultObjectQueryParam)",
-		[](TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent* PrimComp, const FVector& Pos, const FRotator& Rot, const FComponentQueryParams& Params, const FCollisionObjectQueryParams& ObjectQueryParams)
-		{
-			if (PrimComp == nullptr)
-			{
-				OutOverlaps.Reset();
-				return false;
-			}
+		Binds.BindGlobalFunctionForTarget("bool OverlapBlockingTestByChannel(const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::OverlapBlockingTestByChannel);
+		Binds.BindGlobalFunctionForTarget("bool OverlapAnyTestByChannel(const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::OverlapAnyTestByChannel);
+		Binds.BindGlobalFunctionForTarget("bool OverlapAnyTestByObjectType(const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::OverlapAnyTestByObjectType);
+		Binds.BindGlobalFunctionForTarget("bool OverlapBlockingTestByProfile(const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::OverlapBlockingTestByProfile);
+		Binds.BindGlobalFunctionForTarget("bool OverlapAnyTestByProfile(const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::OverlapAnyTestByProfile);
+		Binds.BindGlobalFunctionForTarget("bool OverlapMultiByChannel(TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam)", &FAngelscriptWorldCollisionBinds::OverlapMultiByChannel);
+		Binds.BindGlobalFunctionForTarget("bool OverlapMultiByObjectType(TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::OverlapMultiByObjectType);
+		Binds.BindGlobalFunctionForTarget("bool OverlapMultiByProfile(TArray<FOverlapResult>& OutOverlaps, const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam)", &FAngelscriptWorldCollisionBinds::OverlapMultiByProfile);
 
-			return WorldCollision::GetWorld()->ComponentOverlapMulti(OutOverlaps, PrimComp, Pos, Rot, Params, ObjectQueryParams);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool ComponentOverlapMultiByChannel(TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent PrimComp, const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params = FComponentQueryParams::DefaultComponentQueryParams, const FCollisionObjectQueryParams& ObjectQueryParams = FCollisionObjectQueryParams::DefaultObjectQueryParam)",
-		[](TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent* PrimComp, const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params, const FCollisionObjectQueryParams& ObjectQueryParams)
-		{
-			return WorldCollision::GetWorld()->ComponentOverlapMultiByChannel(OutOverlaps, PrimComp, Pos, Rot, TraceChannel, Params, ObjectQueryParams);
-		});
-	FAngelscriptBinds::BindGlobalFunction("bool ComponentOverlapMultiByChannel(TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent PrimComp, const FVector& Pos, const FRotator& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params = FComponentQueryParams::DefaultComponentQueryParams, const FCollisionObjectQueryParams& ObjectQueryParams = FCollisionObjectQueryParams::DefaultObjectQueryParam)",
-		[](TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent* PrimComp, const FVector& Pos, const FRotator& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params, const FCollisionObjectQueryParams& ObjectQueryParams)
-		{
-			return WorldCollision::GetWorld()->ComponentOverlapMultiByChannel(OutOverlaps, PrimComp, Pos, Rot, TraceChannel, Params, ObjectQueryParams);
-		});
-});
+		Binds.BindGlobalFunctionForTarget("bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent PrimComp, const FVector& Start, const FVector& End, const FQuat& Rot, const FComponentQueryParams& Params)", &FAngelscriptWorldCollisionBinds::ComponentSweepMultiQuat);
+		Binds.BindGlobalFunctionForTarget("bool ComponentSweepMulti(TArray<FHitResult>& OutHits, UPrimitiveComponent PrimComp, const FVector& Start, const FVector& End, const FRotator& Rot, const FComponentQueryParams& Params)", &FAngelscriptWorldCollisionBinds::ComponentSweepMultiRotator);
+		Binds.BindGlobalFunctionForTarget("bool ComponentSweepMultiByChannel(TArray<FHitResult>& OutHits, UPrimitiveComponent PrimComp, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params)", &FAngelscriptWorldCollisionBinds::ComponentSweepMultiByChannelQuat);
+		Binds.BindGlobalFunctionForTarget("bool ComponentSweepMultiByChannel(TArray<FHitResult>& OutHits, UPrimitiveComponent PrimComp, const FVector& Start, const FVector& End, const FRotator& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params)", &FAngelscriptWorldCollisionBinds::ComponentSweepMultiByChannelRotator);
+		Binds.BindGlobalFunctionForTarget("bool ComponentOverlapMulti(TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent PrimComp, const FVector& Pos, const FQuat& Rot, const FComponentQueryParams& Params = FComponentQueryParams::DefaultComponentQueryParams, const FCollisionObjectQueryParams& ObjectQueryParams = FCollisionObjectQueryParams::DefaultObjectQueryParam)", &FAngelscriptWorldCollisionBinds::ComponentOverlapMultiQuat);
+		Binds.BindGlobalFunctionForTarget("bool ComponentOverlapMulti(TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent PrimComp, const FVector& Pos, const FRotator& Rot, const FComponentQueryParams& Params = FComponentQueryParams::DefaultComponentQueryParams, const FCollisionObjectQueryParams& ObjectQueryParams = FCollisionObjectQueryParams::DefaultObjectQueryParam)", &FAngelscriptWorldCollisionBinds::ComponentOverlapMultiRotator);
+		Binds.BindGlobalFunctionForTarget("bool ComponentOverlapMultiByChannel(TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent PrimComp, const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params = FComponentQueryParams::DefaultComponentQueryParams, const FCollisionObjectQueryParams& ObjectQueryParams = FCollisionObjectQueryParams::DefaultObjectQueryParam)", &FAngelscriptWorldCollisionBinds::ComponentOverlapMultiByChannelQuat);
+		Binds.BindGlobalFunctionForTarget("bool ComponentOverlapMultiByChannel(TArray<FOverlapResult>& OutOverlaps, const UPrimitiveComponent PrimComp, const FVector& Pos, const FRotator& Rot, ECollisionChannel TraceChannel, const FComponentQueryParams& Params = FComponentQueryParams::DefaultComponentQueryParams, const FCollisionObjectQueryParams& ObjectQueryParams = FCollisionObjectQueryParams::DefaultObjectQueryParam)", &FAngelscriptWorldCollisionBinds::ComponentOverlapMultiByChannelRotator);
+	}
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AsyncTraces((int32)FAngelscriptBinds::EOrder::Late, []
-{
-	FAngelscriptBinds::FNamespace ns("System");
+	void BindAsyncQueries(FAngelscriptBinds& Binds)
+	{
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "System");
 
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncLineTraceByChannel(EAsyncTraceType InTraceType, const FVector& Start,const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)",
-		[](EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, ECollisionChannel TraceChannel, 
-			const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam, const FScriptTraceDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FTraceDelegate TraceDelegate;
-			if (InDelegate.IsBound())
-			{
-				TraceDelegate = FTraceDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FTraceDatum& TraceDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, TraceDatum.OutHits, TraceDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncLineTraceByChannel(InTraceType, Start, End, TraceChannel, Params, ResponseParam, TraceDelegate.IsBound() ? &TraceDelegate : nullptr, UserData);
-		});
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncLineTraceByChannel(EAsyncTraceType InTraceType, const FVector& Start,const FVector& End, ECollisionChannel TraceChannel, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)", &FAngelscriptWorldCollisionBinds::AsyncLineTraceByChannel);
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncLineTraceByObjectType(EAsyncTraceType InTraceType, const FVector& Start,const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0 )", &FAngelscriptWorldCollisionBinds::AsyncLineTraceByObjectType);
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncLineTraceByProfile(EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)", &FAngelscriptWorldCollisionBinds::AsyncLineTraceByProfile);
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncSweepByChannel(EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)", &FAngelscriptWorldCollisionBinds::AsyncSweepByChannel);
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncSweepByObjectType(EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)", &FAngelscriptWorldCollisionBinds::AsyncSweepByObjectType);
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncSweepByProfile(EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)", &FAngelscriptWorldCollisionBinds::AsyncSweepByProfile);
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncOverlapByChannel(const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam, const FScriptOverlapDelegate& InDelegate = FScriptOverlapDelegate(), uint32 UserData = 0)", &FAngelscriptWorldCollisionBinds::AsyncOverlapByChannel);
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncOverlapByObjectType(const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptOverlapDelegate& InDelegate = FScriptOverlapDelegate(), uint32 UserData = 0)", &FAngelscriptWorldCollisionBinds::AsyncOverlapByObjectType);
+		Binds.BindGlobalFunctionForTarget("FTraceHandle AsyncOverlapByProfile(const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptOverlapDelegate& InDelegate = FScriptOverlapDelegate(), uint32 UserData = 0)", &FAngelscriptWorldCollisionBinds::AsyncOverlapByProfile);
+		Binds.BindGlobalFunctionForTarget("bool QueryTraceData(const FTraceHandle& Handle, FTraceDatum& OutData)", &FAngelscriptWorldCollisionBinds::QueryTraceData);
+		Binds.BindGlobalFunctionForTarget("bool QueryOverlapData(const FTraceHandle& Handle, FOverlapDatum& OutData)", &FAngelscriptWorldCollisionBinds::QueryOverlapData);
+		Binds.BindGlobalFunctionForTarget("bool IsTraceHandleValid(const FTraceHandle& Handle, bool bOverlapTrace) no_discard", &FAngelscriptWorldCollisionBinds::IsTraceHandleValid);
+	}
 
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncLineTraceByObjectType(EAsyncTraceType InTraceType, const FVector& Start,const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0 )",
-		[](EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionQueryParams& Params, const FScriptTraceDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FTraceDelegate TraceDelegate;
-			if (InDelegate.IsBound())
-			{
-				TraceDelegate = FTraceDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FTraceDatum& TraceDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, TraceDatum.OutHits, TraceDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncLineTraceByObjectType(InTraceType, Start, End, ObjectQueryParams, Params, TraceDelegate.IsBound() ? &TraceDelegate : nullptr, UserData);
-		});
+	void BindWorldCollisionTypeDeclarations(FAngelscriptBinds& Binds)
+	{
+		BindAsyncTraceTypeDeclarations(Binds);
+		BindTraceHandleTypeDeclarations(Binds);
+		BindTraceDatumTypeDeclarations(Binds);
+		BindOverlapDatumTypeDeclarations(Binds);
+	}
 
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncLineTraceByProfile(EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)",
-		[](EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, FName ProfileName, const FCollisionQueryParams& Params, const FScriptTraceDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FTraceDelegate TraceDelegate;
-			if (InDelegate.IsBound())
-			{
-				TraceDelegate = FTraceDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FTraceDatum& TraceDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, TraceDatum.OutHits, TraceDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncLineTraceByProfile(InTraceType, Start, End, ProfileName, Params, TraceDelegate.IsBound() ? &TraceDelegate : nullptr, UserData);
-		});
+	void BindWorldCollisionTypeInfrastructure(FAngelscriptBinds& Binds)
+	{
+		BindTraceHandleTypeInfrastructure(Binds);
+		BindTraceDatumTypeInfrastructure(Binds);
+		BindOverlapDatumTypeInfrastructure(Binds);
+	}
 
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncSweepByChannel(EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)",
-		[](EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam, const FScriptTraceDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FTraceDelegate TraceDelegate;
-			if (InDelegate.IsBound())
-			{
-				TraceDelegate = FTraceDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FTraceDatum& TraceDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, TraceDatum.OutHits, TraceDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncSweepByChannel(InTraceType, Start, End, Rot, TraceChannel, CollisionShape, Params, ResponseParam, TraceDelegate.IsBound() ? &TraceDelegate : nullptr, UserData);
-		});
+	void BindWorldCollisionManualBindings(FAngelscriptBinds& Binds)
+	{
+		BindTraceHandle(Binds);
+		BindTraceDatum(Binds);
+		BindOverlapDatum(Binds);
+		BindSyncQueries(Binds);
+		BindAsyncQueries(Binds);
+	}
+}
 
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncSweepByObjectType(EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)",
-		[](EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FScriptTraceDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FTraceDelegate TraceDelegate;
-			if (InDelegate.IsBound())
-			{
-				TraceDelegate = FTraceDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FTraceDatum& TraceDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, TraceDatum.OutHits, TraceDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncSweepByObjectType(InTraceType, Start, End, Rot, ObjectQueryParams, CollisionShape, Params, TraceDelegate.IsBound() ? &TraceDelegate : nullptr, UserData);
-		});
+AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_TypeDeclarations(
+	TEXT("WorldCollision.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindWorldCollisionTypeDeclarations);
 
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncSweepByProfile(EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptTraceDelegate& InDelegate = FScriptTraceDelegate(), uint32 UserData = 0)",
-		[](EAsyncTraceType InTraceType, const FVector& Start, const FVector& End, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FScriptTraceDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FTraceDelegate TraceDelegate;
-			if (InDelegate.IsBound())
-			{
-				TraceDelegate = FTraceDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FTraceDatum& TraceDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, TraceDatum.OutHits, TraceDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncSweepByProfile(InTraceType, Start, End, Rot, ProfileName, CollisionShape, Params, TraceDelegate.IsBound() ? &TraceDelegate : nullptr, UserData);
-		});
+AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_TypeInfrastructure(
+	TEXT("WorldCollision.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindWorldCollisionTypeInfrastructure);
 
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncOverlapByChannel(const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FCollisionResponseParams& ResponseParam = FCollisionResponseParams::DefaultResponseParam, const FScriptOverlapDelegate& InDelegate = FScriptOverlapDelegate(), uint32 UserData = 0)",
-		[](const FVector& Pos, const FQuat& Rot, ECollisionChannel TraceChannel, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FCollisionResponseParams& ResponseParam, const FScriptOverlapDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FOverlapDelegate OverlapDelegate;
-			if (InDelegate.IsBound())
-			{
-				OverlapDelegate = FOverlapDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FOverlapDatum& OverlapDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, OverlapDatum.OutOverlaps, OverlapDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncOverlapByChannel(Pos, Rot, TraceChannel, CollisionShape, Params, ResponseParam, OverlapDelegate.IsBound() ? &OverlapDelegate : nullptr, UserData);
-		});
-
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncOverlapByObjectType(const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptOverlapDelegate& InDelegate = FScriptOverlapDelegate(), uint32 UserData = 0)",
-		[](const FVector& Pos, const FQuat& Rot, const FCollisionObjectQueryParams& ObjectQueryParams, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FScriptOverlapDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FOverlapDelegate OverlapDelegate;
-			if (InDelegate.IsBound())
-			{
-				OverlapDelegate = FOverlapDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FOverlapDatum& OverlapDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, OverlapDatum.OutOverlaps, OverlapDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncOverlapByObjectType(Pos, Rot, ObjectQueryParams, CollisionShape, Params, OverlapDelegate.IsBound() ? &OverlapDelegate : nullptr, UserData);
-		});
-
-	FAngelscriptBinds::BindGlobalFunction("FTraceHandle AsyncOverlapByProfile(const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params = FCollisionQueryParams::DefaultQueryParam, const FScriptOverlapDelegate& InDelegate = FScriptOverlapDelegate(), uint32 UserData = 0)",
-		[](const FVector& Pos, const FQuat& Rot, FName ProfileName, const FCollisionShape& CollisionShape, const FCollisionQueryParams& Params, const FScriptOverlapDelegate& InDelegate, uint32 UserData) -> FTraceHandle
-		{
-			FOverlapDelegate OverlapDelegate;
-			if (InDelegate.IsBound())
-			{
-				OverlapDelegate = FOverlapDelegate::CreateWeakLambda(const_cast<UObject*>(InDelegate.GetUObject()), [InDelegate](const FTraceHandle& TraceHandle, FOverlapDatum& OverlapDatum)
-				{
-					InDelegate.ExecuteIfBound(TraceHandle._Handle, OverlapDatum.OutOverlaps, OverlapDatum.UserData);
-				});
-			}
-			return WorldCollision::GetWorld()->AsyncOverlapByProfile(Pos, Rot, ProfileName, CollisionShape, Params, OverlapDelegate.IsBound() ? &OverlapDelegate : nullptr, UserData);
-		});
-
-	FAngelscriptBinds::BindGlobalFunction("bool QueryTraceData(const FTraceHandle& Handle, FTraceDatum& OutData)", [](const FTraceHandle& Handle, FTraceDatum& OutData) -> bool
-		{
-			return WorldCollision::GetWorld()->QueryTraceData(Handle, OutData);
-		});
-
-	FAngelscriptBinds::BindGlobalFunction("bool QueryOverlapData(const FTraceHandle& Handle, FOverlapDatum& OutData)", [](const FTraceHandle& Handle, FOverlapDatum& OutData) -> bool
-		{
-			return WorldCollision::GetWorld()->QueryOverlapData(Handle, OutData);
-		});
-
-	FAngelscriptBinds::BindGlobalFunction("bool IsTraceHandleValid(const FTraceHandle& Handle, bool bOverlapTrace) no_discard", [](const FTraceHandle& Handle, bool bOverlapTrace) -> bool
-		{
-			return WorldCollision::GetWorld()->IsTraceHandleValid(Handle, bOverlapTrace);
-		});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_ManualBindings(
+	TEXT("WorldCollision.ManualBindings"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindWorldCollisionManualBindings);

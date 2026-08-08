@@ -23,18 +23,19 @@ private:
 
 	static void BindProductionInterfaceMethod(FAngelscriptBinds& Binds, const TCHAR* Declaration, const TCHAR* FunctionName)
 	{
-		FInterfaceMethodSignature* Signature = FAngelscriptEngine::Get().RegisterInterfaceMethodSignature(FName(FunctionName));
+		FInterfaceMethodSignature* Signature =
+			Binds.GetTargetEngine().RegisterInterfaceMethodSignature(FName(FunctionName));
 		Binds.GenericMethod(FString(Declaration), CallInterfaceMethod, Signature);
 	}
 
-	static void EnsureProductionNativeInterfaceBound(UClass* InterfaceClass)
+	static void EnsureProductionNativeInterfaceBound(FAngelscriptEngine& Engine, UClass* InterfaceClass)
 	{
 		if (InterfaceClass == nullptr)
 		{
 			return;
 		}
 
-		asIScriptEngine* ScriptEngine = FAngelscriptEngine::Get().Engine;
+		asIScriptEngine* ScriptEngine = Engine.Engine;
 		if (ScriptEngine == nullptr)
 		{
 			return;
@@ -46,21 +47,25 @@ private:
 			return;
 		}
 
-		FAngelscriptBinds Binds = FAngelscriptBinds::ReferenceClass(TypeName, InterfaceClass);
-		asCTypeInfo* TypeInfo = static_cast<asCTypeInfo*>(Binds.GetTypeInfo());
+		FAngelscriptBinds Binds(Engine);
+		FAngelscriptBinds InterfaceBinds = Binds.ReferenceClassForTarget(TypeName, InterfaceClass);
+		asCTypeInfo* TypeInfo = static_cast<asCTypeInfo*>(InterfaceBinds.GetTypeInfo());
 		if (TypeInfo != nullptr)
 		{
 			TypeInfo->plainUserData = reinterpret_cast<SIZE_T>(InterfaceClass);
 		}
 
-		BindProductionInterfaceMethod(Binds, TEXT("int GetNativeValue() const"), TEXT("GetNativeValue"));
-		BindProductionInterfaceMethod(Binds, TEXT("void SetNativeMarker(FName Marker)"), TEXT("SetNativeMarker"));
-		BindProductionInterfaceMethod(Binds, TEXT("void AdjustNativeValue(int Delta, int& Value)"), TEXT("AdjustNativeValue"));
+		BindProductionInterfaceMethod(InterfaceBinds, TEXT("int GetNativeValue() const"), TEXT("GetNativeValue"));
+		BindProductionInterfaceMethod(InterfaceBinds, TEXT("void SetNativeMarker(FName Marker)"), TEXT("SetNativeMarker"));
+		BindProductionInterfaceMethod(
+			InterfaceBinds,
+			TEXT("void AdjustNativeValue(int Delta, int& Value)"),
+			TEXT("AdjustNativeValue"));
 	}
 
-	static void EnsureFixturesBound()
+	static void EnsureFixturesBound(FAngelscriptEngine& Engine)
 	{
-		EnsureProductionNativeInterfaceBound(UAngelscriptNativeParentInterface::StaticClass());
+		EnsureProductionNativeInterfaceBound(Engine, UAngelscriptNativeParentInterface::StaticClass());
 	}
 
 public:
@@ -80,7 +85,7 @@ public:
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
 		FAngelscriptEngineScope EngineScope(Engine);
 
-		FAngelscriptInterfaceDispatchBridgeTests::EnsureFixturesBound();
+		FAngelscriptInterfaceDispatchBridgeTests::EnsureFixturesBound(Engine);
 
 		ON_SCOPE_EXIT
 		{

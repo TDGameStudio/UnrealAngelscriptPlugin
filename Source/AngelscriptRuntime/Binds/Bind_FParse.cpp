@@ -1,28 +1,28 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
-#include "Engine/EngineTypes.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FParse(FAngelscriptBinds::EOrder::Late, []
+#include "Bind_FParse_Functions.h"
+
+namespace
 {
-	FAngelscriptBinds::FNamespace ns("FParse");
-
-	FAngelscriptBinds::BindGlobalFunction("bool Value(const FString& Stream, const FString& Match, FString& Value)", [](const FString& Stream, const FString& Match, FString& Value)
+	void BindFParse(FAngelscriptBinds& Binds)
 	{
-		return FParse::Value(*Stream, *Match, Value);
-	});
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FParse");
+		Binds.BindGlobalFunctionForTarget(
+			"bool Value(const FString& Stream, const FString& Match, FString& Value)",
+			&FAngelscriptFParseBinds::ValueString);
+		Binds.BindGlobalFunctionForTarget(
+			"bool Value(const FString& Stream, const FString& Match, float32& Value)",
+			&FAngelscriptFParseBinds::ValueFloat);
+		Binds.BindGlobalFunctionForTarget(
+			"bool Value(const FString& Stream, const FString& Match, int& Value)",
+			&FAngelscriptFParseBinds::ValueInt);
+		Binds.BindGlobalFunctionForTarget(
+			"bool Bool(const FString& Stream, const FString& Match, bool& OnOff)",
+			&FAngelscriptFParseBinds::Bool);
+	}
+}
 
-	FAngelscriptBinds::BindGlobalFunction("bool Value(const FString& Stream, const FString& Match, float32& Value)", [](const FString& Stream, const FString& Match, float& Value)
-	{
-		return FParse::Value(*Stream, *Match, Value);
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("bool Value(const FString& Stream, const FString& Match, int& Value)", [](const FString& Stream, const FString& Match, int& Value)
-	{
-		return FParse::Value(*Stream, *Match, Value);
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("bool Bool(const FString& Stream, const FString& Match, bool& OnOff)", [](const FString& Stream, const FString& Match, bool& OnOff)
-	{
-		return FParse::Bool(*Stream, *Match, OnOff);
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_FParse(
+	TEXT("FParse"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFParse);

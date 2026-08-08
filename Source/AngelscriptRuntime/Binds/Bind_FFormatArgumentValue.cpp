@@ -1,8 +1,6 @@
-#include "Misc/DefaultValueHelper.h"
-
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
 
+#include "Bind_FFormatArgumentValue_Functions.h"
 #include "Helper_CppType.h"
 
 struct FFormatArgumentValueType : TAngelscriptCppType<FFormatArgumentValue>
@@ -19,79 +17,92 @@ struct FFormatArgumentValueType : TAngelscriptCppType<FFormatArgumentValue>
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FFormatArgumentValue(FAngelscriptBinds::EOrder::Early, []
+namespace
 {
-	FBindFlags Flags;
-	Flags.bPOD = true;
-
-	auto FFormatArgumentValue_ = FAngelscriptBinds::ValueClass<FFormatArgumentValue>("FFormatArgumentValue", Flags);
-	FAngelscriptType::Register(MakeShared<FFormatArgumentValueType>());
-
-	FFormatArgumentValue_.Constructor("void f()", [](FFormatArgumentValue* Address)
+	void BindFFormatArgumentValueType(FAngelscriptBinds& Binds)
 	{
-		new(Address) FFormatArgumentValue();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
+		FBindFlags Flags;
+		Flags.bPOD = true;
+		Binds.ValueClassForTarget<FFormatArgumentValue>("FFormatArgumentValue", Flags);
+	}
 
-	FFormatArgumentValue_.Constructor("void f(const int32 Value)", [](FFormatArgumentValue* Address, const int32 Value)
+	void BindFFormatArgumentValueInfrastructure(FAngelscriptBinds& Binds)
 	{
-		new(Address) FFormatArgumentValue(Value);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
+		Binds.RegisterTypeForTarget(MakeShared<FFormatArgumentValueType>());
+	}
 
-	FFormatArgumentValue_.Constructor("void f(const uint32 Value)", [](FFormatArgumentValue* Address, const uint32 Value)
+	void BindFFormatArgumentValueFunctions(FAngelscriptBinds& Binds)
 	{
-		new(Address) FFormatArgumentValue(Value);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
+		auto Value = Binds.ExistingClassForTarget("FFormatArgumentValue");
 
-	FFormatArgumentValue_.Constructor("void f(const int64 Value)", [](FFormatArgumentValue* Address, const int64 Value)
-	{
-		new(Address) FFormatArgumentValue(Value);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
+		Value.Constructor(
+			"void f()",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructDefault,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+		Value.Constructor(
+			"void f(const int32 Value)",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructInt32,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+		Value.Constructor(
+			"void f(const uint32 Value)",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructUInt32,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+		Value.Constructor(
+			"void f(const int64 Value)",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructInt64,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+		Value.Constructor(
+			"void f(const uint64 Value)",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructUInt64,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+		Value.Constructor(
+			"void f(const float32 Value)",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructFloat,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+		Value.Constructor(
+			"void f(const float64 Value)",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructDouble,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+		Value.Constructor(
+			"void f(const FText& Value)",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructText,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+		Value.Constructor(
+			"void f(ETextGender Value)",
+			&FAngelscriptFFormatArgumentValueBinds::ConstructGender,
+			"FFormatArgumentValue",
+			true)
+			.NoDiscard();
+	}
+}
 
-	FFormatArgumentValue_.Constructor("void f(const uint64 Value)", [](FFormatArgumentValue* Address, const uint64 Value)
-	{
-		new(Address) FFormatArgumentValue(Value);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
+AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue_Type(
+	TEXT("FFormatArgumentValue.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFFormatArgumentValueType);
 
-	FFormatArgumentValue_.Constructor("void f(const float32 Value)", [](FFormatArgumentValue* Address, const float Value)
-	{
-		new(Address) FFormatArgumentValue(Value);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
+AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue_Infrastructure(
+	TEXT("FFormatArgumentValue.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFFormatArgumentValueInfrastructure);
 
-	FFormatArgumentValue_.Constructor("void f(const float64 Value)", [](FFormatArgumentValue* Address, const double Value)
-	{
-		new(Address) FFormatArgumentValue(Value);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FFormatArgumentValue_Late(FAngelscriptBinds::EOrder::Late, []
-{
-    auto FFormatArgumentValue_ = FAngelscriptBinds::ExistingClass("FFormatArgumentValue");
-
-	FFormatArgumentValue_.Constructor("void f(const FText& Value)", [](FFormatArgumentValue* Address, const FText& Value)
-	{
-		new(Address) FFormatArgumentValue(Value);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
-
-	FFormatArgumentValue_.Constructor("void f(ETextGender Value)", [](FFormatArgumentValue* Address, ETextGender Value)
-	{
-		new(Address) FFormatArgumentValue(Value);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FFormatArgumentValue_, "FFormatArgumentValue");
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue(
+	TEXT("FFormatArgumentValue.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFFormatArgumentValueFunctions);

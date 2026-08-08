@@ -412,138 +412,179 @@ FORCEINLINE FScriptCall& CurrentCall_NoCheck()
 	return *GCurrentCall;
 }
 
-void BindPushArgument(FAngelscriptEngine& Manager, const FString& PushTypeName, TSharedPtr<FAngelscriptType> Type)
+namespace
 {
-	Manager.BoundBlueprintEventArgumentSpecializations.Add(PushTypeName);
-
-	// Create a 'push argument' function
-	TSharedPtr<FAngelscriptType>* TypePtr = new TSharedPtr<FAngelscriptType>(Type);
-	FString Decl = FString::Printf(TEXT("void __Evt_PushArgument__%s(const %s& Value)"),
-		*PushTypeName,
-		*Type->GetAngelscriptDeclaration(FAngelscriptTypeUsage::DefaultUsage, FAngelscriptType::FunctionArgument));
-
-	FAngelscriptBinds::BindGlobalFunction(Decl, [](void* ArgumentRef)
+	struct FAngelscriptBlueprintEventHelperBinds
 	{
-		FAngelscriptTypeUsage Type;
-		Type.Type = *FAngelscriptEngine::GetCurrentFunctionUserData<TSharedPtr<FAngelscriptType>>();
+		static void CallStaticWithSignature(asIScriptGeneric* InGeneric);
+		static void CallEventWithSignature(asIScriptGeneric* InGeneric);
+		static void CallMixinWithSignature(asIScriptGeneric* InGeneric);
 
-		CurrentCall().PushArgument(Type, ArgumentRef);
-	}, TypePtr);
-	SCRIPT_NATIVE_PUSH_ARG();
+		template<bool TIsMulticast, bool TErrorIfUnbound>
+		static void CallDelegateEvent(asIScriptGeneric* InGeneric);
 
-	// Create a 'push argument ref' function
-	Decl = FString::Printf(TEXT("void __Evt_PushArgumentRef__%s(const %s& Value)"),
-		*PushTypeName,
-		*Type->GetAngelscriptDeclaration(FAngelscriptTypeUsage::DefaultUsage, FAngelscriptType::FunctionArgument));
+		static void CallSparseDelegate(asIScriptGeneric* InGeneric);
 
-	FAngelscriptBinds::BindGlobalFunction(Decl, [](void* ArgumentRef)
+		static void PushArgumentSpecialized(void* ArgumentRef)
+		{
+			FAngelscriptTypeUsage Type;
+			Type.Type = *FAngelscriptEngine::GetCurrentFunctionUserData<TSharedPtr<FAngelscriptType>>();
+
+			CurrentCall().PushArgument(Type, ArgumentRef);
+		}
+
+		static void PushArgumentRefSpecialized(void* ArgumentRef)
+		{
+			FAngelscriptTypeUsage Type;
+			Type.Type = *FAngelscriptEngine::GetCurrentFunctionUserData<TSharedPtr<FAngelscriptType>>();
+			Type.bIsReference = true;
+			Type.bIsConst = false;
+
+			CurrentCall().PushArgument(Type, &ArgumentRef);
+		}
+
+		static void PushArgument(void* ArgumentRef, int ArgumentType)
+		{
+			FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromTypeId(ArgumentType);
+
+			if (!Type.CanConstruct() || !Type.CanCopy() || !Type.CanDestruct())
+			{
+				ensure(false);
+				CurrentCall().ResetArguments();
+				FAngelscriptEngine::Throw("Attempted to push invalid event argument type.");
+				return;
+			}
+
+			CurrentCall().PushArgument(Type, ArgumentRef);
+		}
+
+		static void PushArgumentRef(void* ArgumentRef, int ArgumentType)
+		{
+			FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromTypeId(ArgumentType);
+			if (!Type.CanConstruct() || !Type.CanCopy() || !Type.CanDestruct())
+			{
+				ensure(false);
+				CurrentCall().ResetArguments();
+				FAngelscriptEngine::Throw("Attempted to push invalid event argument type.");
+				return;
+			}
+
+			Type.bIsReference = true;
+			Type.bIsConst = false;
+
+			CurrentCall().PushArgument(Type, &ArgumentRef);
+		}
+
+		static void ExecuteEvent(UObject* Object, const FName& Name)
+		{
+			CurrentCall().ExecuteEvent(Object, Name);
+		}
+
+		static void ExecuteDelegate(FScriptDelegate& Delegate)
+		{
+			CurrentCall().ExecuteDelegate(Delegate);
+		}
+
+		static void ExecuteMulticastDelegate(FMulticastScriptDelegate& Delegate)
+		{
+			CurrentCall().ExecuteMulticastDelegate(Delegate);
+		}
+	};
+
+	void BindPushArgument(FAngelscriptBinds& Binds, const FString& PushTypeName, TSharedPtr<FAngelscriptType> Type)
 	{
-		FAngelscriptTypeUsage Type;
-		Type.Type = *FAngelscriptEngine::GetCurrentFunctionUserData<TSharedPtr<FAngelscriptType>>();
-		Type.bIsReference = true;
-		Type.bIsConst = false;
+		Binds.GetTargetEngine().BoundBlueprintEventArgumentSpecializations.Add(PushTypeName);
 
-		CurrentCall().PushArgument(Type, &ArgumentRef);
-	}, TypePtr);
-	SCRIPT_NATIVE_PUSH_ARG_REF();
-}
+		// Create a 'push argument' function
+		TSharedPtr<FAngelscriptType>* TypePtr = new TSharedPtr<FAngelscriptType>(Type);
+		FString Decl = FString::Printf(TEXT("void __Evt_PushArgument__%s(const %s& Value)"),
+			*PushTypeName,
+			*Type->GetAngelscriptDeclaration(FAngelscriptTypeUsage::DefaultUsage, FAngelscriptType::FunctionArgument));
 
-void BindAliasedPushArgument(FAngelscriptEngine& Manager, const FString& Alias, const FString& RealType)
-{
-	if (Manager.BoundBlueprintEventArgumentSpecializations.Contains(Alias))
-		return;
+		Binds.BindGlobalFunctionForTarget(Decl, &FAngelscriptBlueprintEventHelperBinds::PushArgumentSpecialized, TypePtr)
+			.NativePushArgument();
 
-	auto Type = FAngelscriptType::GetByAngelscriptTypeName(RealType);
-	BindPushArgument(Manager, Alias, Type);
-}
+		// Create a 'push argument ref' function
+		Decl = FString::Printf(TEXT("void __Evt_PushArgumentRef__%s(const %s& Value)"),
+			*PushTypeName,
+			*Type->GetAngelscriptDeclaration(FAngelscriptTypeUsage::DefaultUsage, FAngelscriptType::FunctionArgument));
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_BlueprintEvents(FAngelscriptBinds::EOrder::Late, []
-{
-	auto& Manager = FAngelscriptEngine::Get();
-	auto& Types = FAngelscriptType::GetTypes();
-	for (auto Type : Types)
-	{
-		if (!Type->DescribesCompleteType(FAngelscriptTypeUsage::DefaultUsage))
-			continue;
-
-		// We need specific operations to be able to use this as an event argument
-		if (!Type->CanConstruct(FAngelscriptTypeUsage::DefaultUsage))
-			continue;
-		if (!Type->CanCopy(FAngelscriptTypeUsage::DefaultUsage))
-			continue;
-		if (!Type->CanDestruct(FAngelscriptTypeUsage::DefaultUsage))
-			continue;
-
-		FString PushTypeName = Type->GetAngelscriptTypeName();
-		BindPushArgument(Manager, PushTypeName, Type);
+		Binds.BindGlobalFunctionForTarget(Decl, &FAngelscriptBlueprintEventHelperBinds::PushArgumentRefSpecialized, TypePtr)
+			.NativePushArgumentRef();
 	}
 
-	// Make sure aliased arguments are bound
-	BindAliasedPushArgument(Manager, TEXT("int32"), TEXT("int32"));
-	BindAliasedPushArgument(Manager, TEXT("uint32"), TEXT("uint32"));
-	BindAliasedPushArgument(Manager, TEXT("float32"), TEXT("float32"));
-	BindAliasedPushArgument(Manager, TEXT("float64"), TEXT("float64"));
-
-	// Bind a generic 'push argument' function that does a runtime type lookup
-	FAngelscriptBinds::BindGlobalFunction("void __Evt_PushArgument(const ?& Value)", [](void* ArgumentRef, int ArgumentType)
+	void BindAliasedPushArgument(FAngelscriptBinds& Binds, const FString& Alias, const FString& RealType)
 	{
-		FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromTypeId(ArgumentType);
-
-		if (!Type.CanConstruct() || !Type.CanCopy() || !Type.CanDestruct())
-		{
-			ensure(false);
-			CurrentCall().ResetArguments();
-			FAngelscriptEngine::Throw("Attempted to push invalid event argument type.");
+		if (Binds.GetTargetEngine().BoundBlueprintEventArgumentSpecializations.Contains(Alias))
 			return;
+
+		const TSharedRef<FAngelscriptType>* RegisteredType = Binds.GetTargetTypeDatabase().TypesByAngelscriptName.Find(RealType);
+		check(RegisteredType != nullptr);
+		BindPushArgument(Binds, Alias, RegisteredType->ToSharedPtr());
+	}
+
+	void BindBlueprintEventHelpers(FAngelscriptBinds& Binds)
+	{
+		const TArray<TSharedRef<FAngelscriptType>>& Types = Binds.GetTargetTypeDatabase().RegisteredTypes;
+		for (const TSharedRef<FAngelscriptType>& Type : Types)
+		{
+			if (!Type->DescribesCompleteType(FAngelscriptTypeUsage::DefaultUsage))
+				continue;
+
+			// We need specific operations to be able to use this as an event argument
+			if (!Type->CanConstruct(FAngelscriptTypeUsage::DefaultUsage))
+				continue;
+			if (!Type->CanCopy(FAngelscriptTypeUsage::DefaultUsage))
+				continue;
+			if (!Type->CanDestruct(FAngelscriptTypeUsage::DefaultUsage))
+				continue;
+
+			FString PushTypeName = Type->GetAngelscriptTypeName();
+			BindPushArgument(Binds, PushTypeName, Type.ToSharedPtr());
 		}
 
-		CurrentCall().PushArgument(Type, ArgumentRef);
-	});
-	SCRIPT_NATIVE_PUSH_ARG();
+		// Make sure aliased arguments are bound
+		BindAliasedPushArgument(Binds, TEXT("int32"), TEXT("int32"));
+		BindAliasedPushArgument(Binds, TEXT("uint32"), TEXT("uint32"));
+		BindAliasedPushArgument(Binds, TEXT("float32"), TEXT("float32"));
+		BindAliasedPushArgument(Binds, TEXT("float64"), TEXT("float64"));
 
-	// Bind a generic 'push argument ref' function that does a runtime type lookup
-	FAngelscriptBinds::BindGlobalFunction("void __Evt_PushArgumentRef(const ?& Value)",
-	[](void* ArgumentRef, int ArgumentType)
-	{
-		FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromTypeId(ArgumentType);
-		if (!Type.CanConstruct() || !Type.CanCopy() || !Type.CanDestruct())
-		{
-			ensure(false);
-			CurrentCall().ResetArguments();
-			FAngelscriptEngine::Throw("Attempted to push invalid event argument type.");
-			return;
-		}
+		// Bind a generic 'push argument' function that does a runtime type lookup
+		Binds.BindGlobalFunctionForTarget(
+			"void __Evt_PushArgument(const ?& Value)",
+			&FAngelscriptBlueprintEventHelperBinds::PushArgument)
+			.NativePushArgument();
 
-		Type.bIsReference = true;
-		Type.bIsConst = false;
+		// Bind a generic 'push argument ref' function that does a runtime type lookup
+		Binds.BindGlobalFunctionForTarget(
+			"void __Evt_PushArgumentRef(const ?& Value)",
+			&FAngelscriptBlueprintEventHelperBinds::PushArgumentRef)
+			.NativePushArgumentRef();
 
-		CurrentCall().PushArgument(Type, &ArgumentRef);
-	});
-	SCRIPT_NATIVE_PUSH_ARG_REF();
+		// Bind the actual call execution
+		Binds.BindGlobalFunctionForTarget(
+			"void __Evt_Execute(const UObject Object, const FName& Name)",
+			&FAngelscriptBlueprintEventHelperBinds::ExecuteEvent)
+			.NativeEventFunctionExecute();
 
-	// Bind the actual call execution
-	FAngelscriptBinds::BindGlobalFunction("void __Evt_Execute(const UObject Object, const FName& Name)", [](UObject* Object, const FName& Name)
-	{
-		CurrentCall().ExecuteEvent(Object, Name);
-	});
-	SCRIPT_NATIVE_EVENT_FUNCTION_EXECUTE();
+		// Generic call delegate
+		Binds.BindGlobalFunctionForTarget(
+			"void __Evt_ExecuteDelegate(const _FScriptDelegate& Delegate)",
+			&FAngelscriptBlueprintEventHelperBinds::ExecuteDelegate)
+			.NativeDelegateExecute();
 
-	// Generic call delegate
-	FAngelscriptBinds::BindGlobalFunction("void __Evt_ExecuteDelegate(const _FScriptDelegate& Delegate)",
-	[](FScriptDelegate& Delegate)
-	{
-		CurrentCall().ExecuteDelegate(Delegate);
-	});
-	SCRIPT_NATIVE_DELEGATE_EXECUTE();
+		// Generic call multicast delegate
+		Binds.BindGlobalFunctionForTarget(
+			"void __Evt_ExecuteDelegate(const _FMulticastScriptDelegate& Delegate)",
+			&FAngelscriptBlueprintEventHelperBinds::ExecuteMulticastDelegate)
+			.NativeMulticastExecute();
+	}
+}
 
-	// Generic call multicast delegate
-	FAngelscriptBinds::BindGlobalFunction("void __Evt_ExecuteDelegate(const _FMulticastScriptDelegate& Delegate)",
-	[](FMulticastScriptDelegate& Delegate)
-	{
-		CurrentCall().ExecuteMulticastDelegate(Delegate);
-	});
-	SCRIPT_NATIVE_MULTICAST_EXECUTE();
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintEvents(
+	TEXT("BlueprintEvents.HelperGlobals"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindBlueprintEventHelpers);
 
 // Called from Bind_BlueprintCallable
 struct FBlueprintEventSignature
@@ -573,32 +614,25 @@ namespace BlueprintEventSignatureRegistryInternal
 	}
 }
 
-// Allocate a new signature and immediately transfer ownership to the current
-// engine's registry. The returned pointer remains stable for the lifetime of
-// the engine (or until Engine->BlueprintEventSignatureRegistry.Reset() is
-// invoked during Shutdown()).
+// Allocate a new signature and immediately transfer ownership to the explicit
+// target engine's registry. The returned pointer remains stable for the
+// lifetime of that engine (or until its registry is reset during Shutdown()).
 //
 // FAngelscriptEngine::Initialize* unconditionally allocates the registry, so
 // by the time any BindBlueprintEvent_* helper runs the registry must exist.
-// We turn that invariant into a hard `checkf` so a future bootstrap reorder
-// fails loudly instead of silently leaking — every signature that escapes the
-// registry survives every subsequent engine cycle (see
+// The target-aware registry accessor enforces that invariant so a future
+// bootstrap reorder fails instead of silently leaking — every signature that
+// escapes the registry survives every subsequent engine cycle (see
 // ASBindFreeCompletenessVerification.md §4 for why this leak class is
 // expensive to detect after the fact).
-static FBlueprintEventSignature* NewOwnedBlueprintEventSignature()
+static FBlueprintEventSignature* NewOwnedBlueprintEventSignature(FAngelscriptBinds& Binds)
 {
-	FBlueprintEventSignatureRegistry* Registry = FAngelscriptEngine::Get().GetBlueprintEventSignatureRegistry();
-	checkf(Registry != nullptr,
-		TEXT("FBlueprintEventSignatureRegistry must be initialised before any "
-		     "BindBlueprintEvent path runs. FAngelscriptEngine::Initialize* "
-		     "is responsible for creating it; if this fires the bind ordering "
-		     "regressed."));
 	auto* Sig = new FBlueprintEventSignature;
-	Registry->AddOwnership(Sig);
+	Binds.GetTargetBlueprintEventSignatureRegistry().AddOwnership(Sig);
 	return Sig;
 }
 
-void CallStaticWithSignature(asIScriptGeneric* InGeneric)
+void FAngelscriptBlueprintEventHelperBinds::CallStaticWithSignature(asIScriptGeneric* InGeneric)
 {
 	asCGeneric* Generic = static_cast<asCGeneric*>(InGeneric);
 	auto* Function = (asCScriptFunction*)Generic->GetFunction();
@@ -611,7 +645,7 @@ void CallStaticWithSignature(asIScriptGeneric* InGeneric)
 	InvokeReflectionFallbackFromGenericCall(Generic, Sig->StaticObject, Sig->UnrealFunction);
 }
 
-void CallEventWithSignature(asIScriptGeneric* InGeneric)
+void FAngelscriptBlueprintEventHelperBinds::CallEventWithSignature(asIScriptGeneric* InGeneric)
 {
 	asCGeneric* Generic = static_cast<asCGeneric*>(InGeneric);
 	auto* Function = Generic->GetFunction();
@@ -624,7 +658,7 @@ void CallEventWithSignature(asIScriptGeneric* InGeneric)
 	InvokeReflectionFallbackFromGenericCall(Generic, static_cast<UObject*>(Generic->GetObject()), Sig->UnrealFunction);
 }
 
-void CallMixinWithSignature(asIScriptGeneric* InGeneric)
+void FAngelscriptBlueprintEventHelperBinds::CallMixinWithSignature(asIScriptGeneric* InGeneric)
 {
 	asCGeneric* Generic = static_cast<asCGeneric*>(InGeneric);
 	auto* Function = Generic->GetFunction();
@@ -644,7 +678,87 @@ static const FName NAME_Event_ConstructionScript("UserConstructionScript");
 static const FName NAME_Event_AllowAngelscriptOverride("AllowAngelscriptOverride");
 static const FName NAME_Event_ScriptCallable("ScriptCallable");
 
+static void CommitBlueprintEventBinding(
+	FAngelscriptBinds& Binds,
+	TSharedRef<FAngelscriptType> InType,
+	UFunction* Function,
+	FAngelscriptFunctionSignature& Signature,
+	const FString& NativeFunctionName)
+{
+	auto* Sig = NewOwnedBlueprintEventSignature(Binds);
+	Sig->FunctionName = Function->GetFName();
+	Sig->UnrealFunction = Function;
+	Sig->ArgCount = Signature.ArgumentTypes.Num();
+	Sig->ReturnType = Signature.ReturnType;
+	check(!Sig->ReturnType.bIsReference);
+	Sig->ReturnType.bIsReference = true;
+	for (int32 i = 0; i < Sig->ArgCount; ++i)
+	{
+		Sig->Arguments[i] = Signature.ArgumentTypes[i];
+	}
+
+	if (Sig->ReturnType.IsValid())
+	{
+		Sig->bInitReturn = Sig->ReturnType.CanConstruct() && Sig->ReturnType.NeedConstruct();
+		Sig->bZeroReturnPtr = !Sig->bInitReturn && Sig->ReturnType.Type->IsObjectPointer();
+	}
+
+	FAngelscriptBoundFunction PrimaryBinding;
+	if (Signature.bStaticInScript)
+	{
+		Sig->StaticObject = InType->GetClass(FAngelscriptTypeUsage::DefaultUsage)->GetDefaultObject();
+
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), Signature.ClassName);
+		PrimaryBinding = Binds.BindGlobalFunctionDirectForTarget(
+			Signature.Declaration,
+			asFUNCTION(FAngelscriptBlueprintEventHelperBinds::CallStaticWithSignature),
+			asCALL_GENERIC,
+			ASAutoCaller::FunctionCaller::Make(),
+			Sig);
+	}
+	else if (Signature.bStaticInUnreal)
+	{
+		Sig->StaticObject = InType->GetClass(FAngelscriptTypeUsage::DefaultUsage)->GetDefaultObject();
+
+		Sig->MixinType = FAngelscriptTypeUsage();
+		Sig->MixinType.Type = InType;
+
+		PrimaryBinding = Binds.BindMethodDirectForTarget(
+			Signature.ClassName,
+			Signature.Declaration,
+			asFUNCTION(FAngelscriptBlueprintEventHelperBinds::CallMixinWithSignature),
+			asCALL_GENERIC,
+			ASAutoCaller::FunctionCaller::Make(),
+			Sig);
+	}
+	else
+	{
+		PrimaryBinding = Binds.BindMethodDirectForTarget(
+			InType->GetAngelscriptTypeName(),
+			Signature.Declaration,
+			asFUNCTION(FAngelscriptBlueprintEventHelperBinds::CallEventWithSignature),
+			asCALL_GENERIC,
+			ASAutoCaller::FunctionCaller::Make(),
+			Sig);
+	}
+
+	Signature.ModifyScriptFunction(PrimaryBinding);
+
+#if WITH_EDITOR
+	if (!Function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintPure)
+		&& !Function->HasMetaData(NAME_Event_ScriptCallable))
+	{
+		PrimaryBinding.Callable(false);
+	}
+#endif
+
+	GBlueprintEventsByScriptName.FindOrAdd(CastChecked<UClass>(Function->GetOuter())).Add(Signature.ScriptName, Function);
+
+	PrimaryBinding.NativeUFunction(Function, NativeFunctionName, false);
+}
+
 void BindBlueprintEvent(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
 	FAngelscriptMethodBind& DBBind
@@ -656,7 +770,12 @@ void BindBlueprintEvent(
 
 #if AS_USE_BIND_DB
 	FAngelscriptFunctionSignature Signature;
-	Signature.InitFromDB(InType, Function, DBBind, /* bInitTypes= */ true);
+	Signature.InitFromDB(
+		Binds.GetTargetTypeDatabase(),
+		InType,
+		Function,
+		DBBind,
+		/* bInitTypes= */ true);
 
 #elif !AS_USE_BIND_DB
 	// Don't bind functions that are deprecated
@@ -671,7 +790,11 @@ void BindBlueprintEvent(
 	if (Function->HasMetaData(NAME_Event_BlueprintInternalUseOnly) && Function->GetFName() != NAME_Event_ConstructionScript && !Function->HasMetaData(NAME_Event_AllowAngelscriptOverride))
 		return;
 
-	FAngelscriptFunctionSignature Signature(InType, Function, OverrideName);
+	FAngelscriptFunctionSignature Signature(
+		Binds.GetTargetTypeDatabase(),
+		InType,
+		Function,
+		OverrideName);
 #endif
 
 	// Don't bind things that have types that are unknown to us
@@ -680,65 +803,15 @@ void BindBlueprintEvent(
 	if (Signature.ArgumentTypes.Num() > AS_EVENT_MAX_ARGS)
 		return;
 
-	auto* Sig = NewOwnedBlueprintEventSignature();
-	Sig->FunctionName = Function->GetFName();
-	Sig->UnrealFunction = Function;
-	Sig->ArgCount = Signature.ArgumentTypes.Num();
-	Sig->ReturnType = Signature.ReturnType;
-	check(!Sig->ReturnType.bIsReference);
-	Sig->ReturnType.bIsReference = true;
-	for (int32 i = 0; i < Sig->ArgCount; ++i)
-		Sig->Arguments[i] = Signature.ArgumentTypes[i];
-
-	if (Sig->ReturnType.IsValid())
-	{
-		Sig->bInitReturn = Sig->ReturnType.CanConstruct() && Sig->ReturnType.NeedConstruct();
-		Sig->bZeroReturnPtr = !Sig->bInitReturn && Sig->ReturnType.Type->IsObjectPointer();
-	}
-
-	if (Signature.bStaticInScript)
-	{
-		Sig->StaticObject = InType->GetClass(FAngelscriptTypeUsage::DefaultUsage)->GetDefaultObject();
-
-		FAngelscriptBinds::FNamespace Namespace(Signature.ClassName);
-		int32 FunctionId = FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration,
-			asFUNCTION(CallStaticWithSignature), asCALL_GENERIC, ASAutoCaller::FunctionCaller::Make(), Sig);
-		Signature.ModifyScriptFunction(FunctionId);
-	}
-	else if (Signature.bStaticInUnreal)
-	{
-		Sig->StaticObject = InType->GetClass(FAngelscriptTypeUsage::DefaultUsage)->GetDefaultObject();
-
-		Sig->MixinType = FAngelscriptTypeUsage();
-		Sig->MixinType.Type = InType;
-
-		int32 FunctionId = FAngelscriptBinds::BindMethodDirect(
-			Signature.ClassName,
-			Signature.Declaration,
-			asFUNCTION(CallMixinWithSignature), asCALL_GENERIC, ASAutoCaller::FunctionCaller::Make(), Sig);
-		Signature.ModifyScriptFunction(FunctionId);
-	}
-	else
-	{
-		int32 FunctionId = FAngelscriptBinds::BindMethodDirect(InType->GetAngelscriptTypeName(),
-			Signature.Declaration,
-			asFUNCTION(CallEventWithSignature), asCALL_GENERIC, ASAutoCaller::FunctionCaller::Make(), Sig);
-		Signature.ModifyScriptFunction(FunctionId);
-	}
-
-#if WITH_EDITOR
-	if (!Function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintPure) && !Function->HasMetaData(NAME_Event_ScriptCallable))
-		FAngelscriptBinds::SetPreviousBindIsCallable(false);
-#endif
-
-	GBlueprintEventsByScriptName.FindOrAdd(CastChecked<UClass>(Function->GetOuter())).Add(Signature.ScriptName, Function);
-
-#if AS_CAN_GENERATE_JIT
 #if AS_USE_BIND_DB
-	SCRIPT_NATIVE_UFUNCTION(Function, FPackageName::ObjectPathToObjectName(DBBind.UnrealPath), false);
+	CommitBlueprintEventBinding(
+		Binds,
+		InType,
+		Function,
+		Signature,
+		FPackageName::ObjectPathToObjectName(DBBind.UnrealPath));
 #else
-	SCRIPT_NATIVE_UFUNCTION(Function, Function->GetName(), false);
-#endif
+	CommitBlueprintEventBinding(Binds, InType, Function, Signature, Function->GetName());
 #endif
 
 #if !AS_USE_BIND_DB
@@ -747,11 +820,12 @@ void BindBlueprintEvent(
 }
 
 #if !AS_USE_BIND_DB && WITH_EDITOR
-// Prepare-only entry point used by the Bind_Defaults Late+100 Phase 2A.
+// Prepare-only entry point used by BlueprintType ReflectionBindings.
 // Performs all metadata gating + Signature build (read-only). On success, sets
 // Prep.Kind = Event; on any rejection, leaves Prep.Kind = Skip.
 // CachedBinding is unused for Event prepares.
 void BindBlueprintEvent_Prepare(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
 	FUFunctionBindPrep& Prep)
@@ -780,7 +854,11 @@ void BindBlueprintEvent_Prepare(
 		return;
 	}
 
-	Prep.Signature = FAngelscriptFunctionSignature(InType, Function, /*OverrideName=*/nullptr);
+	Prep.Signature = FAngelscriptFunctionSignature(
+		Binds.GetTargetTypeDatabase(),
+		InType,
+		Function,
+		/*OverrideName=*/nullptr);
 	if (!Prep.Signature.bAllTypesValid)
 	{
 		return;
@@ -793,7 +871,7 @@ void BindBlueprintEvent_Prepare(
 	Prep.Kind = FUFunctionBindPrep::EKind::Event;
 }
 
-// Commit-only entry point used by the Bind_Defaults Late+100 Phase 2A/2B split
+// Commit-only entry point used by the BlueprintType ReflectionBindings prepare/commit split.
 // (see Plan_BindParallelization). The caller is responsible for filling Prep with:
 //   - Function           (UFunction*, non-null, all event-eligibility metadata checks passed)
 //   - Signature          (already InitFromFunction'd, bAllTypesValid == true,
@@ -802,6 +880,7 @@ void BindBlueprintEvent_Prepare(
 // CachedBinding is unused for Event commits. This function only performs the AS Engine
 // register half (must run on GameThread).
 void BindBlueprintEvent_FromPrep(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	FUFunctionBindPrep& Prep,
 	FAngelscriptMethodBind& DBBind)
@@ -814,67 +893,14 @@ void BindBlueprintEvent_FromPrep(
 		return;
 	}
 
-	auto* Sig = NewOwnedBlueprintEventSignature();
-	Sig->FunctionName = Function->GetFName();
-	Sig->UnrealFunction = Function;
-	Sig->ArgCount = Signature.ArgumentTypes.Num();
-	Sig->ReturnType = Signature.ReturnType;
-	check(!Sig->ReturnType.bIsReference);
-	Sig->ReturnType.bIsReference = true;
-	for (int32 i = 0; i < Sig->ArgCount; ++i)
-		Sig->Arguments[i] = Signature.ArgumentTypes[i];
-
-	if (Sig->ReturnType.IsValid())
-	{
-		Sig->bInitReturn = Sig->ReturnType.CanConstruct() && Sig->ReturnType.NeedConstruct();
-		Sig->bZeroReturnPtr = !Sig->bInitReturn && Sig->ReturnType.Type->IsObjectPointer();
-	}
-
-	if (Signature.bStaticInScript)
-	{
-		Sig->StaticObject = InType->GetClass(FAngelscriptTypeUsage::DefaultUsage)->GetDefaultObject();
-
-		FAngelscriptBinds::FNamespace Namespace(Signature.ClassName);
-		int32 FunctionId = FAngelscriptBinds::BindGlobalFunctionDirect(Signature.Declaration,
-			asFUNCTION(CallStaticWithSignature), asCALL_GENERIC, ASAutoCaller::FunctionCaller::Make(), Sig);
-		Signature.ModifyScriptFunction(FunctionId);
-	}
-	else if (Signature.bStaticInUnreal)
-	{
-		Sig->StaticObject = InType->GetClass(FAngelscriptTypeUsage::DefaultUsage)->GetDefaultObject();
-
-		Sig->MixinType = FAngelscriptTypeUsage();
-		Sig->MixinType.Type = InType;
-
-		int32 FunctionId = FAngelscriptBinds::BindMethodDirect(
-			Signature.ClassName,
-			Signature.Declaration,
-			asFUNCTION(CallMixinWithSignature), asCALL_GENERIC, ASAutoCaller::FunctionCaller::Make(), Sig);
-		Signature.ModifyScriptFunction(FunctionId);
-	}
-	else
-	{
-		int32 FunctionId = FAngelscriptBinds::BindMethodDirect(InType->GetAngelscriptTypeName(),
-			Signature.Declaration,
-			asFUNCTION(CallEventWithSignature), asCALL_GENERIC, ASAutoCaller::FunctionCaller::Make(), Sig);
-		Signature.ModifyScriptFunction(FunctionId);
-	}
-
-	if (!Function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintPure) && !Function->HasMetaData(NAME_Event_ScriptCallable))
-		FAngelscriptBinds::SetPreviousBindIsCallable(false);
-
-	GBlueprintEventsByScriptName.FindOrAdd(CastChecked<UClass>(Function->GetOuter())).Add(Signature.ScriptName, Function);
-
-#if AS_CAN_GENERATE_JIT
-	SCRIPT_NATIVE_UFUNCTION(Function, Function->GetName(), false);
-#endif
-
+	CommitBlueprintEventBinding(Binds, InType, Function, Signature, Function->GetName());
 	Signature.WriteToDB(DBBind);
 }
+
 #endif // !AS_USE_BIND_DB && WITH_EDITOR
 
 template<bool TIsMulticast, bool TErrorIfUnbound>
-void CallDelegateEvent(asIScriptGeneric* InGeneric)
+void FAngelscriptBlueprintEventHelperBinds::CallDelegateEvent(asIScriptGeneric* InGeneric)
 {
 	asCGeneric* Generic = static_cast<asCGeneric*>(InGeneric);
 
@@ -927,7 +953,7 @@ void CallDelegateEvent(asIScriptGeneric* InGeneric)
 	}
 }
 
-void CallSparseDelegate(asIScriptGeneric* InGeneric)
+void FAngelscriptBlueprintEventHelperBinds::CallSparseDelegate(asIScriptGeneric* InGeneric)
 {
 	asCGeneric* Generic = static_cast<asCGeneric*>(InGeneric);
 
@@ -967,7 +993,7 @@ void CallSparseDelegate(asIScriptGeneric* InGeneric)
 	}
 }
 
-void BindDelegateEvent(FAngelscriptBinds& Delegate_, UFunction* Function, bool bIsMulticast, bool bIsSparse)
+void BindDelegateEvent(FAngelscriptBinds& Binds, UFunction* Function, bool bIsMulticast, bool bIsSparse)
 {
 	FAngelscriptTypeUsage ReturnType;
 	TArray<FAngelscriptTypeUsage> ArgumentTypes;
@@ -980,7 +1006,7 @@ void BindDelegateEvent(FAngelscriptBinds& Delegate_, UFunction* Function, bool b
 	for( TFieldIterator<FProperty> It(Function); It && (It->PropertyFlags & CPF_Parm); ++It )
 	{
 		FProperty* Property = *It;
-		FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromProperty(Property);
+		FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromProperty(Binds.GetTargetTypeDatabase(), Property);
 
 		if (!Type.IsValid() || !Type.CanCopy() || !Type.CanConstruct() || !Type.CanDestruct())
 		{
@@ -1012,7 +1038,7 @@ void BindDelegateEvent(FAngelscriptBinds& Delegate_, UFunction* Function, bool b
 	if (ArgumentTypes.Num() > AS_EVENT_MAX_ARGS)
 		return;
 
-	auto* Sig = NewOwnedBlueprintEventSignature();
+	auto* Sig = NewOwnedBlueprintEventSignature(Binds);
 	Sig->UnrealFunction = Function;
 	Sig->FunctionName = Function->GetFName();
 	Sig->ArgCount = ArgumentTypes.Num();
@@ -1030,24 +1056,24 @@ void BindDelegateEvent(FAngelscriptBinds& Delegate_, UFunction* Function, bool b
 
 	if (bIsSparse)
 	{
-		Delegate_.GenericMethod(
+		Binds.GenericMethod(
 			FAngelscriptType::BuildFunctionDeclaration(ReturnType, TEXT("Broadcast"), ArgumentTypes, ArgumentNames, ArgumentDefaults, true),
-			&CallSparseDelegate, Sig);
+			&FAngelscriptBlueprintEventHelperBinds::CallSparseDelegate, Sig);
 	}
 	else if (bIsMulticast)
 	{
-		Delegate_.GenericMethod(
+		Binds.GenericMethod(
 			FAngelscriptType::BuildFunctionDeclaration(ReturnType, TEXT("Broadcast"), ArgumentTypes, ArgumentNames, ArgumentDefaults, true),
-			&CallDelegateEvent<true,false>, Sig);
+			&FAngelscriptBlueprintEventHelperBinds::CallDelegateEvent<true, false>, Sig);
 	}
 	else
 	{
-		Delegate_.GenericMethod(
+		Binds.GenericMethod(
 			FAngelscriptType::BuildFunctionDeclaration(ReturnType, TEXT("Execute"), ArgumentTypes, ArgumentNames, ArgumentDefaults, true) + TEXT(" allow_discard"),
-			&CallDelegateEvent<false,true>, Sig);
+			&FAngelscriptBlueprintEventHelperBinds::CallDelegateEvent<false, true>, Sig);
 
-		Delegate_.GenericMethod(
+		Binds.GenericMethod(
 			FAngelscriptType::BuildFunctionDeclaration(ReturnType, TEXT("ExecuteIfBound"), ArgumentTypes, ArgumentNames, ArgumentDefaults, true) + TEXT(" allow_discard"),
-			&CallDelegateEvent<false,false>, Sig);
+			&FAngelscriptBlueprintEventHelperBinds::CallDelegateEvent<false, false>, Sig);
 	}
 }

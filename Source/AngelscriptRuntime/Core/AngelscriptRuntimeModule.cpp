@@ -1,4 +1,5 @@
 #include "AngelscriptRuntimeModule.h"
+#include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 #include "AngelscriptSubsystem.h"
 #include "Dump/AngelscriptCrashSnapshot.h"
@@ -62,6 +63,11 @@ void FAngelscriptRuntimeModule::InitializeAngelscript()
 		InitializedOverrideEngineForTesting = nullptr;
 		if (FAngelscriptEngine* OverrideEngine = InitializeOverrideForTesting())
 		{
+			if (!OverrideEngine->IsReadyForPublication())
+			{
+				UE_LOG(Angelscript, Error, TEXT("[RuntimeStartup] Automation override returned an engine that is not ready for publication."));
+				return;
+			}
 			FAngelscriptEngineContextStack::Push(OverrideEngine);
 			InitializedOverrideEngineForTesting = OverrideEngine;
 			UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] InitializeAngelscript used automation override engine=%p."), OverrideEngine);
@@ -71,6 +77,12 @@ void FAngelscriptRuntimeModule::InitializeAngelscript()
 	#endif
 
 	FModuleManager::Get().LoadModuleChecked(TEXT("AngelscriptRuntime"));
+	FString BindPreparationDiagnostic;
+	if (!FAngelscriptBind::PrepareForEngineInitialization(BindPreparationDiagnostic))
+	{
+		UE_LOG(Angelscript, Error, TEXT("[RuntimeStartup] Direct bind preparation failed: %s"), *BindPreparationDiagnostic);
+		return;
+	}
 	if (UAngelscriptSubsystem* EngineSubsystem = UAngelscriptSubsystem::Get())
 	{
 		UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] Routing InitializeAngelscript to EngineSubsystem=%p."), EngineSubsystem);
@@ -84,19 +96,32 @@ void FAngelscriptRuntimeModule::InitializeAngelscript()
 		if (CurrentEngine->GetScriptEngine() == nullptr)
 		{
 			UE_LOG(Angelscript, Display, TEXT("[RuntimeStartup] Initializing existing ambient engine=%p."), CurrentEngine);
-			CurrentEngine->Initialize();
+			if (!CurrentEngine->Initialize())
+			{
+				UE_LOG(Angelscript, Error, TEXT("[RuntimeStartup] Ambient engine binding failed; engine was not published."));
+			}
+		}
+		else if (CurrentEngine->IsReadyForPublication())
+		{
+			UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] Adopted initialized ambient engine=%p."), CurrentEngine);
 		}
 		else
 		{
-			UE_LOG(Angelscript, Verbose, TEXT("[RuntimeStartup] Adopted initialized ambient engine=%p."), CurrentEngine);
+			UE_LOG(Angelscript, Error, TEXT("[RuntimeStartup] Ambient engine=%p is partially initialized and cannot be adopted."), CurrentEngine);
 		}
 	}
 	else
 	{
-		OwnedPrimaryEngine = MakeUnique<FAngelscriptEngine>();
+		TUniquePtr<FAngelscriptEngine> CandidateEngine = MakeUnique<FAngelscriptEngine>();
+		UE_LOG(Angelscript, Display, TEXT("[RuntimeStartup] Creating owned primary engine=%p."), CandidateEngine.Get());
+		if (!CandidateEngine->Initialize())
+		{
+			UE_LOG(Angelscript, Error, TEXT("[RuntimeStartup] Owned primary engine binding failed; engine was not published."));
+			return;
+		}
+		OwnedPrimaryEngine = MoveTemp(CandidateEngine);
 		FAngelscriptEngineContextStack::Push(OwnedPrimaryEngine.Get());
-		UE_LOG(Angelscript, Display, TEXT("[RuntimeStartup] Created owned primary engine=%p."), OwnedPrimaryEngine.Get());
-		OwnedPrimaryEngine->Initialize();
+		UE_LOG(Angelscript, Display, TEXT("[RuntimeStartup] Published owned primary engine=%p."), OwnedPrimaryEngine.Get());
 	}
 }
 

@@ -1,22 +1,25 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
 
-#include "Engine/CollisionProfile.h" 
+#include "Bind_UCollisionProfile_Functions.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UCollisionProfile(FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	FAngelscriptBinds::FNamespace ns("UCollisionProfile");
+	void BindUCollisionProfile(FAngelscriptBinds& Binds)
 	{
-		FAngelscriptBinds::BindGlobalFunction("ECollisionChannel ConvertToCollisionChannel(bool TraceType, int32 Index)", [](bool TraceType, int32 Index) -> ECollisionChannel {
-			return UCollisionProfile::Get()->ConvertToCollisionChannel(TraceType, Index);
-		});
-
-		FAngelscriptBinds::BindGlobalFunction("EObjectTypeQuery ConvertToObjectType(ECollisionChannel CollisionChannel)", [](ECollisionChannel CollisionChannel) -> EObjectTypeQuery {
-			return UCollisionProfile::Get()->ConvertToObjectType(CollisionChannel);
-		});
-
-		FAngelscriptBinds::BindGlobalFunction("ETraceTypeQuery ConvertToTraceType(ECollisionChannel CollisionChannel)", [](ECollisionChannel CollisionChannel) -> ETraceTypeQuery {
-			return UCollisionProfile::Get()->ConvertToTraceType(CollisionChannel);
-		});
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "UCollisionProfile");
+		Binds.BindGlobalFunctionForTarget(
+			"ECollisionChannel ConvertToCollisionChannel(bool TraceType, int32 Index)",
+			&FAngelscriptUCollisionProfileBinds::ConvertToCollisionChannel);
+		Binds.BindGlobalFunctionForTarget(
+			"EObjectTypeQuery ConvertToObjectType(ECollisionChannel CollisionChannel)",
+			&FAngelscriptUCollisionProfileBinds::ConvertToObjectType);
+		Binds.BindGlobalFunctionForTarget(
+			"ETraceTypeQuery ConvertToTraceType(ECollisionChannel CollisionChannel)",
+			&FAngelscriptUCollisionProfileBinds::ConvertToTraceType);
 	}
-});	
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UCollisionProfile(
+	TEXT("UCollisionProfile"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUCollisionProfile);

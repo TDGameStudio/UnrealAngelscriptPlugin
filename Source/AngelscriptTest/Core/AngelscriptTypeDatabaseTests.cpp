@@ -4,7 +4,8 @@
 #include "AngelscriptTestUtilities.h"
 
 #include "CQTest.h"
-#include "Misc/ScopeExit.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -15,31 +16,16 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptTypeDatabaseTests,
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-struct FCoreTestContextStackGuard
-{
-	TArray<FAngelscriptEngine*> SavedStack;
-
-	FCoreTestContextStackGuard()
-	{
-		SavedStack = FAngelscriptEngineContextStack::SnapshotAndClear();
-	}
-
-	~FCoreTestContextStackGuard()
-	{
-		FAngelscriptEngineContextStack::RestoreSnapshot(MoveTemp(SavedStack));
-	}
-
-	void DiscardSavedStack()
-	{
-		SavedStack.Reset();
-	}
-};
-
 class FAutomationRegisteredType final : public FAngelscriptType
 {
 public:
-	explicit FAutomationRegisteredType(FString InTypeName)
+	explicit FAutomationRegisteredType(
+		FString InTypeName,
+		UClass* InClass = nullptr,
+		void* InData = nullptr)
 		: TypeName(MoveTemp(InTypeName))
+		, Class(InClass)
+		, Data(InData)
 	{
 	}
 
@@ -48,8 +34,20 @@ public:
 		return TypeName;
 	}
 
+	virtual UClass* GetClass(const FAngelscriptTypeUsage&) const override
+	{
+		return Class;
+	}
+
+	virtual void* GetData() const override
+	{
+		return Data;
+	}
+
 private:
 	FString TypeName;
+	UClass* Class = nullptr;
+	void* Data = nullptr;
 };
 
 class FAutomationPropertyMatchedType final : public FAngelscriptType
@@ -113,37 +111,55 @@ static bool ExpectUsageMatches(
 }
 
 public:
+	TEST_METHOD(ExplicitDatabaseLookupsAndAliasesNeverUseAmbientState)
+	{
+		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
+		FAngelscriptTypeDatabase DatabaseA;
+		FAngelscriptTypeDatabase DatabaseB;
+		int32 SharedDataIdentity = 0;
+		UClass* SharedClassIdentity = UAngelscriptUhtCoverageTestObject::StaticClass();
+		const FString SharedTypeName = TEXT("FExplicitDatabaseType");
+		const FString SharedAliasName = TEXT("FExplicitDatabaseAlias");
+
+		const TSharedRef<FAngelscriptType> TypeA = MakeShared<FAutomationRegisteredType>(
+			SharedTypeName,
+			SharedClassIdentity,
+			&SharedDataIdentity);
+		const TSharedRef<FAngelscriptType> TypeB = MakeShared<FAutomationRegisteredType>(
+			SharedTypeName,
+			SharedClassIdentity,
+			&SharedDataIdentity);
+		FAngelscriptType::Register(DatabaseA, TypeA);
+		FAngelscriptType::Register(DatabaseB, TypeB);
+		FAngelscriptType::RegisterAlias(DatabaseA, SharedAliasName, TypeA);
+		FAngelscriptType::RegisterAlias(DatabaseB, SharedAliasName, TypeB);
+
+		ASSERT_THAT(IsTrue(
+			FAngelscriptType::GetByAngelscriptTypeName(DatabaseA, SharedTypeName).Get() == &TypeA.Get()
+				&& FAngelscriptType::GetByAngelscriptTypeName(DatabaseB, SharedTypeName).Get() == &TypeB.Get(),
+			TEXT("Explicit name lookups should resolve independently in the selected databases")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptType::GetByAngelscriptTypeName(DatabaseA, SharedAliasName).Get() == &TypeA.Get()
+				&& FAngelscriptType::GetByAngelscriptTypeName(DatabaseB, SharedAliasName).Get() == &TypeB.Get(),
+			TEXT("Explicit alias registration should remain isolated to the selected databases")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptType::GetByClass(DatabaseA, SharedClassIdentity).Get() == &TypeA.Get()
+				&& FAngelscriptType::GetByClass(DatabaseB, SharedClassIdentity).Get() == &TypeB.Get(),
+			TEXT("Explicit class lookups should resolve independently in the selected databases")));
+		ASSERT_THAT(IsTrue(
+			FAngelscriptType::GetByData(DatabaseA, &SharedDataIdentity).Get() == &TypeA.Get()
+				&& FAngelscriptType::GetByData(DatabaseB, &SharedDataIdentity).Get() == &TypeB.Get(),
+			TEXT("Explicit data lookups should resolve independently in the selected databases")));
+	}
+
 	TEST_METHOD(AliasAndTypeFindersResetCleanly)
 	{
 		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
-FCoreTestContextStackGuard ContextGuard;
-		DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized())
-		{
-			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
-		}
-		ContextGuard.DiscardSavedStack();
-
-		ON_SCOPE_EXIT
-		{
-			FAngelscriptType::ResetTypeDatabase();
-			FAngelscriptEngineContextStack::SnapshotAndClear();
-			if (FAngelscriptEngine::IsInitialized())
-			{
-				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
-			}
-			DestroySharedTestEngine();
-		};
-
-		ASSERT_THAT(IsNull(
-			FAngelscriptEngine::TryGetCurrentEngine(),
-			TEXT("Type database lifecycle test should start without an ambient engine so it uses the legacy database")));
-
-		FAngelscriptType::ResetTypeDatabase();
+		FAngelscriptTypeDatabase Database;
 		ASSERT_THAT(AreEqual(
 			0,
-			FAngelscriptType::GetTypes().Num(),
-			TEXT("Type database lifecycle test should start from an empty legacy database")));
+			Database.RegisteredTypes.Num(),
+			TEXT("Type database lifecycle test should start from an empty local database")));
 
 		FProperty* StoredValueProperty = UAngelscriptUhtCoverageTestObject::StaticClass()->FindPropertyByName(TEXT("StoredValue"));
 		ASSERT_THAT(IsNotNull(
@@ -159,38 +175,41 @@ FCoreTestContextStackGuard ContextGuard;
 		const FAngelscriptType* PreferredTypePtr = &PreferredType.Get();
 		const FAngelscriptType* FallbackTypePtr = &FallbackType.Get();
 
-		FAngelscriptType::Register(PreferredType);
-		FAngelscriptType::Register(FallbackType);
-		FAngelscriptType::RegisterAlias(AliasName, PreferredType);
-		FAngelscriptType::RegisterTypeFinder([StoredValueProperty, PreferredType](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
-		{
-			if (Property != StoredValueProperty)
+		FAngelscriptType::Register(Database, PreferredType);
+		FAngelscriptType::Register(Database, FallbackType);
+		FAngelscriptType::RegisterAlias(Database, AliasName, PreferredType);
+		FAngelscriptType::RegisterTypeFinder(
+			Database,
+			[StoredValueProperty, PreferredType](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
 			{
-				return false;
-			}
+				if (Property != StoredValueProperty)
+				{
+					return false;
+				}
 
-			Usage.Type = PreferredType;
-			return true;
-		});
+				Usage.Type = PreferredType;
+				return true;
+			});
 
 		ASSERT_THAT(AreEqual(
 			2,
-			FAngelscriptType::GetTypes().Num(),
+			Database.RegisteredTypes.Num(),
 			TEXT("Type database lifecycle test should register exactly two concrete types before reset")));
 		ASSERT_THAT(IsTrue(
-			FAngelscriptType::GetByAngelscriptTypeName(PreferredTypeName).Get() == PreferredTypePtr,
+			FAngelscriptType::GetByAngelscriptTypeName(Database, PreferredTypeName).Get() == PreferredTypePtr,
 			TEXT("Type database lifecycle test should resolve the base type by its registered name")));
 		ASSERT_THAT(IsTrue(
-			FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get() == PreferredTypePtr,
+			FAngelscriptType::GetByAngelscriptTypeName(Database, AliasName).Get() == PreferredTypePtr,
 			TEXT("Type database lifecycle test should resolve aliases to the same fake type")));
 		ASSERT_THAT(IsTrue(
-			FAngelscriptType::GetByProperty(StoredValueProperty, false).Get() == FallbackTypePtr,
+			FAngelscriptType::GetByProperty(Database, StoredValueProperty, false).Get() == FallbackTypePtr,
 			TEXT("Type database lifecycle test should still expose the fallback property matcher when type finders are disabled")));
 		ASSERT_THAT(IsTrue(
-			FAngelscriptType::GetByProperty(StoredValueProperty).Get() == PreferredTypePtr,
+			FAngelscriptType::GetByProperty(Database, StoredValueProperty).Get() == PreferredTypePtr,
 			TEXT("Type database lifecycle test should prefer the registered type finder over the fallback property matcher")));
 
-		const FAngelscriptTypeUsage UsageBeforeReset = FAngelscriptTypeUsage::FromProperty(StoredValueProperty);
+		const FAngelscriptTypeUsage UsageBeforeReset =
+			FAngelscriptTypeUsage::FromProperty(Database, StoredValueProperty);
 		ExpectUsageMatches(
 			*TestRunner,
 			TEXT("Type database lifecycle test before reset"),
@@ -198,31 +217,50 @@ FCoreTestContextStackGuard ContextGuard;
 			PreferredType,
 			PreferredTypeName);
 
-		FAngelscriptType::ResetTypeDatabase();
+		Database = FAngelscriptTypeDatabase();
 
-		const FAngelscriptTypeUsage UsageAfterReset = FAngelscriptTypeUsage::FromProperty(StoredValueProperty);
+		const FAngelscriptTypeUsage UsageAfterReset =
+			FAngelscriptTypeUsage::FromProperty(Database, StoredValueProperty);
 		ASSERT_THAT(AreEqual(
 			0,
-			FAngelscriptType::GetTypes().Num(),
+			Database.RegisteredTypes.Num(),
 			TEXT("Type database lifecycle test should clear all registered types after reset")));
 		ASSERT_THAT(IsNull(
-			FAngelscriptType::GetByAngelscriptTypeName(PreferredTypeName).Get(),
+			FAngelscriptType::GetByAngelscriptTypeName(Database, PreferredTypeName).Get(),
 			TEXT("Type database lifecycle test should clear the registered base type after reset")));
 		ASSERT_THAT(IsNull(
-			FAngelscriptType::GetByAngelscriptTypeName(FallbackTypeName).Get(),
+			FAngelscriptType::GetByAngelscriptTypeName(Database, FallbackTypeName).Get(),
 			TEXT("Type database lifecycle test should clear the registered fallback type after reset")));
 		ASSERT_THAT(IsNull(
-			FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get(),
+			FAngelscriptType::GetByAngelscriptTypeName(Database, AliasName).Get(),
 			TEXT("Type database lifecycle test should clear the registered alias after reset")));
 		ASSERT_THAT(IsNull(
-			FAngelscriptType::GetByProperty(StoredValueProperty, false).Get(),
+			FAngelscriptType::GetByProperty(Database, StoredValueProperty, false).Get(),
 			TEXT("Type database lifecycle test should remove fallback property resolution after reset")));
 		ASSERT_THAT(IsNull(
-			FAngelscriptType::GetByProperty(StoredValueProperty).Get(),
+			FAngelscriptType::GetByProperty(Database, StoredValueProperty).Get(),
 			TEXT("Type database lifecycle test should remove finder-based property resolution after reset")));
 		ASSERT_THAT(IsFalse(
 			UsageAfterReset.IsValid(),
 			TEXT("Type database lifecycle test should leave FromProperty invalid after reset")));
+	}
+
+	TEST_METHOD(CompatibilityAPIsRequireCheckedCurrentEngine)
+	{
+		FString Source;
+		const FString SourcePath = FPaths::Combine(
+			FPaths::ProjectPluginsDir(),
+			TEXT("Angelscript/Source/AngelscriptRuntime/Core/AngelscriptType.cpp"));
+		ASSERT_THAT(IsTrue(
+			FFileHelper::LoadFileToString(Source, *SourcePath),
+			TEXT("Type database architecture guard should load AngelscriptType.cpp")));
+		ASSERT_THAT(IsFalse(
+			Source.Contains(TEXT("static FAngelscriptTypeDatabase LegacyDatabase")),
+			TEXT("Type compatibility APIs should not retain a no-engine legacy database")));
+		ASSERT_THAT(IsTrue(
+			Source.Contains(TEXT("FAngelscriptEngine& Engine = FAngelscriptEngine::Get();"))
+				&& Source.Contains(TEXT("Database != nullptr")),
+			TEXT("Type compatibility APIs should resolve a checked current engine and its owned database")));
 	}
 };
 

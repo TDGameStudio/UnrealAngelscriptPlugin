@@ -1,58 +1,35 @@
-#pragma once
-#include "CoreMinimal.h"
+#include "AngelscriptBinds.h"
 
 #include "InputActionValue.h"
 
-#include "AngelscriptBinds.h"
+#include "Bind_FInputActionValue_Functions.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FInputActionValue(FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	auto FInputActionValue_ = FAngelscriptBinds::ExistingClass("FInputActionValue");
-
-	FInputActionValue_.Constructor("void f(float32 InValue)", [](FInputActionValue* Address, float InValue)
+	void BindFInputActionValue(FAngelscriptBinds& Binds)
 	{
-		new(Address) FInputActionValue(InValue);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FInputActionValue_, "FInputActionValue");
+		auto Value_ = Binds.ExistingClassForTarget("FInputActionValue");
+		Value_.Constructor("void f(float32 InValue)", &FAngelscriptFInputActionValueBinds::ConstructAxis1D, "FInputActionValue", true);
+		Value_.Constructor("void f(FVector2D InValue)", &FAngelscriptFInputActionValueBinds::ConstructAxis2D, "FInputActionValue", true);
+		Value_.Constructor("void f(FVector InValue)", &FAngelscriptFInputActionValueBinds::ConstructAxis3D, "FInputActionValue", true);
+		Value_.Constructor("void f(EInputActionValueType InValueType, FVector InValue)", &FAngelscriptFInputActionValueBinds::ConstructTyped, "FInputActionValue", true);
+		Value_.Method("FInputActionValue& opAddAssign(const FInputActionValue& Other)", METHODPR_TRIVIAL(FInputActionValue&, FInputActionValue, operator+=, (const FInputActionValue&)));
+		Value_.Method("FInputActionValue& opMulAssign(float32 Scalar)", METHODPR_TRIVIAL(FInputActionValue&, FInputActionValue, operator*=, (float)));
+		Value_.Method("bool IsNonZero(float32 Tolerance = KINDA_SMALL_NUMBER) const", METHOD_TRIVIAL(FInputActionValue, IsNonZero));
+		Value_.Method("FInputActionValue& ConvertToType(EInputActionValueType Type)", &FAngelscriptFInputActionValueBinds::ConvertToType);
+		Value_.Method("FInputActionValue& ConvertToType(const FInputActionValue& Other)", &FAngelscriptFInputActionValueBinds::ConvertToOtherType);
+		Value_.Method("bool Get() const", METHOD_TRIVIAL(FInputActionValue, Get<bool>));
+		Value_.Method("float32 GetAxis1D() const", METHOD_TRIVIAL(FInputActionValue, Get<float>));
+		Value_.Method("FVector2D GetAxis2D() const", METHOD_TRIVIAL(FInputActionValue, Get<FVector2D>));
+		Value_.Method("FVector GetAxis3D() const", METHOD_TRIVIAL(FInputActionValue, Get<FVector>));
 
-	FInputActionValue_.Constructor("void f(FVector2D InValue)", [](FInputActionValue* Address, FVector2D InValue)
-	{
-		new(Address) FInputActionValue(InValue);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FInputActionValue_, "FInputActionValue");
-
-	FInputActionValue_.Constructor("void f(FVector InValue)", [](FInputActionValue* Address, FVector InValue)
-	{
-		new(Address) FInputActionValue(InValue);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FInputActionValue_, "FInputActionValue");
-
-	FInputActionValue_.Constructor("void f(EInputActionValueType InValueType, FVector InValue)", [](FInputActionValue* Address, EInputActionValueType InValueType, FVector InValue)
-	{
-		new(Address) FInputActionValue(InValueType, InValue);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FInputActionValue_, "FInputActionValue");
-
-	FInputActionValue_.Method("FInputActionValue& opAddAssign(const FInputActionValue& Other)", METHODPR_TRIVIAL(FInputActionValue&, FInputActionValue, operator+=, (const FInputActionValue&)));
-	FInputActionValue_.Method("FInputActionValue& opMulAssign(float32 Scalar)", METHODPR_TRIVIAL(FInputActionValue&, FInputActionValue, operator*=, (float)));
-
-	FInputActionValue_.Method("bool IsNonZero(float32 Tolerance = KINDA_SMALL_NUMBER) const", METHOD_TRIVIAL(FInputActionValue, IsNonZero));
-	FInputActionValue_.Method("FInputActionValue& ConvertToType(EInputActionValueType Type)", [](FInputActionValue* Value, EInputActionValueType Type) -> FInputActionValue&
-	{
-		return Value->ConvertToType(Type);
-	});
-	FInputActionValue_.Method("FInputActionValue& ConvertToType(const FInputActionValue& Other)", [](FInputActionValue* Value, const FInputActionValue& Other) -> FInputActionValue&
-	{
-		return Value->ConvertToType(Other);
-	});
-
-	FInputActionValue_.Method("bool Get() const", METHOD_TRIVIAL(FInputActionValue, Get<bool>));
-	FInputActionValue_.Method("float32 GetAxis1D() const", METHOD_TRIVIAL(FInputActionValue, Get<float>));
-	FInputActionValue_.Method("FVector2D GetAxis2D() const", METHOD_TRIVIAL(FInputActionValue, Get<FVector2D>));
-	FInputActionValue_.Method("FVector GetAxis3D() const", METHOD_TRIVIAL(FInputActionValue, Get<FVector>));
-
-	{
-		FAngelscriptBinds::FNamespace ns("FInputActionValue");
-		FAngelscriptBinds::BindGlobalFunction("EInputActionValueType GetValueTypeFromKey(FKey Key)", FUNC_TRIVIAL(FInputActionValue::GetValueTypeFromKey));
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FInputActionValue");
+		Binds.BindGlobalFunctionForTarget("EInputActionValueType GetValueTypeFromKey(FKey Key)", &FInputActionValue::GetValueTypeFromKey)
+			.NativeFunction("FInputActionValue::GetValueTypeFromKey", true);
 	}
-});
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FInputActionValue(
+	TEXT("FInputActionValue"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFInputActionValue);

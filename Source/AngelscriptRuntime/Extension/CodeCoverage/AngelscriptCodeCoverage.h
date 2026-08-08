@@ -96,6 +96,7 @@ public:
 	static FDelegateHandle Startup();
 	static void Shutdown(FDelegateHandle& Handle);
 	static void EnsureAttached(FAngelscriptEngine& Engine);
+	static void EnsureDetached(FAngelscriptEngine& Engine);
 
 private:
 	struct FEngineCoverage

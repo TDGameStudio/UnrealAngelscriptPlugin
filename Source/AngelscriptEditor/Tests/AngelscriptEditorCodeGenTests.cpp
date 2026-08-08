@@ -1,8 +1,8 @@
 // =============================================================================
 // AngelscriptEditorCodeGenTests.cpp
 //
-// Tests for AngelscriptEditorCodeGen.cpp — GetIncludeForModule() path
-// stripping and GenerateBuildFile() output structure.
+// Tests for AngelscriptEditorCodeGen.cpp — include paths, build files, and
+// generated binding module output.
 //
 // Automation IDs:
 //   Angelscript.Editor.CodeGen.*
@@ -10,8 +10,15 @@
 
 #include "CQTest.h"
 #include "Core/AngelscriptEditorModule.h"
+#include "Core/AngelscriptBinds.h"
 
+#include "GameFramework/Actor.h"
+#include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Guid.h"
+#include "Misc/Paths.h"
+#include "Misc/ScopeExit.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -168,6 +175,165 @@ TEST_CLASS_WITH_FLAGS(
 	TEST_METHOD(OutputStructure)
 	{
 		ASSERT_THAT(IsTrue(RunGenerateBuildFileOutputStructure(*TestRunner)));
+	}
+};
+
+TEST_CLASS_WITH_FLAGS(
+	FAngelscriptEditorCodeGenGeneratedBindingsTests,
+	"Angelscript.Editor.CodeGen.GeneratedBindings",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+{
+private:
+	static int32 CountOccurrences(const FString& Source, const FString& Needle)
+	{
+		int32 Count = 0;
+		int32 SearchFrom = 0;
+		while (true)
+		{
+			const int32 FoundAt = Source.Find(
+				Needle,
+				ESearchCase::CaseSensitive,
+				ESearchDir::FromStart,
+				SearchFrom);
+			if (FoundAt == INDEX_NONE)
+			{
+				return Count;
+			}
+
+			++Count;
+			SearchFrom = FoundAt + Needle.Len();
+		}
+	}
+
+	static FString JoinLines(const TArray<FString>& Lines)
+	{
+		FString Joined;
+		for (const FString& Line : Lines)
+		{
+			Joined += Line;
+			Joined += TEXT("\n");
+		}
+		return Joined;
+	}
+
+	static FString GetPluginDirectory()
+	{
+		return FPaths::ConvertRelativePathToFull(
+			FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("Angelscript")));
+	}
+
+public:
+	TEST_METHOD(GeneratedModuleUsesOneExplicitGeneratedCallback)
+	{
+		const FString FixtureId = FGuid::NewGuid().ToString(EGuidFormats::Digits);
+		const FString FixtureModuleKey = FString::Printf(TEXT("ASCodeGenFixture_%s"), *FixtureId);
+		const FString OutputDirectory = FPaths::Combine(
+			FPaths::ProjectIntermediateDir(),
+			TEXT("AngelscriptEditorCodeGenTests"),
+			FixtureId);
+		ASSERT_THAT(IsTrue(
+			IFileManager::Get().MakeDirectory(*OutputDirectory, true),
+			TEXT("CodeGen fixture output directory should be created")));
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptBinds::GetRuntimeClassDB().Remove(FixtureModuleKey);
+			IFileManager::Get().DeleteDirectory(*OutputDirectory, false, true);
+		};
+
+		TArray<TObjectPtr<UClass>> FixtureClasses;
+		FixtureClasses.Add(AActor::StaticClass());
+		FAngelscriptBinds::GetRuntimeClassDB().Add(FixtureModuleKey, MoveTemp(FixtureClasses));
+
+		TArray<FString> SourceModules{FixtureModuleKey};
+		TArray<FString> GeneratedHeaderLines;
+		FString CPPDirectory = OutputDirectory;
+		CPPDirectory.AppendChar(TEXT('/'));
+		FAngelscriptEditorModule::GenerateSourceFilesV2(
+			TEXT("ASCodeGenFixture"),
+			SourceModules,
+			false,
+			GeneratedHeaderLines,
+			CPPDirectory);
+
+		const FString GeneratedHeader = JoinLines(GeneratedHeaderLines);
+		FString GeneratedModuleCPP;
+		FString GeneratedClassCPP;
+		const FString GeneratedModulePath = FPaths::Combine(
+			OutputDirectory,
+			TEXT("ASCodeGenFixtureModule.cpp"));
+		const FString GeneratedClassPath = FPaths::Combine(OutputDirectory, TEXT("Bind_Actor.cpp"));
+		ASSERT_THAT(IsTrue(
+			FFileHelper::LoadFileToString(GeneratedModuleCPP, *GeneratedModulePath),
+			*FString::Printf(TEXT("Generated module source should be readable: %s"), *GeneratedModulePath)));
+		ASSERT_THAT(IsTrue(
+			FFileHelper::LoadFileToString(GeneratedClassCPP, *GeneratedClassPath),
+			*FString::Printf(TEXT("Generated class binding source should be readable: %s"), *GeneratedClassPath)));
+
+		ASSERT_THAT(IsTrue(
+			GeneratedHeader.Contains(TEXT("class FAngelscriptBinds;"))
+				&& GeneratedHeader.Contains(TEXT("static void Bind_Actor(FAngelscriptBinds& Binds);")),
+			TEXT("Generated header should declare explicit bind-context class callbacks")));
+		ASSERT_THAT(IsTrue(
+			GeneratedClassCPP.Contains(TEXT(
+				"void FASCodeGenFixtureModule::Bind_Actor(FAngelscriptBinds& Binds)")),
+			TEXT("Generated class source should define the explicit bind-context callback")));
+		ASSERT_THAT(IsTrue(
+			GeneratedClassCPP.Contains(TEXT(
+				"Binds.RegisterGeneratedFunctionBindingForTarget(AActor::StaticClass(), \"TearOff\", "
+				"{ ERASE_METHOD_PTR(AActor, TearOff")),
+			TEXT("Generated entries should preserve native caller output through the explicit generated facade")));
+		ASSERT_THAT(IsFalse(
+			GeneratedClassCPP.Contains(TEXT("FAngelscriptBinds::RegisterFunctionBinding(")),
+			TEXT("Generated class source should not use ambient registration")));
+
+		ASSERT_THAT(AreEqual(
+			1,
+			CountOccurrences(
+				GeneratedModuleCPP,
+				TEXT("AS_FORCE_LINK const FAngelscriptBind Bind_AS_EditorCodeGen_ASCodeGenFixture")),
+			TEXT("Generated module should own exactly one file-static direct bind record")));
+		ASSERT_THAT(IsTrue(
+			GeneratedModuleCPP.Contains(TEXT(
+				"static void BindGeneratedFunctionBindings_ASCodeGenFixture(FAngelscriptBinds& Binds)"))
+				&& GeneratedModuleCPP.Contains(TEXT("FASCodeGenFixtureModule::Bind_Actor(Binds);"))
+				&& GeneratedModuleCPP.Contains(TEXT("TEXT(\"EditorCodeGen.FunctionBinding.ASCodeGenFixture\")"))
+				&& GeneratedModuleCPP.Contains(TEXT("EAngelscriptBindPhase::GeneratedBindings"))
+				&& GeneratedModuleCPP.Contains(TEXT("&BindGeneratedFunctionBindings_ASCodeGenFixture")),
+			TEXT("Generated module should expose one named GeneratedBindings callback")));
+		ASSERT_THAT(IsTrue(
+			GeneratedModuleCPP.Contains(TEXT("void FASCodeGenFixtureModule::StartupModule()\n{\n}")),
+			TEXT("Generated module StartupModule should remain empty")));
+		ASSERT_THAT(IsFalse(
+			GeneratedModuleCPP.Contains(TEXT("FAngelscriptBinds::RegisterBinds"))
+				|| GeneratedModuleCPP.Contains(TEXT("FAngelscriptBinds::EOrder"))
+				|| GeneratedModuleCPP.Contains(TEXT("[]()")),
+			TEXT("Generated module should contain no dynamic legacy binding submission")));
+	}
+
+	TEST_METHOD(LegacyCodeGeneratorsAreRemoved)
+	{
+		FString CodeGenSource;
+		FString EditorModuleHeader;
+		const FString CodeGenSourcePath = FPaths::Combine(
+			GetPluginDirectory(),
+			TEXT("Source/AngelscriptEditor/CodeGen/AngelscriptEditorCodeGen.cpp"));
+		const FString EditorModuleHeaderPath = FPaths::Combine(
+			GetPluginDirectory(),
+			TEXT("Source/AngelscriptEditor/Core/AngelscriptEditorModule.h"));
+		ASSERT_THAT(IsTrue(
+			FFileHelper::LoadFileToString(CodeGenSource, *CodeGenSourcePath),
+			*FString::Printf(TEXT("Editor CodeGen source should be readable: %s"), *CodeGenSourcePath)));
+		ASSERT_THAT(IsTrue(
+			FFileHelper::LoadFileToString(EditorModuleHeader, *EditorModuleHeaderPath),
+			*FString::Printf(TEXT("Editor module header should be readable: %s"), *EditorModuleHeaderPath)));
+
+		ASSERT_THAT(IsFalse(
+			CodeGenSource.Contains(TEXT("FAngelscriptEditorModule::GenerateSourceFiles("))
+				|| CodeGenSource.Contains(TEXT("FAngelscriptEditorModule::GenerateFunctionEntriesOld"))
+				|| CodeGenSource.Contains(TEXT("void GenerateSourceFilesOG("))
+				|| EditorModuleHeader.Contains(TEXT("static void GenerateSourceFiles("))
+				|| EditorModuleHeader.Contains(TEXT("GenerateFunctionEntriesOld")),
+			TEXT("Unused legacy editor generators should not remain as code or commented source")));
 	}
 };
 

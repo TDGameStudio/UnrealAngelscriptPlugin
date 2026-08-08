@@ -31,20 +31,22 @@ static void CoverageGCForceGarbageCollectionNow()
 	GFrameCounter = LastGFrameCounter;
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptCoverageGCTestHelpers(
-	TEXT("AngelscriptCoverageGCTestHelpers"),
-	(int32)FAngelscriptBinds::EOrder::Late + 101,
-	[]
-	{
-		FAngelscriptBinds::FNamespace Namespace("CoverageGC");
+static void BindAngelscriptCoverageGCTestHelpers(FAngelscriptBinds& Binds)
+{
+	FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "CoverageGC");
 
-		FAngelscriptBinds::BindGlobalFunction(
-			"void CollectGarbageNow()",
-			FUNC_TRIVIAL(CoverageGCCollectGarbageNow));
+	Binds.BindGlobalFunctionForTarget(
+		"void CollectGarbageNow()",
+		FUNC_TRIVIAL(CoverageGCCollectGarbageNow));
 
-		FAngelscriptBinds::BindGlobalFunction(
-			"void ForceGarbageCollectionNow()",
-			FUNC_TRIVIAL(CoverageGCForceGarbageCollectionNow));
-	});
+	Binds.BindGlobalFunctionForTarget(
+		"void ForceGarbageCollectionNow()",
+		FUNC_TRIVIAL(CoverageGCForceGarbageCollectionNow));
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptCoverageGCTestHelpers(
+	TEXT("AngelscriptCoverageGCTestHelpers.PostReflection"),
+	EAngelscriptBindPhase::PostReflectionBindings,
+	&BindAngelscriptCoverageGCTestHelpers);
 
 #endif // WITH_ANGELSCRIPT_UNITTESTS

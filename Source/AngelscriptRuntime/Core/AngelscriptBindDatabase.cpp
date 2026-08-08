@@ -13,15 +13,19 @@
 
 FAngelscriptBindDatabase& FAngelscriptBindDatabase::Get()
 {
-	if (FAngelscriptEngine* Engine = FAngelscriptEngine::TryGetCurrentEngine())
+	FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine();
+	if (UNLIKELY(CurrentEngine == nullptr))
 	{
-		if (FAngelscriptBindDatabase* DB = Engine->GetBindDatabase())
-		{
-			return *DB;
-		}
+		UE_LOG(
+			Angelscript,
+			Error,
+			TEXT("BindDatabase::Get failed: no current engine. Use an explicit engine-owned database."));
 	}
-	static FAngelscriptBindDatabase LegacyBindDatabase;
-	return LegacyBindDatabase;
+	checkf(CurrentEngine != nullptr, TEXT("BindDatabase::Get requires a current Angelscript engine."));
+
+	FAngelscriptBindDatabase* BindDatabase = CurrentEngine->GetBindDatabase();
+	checkf(BindDatabase != nullptr, TEXT("The current Angelscript engine has no bind database."));
+	return *BindDatabase;
 }
 
 void FAngelscriptBindDatabase::Serialize(FArchive& Archive)
@@ -198,12 +202,20 @@ void FAngelscriptBindDatabase::Load(const FString& Path, bool bGeneratingPrecomp
 
 FString FAngelscriptBindDatabase::GetSourceHeader(UField* Field)
 {
+	return GetSourceHeader(Field, Get());
+}
+
+FString FAngelscriptBindDatabase::GetSourceHeader(
+	UField* Field,
+	const FAngelscriptBindDatabase& Database)
+{
 #if WITH_EDITOR
+	(void)Database;
 	FString HeaderPath;
 	if (FSourceCodeNavigation::FindClassHeaderPath(Field, HeaderPath) && IFileManager::Get().FileSize(*HeaderPath) != INDEX_NONE)
 		return HeaderPath;
 #else
-	FString* Found = FAngelscriptBindDatabase::Get().HeaderLinks.Find(Field);
+	const FString* Found = Database.HeaderLinks.Find(Field);
 	if (Found != nullptr)
 		return *Found;
 #endif

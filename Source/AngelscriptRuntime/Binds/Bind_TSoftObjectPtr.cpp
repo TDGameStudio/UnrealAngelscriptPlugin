@@ -1,15 +1,11 @@
 #include "CoreMinimal.h"
 #include "AngelscriptBinds.h"
 #include "AngelscriptType.h"
-#include "AngelscriptEngine.h"
 #include "AngelscriptBindDatabase.h"
-#include "AngelscriptDocs.h"
-#include "FunctionLibraries/SoftReferenceStatics.h"
-#include "Components/ActorComponent.h"
-#include "GameFramework/Actor.h"
-#include "Misc/PackageName.h"
 #include "UObject/UnrealType.h"
 #include "Binds/Helper_StructType.h"
+
+#include "Bind_TSoftObjectPtr_Functions.h"
 
 #include "StartAngelscriptHeaders.h"
 //#include "as_context.h"
@@ -22,6 +18,13 @@
 
 struct FBaseSoftReferenceType : public TAngelscriptCppType<FSoftObjectPtr>
 {
+	explicit FBaseSoftReferenceType(const FAngelscriptBindDatabase& InBindDatabase)
+		: BindDatabase(&InBindDatabase)
+	{
+	}
+
+	const FAngelscriptBindDatabase* BindDatabase;
+
 	UClass* GetSubTypeClass(const FAngelscriptTypeUsage& Usage) const
 	{
 		if (Usage.SubTypes.Num() == 0)
@@ -171,6 +174,11 @@ struct FBaseSoftReferenceType : public TAngelscriptCppType<FSoftObjectPtr>
 
 struct FSoftObjectPtrType : public FBaseSoftReferenceType
 {
+	explicit FSoftObjectPtrType(const FAngelscriptBindDatabase& InBindDatabase)
+		: FBaseSoftReferenceType(InBindDatabase)
+	{
+	}
+
 	FString GetAngelscriptTypeName() const override
 	{
 		return TEXT("TSoftObjectPtr");
@@ -210,7 +218,7 @@ struct FSoftObjectPtrType : public FBaseSoftReferenceType
 		UClass* MetaClass = GetClassOfObject(Usage);
 		if (MetaClass != nullptr)
 		{
-			const FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(MetaClass);
+			const FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(MetaClass, *BindDatabase);
 			if (!ClassHeaderPath.IsEmpty())
 			{
 				OutCppForm.CppType = FString::Printf(TEXT("TSoftObjectPtr<%s%s>"), MetaClass->GetPrefixCPP(), *MetaClass->GetName());
@@ -226,6 +234,11 @@ struct FSoftObjectPtrType : public FBaseSoftReferenceType
 
 struct FSoftClassPtrType : public FBaseSoftReferenceType
 {
+	explicit FSoftClassPtrType(const FAngelscriptBindDatabase& InBindDatabase)
+		: FBaseSoftReferenceType(InBindDatabase)
+	{
+	}
+
 	FString GetAngelscriptTypeName() const override
 	{
 		return TEXT("TSoftClassPtr");
@@ -266,7 +279,7 @@ struct FSoftClassPtrType : public FBaseSoftReferenceType
 		UClass* MetaClass = GetSubTypeClass(Usage);
 		if (MetaClass != nullptr)
 		{
-			const FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(MetaClass);
+			const FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(MetaClass, *BindDatabase);
 			if (!ClassHeaderPath.IsEmpty())
 			{
 				OutCppForm.CppType = FString::Printf(TEXT("TSoftClassPtr<%s%s>"), MetaClass->GetPrefixCPP(), *MetaClass->GetName());
@@ -280,388 +293,139 @@ struct FSoftClassPtrType : public FBaseSoftReferenceType
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_SoftReferences_Declaration((int32)FAngelscriptBinds::EOrder::Early, []
+namespace
 {
-	FBindFlags Flags;
-	Flags.bTemplate = true;
-	Flags.TemplateType = "<T>";
-	Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
-
-	TSharedRef<FSoftObjectPtrType> SoftObjectPtrType = MakeShared<FSoftObjectPtrType>();
-	FAngelscriptType::Register(SoftObjectPtrType);
-
-	TSharedRef<FSoftClassPtrType> SoftClassPtrType = MakeShared<FSoftClassPtrType>();
-	FAngelscriptType::Register(SoftClassPtrType);
-
-	auto TSoftObjectPtr_ = FAngelscriptBinds::ValueClass<FSoftObjectPtr>("TSoftObjectPtr<class T>", Flags);
-	TSoftObjectPtr_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)",
-	[](asITypeInfo* TemplateType, asCString* ErrorMessage) -> bool
+	void BindSoftReferenceTypeDeclarations(FAngelscriptBinds& Binds)
 	{
-		if (TemplateType->GetSubTypeCount() != 1)
-			return false;
+		FBindFlags Flags;
+		Flags.bTemplate = true;
+		Flags.TemplateType = "<T>";
+		Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
 
-		auto* SubType = TemplateType->GetSubType(0);
-		if (SubType == nullptr || SubType->GetFlags() & asOBJ_VALUE)
-		{
-			if (ErrorMessage != nullptr)
-				*ErrorMessage = "Subtype must be a class type";
-			return false;
-		}
+		Binds.ValueClassForTarget<FSoftObjectPtr>("TSoftObjectPtr<class T>", Flags);
+		Binds.ValueClassForTarget<FSoftObjectPtr>("TSoftClassPtr<class T>", Flags);
+	}
 
-		return true;
-	});
-
-	auto TSoftClassPtr_ = FAngelscriptBinds::ValueClass<FSoftObjectPtr>("TSoftClassPtr<class T>", Flags);
-	TSoftClassPtr_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)",
-	[](asITypeInfo* TemplateType, asCString* ErrorMessage) -> bool
+	void BindSoftReferenceTypeInfrastructure(FAngelscriptBinds& Binds)
 	{
-		if (TemplateType->GetSubTypeCount() != 1)
-			return false;
+		TSharedRef<FSoftObjectPtrType> SoftObjectPtrType = MakeShared<FSoftObjectPtrType>(Binds.GetTargetBindDatabase());
+		Binds.RegisterTypeForTarget(SoftObjectPtrType);
 
-		auto* SubType = TemplateType->GetSubType(0);
-		if (SubType == nullptr || SubType->GetFlags() & asOBJ_VALUE)
+		TSharedRef<FSoftClassPtrType> SoftClassPtrType = MakeShared<FSoftClassPtrType>(Binds.GetTargetBindDatabase());
+		Binds.RegisterTypeForTarget(SoftClassPtrType);
+
+		auto TSoftObjectPtr_ = Binds.ExistingClassForTarget("TSoftObjectPtr<T>");
+		TSoftObjectPtr_.TemplateCallback(
+			"bool f(int&in Type, int&out ErrorMessage)",
+			&FAngelscriptTSoftObjectPtrBinds::ValidateTemplate);
+
+		auto TSoftClassPtr_ = Binds.ExistingClassForTarget("TSoftClassPtr<T>");
+		TSoftClassPtr_.TemplateCallback(
+			"bool f(int&in Type, int&out ErrorMessage)",
+			&FAngelscriptTSoftObjectPtrBinds::ValidateTemplate);
+
+		FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
+		Binds.RegisterTypeFinderForTarget([SoftObjectPtrType, SoftClassPtrType, TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
 		{
-			if (ErrorMessage != nullptr)
-				*ErrorMessage = "Subtype must be a class type";
-			return false;
-		}
-		return true;
-	});
-
-	FAngelscriptType::RegisterTypeFinder([SoftObjectPtrType, SoftClassPtrType](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
-	{
-		FSoftObjectProperty* ObjectProperty = CastField<FSoftObjectProperty>(Property);
-		if (ObjectProperty == nullptr)
-			return false;
-
-		// Soft object pointer could be a soft class pointer
-		FSoftClassProperty* ClassProperty = CastField<FSoftClassProperty>(Property);
-		if (ClassProperty != nullptr)
-		{
-			auto SubClass = FAngelscriptType::GetByClass(ClassProperty->MetaClass);
-			if (!SubClass.IsValid())
+			FSoftObjectProperty* ObjectProperty = CastField<FSoftObjectProperty>(Property);
+			if (ObjectProperty == nullptr)
 				return false;
-			
-			Usage.Type = SoftClassPtrType;
 
+			// Soft object pointer could be a soft class pointer.
+			FSoftClassProperty* ClassProperty = CastField<FSoftClassProperty>(Property);
+			if (ClassProperty != nullptr)
+			{
+				const TSharedRef<FAngelscriptType>* RegisteredSubType = TargetTypeDatabase->TypesByClass.Find(ClassProperty->MetaClass);
+				if (RegisteredSubType == nullptr)
+					return false;
+
+				Usage.Type = SoftClassPtrType;
+				FAngelscriptTypeUsage& SubType = Usage.SubTypes.Emplace_GetRef();
+				SubType.Type = RegisteredSubType->ToSharedPtr();
+				return SubType.IsValid();
+			}
+
+			const TSharedRef<FAngelscriptType>* RegisteredSubType = TargetTypeDatabase->TypesByClass.Find(ObjectProperty->PropertyClass);
+			if (RegisteredSubType == nullptr)
+				return false;
+
+			Usage.Type = SoftObjectPtrType;
 			FAngelscriptTypeUsage& SubType = Usage.SubTypes.Emplace_GetRef();
-			SubType.Type = SubClass;
-			if (!SubType.IsValid())
-				return false;
+			SubType.Type = RegisteredSubType->ToSharedPtr();
 			return true;
-		}
-
-		// Just a regular soft object
-		auto SubClass = FAngelscriptType::GetByClass(ObjectProperty->PropertyClass);
-		if (!SubClass.IsValid())
-			return false;
-		
-		Usage.Type = SoftObjectPtrType;
-		FAngelscriptTypeUsage& SubType = Usage.SubTypes.Emplace_GetRef();
-		SubType.Type = SubClass;
-		return true;
-	});
-});
-
-static UClass* GetSoftPtrSubType()
-{
-	asITypeInfo* TemplateType = FAngelscriptEngine::GetCurrentFunctionObjectType();
-	auto* SubType = TemplateType->GetSubType(0);
-	return (UClass*)SubType->GetUserData();
-}
-
-void BindSoftPtrBaseMethods(FAngelscriptBinds& SoftPtr_)
-{
-	SoftPtr_.Constructor("void f()", [](FSoftObjectPtr* Ptr)
-	{
-		new(Ptr) FSoftObjectPtr();
-	});
-
-	SoftPtr_.Constructor("void f(const FSoftObjectPath& Path)", [](FSoftObjectPtr* Ptr, FSoftObjectPath& Path)
-	{
-		new(Ptr) FSoftObjectPtr(Path);
-	});
-
-	SoftPtr_.Destructor("void f()", [](FSoftObjectPtr* Self)
-	{
-		Self->~FSoftObjectPtr();
-	});
-
-	SoftPtr_.Method("FSoftObjectPath ToSoftObjectPath() const", [](FSoftObjectPtr* Self) -> FSoftObjectPath
-	{
-		return Self->ToSoftObjectPath();
-	});
-
-	SoftPtr_.Method("FString ToString() const", [](FSoftObjectPtr* Self) -> FString
-	{
-		return Self->ToSoftObjectPath().ToString();
-	});
-
-	SoftPtr_.Method("FString GetLongPackageName() const", [](FSoftObjectPtr* Self) -> FString
-	{
-		return Self->GetLongPackageName();
-	});
-
-	SoftPtr_.Method("FString GetAssetName() const", [](FSoftObjectPtr* Self) -> FString
-	{
-		return Self->GetAssetName();
-	});
-
-	SoftPtr_.Method("bool IsValid() const", [](FSoftObjectPtr* Self) -> bool
-	{
-		return Self->IsValid();
-	});
-
-	SoftPtr_.Method("bool IsPending() const", [](FSoftObjectPtr* Self) -> bool
-	{
-		return Self->IsPending();
-	});
-
-	SoftPtr_.Method("bool IsNull() const", [](FSoftObjectPtr* Self) -> bool
-	{
-		return Self->IsNull();
-	});
-
-	SoftPtr_.Method("void Reset()", [](FSoftObjectPtr* Self)
-	{
-		Self->Reset();
-	});
-
-	SoftPtr_.Method("TSoftObjectPtr<T>& opAssign(const FSoftObjectPath& Path)", [](FSoftObjectPtr* Self, FSoftObjectPath& Path) -> FSoftObjectPtr&
-	{
-		*Self = Path;
-		return *Self;
-	});
-}
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_SoftReferences((int32)FAngelscriptBinds::EOrder::Late-5, []
-{
-	auto TSoftObjectPtr_ = FAngelscriptBinds::ExistingClass("TSoftObjectPtr<T>");
-	BindSoftPtrBaseMethods(TSoftObjectPtr_);
-
-	TSoftObjectPtr_.ImplicitConstructor("void f(T handle_only Object)", [](FSoftObjectPtr* Ptr, UObject* Object)
-	{
-		new(Ptr) FSoftObjectPtr(Object);
-	});
-
-	TSoftObjectPtr_.Constructor("void f(const TSoftObjectPtr<T>& Other)", [](FSoftObjectPtr* Ptr, FSoftObjectPtr& Other)
-	{
-		new(Ptr) FSoftObjectPtr(Other);
-	});
-
-	TSoftObjectPtr_.Method("TSoftObjectPtr<T>& opAssign(T handle_only Object)", [](FSoftObjectPtr* Self, UObject* Object) -> FSoftObjectPtr&
-	{
-		*Self = Object;
-		return *Self;
-	});
-
-	TSoftObjectPtr_.Method("TSoftObjectPtr<T>& opAssign(const TSoftObjectPtr<T>& Other)", [](FSoftObjectPtr* Self, FSoftObjectPtr& Other) -> FSoftObjectPtr&
-	{
-		*Self = Other;
-		return *Self;
-	});
-
-	TSoftObjectPtr_.Method("bool opEquals(const TSoftObjectPtr<T>& Other) const", [](FSoftObjectPtr* Self, const FSoftObjectPtr& Other) -> bool
-	{
-		return *Self == Other;
-	});
-
-	TSoftObjectPtr_.Method("bool opEquals(T handle_only Object) const", [](FSoftObjectPtr* Self, UObject* Object) -> bool
-	{
-		return Self->Get() == Object;
-	});
-
-	TSoftObjectPtr_.Method("T handle_only Get() const", [](FSoftObjectPtr* Self) -> UObject*
-	{
-		UObject* Object = Self->Get();
-		if (Object != nullptr && !Object->IsA(GetSoftPtrSubType()))
-			return nullptr;
-		return Object;
-	});
-	SCRIPT_BIND_DOCUMENTATION("Returns the object selected at the specified path.\nIf the object is not loaded, returns nullptr.");
-
-	TSoftObjectPtr_.Method("void LoadAsync(FOnSoftObjectLoaded OnLoaded) const", [](FSoftObjectPtr* Self, FOnSoftObjectLoaded OnLoaded)
-	{
-		UClass* ObjClass = GetSoftPtrSubType();
-		if (ObjClass != nullptr)
-		{
-			// We don't allow loading references to actors or components,
-			// levels are supposed to be streamed in using the streaming system not loaded manually.
-			if (ObjClass->IsChildOf(AActor::StaticClass()))
-			{
-				FAngelscriptEngine::Throw("Actor soft references cannot be loaded, stream the level in instead.");
-				return;
-			}
-			else if (ObjClass->IsChildOf(UActorComponent::StaticClass()))
-			{
-				FAngelscriptEngine::Throw("Component soft references cannot be loaded, stream the level in instead.");
-				return;
-			}
-		}
-
-		// Check if already loaded first
-		if (UObject* Object = Self->Get())
-		{
-			if (!Object->IsA(ObjClass))
-				Object = nullptr;
-			OnLoaded.ExecuteIfBound(Object);
-			return;
-		}
-
-		// Load the package the object is in
-		TWeakObjectPtr<UClass> WeakClass = ObjClass;
-		FSoftObjectPtr ObjectCopy(*Self);
-		const FString PackageName = FPackageName::ObjectPathToPackageName(ObjectCopy.ToString());
-		if (PackageName.IsEmpty() || (FindPackage(nullptr, *PackageName) == nullptr && !FPackageName::DoesPackageExist(PackageName)))
-		{
-			OnLoaded.ExecuteIfBound(nullptr);
-			return;
-		}
-
-		FLoadPackageAsyncDelegate Delegate;
-		Delegate.BindLambda([ObjectCopy, OnLoaded, WeakClass](const FName& PkgName, UPackage* LoadedPkg, EAsyncLoadingResult::Type Result)
-		{
-			UObject* Object = ObjectCopy.Get();
-			if (Object != nullptr)
-			{
-				if (!WeakClass.IsValid() || !Object->IsA(WeakClass.Get()))
-					Object = nullptr;
-			}
-			OnLoaded.ExecuteIfBound(Object);
 		});
+	}
 
-		LoadPackageAsync(*PackageName, Delegate, 100);
-	});
-	SCRIPT_BIND_DOCUMENTATION("Asynchronously loads the package that contains the referenced object.\nDelegate may be called immediately if object is already loaded.");
+	void BindSoftPtrBaseMethods(FAngelscriptBinds& SoftPtr_)
+	{
+		SoftPtr_.Constructor("void f()", &FAngelscriptTSoftObjectPtrBinds::ConstructDefault);
+		SoftPtr_.Constructor("void f(const FSoftObjectPath& Path)", &FAngelscriptTSoftObjectPtrBinds::ConstructFromPath);
+		SoftPtr_.Destructor("void f()", &FAngelscriptTSoftObjectPtrBinds::Destruct);
+		SoftPtr_.Method("FSoftObjectPath ToSoftObjectPath() const", &FAngelscriptTSoftObjectPtrBinds::ToSoftObjectPath);
+		SoftPtr_.Method("FString ToString() const", &FAngelscriptTSoftObjectPtrBinds::ToString);
+		SoftPtr_.Method("FString GetLongPackageName() const", &FAngelscriptTSoftObjectPtrBinds::GetLongPackageName);
+		SoftPtr_.Method("FString GetAssetName() const", &FAngelscriptTSoftObjectPtrBinds::GetAssetName);
+		SoftPtr_.Method("bool IsValid() const", &FAngelscriptTSoftObjectPtrBinds::IsValid);
+		SoftPtr_.Method("bool IsPending() const", &FAngelscriptTSoftObjectPtrBinds::IsPending);
+		SoftPtr_.Method("bool IsNull() const", &FAngelscriptTSoftObjectPtrBinds::IsNull);
+		SoftPtr_.Method("void Reset()", &FAngelscriptTSoftObjectPtrBinds::Reset);
+		SoftPtr_.Method("TSoftObjectPtr<T>& opAssign(const FSoftObjectPath& Path)", &FAngelscriptTSoftObjectPtrBinds::AssignPath);
+	}
+
+	void BindSoftReferenceFunctions(FAngelscriptBinds& Binds)
+	{
+		auto TSoftObjectPtr_ = Binds.ExistingClassForTarget("TSoftObjectPtr<T>");
+		BindSoftPtrBaseMethods(TSoftObjectPtr_);
+
+		TSoftObjectPtr_.ImplicitConstructor("void f(T handle_only Object)", &FAngelscriptTSoftObjectPtrBinds::ConstructFromObject);
+		TSoftObjectPtr_.Constructor("void f(const TSoftObjectPtr<T>& Other)", &FAngelscriptTSoftObjectPtrBinds::CopyConstruct);
+		TSoftObjectPtr_.Method("TSoftObjectPtr<T>& opAssign(T handle_only Object)", &FAngelscriptTSoftObjectPtrBinds::AssignObject);
+		TSoftObjectPtr_.Method("TSoftObjectPtr<T>& opAssign(const TSoftObjectPtr<T>& Other)", &FAngelscriptTSoftObjectPtrBinds::AssignOther);
+		TSoftObjectPtr_.Method("bool opEquals(const TSoftObjectPtr<T>& Other) const", &FAngelscriptTSoftObjectPtrBinds::EqualsOther);
+		TSoftObjectPtr_.Method("bool opEquals(T handle_only Object) const", &FAngelscriptTSoftObjectPtrBinds::EqualsObject);
+		TSoftObjectPtr_.Method("T handle_only Get() const", &FAngelscriptTSoftObjectPtrBinds::GetObject)
+			.Documentation(TEXT("Returns the object selected at the specified path.\nIf the object is not loaded, returns nullptr."));
+
+		TSoftObjectPtr_.Method("void LoadAsync(FOnSoftObjectLoaded OnLoaded) const", &FAngelscriptTSoftObjectPtrBinds::LoadObjectAsync)
+			.Documentation(TEXT("Asynchronously loads the package that contains the referenced object.\nDelegate may be called immediately if object is already loaded."));
 
 #if WITH_EDITOR
-	TSoftObjectPtr_.Method("T handle_only EditorOnlyLoadSynchronous() const", [](FSoftObjectPtr* Self) -> UObject*
-	{
-		UClass* ObjClass = GetSoftPtrSubType();
-		if (ObjClass != nullptr)
-		{
-			// We don't allow loading references to actors or components,
-			// levels are supposed to be streamed in using the streaming system not loaded manually.
-			if (ObjClass->IsChildOf(AActor::StaticClass()))
-			{
-				FAngelscriptEngine::Throw("Actor soft references cannot be loaded, stream the level in instead.");
-				return nullptr;
-			}
-			else if (ObjClass->IsChildOf(UActorComponent::StaticClass()))
-			{
-				FAngelscriptEngine::Throw("Component soft references cannot be loaded, stream the level in instead.");
-				return nullptr;
-			}
-		}
-
-		return Self->LoadSynchronous();
-	});
-	SCRIPT_BIND_DOCUMENTATION("Synchronously load the asset references by the soft pointer. Only available in editor, because it would cause hitches during gameplay.");
-	FAngelscriptBinds::SetPreviousBindIsEditorOnly(true);
+		TSoftObjectPtr_.Method("T handle_only EditorOnlyLoadSynchronous() const", &FAngelscriptTSoftObjectPtrBinds::EditorOnlyLoadSynchronous)
+			.Documentation(TEXT("Synchronously load the asset references by the soft pointer. Only available in editor, because it would cause hitches during gameplay."))
+			.EditorOnly();
 #endif
 
-	auto TSoftClassPtr_ = FAngelscriptBinds::ExistingClass("TSoftClassPtr<T>");
-	BindSoftPtrBaseMethods(TSoftClassPtr_);
+		auto TSoftClassPtr_ = Binds.ExistingClassForTarget("TSoftClassPtr<T>");
+		BindSoftPtrBaseMethods(TSoftClassPtr_);
 
-	TSoftClassPtr_.Constructor("void f(UClass Object)", [](FSoftObjectPtr* Ptr, UClass* Object)
-	{
-		new(Ptr) FSoftObjectPtr(Object);
-	});
+		TSoftClassPtr_.Constructor("void f(UClass Object)", &FAngelscriptTSoftObjectPtrBinds::ConstructFromClass);
+		TSoftClassPtr_.Constructor("void f(const TSoftClassPtr<T>& Other)", &FAngelscriptTSoftObjectPtrBinds::CopyConstruct);
+		TSoftClassPtr_.Constructor("void f(const TSubclassOf<T>& Other)", &FAngelscriptTSoftObjectPtrBinds::ConstructFromSubclass);
+		TSoftClassPtr_.Method("TSoftClassPtr<T>& opAssign(UClass Object)", &FAngelscriptTSoftObjectPtrBinds::AssignClass);
+		TSoftClassPtr_.Method("TSoftClassPtr<T>& opAssign(const TSoftClassPtr<T>& Other)", &FAngelscriptTSoftObjectPtrBinds::AssignOther);
+		TSoftClassPtr_.Method("TSoftClassPtr<T>& opAssign(const TSubclassOf<T>& Other)", &FAngelscriptTSoftObjectPtrBinds::AssignSubclass);
+		TSoftClassPtr_.Method("bool opEquals(const TSoftClassPtr<T>& Other) const", &FAngelscriptTSoftObjectPtrBinds::EqualsOther);
+		TSoftClassPtr_.Method("bool opEquals(const TSubclassOf<T>& Other) const", &FAngelscriptTSoftObjectPtrBinds::EqualsSubclass);
+		TSoftClassPtr_.Method("bool opEquals(UClass Object) const", &FAngelscriptTSoftObjectPtrBinds::EqualsClass);
+		TSoftClassPtr_.Method("TSubclassOf<T> Get() const", &FAngelscriptTSoftObjectPtrBinds::GetClass)
+			.Documentation(TEXT("Returns the class selected at the specified path.\nIf the class is not loaded, returns nullptr."));
 
-	TSoftClassPtr_.Constructor("void f(const TSoftClassPtr<T>& Other)", [](FSoftObjectPtr* Ptr, FSoftObjectPtr& Other)
-	{
-		new(Ptr) FSoftObjectPtr(Other);
-	});
+		TSoftClassPtr_.Method("void LoadAsync(FOnSoftClassLoaded OnLoaded) const", &FAngelscriptTSoftObjectPtrBinds::LoadClassAsync)
+			.Documentation(TEXT("Asynchronously loads the package that contains the referenced class.\nDelegate may be called immediately if class is already loaded."));
+	}
+}
 
-	TSoftClassPtr_.Constructor("void f(const TSubclassOf<T>& Other)", [](FSoftObjectPtr* Ptr, TSubclassOf<UObject>& Other)
-	{
-		new(Ptr) FSoftObjectPtr(Other.Get());
-	});
+AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_TypeDeclarations(
+	TEXT("SoftReferences.Declarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindSoftReferenceTypeDeclarations);
 
-	TSoftClassPtr_.Method("TSoftClassPtr<T>& opAssign(UClass Object)", [](FSoftObjectPtr* Self, UClass* NewClass) -> FSoftObjectPtr&
-	{
-		if (NewClass != nullptr && !NewClass->IsChildOf(GetSoftPtrSubType()))
-		{
-			FAngelscriptEngine::Throw("Provided class is does not inherit from TSoftClassPtr subtype.");
-			return *Self;
-		}
+AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_TypeInfrastructure(
+	TEXT("SoftReferences.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindSoftReferenceTypeInfrastructure);
 
-		*Self = NewClass;
-		return *Self;
-	});
-
-	TSoftClassPtr_.Method("TSoftClassPtr<T>& opAssign(const TSoftClassPtr<T>& Other)", [](FSoftObjectPtr* Self, FSoftObjectPtr& Other) -> FSoftObjectPtr&
-	{
-		*Self = Other;
-		return *Self;
-	});
-
-	TSoftClassPtr_.Method("TSoftClassPtr<T>& opAssign(const TSubclassOf<T>& Other)", [](FSoftObjectPtr* Self, TSubclassOf<UObject>& Other) -> FSoftObjectPtr&
-	{
-		*Self = Other.Get();
-		return *Self;
-	});
-
-	TSoftClassPtr_.Method("bool opEquals(const TSoftClassPtr<T>& Other) const", [](FSoftObjectPtr* Self, const FSoftObjectPtr& Other) -> bool
-	{
-		return *Self == Other;
-	});
-
-	TSoftClassPtr_.Method("bool opEquals(const TSubclassOf<T>& Other) const", [](FSoftObjectPtr* Self, const TSubclassOf<UObject>& Other) -> bool
-	{
-		return Self->Get() == Other.Get();
-	});
-
-	TSoftClassPtr_.Method("bool opEquals(UClass Object) const", [](FSoftObjectPtr* Self, UClass* Object) -> bool
-	{
-		return Self->Get() == Object;
-	});
-
-	TSoftClassPtr_.Method("TSubclassOf<T> Get() const", [](FSoftObjectPtr* Self) -> TSubclassOf<UObject>
-	{
-		UClass* Object = Cast<UClass>(Self->Get());
-		if (Object != nullptr && !Object->IsChildOf(GetSoftPtrSubType()))
-			return TSubclassOf<UObject>();
-		return TSubclassOf<UObject>(Object);
-	});
-	SCRIPT_BIND_DOCUMENTATION("Returns the class selected at the specified path.\nIf the class is not loaded, returns nullptr.");
-
-	TSoftClassPtr_.Method("void LoadAsync(FOnSoftClassLoaded OnLoaded) const", [](FSoftObjectPtr* Self, FOnSoftClassLoaded OnLoaded)
-	{
-		UClass* ObjClass = GetSoftPtrSubType();
-
-		// Check if already loaded first
-		if (UClass* Object = Cast<UClass>(Self->Get()))
-		{
-			if (!Object->IsChildOf(ObjClass))
-				Object = nullptr;
-			OnLoaded.ExecuteIfBound(Object);
-			return;
-		}
-
-		// Load the package the class is in
-		TWeakObjectPtr<UClass> WeakClass = ObjClass;
-		FSoftObjectPtr ObjectCopy(*Self);
-		const FString PackageName = FPackageName::ObjectPathToPackageName(ObjectCopy.ToString());
-		if (PackageName.IsEmpty() || (FindPackage(nullptr, *PackageName) == nullptr && !FPackageName::DoesPackageExist(PackageName)))
-		{
-			OnLoaded.ExecuteIfBound(nullptr);
-			return;
-		}
-
-		FLoadPackageAsyncDelegate Delegate;
-		Delegate.BindLambda([ObjectCopy, OnLoaded, WeakClass](const FName& PkgName, UPackage* LoadedPkg, EAsyncLoadingResult::Type Result)
-		{
-			UClass* Object = Cast<UClass>(ObjectCopy.Get());
-			if (Object != nullptr)
-			{
-				if (!WeakClass.IsValid() || !Object->IsChildOf(WeakClass.Get()))
-					Object = nullptr;
-			}
-			OnLoaded.ExecuteIfBound(Object);
-		});
-
-		LoadPackageAsync(*PackageName, Delegate, 100);
-	});
-	SCRIPT_BIND_DOCUMENTATION("Asynchronously loads the package that contains the referenced class.\nDelegate may be called immediately if class is already loaded.");
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_Functions(
+	TEXT("SoftReferences.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindSoftReferenceFunctions);

@@ -1,49 +1,24 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
 
-#include "Hash/CityHash.h"
+#include "Bind_Hash_Functions.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Hash(FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	FAngelscriptBinds::FNamespace ns("Hash");
-
-	FAngelscriptBinds::BindGlobalFunction("uint32 CityHash32(const FString& buf)", [](const FString& buf) -> uint32
+	void BindHash(FAngelscriptBinds& Binds)
 	{
-		return CityHash32((const char*)*buf, (uint32)buf.Len() * sizeof(TCHAR));
-	});
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "Hash");
+		Binds.BindGlobalFunctionForTarget("uint32 CityHash32(const FString& buf)", &FAngelscriptHashBinds::CityHash32String);
+		Binds.BindGlobalFunctionForTarget("uint32 CityHash32(const TArray<int8>& buf)", &FAngelscriptHashBinds::CityHash32Bytes);
+		Binds.BindGlobalFunctionForTarget("uint64 CityHash64(const FString& buf)", &FAngelscriptHashBinds::CityHash64String);
+		Binds.BindGlobalFunctionForTarget("uint64 CityHash64(const TArray<int8>& buf)", &FAngelscriptHashBinds::CityHash64Bytes);
+		Binds.BindGlobalFunctionForTarget("uint64 CityHash64WithSeed(const FString& buf, uint64 seed)", &FAngelscriptHashBinds::CityHash64StringWithSeed);
+		Binds.BindGlobalFunctionForTarget("uint64 CityHash64WithSeed(const TArray<int8>& buf, uint64 seed)", &FAngelscriptHashBinds::CityHash64BytesWithSeed);
+		Binds.BindGlobalFunctionForTarget("uint64 CityHash64WithSeeds(const FString& buf, uint64 seed0, uint64 seed1)", &FAngelscriptHashBinds::CityHash64StringWithSeeds);
+		Binds.BindGlobalFunctionForTarget("uint64 CityHash64WithSeeds(const TArray<int8>& buf, uint64 seed0, uint64 seed1)", &FAngelscriptHashBinds::CityHash64BytesWithSeeds);
+	}
+}
 
-	FAngelscriptBinds::BindGlobalFunction("uint32 CityHash32(const TArray<int8>& buf)", [](const TArray<int8>& buf) -> uint32
-	{
-		return CityHash32((const char*)buf.GetData(), (uint32)buf.Num());
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("uint64 CityHash64(const FString& buf)", [](const FString& buf) -> uint64
-	{
-		return CityHash64((const char*)*buf, (uint32)buf.Len() * sizeof(TCHAR));
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("uint64 CityHash64(const TArray<int8>& buf)", [](const TArray<int8>& buf) -> uint64
-	{
-		return CityHash64((const char*)buf.GetData(), (uint32)buf.Num());
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("uint64 CityHash64WithSeed(const FString& buf, uint64 seed)", [](const FString& buf, uint64 seed) -> uint64
-	{
-		return CityHash64WithSeed((const char*)*buf, (uint32)buf.Len() * sizeof(TCHAR), seed);
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("uint64 CityHash64WithSeed(const TArray<int8>& buf, uint64 seed)", [](const TArray<int8>& buf, uint64 seed) -> uint64
-	{
-		return CityHash64WithSeed((const char*)buf.GetData(), (uint32)buf.Num(), seed);
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("uint64 CityHash64WithSeeds(const FString& buf, uint64 seed0, uint64 seed1)", [](const FString& buf, uint64 seed0, uint64 seed1) -> uint64
-	{
-		return CityHash64WithSeeds((const char*)*buf, (uint32)buf.Len() * sizeof(TCHAR), seed0, seed1);
-	});
-
-	FAngelscriptBinds::BindGlobalFunction("uint64 CityHash64WithSeeds(const TArray<int8>& buf, uint64 seed0, uint64 seed1)", [](const TArray<int8>& buf, uint64 seed0, uint64 seed1) -> uint64
-	{
-		return CityHash64WithSeeds((const char*)buf.GetData(), (uint32)buf.Num(), seed0, seed1);
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_Hash(
+	TEXT("Hash"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindHash);

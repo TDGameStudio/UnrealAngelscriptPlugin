@@ -6,13 +6,7 @@
 
 #include "CollisionQueryParams.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_QueryMobilityType((int32)FAngelscriptBinds::EOrder::Early - 1, []
-{
-	auto TraceType_ = FAngelscriptBinds::Enum("EQueryMobilityType");
-	TraceType_["Any"]     = EQueryMobilityType::Any;
-	TraceType_["Static"]  = EQueryMobilityType::Static;
-	TraceType_["Dynamic"] = EQueryMobilityType::Dynamic;
-});
+#include "Bind_FCollisionQueryParams_Functions.h"
 
 struct FCollisionQueryParamsType : TAngelscriptCppType<FCollisionQueryParams>
 {
@@ -28,91 +22,6 @@ struct FCollisionQueryParamsType : TAngelscriptCppType<FCollisionQueryParams>
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionQueryParams_Early(FAngelscriptBinds::EOrder::Early, []
-{
-	FBindFlags Flags;
-
-	auto FCollisionQueryParams_ = FAngelscriptBinds::ValueClass<FCollisionQueryParams>("FCollisionQueryParams", Flags);
-	FAngelscriptType::Register(MakeShared<FCollisionQueryParamsType>());
-
-	FCollisionQueryParams_.Constructor("void f()", [](FCollisionQueryParams* Address)
-	{
-		new(Address) FCollisionQueryParams();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionQueryParams_, "FCollisionQueryParams");
-
-	FCollisionQueryParams_.Constructor("void f(const FCollisionQueryParams& Other)", [](FCollisionQueryParams* Address, const FCollisionQueryParams& Other)
-	{
-		new(Address) FCollisionQueryParams(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionQueryParams_, "FCollisionQueryParams");
-
-	FCollisionQueryParams_.Method("FCollisionQueryParams& opAssign(const FCollisionQueryParams& Other)", METHODPR_TRIVIAL(FCollisionQueryParams&, FCollisionQueryParams, operator=, (const FCollisionQueryParams&)));
-
-	{
-		FAngelscriptBinds::FNamespace ns("FCollisionQueryParams");
-		FAngelscriptBinds::BindGlobalVariable("const FCollisionQueryParams DefaultQueryParam", &FCollisionQueryParams::DefaultQueryParam);
-	}
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionQueryParams_Late(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FCollisionQueryParams_ = FAngelscriptBinds::ExistingClass("FCollisionQueryParams");
-
-	FCollisionQueryParams_.Constructor("void f(FName InTraceTag, bool bInTraceComplex, const AActor InIgnoreActor)", [](FCollisionQueryParams* Address, FName InTraceTag, bool bInTraceComplex, const AActor* InIgnoreActor)
-	{
-		new(Address) FCollisionQueryParams(InTraceTag, bInTraceComplex, InIgnoreActor);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionQueryParams_, "FCollisionQueryParams");
-
-	FCollisionQueryParams_.Property("FName TraceTag", &FCollisionQueryParams::TraceTag);
-	FCollisionQueryParams_.Property("FName OwnerTag", &FCollisionQueryParams::OwnerTag);
-	FCollisionQueryParams_.Property("bool bTraceComplex", &FCollisionQueryParams::bTraceComplex);
-	FCollisionQueryParams_.Property("bool bFindInitialOverlaps", &FCollisionQueryParams::bFindInitialOverlaps);
-	FCollisionQueryParams_.Property("bool bReturnFaceIndex", &FCollisionQueryParams::bReturnFaceIndex);
-	FCollisionQueryParams_.Property("bool bReturnPhysicalMaterial", &FCollisionQueryParams::bReturnPhysicalMaterial);
-	FCollisionQueryParams_.Property("bool bIgnoreBlocks", &FCollisionQueryParams::bIgnoreBlocks);
-	FCollisionQueryParams_.Property("bool bIgnoreTouches", &FCollisionQueryParams::bIgnoreTouches);
-	FCollisionQueryParams_.Property("bool bSkipNarrowPhase", &FCollisionQueryParams::bSkipNarrowPhase);
-	FCollisionQueryParams_.Property("EQueryMobilityType MobilityType", &FCollisionQueryParams::MobilityType);
-	FCollisionQueryParams_.Property("uint8 IgnoreMask", &FCollisionQueryParams::IgnoreMask);
-
-	FCollisionQueryParams_.Method("TArray<uint32> GetIgnoredComponents() const",
-		[](FCollisionQueryParams* Address) -> TArray<uint32>
-		{
-			const FCollisionQueryParams::IgnoreComponentsArrayType& IgnoredComponents = Address->GetIgnoredComponents();;
-			TArray<uint32> OutArray;
-			OutArray.SetNumUninitialized(IgnoredComponents.Num());
-			FMemory::Memcpy(OutArray.GetData(), IgnoredComponents.GetData(), IgnoredComponents.Num() * sizeof(IgnoredComponents[0]));
-			return OutArray;
-		});
-
-	FCollisionQueryParams_.Method("TArray<uint32> GetIgnoredActors() const",
-		[](FCollisionQueryParams* Address) -> TArray<uint32>
-		{
-			const FCollisionQueryParams::IgnoreActorsArrayType& IgnoredActors = Address->GetIgnoredSourceObjects();
-			TArray<uint32> OutArray;
-			OutArray.SetNumUninitialized(IgnoredActors.Num());
-			FMemory::Memcpy(OutArray.GetData(), IgnoredActors.GetData(), IgnoredActors.Num() * sizeof(IgnoredActors[0]));
-			return OutArray;
-		});
-
-	FCollisionQueryParams_.Method("void ClearIgnoredComponents()", METHOD_TRIVIAL(FCollisionQueryParams, ClearIgnoredComponents));
-	FCollisionQueryParams_.Method("void ClearIgnoredActors()", METHOD_TRIVIAL(FCollisionQueryParams, ClearIgnoredSourceObjects));
-	FCollisionQueryParams_.Method("void SetNumIgnoredComponents(int32 NewNum)", METHOD_TRIVIAL(FCollisionQueryParams, SetNumIgnoredComponents));
-	FCollisionQueryParams_.Method("void AddIgnoredActor(const AActor InIgnoreActor)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActor, (const AActor*)));
-	FCollisionQueryParams_.Method("void AddIgnoredActor(const uint32 InIgnoreActorID)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActor, (const uint32)));
-	FCollisionQueryParams_.Method("void AddIgnoredActors(const TArray<AActor>& InIgnoreActors)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActors, (const TArray<AActor*>&)));
-	FCollisionQueryParams_.Method("void AddIgnoredActors(const TArray<const AActor>& InIgnoreActors)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActors, (const TArray<const AActor*>&)));
-	FCollisionQueryParams_.Method("void AddIgnoredComponent(const UPrimitiveComponent InIgnoreComponent)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponent, (const UPrimitiveComponent*)));
-	FCollisionQueryParams_.Method("void AddIgnoredComponents(const TArray<UPrimitiveComponent>& InIgnoreComponents)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponents, (const TArray<UPrimitiveComponent*>&)));
-	FCollisionQueryParams_.Method("void AddIgnoredComponent_LikelyDuplicatedRoot(const UPrimitiveComponent InIgnoreComponent)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponent_LikelyDuplicatedRoot, (const UPrimitiveComponent*)));
-	FCollisionQueryParams_.Method("FString ToString() const", METHOD_TRIVIAL(FCollisionQueryParams, ToString));
-});
-
 struct FCollisionEnabledMaskType : TAngelscriptCppType<FCollisionEnabledMask>
 {
 	FString GetAngelscriptTypeName() const override
@@ -126,31 +35,6 @@ struct FCollisionEnabledMaskType : TAngelscriptCppType<FCollisionEnabledMask>
 		return true;
 	}
 };
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionEnabledMask_Early(FAngelscriptBinds::EOrder::Early, []
-{
-	FBindFlags Flags;
-	Flags.bPOD = true;
-
-	auto FCollisionEnabledMask_ = FAngelscriptBinds::ValueClass<FCollisionEnabledMask>("FCollisionEnabledMask", Flags);
-	FAngelscriptType::Register(MakeShared<FCollisionEnabledMaskType>());
-
-	FCollisionEnabledMask_.Constructor("void f()", [](FCollisionEnabledMask* Address)
-	{
-		new(Address) FCollisionEnabledMask();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionEnabledMask_, "FCollisionEnabledMask");
-
-	FCollisionEnabledMask_.Constructor("void f(ECollisionEnabled CollisionEnabled)", [](FCollisionEnabledMask* Address, ECollisionEnabled::Type CollisionEnabled)
-	{
-		new(Address) FCollisionEnabledMask(CollisionEnabled);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionEnabledMask_, "FCollisionEnabledMask");
-
-	FCollisionEnabledMask_.Property("int8 Bits", &FCollisionEnabledMask::Bits);
-});
 
 struct FComponentQueryParamsType : TAngelscriptCppType<FComponentQueryParams>
 {
@@ -166,94 +50,6 @@ struct FComponentQueryParamsType : TAngelscriptCppType<FComponentQueryParams>
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FComponentQueryParams_Early(FAngelscriptBinds::EOrder::Early, []
-{
-	FBindFlags Flags;
-
-	auto FComponentQueryParams_ = FAngelscriptBinds::ValueClass<FComponentQueryParams>("FComponentQueryParams", Flags);
-	FAngelscriptType::Register(MakeShared<FComponentQueryParamsType>());
-
-	FComponentQueryParams_.Constructor("void f()", [](FComponentQueryParams* Address)
-	{
-		new(Address) FComponentQueryParams();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FComponentQueryParams_, "FComponentQueryParams");
-
-	FComponentQueryParams_.Constructor("void f(const FComponentQueryParams& Other)", [](FComponentQueryParams* Address, const FComponentQueryParams& Other)
-	{
-		new(Address) FComponentQueryParams(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FComponentQueryParams_, "FComponentQueryParams");
-
-	FComponentQueryParams_.Method("FComponentQueryParams& opAssign(const FComponentQueryParams& Other)", METHODPR_TRIVIAL(FComponentQueryParams&, FComponentQueryParams, operator=, (const FComponentQueryParams&)));
-
-	{
-		FAngelscriptBinds::FNamespace ns("FComponentQueryParams");
-		FAngelscriptBinds::BindGlobalVariable("const FComponentQueryParams DefaultComponentQueryParams", &FComponentQueryParams::DefaultComponentQueryParams);
-	}
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FComponentQueryParams_Late(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FComponentQueryParams_ = FAngelscriptBinds::ExistingClass("FComponentQueryParams");
-
-	FComponentQueryParams_.Constructor("void f(FName InTraceTag, const AActor InIgnoreActor, FCollisionEnabledMask CollisionEnabledMask)", [](FComponentQueryParams* Address, FName InTraceTag, const AActor* InIgnoreActor, FCollisionEnabledMask CollisionEnabledMask)
-	{
-		new(Address) FComponentQueryParams(InTraceTag, FComponentQueryParams::GetUnknownStatId(), InIgnoreActor, CollisionEnabledMask);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FComponentQueryParams_, "FComponentQueryParams");
-
-	FComponentQueryParams_.Property("FName TraceTag", &FComponentQueryParams::TraceTag);
-	FComponentQueryParams_.Property("FName OwnerTag", &FComponentQueryParams::OwnerTag);
-	FComponentQueryParams_.Property("bool bTraceComplex", &FComponentQueryParams::bTraceComplex);
-	FComponentQueryParams_.Property("bool bFindInitialOverlaps", &FComponentQueryParams::bFindInitialOverlaps);
-	FComponentQueryParams_.Property("bool bReturnFaceIndex", &FComponentQueryParams::bReturnFaceIndex);
-	FComponentQueryParams_.Property("bool bReturnPhysicalMaterial", &FComponentQueryParams::bReturnPhysicalMaterial);
-	FComponentQueryParams_.Property("bool bIgnoreBlocks", &FComponentQueryParams::bIgnoreBlocks);
-	FComponentQueryParams_.Property("bool bIgnoreTouches", &FComponentQueryParams::bIgnoreTouches);
-	FComponentQueryParams_.Property("bool bSkipNarrowPhase", &FComponentQueryParams::bSkipNarrowPhase);
-	FComponentQueryParams_.Property("EQueryMobilityType MobilityType", &FComponentQueryParams::MobilityType);
-	FComponentQueryParams_.Property("uint8 IgnoreMask", &FComponentQueryParams::IgnoreMask);
-	FComponentQueryParams_.Property("FCollisionEnabledMask ShapeCollisionMask", &FComponentQueryParams::ShapeCollisionMask);
-
-	FComponentQueryParams_.Method("TArray<uint32> GetIgnoredComponents() const",
-		[](FComponentQueryParams* Address) -> TArray<uint32>
-		{
-			const FComponentQueryParams::IgnoreComponentsArrayType& IgnoredComponents = Address->GetIgnoredComponents();
-			TArray<uint32> OutArray;
-			OutArray.SetNumUninitialized(IgnoredComponents.Num());
-			FMemory::Memcpy(OutArray.GetData(), IgnoredComponents.GetData(), IgnoredComponents.Num() * sizeof(IgnoredComponents[0]));
-			return OutArray;
-		});
-
-	FComponentQueryParams_.Method("TArray<uint32> GetIgnoredActors() const",
-		[](FComponentQueryParams* Address) -> TArray<uint32>
-		{
-			const FComponentQueryParams::IgnoreActorsArrayType& IgnoredActors = Address->GetIgnoredSourceObjects();
-			TArray<uint32> OutArray;
-			OutArray.SetNumUninitialized(IgnoredActors.Num());
-			FMemory::Memcpy(OutArray.GetData(), IgnoredActors.GetData(), IgnoredActors.Num() * sizeof(IgnoredActors[0]));
-			return OutArray;
-		});
-
-	FComponentQueryParams_.Method("void ClearIgnoredComponents()", METHOD_TRIVIAL(FComponentQueryParams, ClearIgnoredComponents));
-	FComponentQueryParams_.Method("void ClearIgnoredActors()", METHOD_TRIVIAL(FComponentQueryParams, ClearIgnoredSourceObjects));
-	FComponentQueryParams_.Method("void SetNumIgnoredComponents(int32 NewNum)", METHOD_TRIVIAL(FComponentQueryParams, SetNumIgnoredComponents));
-	FComponentQueryParams_.Method("void AddIgnoredActor(const AActor InIgnoreActor)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActor, (const AActor*)));
-	FComponentQueryParams_.Method("void AddIgnoredActor(const uint32 InIgnoreActorID)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActor, (const uint32)));
-	FComponentQueryParams_.Method("void AddIgnoredActors(const TArray<AActor>& InIgnoreActors)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActors, (const TArray<AActor*>&)));
-	FComponentQueryParams_.Method("void AddIgnoredActors(const TArray<const AActor>& InIgnoreActors)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActors, (const TArray<const AActor*>&)));
-	FComponentQueryParams_.Method("void AddIgnoredComponent(const UPrimitiveComponent InIgnoreComponent)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponent, (const UPrimitiveComponent*)));
-	FComponentQueryParams_.Method("void AddIgnoredComponents(const TArray<UPrimitiveComponent>& InIgnoreComponents)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponents, (const TArray<UPrimitiveComponent*>&)));
-	FComponentQueryParams_.Method("void AddIgnoredComponent_LikelyDuplicatedRoot(const UPrimitiveComponent InIgnoreComponent)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponent_LikelyDuplicatedRoot, (const UPrimitiveComponent*)));
-	FComponentQueryParams_.Method("FString ToString() const", METHOD_TRIVIAL(FCollisionQueryParams, ToString));
-});
-
-
-
 struct FCollisionResponseParamsType : TAngelscriptCppType<FCollisionResponseParams>
 {
 	FString GetAngelscriptTypeName() const override
@@ -267,44 +63,6 @@ struct FCollisionResponseParamsType : TAngelscriptCppType<FCollisionResponsePara
 		return true;
 	}
 };
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionResponseParams_Early(FAngelscriptBinds::EOrder::Early, []
-{
-	FBindFlags Flags;
-	Flags.bPOD = true;
-
-	auto FCollisionResponseParams_ = FAngelscriptBinds::ValueClass<FCollisionResponseParams>("FCollisionResponseParams", Flags);
-	FAngelscriptType::Register(MakeShared<FCollisionResponseParamsType>());
-
-	FCollisionResponseParams_.Constructor("void f()", [](FCollisionResponseParams* Address)
-	{
-		new(Address) FCollisionResponseParams();
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionResponseParams_, "FCollisionResponseParams");
-
-	FCollisionResponseParams_.Constructor("void f(ECollisionResponse DefaultResponse)", [](FCollisionResponseParams* Address, ECollisionResponse DefaultResponse)
-	{
-		new(Address) FCollisionResponseParams(DefaultResponse);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionResponseParams_, "FCollisionResponseParams");
-
-	{
-		FAngelscriptBinds::FNamespace ns("FCollisionResponseParams");
-		FAngelscriptBinds::BindGlobalVariable("const FCollisionResponseParams DefaultResponseParam", &FCollisionResponseParams::DefaultResponseParam);
-	}
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionResponseParams_Late((int32)FAngelscriptBinds::EOrder::Late + 1, []
-{
-	auto FCollisionResponseParams_ = FAngelscriptBinds::ExistingClass("FCollisionResponseParams");
-
-	FCollisionResponseParams_.Constructor("void f(const FCollisionResponseContainer& ResponseContainer)", [](FCollisionResponseParams* Address, const FCollisionResponseContainer& ResponseContainer)
-	{
-		new(Address) FCollisionResponseParams(ResponseContainer);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionResponseParams_, "FCollisionResponseParams");
-});
-
 
 struct FCollisionObjectQueryParamsType : TAngelscriptCppType<FCollisionObjectQueryParams>
 {
@@ -320,93 +78,251 @@ struct FCollisionObjectQueryParamsType : TAngelscriptCppType<FCollisionObjectQue
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionObjectQueryParams_InitType((int32)FAngelscriptBinds::EOrder::Early - 1, []
+namespace
 {
-	auto InitType_ = FAngelscriptBinds::Enum("ECollisionObjectQueryInitType");
-	InitType_["AllObjects"] = FCollisionObjectQueryParams::InitType::AllObjects;
-	InitType_["AllStaticObjects"] = FCollisionObjectQueryParams::InitType::AllStaticObjects;
-	InitType_["AllDynamicObjects"] = FCollisionObjectQueryParams::InitType::AllDynamicObjects;
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionObjectQueryParams_Early(FAngelscriptBinds::EOrder::Early, []
-{
-	FBindFlags Flags;
-	Flags.bPOD = true;
-
-	auto FCollisionObjectQueryParams_ = FAngelscriptBinds::ValueClass<FCollisionObjectQueryParams>("FCollisionObjectQueryParams", Flags);
-	FAngelscriptType::Register(MakeShared<FCollisionObjectQueryParamsType>());
-
-	FCollisionObjectQueryParams_.Constructor("void f()", [](FCollisionObjectQueryParams* Address)
+	void BindCollisionQueryParamsTypeDeclarations(FAngelscriptBinds& Binds)
 	{
-		new(Address) FCollisionObjectQueryParams();
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionObjectQueryParams_, "FCollisionObjectQueryParams");
+		auto QueryMobilityType = Binds.EnumForTarget("EQueryMobilityType");
+		QueryMobilityType["Any"] = EQueryMobilityType::Any;
+		QueryMobilityType["Static"] = EQueryMobilityType::Static;
+		QueryMobilityType["Dynamic"] = EQueryMobilityType::Dynamic;
 
-	FCollisionObjectQueryParams_.Constructor("void f(ECollisionChannel QueryChannel)", [](FCollisionQueryParams* Address, ECollisionChannel QueryChannel)
-	{
-		new(Address) FCollisionObjectQueryParams(QueryChannel);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionObjectQueryParams_, "FCollisionObjectQueryParams");
+		auto CollisionObjectQueryInitType = Binds.EnumForTarget("ECollisionObjectQueryInitType");
+		CollisionObjectQueryInitType["AllObjects"] = FCollisionObjectQueryParams::InitType::AllObjects;
+		CollisionObjectQueryInitType["AllStaticObjects"] = FCollisionObjectQueryParams::InitType::AllStaticObjects;
+		CollisionObjectQueryInitType["AllDynamicObjects"] = FCollisionObjectQueryParams::InitType::AllDynamicObjects;
 
-	{
-		FAngelscriptBinds::FNamespace ns("FCollisionObjectQueryParams");
-		FAngelscriptBinds::BindGlobalVariable("const FCollisionObjectQueryParams DefaultObjectQueryParam", &FCollisionObjectQueryParams::DefaultObjectQueryParam);
+		FBindFlags QueryParamsFlags;
+		Binds.ValueClassForTarget<FCollisionQueryParams>("FCollisionQueryParams", QueryParamsFlags);
+
+		FBindFlags CollisionEnabledMaskFlags;
+		CollisionEnabledMaskFlags.bPOD = true;
+		Binds.ValueClassForTarget<FCollisionEnabledMask>("FCollisionEnabledMask", CollisionEnabledMaskFlags);
+
+		FBindFlags ComponentQueryParamsFlags;
+		Binds.ValueClassForTarget<FComponentQueryParams>("FComponentQueryParams", ComponentQueryParamsFlags);
+
+		FBindFlags CollisionResponseParamsFlags;
+		CollisionResponseParamsFlags.bPOD = true;
+		Binds.ValueClassForTarget<FCollisionResponseParams>("FCollisionResponseParams", CollisionResponseParamsFlags);
+
+		FBindFlags CollisionObjectQueryParamsFlags;
+		CollisionObjectQueryParamsFlags.bPOD = true;
+		Binds.ValueClassForTarget<FCollisionObjectQueryParams>("FCollisionObjectQueryParams", CollisionObjectQueryParamsFlags);
 	}
-});
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionObjectQueryParams_Late(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FCollisionObjectQueryParams_ = FAngelscriptBinds::ExistingClass("FCollisionObjectQueryParams");
-
-	FCollisionObjectQueryParams_.Constructor("void f(ECollisionObjectQueryInitType QueryType)", [](FCollisionObjectQueryParams* Address, FCollisionObjectQueryParams::InitType QueryType)
+	void BindCollisionQueryParamsTypeInfrastructure(FAngelscriptBinds& Binds)
 	{
-		new(Address) FCollisionObjectQueryParams(QueryType);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionObjectQueryParams_, "FCollisionObjectQueryParams");
-
-	FCollisionObjectQueryParams_.Constructor("void f(int32 InObjectTypesToQuery)", [](FCollisionObjectQueryParams* Address, int32 InObjectTypesToQuery)
-	{
-		new(Address) FCollisionObjectQueryParams(InObjectTypesToQuery);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionObjectQueryParams_, "FCollisionObjectQueryParams");
-
-	FCollisionObjectQueryParams_.Property("int32 ObjectTypesToQuery", &FCollisionObjectQueryParams::ObjectTypesToQuery);
-	FCollisionObjectQueryParams_.Property("uint8 IgnoreMask", &FCollisionObjectQueryParams::IgnoreMask);
-
-	FCollisionObjectQueryParams_.Method("void AddObjectTypesToQuery(ECollisionChannel QueryChannel)", METHOD_TRIVIAL(FCollisionObjectQueryParams, AddObjectTypesToQuery));
-	FCollisionObjectQueryParams_.Method("void RemoveObjectTypesToQuery(ECollisionChannel QueryChannel)", METHOD_TRIVIAL(FCollisionObjectQueryParams, RemoveObjectTypesToQuery));
-	FCollisionObjectQueryParams_.Method("int64 GetObjectTypesToQuery() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, GetObjectTypesToQuery));
-	FCollisionObjectQueryParams_.Method("void SetObjectTypesToQuery(int64 InObjectTypesToQuery)", METHOD_TRIVIAL(FCollisionObjectQueryParams, SetObjectTypesToQuery));
-	FCollisionObjectQueryParams_.Method("int64 GetQueryBitfield64() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, GetQueryBitfield64));
-	FCollisionObjectQueryParams_.Method("bool IsValid() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, IsValid));
-	FCollisionObjectQueryParams_.Method("void DoVerify() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, DoVerify));
-
-	{
-		FAngelscriptBinds::FNamespace ns("FCollisionObjectQueryParams");
-		FAngelscriptBinds::BindGlobalFunction("bool IsValidObjectQuery(ECollisionChannel QueryChannel) no_discard", FUNC_TRIVIAL(FCollisionObjectQueryParams::IsValidObjectQuery));
-		FAngelscriptBinds::BindGlobalFunction("ECollisionObjectQueryInitType GetCollisionChannelFromOverlapFilter(EOverlapFilterOption Filter) no_discard", FUNC_TRIVIAL(FCollisionObjectQueryParams::GetCollisionChannelFromOverlapFilter));
+		Binds.RegisterTypeForTarget(MakeShared<FCollisionQueryParamsType>());
+		Binds.RegisterTypeForTarget(MakeShared<FCollisionEnabledMaskType>());
+		Binds.RegisterTypeForTarget(MakeShared<FComponentQueryParamsType>());
+		Binds.RegisterTypeForTarget(MakeShared<FCollisionResponseParamsType>());
+		Binds.RegisterTypeForTarget(MakeShared<FCollisionObjectQueryParamsType>());
 	}
-});
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FCollisionResponseContainer((int32)FAngelscriptBinds::EOrder::Late, []
-{
-	auto FCollisionResponseContainer_ = FAngelscriptBinds::ExistingClass("FCollisionResponseContainer");
-
-	FCollisionResponseContainer_.Constructor("void f(ECollisionResponse DefaultResponse)", [](FCollisionResponseContainer* Address, ECollisionResponse DefaultResponse)
+	void BindFCollisionQueryParamsEarly(FAngelscriptBinds& Binds)
 	{
-		new(Address) FCollisionResponseContainer(DefaultResponse);
-	});
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCollisionResponseContainer_, "FCollisionResponseContainer");
+		auto CollisionQueryParams = Binds.ExistingClassForTarget("FCollisionQueryParams");
+		CollisionQueryParams.Constructor("void f()", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionQueryParams)
+			.NoDiscard()
+			.NativeConstructor("FCollisionQueryParams", true);
+		CollisionQueryParams.Constructor("void f(const FCollisionQueryParams& Other)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionQueryParamsCopy)
+			.NoDiscard()
+			.NativeConstructor("FCollisionQueryParams", true);
+		CollisionQueryParams.Method("FCollisionQueryParams& opAssign(const FCollisionQueryParams& Other)", METHODPR_TRIVIAL(FCollisionQueryParams&, FCollisionQueryParams, operator=, (const FCollisionQueryParams&)));
 
-	FCollisionResponseContainer_.Method("bool SetResponse(ECollisionChannel Channel, ECollisionResponse NewResponse)", METHOD_TRIVIAL(FCollisionResponseContainer, SetResponse));
-	FCollisionResponseContainer_.Method("bool SetAllChannels(ECollisionResponse NewResponse)", METHOD_TRIVIAL(FCollisionResponseContainer, SetAllChannels));
-	FCollisionResponseContainer_.Method("bool ReplaceChannels(ECollisionResponse OldResponse, ECollisionResponse NewResponse)", METHOD_TRIVIAL(FCollisionResponseContainer, ReplaceChannels));
-	FCollisionResponseContainer_.Method("ECollisionResponse GetResponse(ECollisionChannel Channel) const", METHOD_TRIVIAL(FCollisionResponseContainer, GetResponse));
-	FCollisionResponseContainer_.Method("bool opEquals(const FCollisionResponseContainer& Other) const", METHODPR_TRIVIAL(bool, FCollisionResponseContainer, operator==, (const FCollisionResponseContainer&) const));
-
-	{
-		FAngelscriptBinds::FNamespace ns("FCollisionResponseContainer");
-		FAngelscriptBinds::BindGlobalFunction("const FCollisionResponseContainer& GetDefaultResponseContainer()", FUNC_TRIVIAL(FCollisionResponseContainer::GetDefaultResponseContainer));
-		FAngelscriptBinds::BindGlobalFunction("FCollisionResponseContainer CreateMinContainer(const FCollisionResponseContainer& A, const FCollisionResponseContainer& B)", FUNC_TRIVIAL(FCollisionResponseContainer::CreateMinContainer));
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FCollisionQueryParams");
+		Binds.BindGlobalVariableForTarget("const FCollisionQueryParams DefaultQueryParam", &FCollisionQueryParams::DefaultQueryParam);
 	}
-});
+
+	void BindFCollisionEnabledMaskEarly(FAngelscriptBinds& Binds)
+	{
+		auto CollisionEnabledMask = Binds.ExistingClassForTarget("FCollisionEnabledMask");
+		CollisionEnabledMask.Constructor("void f()", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionEnabledMask)
+			.NoDiscard()
+			.NativeConstructor("FCollisionEnabledMask", true);
+		CollisionEnabledMask.Constructor("void f(ECollisionEnabled CollisionEnabled)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionEnabledMaskFromCollisionEnabled)
+			.NoDiscard()
+			.NativeConstructor("FCollisionEnabledMask", true);
+		CollisionEnabledMask.Property("int8 Bits", &FCollisionEnabledMask::Bits);
+	}
+
+	void BindFComponentQueryParamsEarly(FAngelscriptBinds& Binds)
+	{
+		auto ComponentQueryParams = Binds.ExistingClassForTarget("FComponentQueryParams");
+		ComponentQueryParams.Constructor("void f()", &FAngelscriptFCollisionQueryParamsBinds::ConstructComponentQueryParams)
+			.NoDiscard()
+			.NativeConstructor("FComponentQueryParams", true);
+		ComponentQueryParams.Constructor("void f(const FComponentQueryParams& Other)", &FAngelscriptFCollisionQueryParamsBinds::ConstructComponentQueryParamsCopy)
+			.NoDiscard()
+			.NativeConstructor("FComponentQueryParams", true);
+		ComponentQueryParams.Method("FComponentQueryParams& opAssign(const FComponentQueryParams& Other)", METHODPR_TRIVIAL(FComponentQueryParams&, FComponentQueryParams, operator=, (const FComponentQueryParams&)));
+
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FComponentQueryParams");
+		Binds.BindGlobalVariableForTarget("const FComponentQueryParams DefaultComponentQueryParams", &FComponentQueryParams::DefaultComponentQueryParams);
+	}
+
+	void BindFCollisionResponseParamsEarly(FAngelscriptBinds& Binds)
+	{
+		auto CollisionResponseParams = Binds.ExistingClassForTarget("FCollisionResponseParams");
+		CollisionResponseParams.Constructor("void f()", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionResponseParams)
+			.NativeConstructor("FCollisionResponseParams", true);
+		CollisionResponseParams.Constructor("void f(ECollisionResponse DefaultResponse)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionResponseParamsFromDefaultResponse)
+			.NativeConstructor("FCollisionResponseParams", true);
+
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FCollisionResponseParams");
+		Binds.BindGlobalVariableForTarget("const FCollisionResponseParams DefaultResponseParam", &FCollisionResponseParams::DefaultResponseParam);
+	}
+
+	void BindFCollisionObjectQueryParamsEarly(FAngelscriptBinds& Binds)
+	{
+		auto CollisionObjectQueryParams = Binds.ExistingClassForTarget("FCollisionObjectQueryParams");
+		CollisionObjectQueryParams.Constructor("void f()", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionObjectQueryParams)
+			.NativeConstructor("FCollisionObjectQueryParams", true);
+		CollisionObjectQueryParams.Constructor("void f(ECollisionChannel QueryChannel)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionObjectQueryParamsFromChannel)
+			.NativeConstructor("FCollisionObjectQueryParams", true);
+
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FCollisionObjectQueryParams");
+		Binds.BindGlobalVariableForTarget("const FCollisionObjectQueryParams DefaultObjectQueryParam", &FCollisionObjectQueryParams::DefaultObjectQueryParam);
+	}
+
+	void BindFCollisionQueryParamsLate(FAngelscriptBinds& Binds)
+	{
+		auto CollisionQueryParams = Binds.ExistingClassForTarget("FCollisionQueryParams");
+		CollisionQueryParams.Constructor("void f(FName InTraceTag, bool bInTraceComplex, const AActor InIgnoreActor)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionQueryParamsFromTraceTag)
+			.NoDiscard()
+			.NativeConstructor("FCollisionQueryParams", true);
+		CollisionQueryParams.Property("FName TraceTag", &FCollisionQueryParams::TraceTag);
+		CollisionQueryParams.Property("FName OwnerTag", &FCollisionQueryParams::OwnerTag);
+		CollisionQueryParams.Property("bool bTraceComplex", &FCollisionQueryParams::bTraceComplex);
+		CollisionQueryParams.Property("bool bFindInitialOverlaps", &FCollisionQueryParams::bFindInitialOverlaps);
+		CollisionQueryParams.Property("bool bReturnFaceIndex", &FCollisionQueryParams::bReturnFaceIndex);
+		CollisionQueryParams.Property("bool bReturnPhysicalMaterial", &FCollisionQueryParams::bReturnPhysicalMaterial);
+		CollisionQueryParams.Property("bool bIgnoreBlocks", &FCollisionQueryParams::bIgnoreBlocks);
+		CollisionQueryParams.Property("bool bIgnoreTouches", &FCollisionQueryParams::bIgnoreTouches);
+		CollisionQueryParams.Property("bool bSkipNarrowPhase", &FCollisionQueryParams::bSkipNarrowPhase);
+		CollisionQueryParams.Property("EQueryMobilityType MobilityType", &FCollisionQueryParams::MobilityType);
+		CollisionQueryParams.Property("uint8 IgnoreMask", &FCollisionQueryParams::IgnoreMask);
+		CollisionQueryParams.Method("TArray<uint32> GetIgnoredComponents() const", &FAngelscriptFCollisionQueryParamsBinds::GetCollisionQueryParamsIgnoredComponents);
+		CollisionQueryParams.Method("TArray<uint32> GetIgnoredActors() const", &FAngelscriptFCollisionQueryParamsBinds::GetCollisionQueryParamsIgnoredActors);
+		CollisionQueryParams.Method("void ClearIgnoredComponents()", METHOD_TRIVIAL(FCollisionQueryParams, ClearIgnoredComponents));
+		CollisionQueryParams.Method("void ClearIgnoredActors()", METHOD_TRIVIAL(FCollisionQueryParams, ClearIgnoredSourceObjects));
+		CollisionQueryParams.Method("void SetNumIgnoredComponents(int32 NewNum)", METHOD_TRIVIAL(FCollisionQueryParams, SetNumIgnoredComponents));
+		CollisionQueryParams.Method("void AddIgnoredActor(const AActor InIgnoreActor)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActor, (const AActor*)));
+		CollisionQueryParams.Method("void AddIgnoredActor(const uint32 InIgnoreActorID)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActor, (const uint32)));
+		CollisionQueryParams.Method("void AddIgnoredActors(const TArray<AActor>& InIgnoreActors)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActors, (const TArray<AActor*>&)));
+		CollisionQueryParams.Method("void AddIgnoredActors(const TArray<const AActor>& InIgnoreActors)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActors, (const TArray<const AActor*>&)));
+		CollisionQueryParams.Method("void AddIgnoredComponent(const UPrimitiveComponent InIgnoreComponent)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponent, (const UPrimitiveComponent*)));
+		CollisionQueryParams.Method("void AddIgnoredComponents(const TArray<UPrimitiveComponent>& InIgnoreComponents)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponents, (const TArray<UPrimitiveComponent*>&)));
+		CollisionQueryParams.Method("void AddIgnoredComponent_LikelyDuplicatedRoot(const UPrimitiveComponent InIgnoreComponent)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponent_LikelyDuplicatedRoot, (const UPrimitiveComponent*)));
+		CollisionQueryParams.Method("FString ToString() const", METHOD_TRIVIAL(FCollisionQueryParams, ToString));
+	}
+
+	void BindFComponentQueryParamsLate(FAngelscriptBinds& Binds)
+	{
+		auto ComponentQueryParams = Binds.ExistingClassForTarget("FComponentQueryParams");
+		ComponentQueryParams.Constructor("void f(FName InTraceTag, const AActor InIgnoreActor, FCollisionEnabledMask CollisionEnabledMask)", &FAngelscriptFCollisionQueryParamsBinds::ConstructComponentQueryParamsFromTraceTag)
+			.NoDiscard()
+			.NativeConstructor("FComponentQueryParams", true);
+		ComponentQueryParams.Property("FName TraceTag", &FComponentQueryParams::TraceTag);
+		ComponentQueryParams.Property("FName OwnerTag", &FComponentQueryParams::OwnerTag);
+		ComponentQueryParams.Property("bool bTraceComplex", &FComponentQueryParams::bTraceComplex);
+		ComponentQueryParams.Property("bool bFindInitialOverlaps", &FComponentQueryParams::bFindInitialOverlaps);
+		ComponentQueryParams.Property("bool bReturnFaceIndex", &FComponentQueryParams::bReturnFaceIndex);
+		ComponentQueryParams.Property("bool bReturnPhysicalMaterial", &FComponentQueryParams::bReturnPhysicalMaterial);
+		ComponentQueryParams.Property("bool bIgnoreBlocks", &FComponentQueryParams::bIgnoreBlocks);
+		ComponentQueryParams.Property("bool bIgnoreTouches", &FComponentQueryParams::bIgnoreTouches);
+		ComponentQueryParams.Property("bool bSkipNarrowPhase", &FComponentQueryParams::bSkipNarrowPhase);
+		ComponentQueryParams.Property("EQueryMobilityType MobilityType", &FComponentQueryParams::MobilityType);
+		ComponentQueryParams.Property("uint8 IgnoreMask", &FComponentQueryParams::IgnoreMask);
+		ComponentQueryParams.Property("FCollisionEnabledMask ShapeCollisionMask", &FComponentQueryParams::ShapeCollisionMask);
+		ComponentQueryParams.Method("TArray<uint32> GetIgnoredComponents() const", &FAngelscriptFCollisionQueryParamsBinds::GetComponentQueryParamsIgnoredComponents);
+		ComponentQueryParams.Method("TArray<uint32> GetIgnoredActors() const", &FAngelscriptFCollisionQueryParamsBinds::GetComponentQueryParamsIgnoredActors);
+		ComponentQueryParams.Method("void ClearIgnoredComponents()", METHOD_TRIVIAL(FComponentQueryParams, ClearIgnoredComponents));
+		ComponentQueryParams.Method("void ClearIgnoredActors()", METHOD_TRIVIAL(FComponentQueryParams, ClearIgnoredSourceObjects));
+		ComponentQueryParams.Method("void SetNumIgnoredComponents(int32 NewNum)", METHOD_TRIVIAL(FComponentQueryParams, SetNumIgnoredComponents));
+		ComponentQueryParams.Method("void AddIgnoredActor(const AActor InIgnoreActor)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActor, (const AActor*)));
+		ComponentQueryParams.Method("void AddIgnoredActor(const uint32 InIgnoreActorID)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActor, (const uint32)));
+		ComponentQueryParams.Method("void AddIgnoredActors(const TArray<AActor>& InIgnoreActors)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActors, (const TArray<AActor*>&)));
+		ComponentQueryParams.Method("void AddIgnoredActors(const TArray<const AActor>& InIgnoreActors)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredActors, (const TArray<const AActor*>&)));
+		ComponentQueryParams.Method("void AddIgnoredComponent(const UPrimitiveComponent InIgnoreComponent)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponent, (const UPrimitiveComponent*)));
+		ComponentQueryParams.Method("void AddIgnoredComponents(const TArray<UPrimitiveComponent>& InIgnoreComponents)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponents, (const TArray<UPrimitiveComponent*>&)));
+		ComponentQueryParams.Method("void AddIgnoredComponent_LikelyDuplicatedRoot(const UPrimitiveComponent InIgnoreComponent)", METHODPR_TRIVIAL(void, FCollisionQueryParams, AddIgnoredComponent_LikelyDuplicatedRoot, (const UPrimitiveComponent*)));
+		ComponentQueryParams.Method("FString ToString() const", METHOD_TRIVIAL(FCollisionQueryParams, ToString));
+	}
+
+	void BindFCollisionObjectQueryParamsLate(FAngelscriptBinds& Binds)
+	{
+		auto CollisionObjectQueryParams = Binds.ExistingClassForTarget("FCollisionObjectQueryParams");
+		CollisionObjectQueryParams.Constructor("void f(ECollisionObjectQueryInitType QueryType)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionObjectQueryParamsFromInitType)
+			.NativeConstructor("FCollisionObjectQueryParams", true);
+		CollisionObjectQueryParams.Constructor("void f(int32 InObjectTypesToQuery)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionObjectQueryParamsFromObjectTypes)
+			.NativeConstructor("FCollisionObjectQueryParams", true);
+		CollisionObjectQueryParams.Property("int32 ObjectTypesToQuery", &FCollisionObjectQueryParams::ObjectTypesToQuery);
+		CollisionObjectQueryParams.Property("uint8 IgnoreMask", &FCollisionObjectQueryParams::IgnoreMask);
+		CollisionObjectQueryParams.Method("void AddObjectTypesToQuery(ECollisionChannel QueryChannel)", METHOD_TRIVIAL(FCollisionObjectQueryParams, AddObjectTypesToQuery));
+		CollisionObjectQueryParams.Method("void RemoveObjectTypesToQuery(ECollisionChannel QueryChannel)", METHOD_TRIVIAL(FCollisionObjectQueryParams, RemoveObjectTypesToQuery));
+		CollisionObjectQueryParams.Method("int64 GetObjectTypesToQuery() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, GetObjectTypesToQuery));
+		CollisionObjectQueryParams.Method("void SetObjectTypesToQuery(int64 InObjectTypesToQuery)", METHOD_TRIVIAL(FCollisionObjectQueryParams, SetObjectTypesToQuery));
+		CollisionObjectQueryParams.Method("int64 GetQueryBitfield64() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, GetQueryBitfield64));
+		CollisionObjectQueryParams.Method("bool IsValid() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, IsValid));
+		CollisionObjectQueryParams.Method("void DoVerify() const", METHOD_TRIVIAL(FCollisionObjectQueryParams, DoVerify));
+
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FCollisionObjectQueryParams");
+		Binds.BindGlobalFunctionForTarget("bool IsValidObjectQuery(ECollisionChannel QueryChannel) no_discard", FUNC_TRIVIAL(FCollisionObjectQueryParams::IsValidObjectQuery));
+		Binds.BindGlobalFunctionForTarget("ECollisionObjectQueryInitType GetCollisionChannelFromOverlapFilter(EOverlapFilterOption Filter) no_discard", FUNC_TRIVIAL(FCollisionObjectQueryParams::GetCollisionChannelFromOverlapFilter));
+	}
+
+	void BindFCollisionResponseContainer(FAngelscriptBinds& Binds)
+	{
+		auto CollisionResponseContainer = Binds.ExistingClassForTarget("FCollisionResponseContainer");
+		CollisionResponseContainer.Constructor("void f(ECollisionResponse DefaultResponse)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionResponseContainer)
+			.NativeConstructor("FCollisionResponseContainer", true);
+		CollisionResponseContainer.Method("bool SetResponse(ECollisionChannel Channel, ECollisionResponse NewResponse)", METHOD_TRIVIAL(FCollisionResponseContainer, SetResponse));
+		CollisionResponseContainer.Method("bool SetAllChannels(ECollisionResponse NewResponse)", METHOD_TRIVIAL(FCollisionResponseContainer, SetAllChannels));
+		CollisionResponseContainer.Method("bool ReplaceChannels(ECollisionResponse OldResponse, ECollisionResponse NewResponse)", METHOD_TRIVIAL(FCollisionResponseContainer, ReplaceChannels));
+		CollisionResponseContainer.Method("ECollisionResponse GetResponse(ECollisionChannel Channel) const", METHOD_TRIVIAL(FCollisionResponseContainer, GetResponse));
+		CollisionResponseContainer.Method("bool opEquals(const FCollisionResponseContainer& Other) const", METHODPR_TRIVIAL(bool, FCollisionResponseContainer, operator==, (const FCollisionResponseContainer&) const));
+
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FCollisionResponseContainer");
+		Binds.BindGlobalFunctionForTarget("const FCollisionResponseContainer& GetDefaultResponseContainer()", FUNC_TRIVIAL(FCollisionResponseContainer::GetDefaultResponseContainer));
+		Binds.BindGlobalFunctionForTarget("FCollisionResponseContainer CreateMinContainer(const FCollisionResponseContainer& A, const FCollisionResponseContainer& B)", FUNC_TRIVIAL(FCollisionResponseContainer::CreateMinContainer));
+	}
+
+	void BindFCollisionResponseParamsLate(FAngelscriptBinds& Binds)
+	{
+		auto CollisionResponseParams = Binds.ExistingClassForTarget("FCollisionResponseParams");
+		CollisionResponseParams.Constructor("void f(const FCollisionResponseContainer& ResponseContainer)", &FAngelscriptFCollisionQueryParamsBinds::ConstructCollisionResponseParamsFromContainer)
+			.NativeConstructor("FCollisionResponseParams", true);
+	}
+
+	void BindCollisionQueryParamsManualBindings(FAngelscriptBinds& Binds)
+	{
+		BindFCollisionQueryParamsEarly(Binds);
+		BindFCollisionEnabledMaskEarly(Binds);
+		BindFComponentQueryParamsEarly(Binds);
+		BindFCollisionResponseParamsEarly(Binds);
+		BindFCollisionObjectQueryParamsEarly(Binds);
+
+		BindFCollisionQueryParamsLate(Binds);
+		BindFComponentQueryParamsLate(Binds);
+		BindFCollisionObjectQueryParamsLate(Binds);
+		BindFCollisionResponseContainer(Binds);
+		BindFCollisionResponseParamsLate(Binds);
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_TypeDeclarations(
+	TEXT("FCollisionQueryParams.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindCollisionQueryParamsTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_TypeInfrastructure(
+	TEXT("FCollisionQueryParams.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindCollisionQueryParamsTypeInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_ManualBindings(
+	TEXT("FCollisionQueryParams.ManualBindings"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindCollisionQueryParamsManualBindings);

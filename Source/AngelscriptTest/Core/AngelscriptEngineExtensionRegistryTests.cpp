@@ -62,6 +62,26 @@ struct FRecordingEngineExtension : IAngelscriptExtension
 	}
 };
 
+struct FRegisteringEngineExtension : FRecordingEngineExtension
+{
+	TSharedRef<FRecordingEngineExtension> NestedExtension;
+	FDelegateHandle NestedHandle;
+
+	explicit FRegisteringEngineExtension(TSharedRef<FRecordingEngineExtension> InNestedExtension)
+		: NestedExtension(MoveTemp(InNestedExtension))
+	{
+	}
+
+	void OnEngineAttached(FAngelscriptEngine& Engine) override
+	{
+		FRecordingEngineExtension::OnEngineAttached(Engine);
+		if (!NestedHandle.IsValid())
+		{
+			NestedHandle = FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(NestedExtension);
+		}
+	}
+};
+
 public:
 	TEST_METHOD(EmptyRegistryReplayIsANoop)
 	{
@@ -135,6 +155,49 @@ FExtensionRegistryContextGuard ContextGuard;
 		ASSERT_THAT(AreEqual(BaselineExtensionCount, FAngelscriptEngineExtensionRegistry::Get().NumExtensions(), TEXT("Extension registry late-registration test should restore the baseline registry count after unregister")));
 	}
 
+	TEST_METHOD(InitializationScopeDoesNotAttachExtensionsBeforeScriptEngineExists)
+	{
+		FExtensionRegistryContextGuard ContextGuard;
+		DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		ContextGuard.DiscardSavedStack();
+
+		FDelegateHandle Handle;
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(Handle);
+			FAngelscriptEngineContextStack::SnapshotAndClear();
+			if (FAngelscriptEngine::IsInitialized())
+			{
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			}
+			DestroySharedTestEngine();
+		};
+
+		FAngelscriptEngine InitializingEngine;
+		FAngelscriptEngineScope EngineScope(InitializingEngine);
+		TSharedRef<FRecordingEngineExtension> Extension = MakeShared<FRecordingEngineExtension>();
+
+		Handle = FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(Extension);
+		ASSERT_THAT(IsTrue(
+			Handle.IsValid(),
+			TEXT("Extension registry initialization-scope test should return a valid handle")));
+		ASSERT_THAT(AreEqual(
+			0,
+			Extension->AttachCount,
+			TEXT("Extension registry should not attach to a context before its ScriptEngine exists")));
+
+		FAngelscriptEngineExtensionRegistry::Get().ReplayCurrentEngine();
+
+		ASSERT_THAT(AreEqual(
+			0,
+			Extension->AttachCount,
+			TEXT("Extension registry replay should ignore an initialization-only engine context")));
+	}
+
 	TEST_METHOD(UnregisterStopsFutureReplay)
 	{
 FExtensionRegistryContextGuard ContextGuard;
@@ -184,7 +247,8 @@ FExtensionRegistryContextGuard ContextGuard;
 
 	TEST_METHOD(EngineLifecycleAttachesAndDetachesRegisteredExtension)
 	{
-FExtensionRegistryContextGuard ContextGuard;
+		FScopedAngelscriptEngineResolutionSuppressionForTesting NoAmbientEngineScope;
+		FExtensionRegistryContextGuard ContextGuard;
 		DestroySharedTestEngine();
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -203,16 +267,30 @@ FExtensionRegistryContextGuard ContextGuard;
 		};
 
 		TSharedRef<FRecordingEngineExtension> Extension = MakeShared<FRecordingEngineExtension>();
+		const int32 BaselineExtensionCount = FAngelscriptEngineExtensionRegistry::Get().NumExtensions();
 		const FDelegateHandle Handle = FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(Extension);
 		ASSERT_THAT(IsTrue(Handle.IsValid(), TEXT("Extension registry lifecycle test should return a valid handle")));
+		ASSERT_THAT(AreEqual(
+			BaselineExtensionCount + 1,
+			FAngelscriptEngineExtensionRegistry::Get().NumExtensions(),
+			TEXT("Extension registry lifecycle test should retain the pre-registered extension")));
 
 		FString EngineId;
 		{
 			TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
 			ASSERT_THAT(IsNotNull(Engine.Get(), TEXT("Extension registry lifecycle test should create an isolated full engine")));
+			ASSERT_THAT(AreEqual(
+				BaselineExtensionCount + 1,
+				FAngelscriptEngineExtensionRegistry::Get().NumExtensions(),
+				TEXT("Extension registry lifecycle test should retain the extension through engine initialization")));
 
 			EngineId = MakeEngineIdentityString(*Engine);
-			ASSERT_THAT(AreEqual(1, Extension->AttachCount, TEXT("Extension registry lifecycle test should attach a pre-registered extension during engine initialization")));
+			ASSERT_THAT(AreEqual(
+				1,
+				Extension->AttachCount,
+				*FString::Printf(
+					TEXT("Extension registry lifecycle test should attach once during engine initialization (actual=%d)"),
+					Extension->AttachCount)));
 			ASSERT_THAT(AreEqual(1, Extension->AttachedEngineIds.Num(), TEXT("Extension registry lifecycle test should record the initialized engine id")));
 			if (Extension->AttachedEngineIds.Num() == 1)
 			{
@@ -228,6 +306,77 @@ FExtensionRegistryContextGuard ContextGuard;
 		}
 
 		FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(Handle);
+	}
+
+	TEST_METHOD(ExtensionRegisteredDuringAttachAttachesExactlyOnceToSameEngine)
+	{
+		FScopedAngelscriptEngineResolutionSuppressionForTesting NoAmbientEngineScope;
+		FExtensionRegistryContextGuard ContextGuard;
+		DestroySharedTestEngine();
+		if (FAngelscriptEngine::IsInitialized())
+		{
+			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+		}
+		ContextGuard.DiscardSavedStack();
+
+		TSharedRef<FRecordingEngineExtension> NestedExtension = MakeShared<FRecordingEngineExtension>();
+		TSharedRef<FRegisteringEngineExtension> ParentExtension =
+			MakeShared<FRegisteringEngineExtension>(NestedExtension);
+		const FDelegateHandle ParentHandle =
+			FAngelscriptEngineExtensionRegistry::Get().RegisterExtension(ParentExtension);
+
+		ON_SCOPE_EXIT
+		{
+			FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(ParentExtension->NestedHandle);
+			FAngelscriptEngineExtensionRegistry::Get().UnregisterExtension(ParentHandle);
+			FAngelscriptEngineContextStack::SnapshotAndClear();
+			if (FAngelscriptEngine::IsInitialized())
+			{
+				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
+			}
+			DestroySharedTestEngine();
+		};
+
+		FString EngineId;
+		{
+			TUniquePtr<FAngelscriptEngine> Engine = CreateFullTestEngine();
+			ASSERT_THAT(IsNotNull(
+				Engine.Get(),
+				TEXT("Nested extension registration should create an isolated full engine")));
+			EngineId = MakeEngineIdentityString(*Engine);
+
+			ASSERT_THAT(AreEqual(
+				1,
+				ParentExtension->AttachCount,
+				TEXT("The parent extension should attach exactly once")));
+			ASSERT_THAT(AreEqual(
+				1,
+				NestedExtension->AttachCount,
+				TEXT("An extension registered during attach should attach exactly once")));
+			if (NestedExtension->AttachedEngineIds.Num() == 1)
+			{
+				ASSERT_THAT(AreEqual(
+					EngineId,
+					NestedExtension->AttachedEngineIds[0],
+					TEXT("The nested extension should attach to the engine invoking its parent")));
+			}
+		}
+
+		ASSERT_THAT(AreEqual(
+			1,
+			ParentExtension->DetachCount,
+			TEXT("The parent extension should detach exactly once")));
+		ASSERT_THAT(AreEqual(
+			1,
+			NestedExtension->DetachCount,
+			TEXT("The nested extension should detach exactly once")));
+		if (NestedExtension->DetachedEngineIds.Num() == 1)
+		{
+			ASSERT_THAT(AreEqual(
+				EngineId,
+				NestedExtension->DetachedEngineIds[0],
+				TEXT("The nested extension should detach from the engine it attached to")));
+		}
 	}
 };
 

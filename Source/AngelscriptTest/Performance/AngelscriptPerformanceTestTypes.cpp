@@ -4,186 +4,188 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptPerformanceTestTargetObject(
-	TEXT("AngelscriptPerformanceTestTargetObject"),
-	(int32)FAngelscriptBinds::EOrder::Late + 101,
-	[]
+namespace
+{
+	void BindAngelscriptPerformanceTestTargetObject(FAngelscriptBinds& Binds)
 	{
-		auto MarkPreviousBindEditorOnly = []
-		{
-			FAngelscriptBinds::SetPreviousBindIsEditorOnly(true);
-		};
-
-		FAngelscriptBinds TargetObject_ = FAngelscriptBinds::ExistingClass("UAngelscriptPerformanceTestTargetObject");
+		FAngelscriptBinds TargetObject_ = Binds.ExistingClassForTarget("UAngelscriptPerformanceTestTargetObject");
 		if (TargetObject_.GetTypeInfo() == nullptr)
 		{
 			return;
 		}
 
 		{
-			FAngelscriptBinds::FNamespace Namespace("UAngelscriptPerformanceTestTargetObject");
+			FAngelscriptBinds::FNamespace Namespace(
+				Binds.GetTargetEngine(),
+				"UAngelscriptPerformanceTestTargetObject");
 
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"void StaticNoOp()",
-				FUNC_TRIVIAL(UAngelscriptPerformanceTestTargetObject::StaticNoOp));
-			MarkPreviousBindEditorOnly();
+				FUNC_TRIVIAL(UAngelscriptPerformanceTestTargetObject::StaticNoOp))
+				.EditorOnly();
 
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"int32 StaticAdd(int32 A, int32 B)",
-				FUNCPR_TRIVIAL(int32, UAngelscriptPerformanceTestTargetObject::StaticAdd, (int32, int32)));
-			MarkPreviousBindEditorOnly();
+				FUNCPR_TRIVIAL(int32, UAngelscriptPerformanceTestTargetObject::StaticAdd, (int32, int32)))
+				.EditorOnly();
 
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"int32 StaticSubtract(int32 A, int32 B)",
-				FUNCPR_TRIVIAL(int32, UAngelscriptPerformanceTestTargetObject::StaticSubtract, (int32, int32)));
-			MarkPreviousBindEditorOnly();
+				FUNCPR_TRIVIAL(int32, UAngelscriptPerformanceTestTargetObject::StaticSubtract, (int32, int32)))
+				.EditorOnly();
 
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"int32 StaticMultiply(int32 A, int32 B)",
-				FUNCPR_TRIVIAL(int32, UAngelscriptPerformanceTestTargetObject::StaticMultiply, (int32, int32)));
-			MarkPreviousBindEditorOnly();
+				FUNCPR_TRIVIAL(int32, UAngelscriptPerformanceTestTargetObject::StaticMultiply, (int32, int32)))
+				.EditorOnly();
 
-			FAngelscriptBinds::BindGlobalFunction(
+			Binds.BindGlobalFunctionForTarget(
 				"int32 StaticDivide(int32 A, int32 B)",
-				FUNCPR_TRIVIAL(int32, UAngelscriptPerformanceTestTargetObject::StaticDivide, (int32, int32)));
-			MarkPreviousBindEditorOnly();
+				FUNCPR_TRIVIAL(int32, UAngelscriptPerformanceTestTargetObject::StaticDivide, (int32, int32)))
+				.EditorOnly();
 		}
 
 		TargetObject_.Method(
 			"void MemberNoOp() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, MemberNoOp));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, MemberNoOp))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetInt32ValueFunction(int32 InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetInt32ValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetInt32ValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"int32 GetInt32ValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetInt32ValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetInt32ValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetDoubleValueFunction(double InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetDoubleValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetDoubleValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"double GetDoubleValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetDoubleValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetDoubleValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetStringValueFunction(const FString& InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetStringValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetStringValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"FString GetStringValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetStringValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetStringValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetArrayValueFunction(const TArray<int32>& InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetArrayValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetArrayValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"TArray<int32> GetArrayValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetArrayValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetArrayValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetSetValueFunction(const TSet<int32>& InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetSetValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetSetValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"TSet<int32> GetSetValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetSetValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetSetValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetMapValueFunction(const TMap<FName, int32>& InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetMapValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetMapValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"TMap<FName, int32> GetMapValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetMapValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetMapValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetBoolValueFunction(bool InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetBoolValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetBoolValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"bool GetBoolValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetBoolValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetBoolValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetNameValueFunction(FName InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetNameValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetNameValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"FName GetNameValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetNameValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetNameValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetTextValueFunction(const FText& InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetTextValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetTextValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"FText GetTextValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetTextValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetTextValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetEnumValueFunction(EAngelscriptPerformanceTestEnum InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetEnumValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetEnumValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"EAngelscriptPerformanceTestEnum GetEnumValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetEnumValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetEnumValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetStructValueFunction(const FAngelscriptPerformanceTestStruct& InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetStructValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetStructValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"FAngelscriptPerformanceTestStruct GetStructValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetStructValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetStructValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetObjectValueFunction(UObject InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetObjectValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetObjectValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"UObject GetObjectValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetObjectValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetObjectValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"void SetClassValueFunction(UClass InValue)",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetClassValueFunction));
-		MarkPreviousBindEditorOnly();
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, SetClassValueFunction))
+			.EditorOnly();
 
 		TargetObject_.Method(
 			"UClass GetClassValueFunction() const",
-			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetClassValueFunction));
-		MarkPreviousBindEditorOnly();
-	});
+			METHOD_TRIVIAL(UAngelscriptPerformanceTestTargetObject, GetClassValueFunction))
+			.EditorOnly();
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptPerformanceTestTargetObject(
+	TEXT("AngelscriptPerformanceTestTargetObject.PostReflection"),
+	EAngelscriptBindPhase::PostReflectionBindings,
+	&BindAngelscriptPerformanceTestTargetObject);
 #endif
 
 void UAngelscriptPerformanceTestTargetObject::StaticNoOp()

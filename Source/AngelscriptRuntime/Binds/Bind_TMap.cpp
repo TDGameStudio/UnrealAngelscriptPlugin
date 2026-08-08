@@ -1070,226 +1070,257 @@ void FAngelscriptMapBinds::GetValues(FScriptMap& Map, asCObjectType* Meta, FScri
 	}
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TMap((int)FAngelscriptBinds::EOrder::Early+1, []
+namespace
 {
-	FBindFlags Flags;
-	Flags.bTemplate = true;
-	Flags.TemplateType = "<K,V>";
-	Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
-
-	auto TMap_ = FAngelscriptBinds::ValueClass<FScriptMap>("TMap<class K, class V>", Flags);
-	TMap_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptMapBinds::Construct));
-
-	TMap_.Destructor("void f()", &FAngelscriptMapBinds::Destruct);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TMap_, "FAngelscriptMapBinds::Destruct", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TMap_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)",
-		[](asITypeInfo* TemplateType, asCString* ErrorMessage) -> bool
+	struct FAngelscriptMapForeachBinds
 	{
-		return ValidateMapOperations(TemplateType, ErrorMessage);
-	});
+		static int32 Begin(FScriptMap& Map, asCObjectType* Meta)
+		{
+			return FMapOperations::GetMapOperations(Meta)->FindNextIndex(Map, -1);
+		}
 
-	TMap_.Method("V& opIndex(const K&in if_handle_then_const Key)", &FAngelscriptMapBinds::OpIndex);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::OpIndex", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		static bool End(FScriptMap&, int32 Iterator)
+		{
+			return Iterator == -1;
+		}
 
-	TMap_.Method("const V& opIndex(const K&in if_handle_then_const Key) const", &FAngelscriptMapBinds::OpIndex);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::OpIndex", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		static void Next(FScriptMap& Map, asCObjectType* Meta, int32& Iterator)
+		{
+			if (Iterator == -1)
+				return;
+			Iterator = FMapOperations::GetMapOperations(Meta)->FindNextIndex(Map, Iterator);
+		}
 
-	TMap_.Method("void Add(const K&in if_handle_then_const Key, const V&in if_handle_then_const Value)", &FAngelscriptMapBinds::Add);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::Add", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		static void* Value(FScriptMap& Map, asCObjectType* Meta, int32 Iterator)
+		{
+			auto* Ops = FMapOperations::GetMapOperations(Meta);
+			if (!Map.IsValidIndex(Iterator))
+			{
+				FAngelscriptEngine::Throw("Iterator out of bounds.");
+				return nullptr;
+			}
+			return Ops->GetValue(Map, Iterator);
+		}
 
-	TMap_.Method("bool Contains(const K&in if_handle_then_const Key) const", &FAngelscriptMapBinds::Contains);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::Contains", true);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		static void* Key(FScriptMap& Map, asCObjectType* Meta, int32 Iterator)
+		{
+			auto* Ops = FMapOperations::GetMapOperations(Meta);
+			if (!Map.IsValidIndex(Iterator))
+			{
+				FAngelscriptEngine::Throw("Iterator out of bounds.");
+				return nullptr;
+			}
+			return Ops->GetKey(Map, Iterator);
+		}
+	};
 
-	TMap_.Method("bool RemoveAndCopyValue(const K&in if_handle_then_const Key, V&out OutValue)", &FAngelscriptMapBinds::RemoveAndCopyValue);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::RemoveAndCopyValue", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TMap_.Method("bool Remove(const K&in if_handle_then_const Key)", &FAngelscriptMapBinds::Remove);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::Remove", true);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TMap_.Method("int32 Num() const", FUNC_TRIVIAL(FAngelscriptMapBinds::Num));
-	TMap_.Method("bool IsEmpty() const", FUNC_TRIVIAL(FAngelscriptMapBinds::IsEmpty));
-
-	TMap_.Method("V& FindOrAdd(const K&in if_handle_then_const Key)", FUNC(FAngelscriptMapBinds::FindOrAdd_Defaulted));
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Find the value associated with the key. If none exists, add and return a new value using the default constructor.")
-
-	TMap_.Method("V& FindOrAdd(const K&in if_handle_then_const Key, const V&in if_handle_then_const DefaultValue)", &FAngelscriptMapBinds::FindOrAdd);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TMap_, "FAngelscriptMapBinds::FindOrAdd", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Find the value associated with the key. If none exists, add and return new value set to DefaultValue.")
-
-	TMap_.Method("bool Find(const K&in if_handle_then_const Key, V&out OutValue) const", &FAngelscriptMapBinds::Find);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::Find", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Find the value associated with the key. If none exists, return false. Copies the found value to OutValue.")
-
-	TMap_.Method("TMap<K,V>& opAssign(const TMap<K,V>& Other)", &FAngelscriptMapBinds::OpAssign);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::OpAssign", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TMap_.Method("bool opEquals(const TMap<K,V>& Other) const", &FAngelscriptMapBinds::OpEquals);
-	SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(TMap_, "FAngelscriptMapBinds::OpEquals", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TMap_.Method("void Empty(int32 Slack = 0)", &FAngelscriptMapBinds::Empty);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TMap_, "FAngelscriptMapBinds::Empty", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TMap_.Method("void Reset()", &FAngelscriptMapBinds::Reset);
-	SCRIPT_NATIVE_TEMPLATED_CALL(TMap_, "FAngelscriptMapBinds::Reset", false);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-
-	TMap_.Method("void GetKeys(TArray<K>& OutKeys) const", &FAngelscriptMapBinds::GetKeys);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Generates a list of the keys present in the map and stores them in the given array.")
-
-	TMap_.Method("void GetValues(TArray<V>& OutValues) const", &FAngelscriptMapBinds::GetValues);
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_BIND_DOCUMENTATION("Generates a list of the values present in the map and stores them in the given array.")
-
-	auto MapType = MakeShared<FAngelscriptMapType>();
-	FAngelscriptType::Register(MapType);
-
-	FAngelscriptType::RegisterTypeFinder([MapType](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
+	void BindTMapTypeDeclarations(FAngelscriptBinds& Binds)
 	{
-		FMapProperty* MapProp = CastField<FMapProperty>(Property);
-		if (MapProp == nullptr)
-			return false;
+		FBindFlags Flags;
+		Flags.bTemplate = true;
+		Flags.TemplateType = "<K,V>";
+		Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
+		Binds.ValueClassForTarget<FScriptMap>("TMap<class K, class V>", Flags);
 
-		FAngelscriptTypeUsage KeyType = FAngelscriptTypeUsage::FromProperty(MapProp->KeyProp);
-		if (!KeyType.IsValid())
-			return false;
+		FBindFlags IteratorFlags;
+		IteratorFlags.bTemplate = true;
+		IteratorFlags.TemplateType = "<K,V>";
+		Binds.ValueClassForTarget<FMapIterator>("TMapIterator<class K, class V>", IteratorFlags);
+		Binds.ValueClassForTarget<FMapIterator>("TMapConstIterator<class K, class V>", IteratorFlags);
+	}
 
-		FAngelscriptTypeUsage ValueType = FAngelscriptTypeUsage::FromProperty(MapProp->ValueProp);
-		if (!ValueType.IsValid())
-			return false;
+	void BindTMapMethodSurface(FAngelscriptBinds& Binds)
+	{
+		auto TMap_ = Binds.ExistingClassForTarget("TMap<K,V>");
+		TMap_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptMapBinds::Construct));
 
-		Usage.Type = MapType;
-		Usage.SubTypes.Add(KeyType);
-		Usage.SubTypes.Add(ValueType);
-		return true;
-	});
+		TMap_.Destructor("void f()", &FAngelscriptMapBinds::Destruct)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::Destruct", false, false, false);
 
-	auto MapIteratorType = MakeShared<FAngelscriptMapIteratorType>();
-	FAngelscriptType::Register(MapIteratorType);
+		TMap_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)", &ValidateMapOperations);
 
-	FBindFlags ItFlags;
-	ItFlags.bTemplate = true;
-	ItFlags.TemplateType = "<K,V>";
+		TMap_.Method("V& opIndex(const K&in if_handle_then_const Key)", &FAngelscriptMapBinds::OpIndex)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::OpIndex", false, true, false);
 
-	auto TMapIterator_ = FAngelscriptBinds::ValueClass<FMapIterator>("TMapIterator<class K, class V>", ItFlags);
-	TMapIterator_.Constructor("void f(const TMapIterator<K,V>& Other)", FUNC_TRIVIAL(FMapIterator::CopyConstruct));
+		TMap_.Method(
+			"const V& opIndex(const K&in if_handle_then_const Key) const",
+			&FAngelscriptMapBinds::OpIndex)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::OpIndex", false, true, false);
+
+		TMap_.Method(
+			"void Add(const K&in if_handle_then_const Key, const V&in if_handle_then_const Value)",
+			&FAngelscriptMapBinds::Add)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::Add", false, true, true);
+
+		TMap_.Method("bool Contains(const K&in if_handle_then_const Key) const", &FAngelscriptMapBinds::Contains)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::Contains", true, true, false);
+
+		TMap_.Method(
+			"bool RemoveAndCopyValue(const K&in if_handle_then_const Key, V&out OutValue)",
+			&FAngelscriptMapBinds::RemoveAndCopyValue)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall(
+				"FAngelscriptMapBinds::RemoveAndCopyValue",
+				false,
+				true,
+				true);
+
+		TMap_.Method("bool Remove(const K&in if_handle_then_const Key)", &FAngelscriptMapBinds::Remove)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::Remove", true, true, true);
+
+		TMap_.Method("int32 Num() const", FUNC_TRIVIAL(FAngelscriptMapBinds::Num));
+		TMap_.Method("bool IsEmpty() const", FUNC_TRIVIAL(FAngelscriptMapBinds::IsEmpty));
+
+		TMap_.Method("V& FindOrAdd(const K&in if_handle_then_const Key)", FUNC(FAngelscriptMapBinds::FindOrAdd_Defaulted))
+			.PassScriptObjectTypeAsFirstParam()
+			.Documentation(TEXT("Find the value associated with the key. If none exists, add and return a new value using the default constructor."));
+
+		TMap_.Method(
+			"V& FindOrAdd(const K&in if_handle_then_const Key, const V&in if_handle_then_const DefaultValue)",
+			&FAngelscriptMapBinds::FindOrAdd)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::FindOrAdd", false, false, false)
+			.Documentation(TEXT("Find the value associated with the key. If none exists, add and return new value set to DefaultValue."));
+
+		TMap_.Method(
+			"bool Find(const K&in if_handle_then_const Key, V&out OutValue) const",
+			&FAngelscriptMapBinds::Find)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::Find", false, true, true)
+			.Documentation(TEXT("Find the value associated with the key. If none exists, return false. Copies the found value to OutValue."));
+
+		TMap_.Method("TMap<K,V>& opAssign(const TMap<K,V>& Other)", &FAngelscriptMapBinds::OpAssign)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::OpAssign", false, true, true);
+
+		TMap_.Method("bool opEquals(const TMap<K,V>& Other) const", &FAngelscriptMapBinds::OpEquals)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::OpEquals", false, true, false);
+
+		TMap_.Method("void Empty(int32 Slack = 0)", &FAngelscriptMapBinds::Empty)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::Empty", false, false, false);
+
+		TMap_.Method("void Reset()", &FAngelscriptMapBinds::Reset)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FAngelscriptMapBinds::Reset", false, false, false);
+
+		TMap_.Method("void GetKeys(TArray<K>& OutKeys) const", &FAngelscriptMapBinds::GetKeys)
+			.PassScriptObjectTypeAsFirstParam()
+			.Documentation(TEXT("Generates a list of the keys present in the map and stores them in the given array."));
+
+		TMap_.Method("void GetValues(TArray<V>& OutValues) const", &FAngelscriptMapBinds::GetValues)
+			.PassScriptObjectTypeAsFirstParam()
+			.Documentation(TEXT("Generates a list of the values present in the map and stores them in the given array."));
+
+		auto TMapIterator_ = Binds.ExistingClassForTarget("TMapIterator<K,V>");
+		TMapIterator_.Constructor("void f(const TMapIterator<K,V>& Other)", FUNC_TRIVIAL(FMapIterator::CopyConstruct));
 
 #if AS_ITERATOR_DEBUGGING
-	TMapIterator_.Destructor("void f()", &FMapIterator::Destruct);
+		TMapIterator_.Destructor("void f()", &FMapIterator::Destruct);
 #endif
 
-	TMapIterator_.Method("TMapIterator<K,V>& opAssign(const TMapIterator<K,V>& Other)", METHOD_TRIVIAL(FMapIterator, Assignment));
-	TMapIterator_.Property("bool CanProceed", &FMapIterator::bCanProceed);
-	TMapIterator_.Method("void RemoveCurrent() const", METHOD(FMapIterator, RemoveCurrent));
+		TMapIterator_.Method("TMapIterator<K,V>& opAssign(const TMapIterator<K,V>& Other)", METHOD_TRIVIAL(FMapIterator, Assignment));
+		TMapIterator_.Property("bool CanProceed", &FMapIterator::bCanProceed);
+		TMapIterator_.Method("void RemoveCurrent() const", METHOD(FMapIterator, RemoveCurrent));
 
-	TMapIterator_.Method("const K& GetKey() const", METHOD(FMapIterator, GetKey));
-	TMapIterator_.Method("V& GetValue() const", METHOD(FMapIterator, GetValue));
+		TMapIterator_.Method("const K& GetKey() const", METHOD(FMapIterator, GetKey));
+		TMapIterator_.Method("V& GetValue() const", METHOD(FMapIterator, GetValue));
 
-	TMapIterator_.Method("void SetValue(const V& NewValue) const", METHOD(FMapIterator, SetValue));
-	
-	TMapIterator_.Method("TMapIterator<K,V>& Proceed()", METHOD(FMapIterator, Proceed));
+		TMapIterator_.Method("void SetValue(const V& NewValue) const", METHOD(FMapIterator, SetValue));
+		TMapIterator_.Method("TMapIterator<K,V>& Proceed()", METHOD(FMapIterator, Proceed));
 
-	auto TMapConstIterator_ = FAngelscriptBinds::ValueClass<FMapIterator>("TMapConstIterator<class K, class V>", ItFlags);
-	TMapConstIterator_.Constructor("void f(const TMapConstIterator<K,V>& Other)", FUNC_TRIVIAL(FMapIterator::CopyConstruct));
-
-	auto MapConstIteratorType = MakeShared<FAngelscriptMapConstIteratorType>();
-	FAngelscriptType::Register(MapConstIteratorType);
+		auto TMapConstIterator_ = Binds.ExistingClassForTarget("TMapConstIterator<K,V>");
+		TMapConstIterator_.Constructor("void f(const TMapConstIterator<K,V>& Other)", FUNC_TRIVIAL(FMapIterator::CopyConstruct));
 
 #if AS_ITERATOR_DEBUGGING
-	TMapConstIterator_.Destructor("void f()", &FMapIterator::Destruct);
+		TMapConstIterator_.Destructor("void f()", &FMapIterator::Destruct);
 #endif
 
-	TMapConstIterator_.Method("TMapConstIterator<K,V>& opAssign(const TMapConstIterator<K,V>& Other)", METHOD_TRIVIAL(FMapIterator, Assignment));
-	TMapConstIterator_.Property("bool CanProceed", &FMapIterator::bCanProceed);
-	TMapConstIterator_.Method("const K& GetKey() const", METHOD(FMapIterator, GetKey));
-	TMapConstIterator_.Method("const V& GetValue() const", METHOD(FMapIterator, GetValue));
-	TMapConstIterator_.Method("TMapConstIterator<K,V>& Proceed()", METHOD(FMapIterator, Proceed));
+		TMapConstIterator_.Method("TMapConstIterator<K,V>& opAssign(const TMapConstIterator<K,V>& Other)", METHOD_TRIVIAL(FMapIterator, Assignment));
+		TMapConstIterator_.Property("bool CanProceed", &FMapIterator::bCanProceed);
+		TMapConstIterator_.Method("const K& GetKey() const", METHOD(FMapIterator, GetKey));
+		TMapConstIterator_.Method("const V& GetValue() const", METHOD(FMapIterator, GetValue));
+		TMapConstIterator_.Method("TMapConstIterator<K,V>& Proceed()", METHOD(FMapIterator, Proceed));
 
-	TMap_.Method("int opForBegin()", [](FScriptMap& Map, asCObjectType* Meta) -> int32
-	{
-		return FMapOperations::GetMapOperations(Meta)->FindNextIndex(Map, -1);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	TMap_.Method("int opForBegin() const", [](FScriptMap& Map, asCObjectType* Meta) -> int32
-	{
-		return FMapOperations::GetMapOperations(Meta)->FindNextIndex(Map, -1);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		TMap_.Method("int opForBegin()", &FAngelscriptMapForeachBinds::Begin).PassScriptObjectTypeAsFirstParam();
+		TMap_.Method("int opForBegin() const", &FAngelscriptMapForeachBinds::Begin).PassScriptObjectTypeAsFirstParam();
 
-	TMap_.Method("bool opForEnd(const int Iterator) const", [](FScriptMap&, int32 Iterator) -> bool { return Iterator == -1; });
+		TMap_.Method("bool opForEnd(const int Iterator) const", &FAngelscriptMapForeachBinds::End);
 
-	TMap_.Method("void opForNext(int&inout Iterator)", [](FScriptMap& Map, asCObjectType* Meta, int32& Iterator)
-	{
-		if (Iterator == -1)
-			return;
-		Iterator = FMapOperations::GetMapOperations(Meta)->FindNextIndex(Map, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	TMap_.Method("void opForNext(int&inout Iterator) const", [](FScriptMap& Map, asCObjectType* Meta, int32& Iterator)
-	{
-		if (Iterator == -1)
-			return;
-		Iterator = FMapOperations::GetMapOperations(Meta)->FindNextIndex(Map, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+		TMap_.Method("void opForNext(int&inout Iterator)", &FAngelscriptMapForeachBinds::Next)
+			.PassScriptObjectTypeAsFirstParam();
+		TMap_.Method("void opForNext(int&inout Iterator) const", &FAngelscriptMapForeachBinds::Next)
+			.PassScriptObjectTypeAsFirstParam();
 
-	TMap_.Method("V& opForValue(const int Iterator)", [](FScriptMap& Map, asCObjectType* Meta, int32 Iterator) -> void*
+		TMap_.Method("V& opForValue(const int Iterator)", &FAngelscriptMapForeachBinds::Value)
+			.PassScriptObjectTypeAsFirstParam();
+		TMap_.Method("const V& opForValue(const int Iterator) const", &FAngelscriptMapForeachBinds::Value)
+			.PassScriptObjectTypeAsFirstParam();
+
+		TMap_.Method("const K& opForKey(const int Iterator) const", &FAngelscriptMapForeachBinds::Key)
+			.PassScriptObjectTypeAsFirstParam();
+
+		TMap_.Method("TMapIterator<K,V> Iterator()", FUNC_TRIVIAL(FMapIterator::Create))
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTArrayIteratorCreate();
+
+		TMap_.Method("TMapConstIterator<K,V> Iterator() const", FUNC_TRIVIAL(FMapIterator::Create))
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTArrayIteratorCreate();
+	}
+
+	void BindTMapTypeInfrastructure(FAngelscriptBinds& Binds)
 	{
-		auto* Ops = FMapOperations::GetMapOperations(Meta);
-		if (!Map.IsValidIndex(Iterator))
+		auto MapType = MakeShared<FAngelscriptMapType>();
+		Binds.RegisterTypeForTarget(MapType);
+
+		FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
+		Binds.RegisterTypeFinderForTarget([MapType, TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
 		{
-			FAngelscriptEngine::Throw("Iterator out of bounds.");
-			return nullptr;
-		}
-		return Ops->GetValue(Map, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	TMap_.Method("const V& opForValue(const int Iterator) const", [](FScriptMap& Map, asCObjectType* Meta, int32 Iterator) -> void*
-	{
-		auto* Ops = FMapOperations::GetMapOperations(Meta);
-		if (!Map.IsValidIndex(Iterator))
-		{
-			FAngelscriptEngine::Throw("Iterator out of bounds.");
-			return nullptr;
-		}
-		return Ops->GetValue(Map, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+			FMapProperty* MapProp = CastField<FMapProperty>(Property);
+			if (MapProp == nullptr)
+				return false;
 
-	TMap_.Method("const K& opForKey(const int Iterator) const", [](FScriptMap& Map, asCObjectType* Meta, int32 Iterator) -> void*
-	{
-		auto* Ops = FMapOperations::GetMapOperations(Meta);
-		if (!Map.IsValidIndex(Iterator))
-		{
-			FAngelscriptEngine::Throw("Iterator out of bounds.");
-			return nullptr;
-		}
-		return Ops->GetKey(Map, Iterator);
-	});
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+			FAngelscriptTypeUsage KeyType = FAngelscriptTypeUsage::FromProperty(*TargetTypeDatabase, MapProp->KeyProp);
+			if (!KeyType.IsValid())
+				return false;
 
-	TMap_.Method("TMapIterator<K,V> Iterator()", FUNC_TRIVIAL(FMapIterator::Create));
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_NATIVE_TARRAY_ITERATOR_CREATE(TMap_);
+			FAngelscriptTypeUsage ValueType = FAngelscriptTypeUsage::FromProperty(*TargetTypeDatabase, MapProp->ValueProp);
+			if (!ValueType.IsValid())
+				return false;
 
-	TMap_.Method("TMapConstIterator<K,V> Iterator() const", FUNC_TRIVIAL(FMapIterator::Create));
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	SCRIPT_NATIVE_TARRAY_ITERATOR_CREATE(TMap_);
-});
+			Usage.Type = MapType;
+			Usage.SubTypes.Add(KeyType);
+			Usage.SubTypes.Add(ValueType);
+			return true;
+		});
+
+		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptMapIteratorType>());
+		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptMapConstIteratorType>());
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TMap_TypeDeclarations(
+	TEXT("TMap.Declaration"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindTMapTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TMap_MethodSurface(
+	TEXT("TMap.MethodSurface"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTMapMethodSurface);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TMap_TypeInfrastructure(
+	TEXT("TMap.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTMapTypeInfrastructure);
 
 bool ValidateMapOperations(asITypeInfo* TemplateType, asCString* ErrorMessage)
 {

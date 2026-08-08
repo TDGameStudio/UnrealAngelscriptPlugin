@@ -38,7 +38,6 @@ namespace SubsystemGetterMetadataTest
 	void ResetIsolatedEnvironment()
 	{
 		DestroySharedTestEngine();
-		FAngelscriptBinds::ResetBindState();
 
 		if (FAngelscriptEngine::IsInitialized())
 		{
@@ -61,10 +60,14 @@ namespace SubsystemGetterMetadataTest
 		}
 
 		FAngelscriptFunctionSignature Signature(HostType, Function);
-		const int FunctionId = FAngelscriptBinds::BindGlobalGenericFunction(Signature.Declaration, &NoOpGeneric);
-		Signature.ModifyScriptFunction(FunctionId);
+		FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
+		FAngelscriptBinds Binds(Engine);
+		FAngelscriptBoundFunction BoundFunction =
+			Binds.BindGlobalGenericFunctionForTarget(Signature.Declaration, &NoOpGeneric);
+		const int32 FunctionId = BoundFunction.GetFunctionId();
+		Signature.ModifyScriptFunction(BoundFunction);
 
-		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(FunctionId));
+		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(Engine.GetScriptEngine()->GetFunctionById(FunctionId));
 		if (!LocalAssert.IsNotNull(
 				ScriptFunction,
 				FString::Printf(TEXT("SubsystemGetterMetadata should create script function %s"), Expectation.FunctionName)))
@@ -148,10 +151,15 @@ namespace MathReturnValueHelperMetadataTest
 		}
 
 		FAngelscriptFunctionSignature Signature(HostType, Function);
-		const int FunctionId = FAngelscriptBinds::BindGlobalGenericFunction(Signature.Declaration, &SubsystemGetterMetadataTest::NoOpGeneric);
-		Signature.ModifyScriptFunction(FunctionId);
+		FAngelscriptEngine& Engine = FAngelscriptEngine::Get();
+		FAngelscriptBinds Binds(Engine);
+		FAngelscriptBoundFunction BoundFunction = Binds.BindGlobalGenericFunctionForTarget(
+			Signature.Declaration,
+			&SubsystemGetterMetadataTest::NoOpGeneric);
+		const int32 FunctionId = BoundFunction.GetFunctionId();
+		Signature.ModifyScriptFunction(BoundFunction);
 
-		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(FunctionId));
+		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(Engine.GetScriptEngine()->GetFunctionById(FunctionId));
 		if (!LocalAssert.IsNotNull(
 				ScriptFunction,
 				FString::Printf(TEXT("MathReturnValueHelperMetadata should create script function %s"), Expectation.FunctionName)))
@@ -249,19 +257,20 @@ namespace ProductionScriptMixinSignatureTest
 
 	int32 BindSignatureForInspection(const FAngelscriptFunctionSignature& Signature)
 	{
+		FAngelscriptBinds Binds(FAngelscriptEngine::Get());
 		if (Signature.bStaticInScript)
 		{
-			return FAngelscriptBinds::BindGlobalGenericFunction(
+			return Binds.BindGlobalGenericFunctionForTarget(
 				Signature.Declaration,
-				&SubsystemGetterMetadataTest::NoOpGeneric);
+				&SubsystemGetterMetadataTest::NoOpGeneric).GetFunctionId();
 		}
 
-		return FAngelscriptBinds::BindMethodDirect(
+		return Binds.BindMethodDirectForTarget(
 			Signature.ClassName,
 			Signature.Declaration,
 			asFUNCTION(SubsystemGetterMetadataTest::NoOpGeneric),
 			asCALL_GENERIC,
-			ASAutoCaller::FunctionCaller::Make());
+			ASAutoCaller::FunctionCaller::Make()).GetFunctionId();
 	}
 
 	bool CheckProductionScriptMixinSignature(
@@ -288,7 +297,8 @@ namespace ProductionScriptMixinSignatureTest
 		const FString InspectName = FString::Printf(TEXT("%s_ProductionScriptMixinInspection"), Expectation.FunctionName);
 		FAngelscriptFunctionSignature Signature(HostType.ToSharedRef(), Function, *InspectName);
 		const int32 FunctionId = BindSignatureForInspection(Signature);
-		Signature.ModifyScriptFunction(FunctionId);
+		FAngelscriptBoundFunction BoundFunction(&FAngelscriptEngine::Get(), FunctionId);
+		Signature.ModifyScriptFunction(BoundFunction);
 
 		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(FunctionId));
 		if (!LocalAssert.IsNotNull(
@@ -622,8 +632,12 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionLibrarySignatureTests,
 		}
 
 		FAngelscriptFunctionSignature Signature(HostType.ToSharedRef(), Function);
-		const int FunctionId = FAngelscriptBinds::BindGlobalGenericFunction(Signature.Declaration, &SubsystemGetterMetadataTest::NoOpGeneric);
-		Signature.ModifyScriptFunction(FunctionId);
+		FAngelscriptBinds Binds(*Engine);
+		FAngelscriptBoundFunction BoundFunction = Binds.BindGlobalGenericFunctionForTarget(
+			Signature.Declaration,
+			&SubsystemGetterMetadataTest::NoOpGeneric);
+		const int32 FunctionId = BoundFunction.GetFunctionId();
+		Signature.ModifyScriptFunction(BoundFunction);
 
 		auto* ScriptFunction = reinterpret_cast<asCScriptFunction*>(Engine->GetScriptEngine()->GetFunctionById(FunctionId));
 		if (!this->Assert.IsNotNull(ScriptFunction, TEXT("WidgetBlueprintCreateWidgetMetadata should create a script function")))

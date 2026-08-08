@@ -1,17 +1,21 @@
-#include "AngelscriptEngine.h"
-#include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
 
 #include "Misc/App.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FApp((int32)FAngelscriptBinds::EOrder::Late, []
+#include "Bind_FApp_Functions.h"
+
+namespace
 {
+	void BindFApp(FAngelscriptBinds& Binds)
 	{
-		FAngelscriptBinds::FNamespace ns("FApp");
-		FAngelscriptBinds::BindGlobalFunction("bool CanEverRender()", FUNC_TRIVIAL(FApp::CanEverRender));
-		FAngelscriptBinds::BindGlobalFunction("FString GetProjectName()", []() -> FString
-		{
-			return FApp::GetProjectName();
-		});
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FApp");
+		Binds.BindGlobalFunctionForTarget("bool CanEverRender()", &FApp::CanEverRender)
+			.NativeFunction("FApp::CanEverRender", true);
+		Binds.BindGlobalFunctionForTarget("FString GetProjectName()", &FAngelscriptFAppBinds::GetProjectName);
 	}
-});
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FApp(
+	TEXT("FApp"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFApp);

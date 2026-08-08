@@ -2,8 +2,17 @@
 #include "AngelscriptEngine.h"
 #include "Particles/ParticleSystemComponent.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UFXSystemComponent(FAngelscriptBinds::EOrder::Late, [] {
-	auto FXSystemComponent = FAngelscriptBinds::ExistingClass("UFXSystemComponent");
+namespace
+{
+	void BindUFXSystemComponent(FAngelscriptBinds& Binds)
+	{
+		auto FXSystemComponent = Binds.ExistingClassForTarget("UFXSystemComponent");
 
-	FXSystemComponent.Method("void DeactivateImmediate()", METHODPR_TRIVIAL(void, UFXSystemComponent, DeactivateImmediate, ()));
-	});
+		FXSystemComponent.Method("void DeactivateImmediate()", METHODPR_TRIVIAL(void, UFXSystemComponent, DeactivateImmediate, ()));
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UFXSystemComponent(
+	TEXT("UFXSystemComponent"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUFXSystemComponent);

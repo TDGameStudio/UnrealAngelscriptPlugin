@@ -3,6 +3,7 @@
 #include "AngelscriptDocs.h"
 #include "AngelscriptEngine.h"
 #include "AngelscriptType.h"
+#include "Bind_FAngelscriptDelegateWithPayload_Functions.h"
 
 #include "StartAngelscriptHeaders.h"
 #include "source/as_context.h"
@@ -12,25 +13,26 @@
 
 extern FString GetSignatureStringForFunction(UFunction* Function);
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_AngelscriptDelegateWithPayload((int32)FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	auto Delegate_ = FAngelscriptBinds::ExistingClass("FAngelscriptDelegateWithPayload");
-
-	Delegate_.Method("void ExecuteIfBound() const", &FAngelscriptDelegateWithPayload::ExecuteIfBound);
-	Delegate_.Method("bool IsBound() const", &FAngelscriptDelegateWithPayload::IsBound);
-
-	Delegate_.Method("void BindUFunction(UObject Object, const FName& FunctionName)",
-	[](FAngelscriptDelegateWithPayload& Delegate, UObject* Object, const FName& FunctionName)
+	void BindAngelscriptDelegateWithPayload(FAngelscriptBinds& Binds)
 	{
-		Delegate.BindUFunction(Object, FunctionName);
-	});
+		auto DelegateType = Binds.ExistingClassForTarget("FAngelscriptDelegateWithPayload");
+		DelegateType.Method("void ExecuteIfBound() const", &FAngelscriptDelegateWithPayload::ExecuteIfBound);
+		DelegateType.Method("bool IsBound() const", &FAngelscriptDelegateWithPayload::IsBound);
+		DelegateType.Method(
+			"void BindUFunction(UObject Object, const FName& FunctionName)",
+			&FAngelscriptDelegateWithPayloadBinds::BindUFunction);
+		DelegateType.Method(
+			"void BindWithPayload(UObject Object, const FName& FunctionName, const ?&in Payload)",
+			&FAngelscriptDelegateWithPayloadBinds::BindWithPayload);
+	}
+}
 
-	Delegate_.Method("void BindWithPayload(UObject Object, const FName& FunctionName, const ?&in Payload)",
-	[](FAngelscriptDelegateWithPayload& Delegate, UObject* Object, const FName& FunctionName, void* PayloadPtr, int PayloadScriptTypeId)
-	{
-		Delegate.BindUFunctionWithPayload(Object, FunctionName, PayloadPtr, PayloadScriptTypeId);
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptDelegateWithPayload(
+	TEXT("FAngelscriptDelegateWithPayload.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindAngelscriptDelegateWithPayload);
 
 bool FAngelscriptDelegateWithPayload::IsBound() const
 {

@@ -1,86 +1,43 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
-#include "AngelscriptPerformanceStats.h"
 
-struct FScriptStatID
+#include "Bind_Stats_Functions.h"
+
+namespace
 {
-	TStatId StatID;
-
-#if STATS || ENABLE_STATNAMEDEVENTS
-	FScriptStatID(const FName& Name)
+	void BindStatsTypes(FAngelscriptBinds& Binds)
 	{
-		FString NameStr = Name.ToString();
+		FBindFlags StatFlags;
+		Binds.ValueClassForTarget<FScriptStatID>("FStatID", StatFlags);
 
-#if STATS
-		StatID = FDynamicStats::CreateStatId<FStatGroup_STATGROUP_Angelscript>( NameStr );
-#else // ENABLE_STATNAMEDEVENTS
-		const auto& ConversionData = StringCast<PROFILER_CHAR>(*NameStr);
-		const int32 NumStorageChars = (ConversionData.Length() + 1);	//length doesn't include null terminator
-
-		auto* StoragePtr = new PROFILER_CHAR[NumStorageChars];
-		FMemory::Memcpy(StoragePtr, ConversionData.Get(), NumStorageChars * sizeof(PROFILER_CHAR));
-		
-		StatID = TStatId(StoragePtr);
-#endif
-	}
-#else
-	FScriptStatID(const FName& Name)
-	{}
-#endif
-};
-
-struct FScriptScopeCycleCounter
-{
-	FScopeCycleCounter Counter;
-
-	FScriptScopeCycleCounter(const FScriptStatID& StatID)
-		: Counter(StatID.StatID)
-	{
+		FBindFlags CounterFlags;
+		Binds.ValueClassForTarget<FScriptScopeCycleCounter>("FScopeCycleCounter", CounterFlags);
 	}
 
-	FScriptScopeCycleCounter(const UObject* Object)
-		: Counter(Object != nullptr ? Object->GetStatID() : TStatId())
+	void BindStatsFunctions(FAngelscriptBinds& Binds)
 	{
+		auto FStatID_ = Binds.ExistingClassForTarget("FStatID");
+		FStatID_.Constructor("void f(const FName& Name)", &FAngelscriptStatsBinds::ConstructStatID).NoDiscard();
+		FStatID_.Destructor("void f()", &FAngelscriptStatsBinds::DestructStatID);
+
+		auto FScopeCycleCounter_ = Binds.ExistingClassForTarget("FScopeCycleCounter");
+		FScopeCycleCounter_.Constructor(
+			"void f(const FStatID& Stat)",
+			&FAngelscriptStatsBinds::ConstructScopeFromStat)
+			.NoDiscard();
+		FScopeCycleCounter_.Constructor(
+			"void f(const UObject Object)",
+			&FAngelscriptStatsBinds::ConstructScopeFromObject)
+			.NoDiscard();
+		FScopeCycleCounter_.Destructor("void f()", &FAngelscriptStatsBinds::DestructScope);
 	}
-};
+}
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Stats([]
-{
-	FBindFlags StatFlags;
-	auto FStatID_ = FAngelscriptBinds::ValueClass<FScriptStatID>("FStatID", StatFlags);
-	FStatID_.Constructor("void f(const FName& Name)",
-	[](FScriptStatID* Counter, const FName& Name)
-	{
-		new(Counter) FScriptStatID(Name);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
+AS_FORCE_LINK const FAngelscriptBind Bind_Stats_Types(
+	TEXT("Stats.Types"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindStatsTypes);
 
-	FStatID_.Destructor("void f()",
-	[](FScriptStatID* Counter)
-	{
-		Counter->~FScriptStatID();
-	});
-
-	FBindFlags CounterFlags;
-	auto FScopeCycleCounter_ = FAngelscriptBinds::ValueClass<FScriptScopeCycleCounter>("FScopeCycleCounter", CounterFlags);
-
-	FScopeCycleCounter_.Constructor("void f(const FStatID& Stat)",
-	[](FScriptScopeCycleCounter* Counter, const FScriptStatID& Stat)
-	{
-		new(Counter) FScriptScopeCycleCounter(Stat);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-
-	FScopeCycleCounter_.Constructor("void f(const UObject Object)",
-	[](FScriptScopeCycleCounter* Counter, const UObject* Object)
-	{
-		new(Counter) FScriptScopeCycleCounter(Object);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-
-	FScopeCycleCounter_.Destructor("void f()",
-	[](FScriptScopeCycleCounter* Counter)
-	{
-		Counter->~FScriptScopeCycleCounter();
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_Stats(
+	TEXT("Stats.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindStatsFunctions);

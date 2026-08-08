@@ -8,6 +8,10 @@
 #include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
 
+#include "StartAngelscriptHeaders.h"
+#include "source/as_scriptfunction.h"
+#include "EndAngelscriptHeaders.h"
+
 #if WITH_ANGELSCRIPT_UNITTESTS
 
 
@@ -72,7 +76,12 @@ static FString MakeAutomationBindTypeName(const TCHAR* Prefix)
 		*FGuid::NewGuid().ToString(EGuidFormats::Digits).Left(8));
 }
 
-static void CDECL NoOpPreviousBindGuard(void*)
+struct FFailedBindIsolationValue
+{
+	int32 Value = 0;
+};
+
+static void CDECL NoOpFailedBindGuard(FFailedBindIsolationValue*)
 {
 }
 
@@ -84,6 +93,7 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 		asIScriptEngine* ScriptEngine = Engine.GetScriptEngine();
 		ASSERT_THAT(IsNotNull(ScriptEngine, TEXT("Binds namespace guard test should expose a script engine")));
+		FAngelscriptBinds Binds(Engine);
 
 		const FString BaselineNamespace = GetCurrentNamespace(ScriptEngine);
 		ON_SCOPE_EXIT
@@ -99,14 +109,14 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		int32 FirstTypeId = asINVALID_TYPE;
 		int32 DuplicateTypeId = asINVALID_TYPE;
 		{
-			FAngelscriptBinds::FNamespace OuterGuard(OuterNamespace);
+			FAngelscriptBinds::FNamespace OuterGuard(Engine, OuterNamespace);
 			ASSERT_THAT(AreEqual(
 				OuterNamespace,
 				GetCurrentNamespace(ScriptEngine),
 				TEXT("FNamespace should set the current default namespace while the outer guard is active")));
 
 			{
-				FAngelscriptBinds::FNamespace InnerGuard(InnerNamespace);
+				FAngelscriptBinds::FNamespace InnerGuard(Engine, InnerNamespace);
 				ASSERT_THAT(AreEqual(
 					InnerNamespace,
 					GetCurrentNamespace(ScriptEngine),
@@ -118,13 +128,13 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 				GetCurrentNamespace(ScriptEngine),
 				TEXT("Destroying the inner FNamespace should restore the outer namespace")));
 
-			FAngelscriptBinds::FEnumBind EnumBind = FAngelscriptBinds::Enum(EnumTypeName);
+			FAngelscriptBinds::FEnumBind EnumBind = Binds.EnumForTarget(EnumTypeName);
 			EnumBind[FString(TEXT("Ready"))] = 1;
 			EnumBind[FString(TEXT("Ready"))] = 99;
 			EnumBind[FString(TEXT("Done"))] = 2;
 			FirstTypeId = EnumBind.TypeId;
 
-			FAngelscriptBinds::FEnumBind DuplicateEnumBind = FAngelscriptBinds::Enum(EnumTypeName);
+			FAngelscriptBinds::FEnumBind DuplicateEnumBind = Binds.EnumForTarget(EnumTypeName);
 			DuplicateTypeId = DuplicateEnumBind.TypeId;
 		}
 
@@ -179,8 +189,9 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 
 		const FString ReferenceTypeName = MakeAutomationBindTypeName(TEXT("AutomationBindRefActor"));
 		const FString ValueTypeName = MakeAutomationBindTypeName(TEXT("AutomationBindValuePoint"));
+		FAngelscriptBinds Binds(Engine);
 
-		FAngelscriptBinds ReferenceBinds = FAngelscriptBinds::ReferenceClass(ReferenceTypeName, ActorClass);
+		FAngelscriptBinds ReferenceBinds = Binds.ReferenceClassForTarget(ReferenceTypeName, ActorClass);
 		asITypeInfo* ReferenceTypeInfo = ReferenceBinds.GetTypeInfo();
 		ASSERT_THAT(IsNotNull(ReferenceTypeInfo, TEXT("ReferenceAndValueClass test should register a reference type")));
 
@@ -195,7 +206,7 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		ValueFlags.Alignment = alignof(FIntPoint);
 		ValueFlags.bPOD = true;
 
-		FAngelscriptBinds ValueBinds = FAngelscriptBinds::ValueClass(ValueTypeName, IntPointStruct, ValueFlags);
+		FAngelscriptBinds ValueBinds = Binds.ValueClassForTarget(ValueTypeName, IntPointStruct, ValueFlags);
 		asITypeInfo* ValueTypeInfo = ValueBinds.GetTypeInfo();
 		ASSERT_THAT(IsNotNull(ValueTypeInfo, TEXT("ReferenceAndValueClass test should register a value type")));
 
@@ -206,11 +217,11 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		ASSERT_THAT(IsTrue((RegisteredValueFlags & asOBJ_APP_CLASS) != 0, TEXT("ValueClass should preserve the app-class trait")));
 		ASSERT_THAT(IsTrue((RegisteredValueFlags & asOBJ_POD) != 0, TEXT("ValueClass should preserve the POD trait when requested")));
 
-		FAngelscriptBinds ExistingValueBinds = FAngelscriptBinds::ExistingClass(ValueTypeName);
+		FAngelscriptBinds ExistingValueBinds = Binds.ExistingClassForTarget(ValueTypeName);
 		asITypeInfo* ExistingValueTypeInfo = ExistingValueBinds.GetTypeInfo();
 		ASSERT_THAT(IsNotNull(ExistingValueTypeInfo, TEXT("ExistingClass should find the previously registered value type")));
 
-		FAngelscriptBinds DuplicateValueBinds = FAngelscriptBinds::ValueClass(ValueTypeName, IntPointStruct, ValueFlags);
+		FAngelscriptBinds DuplicateValueBinds = Binds.ValueClassForTarget(ValueTypeName, IntPointStruct, ValueFlags);
 		asITypeInfo* DuplicateValueTypeInfo = DuplicateValueBinds.GetTypeInfo();
 		ASSERT_THAT(IsNotNull(DuplicateValueTypeInfo, TEXT("ValueClass should return the registered type when called with the same name twice")));
 
@@ -222,34 +233,50 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		}
 	}
 
-	TEST_METHOD(CompileOutPreviousBindHelpersIgnoreFailedRegistration)
+	TEST_METHOD(InvalidExactResultDoesNotMutateEarlierSuccessfulBinding)
 	{
-FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
-		{ FAngelscriptEngineScope _AutoEngineScope(Engine);
-
-		const FString MissingTypeName = MakeAutomationBindTypeName(TEXT("AutomationMissingBindType"));
-		FAngelscriptBinds MissingBinds = FAngelscriptBinds::ExistingClass(MissingTypeName);
-
-		int32 FailedFunctionId = INDEX_NONE;
+		// A direct-registration failure is intentionally sticky for the lifetime of
+		// its engine, so this negative test must not poison the shared test engine.
+		FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE_FULL();
 		{
-			UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
-			ON_SCOPE_EXIT
-			{
-				UE_SET_LOG_VERBOSITY(Angelscript, Log);
-			};
+			FAngelscriptEngineScope AutoEngineScope(Engine);
 
-			FailedFunctionId = MissingBinds.Method("void Missing()", &NoOpPreviousBindGuard);
-		}
+			FAngelscriptBinds Binds(Engine);
+			const FString TypeName = MakeAutomationBindTypeName(TEXT("AutomationFailedBindIsolation"));
+			FBindFlags TypeFlags;
+			TypeFlags.bPOD = true;
+			FAngelscriptBinds Type = Binds.ValueClassForTarget<FFailedBindIsolationValue>(TypeName, TypeFlags);
+			FAngelscriptBoundFunction Successful = Type.Method("void Stable()", &NoOpFailedBindGuard);
+			asCScriptFunction* SuccessfulFunction = static_cast<asCScriptFunction*>(Successful.GetFunction());
+			ASSERT_THAT(IsNotNull(
+				SuccessfulFunction,
+				TEXT("The failure-isolation fixture should register its first exact function")));
 
-		ASSERT_THAT(IsTrue(FailedFunctionId < 0, TEXT("Binding a method on an unregistered type should fail")));
-		ASSERT_THAT(AreEqual(FailedFunctionId, FAngelscriptBinds::GetPreviousFunctionId(), TEXT("Failed registration should still become the previous function id")));
-		ASSERT_THAT(IsNull(FAngelscriptBinds::GetPreviousBind(), TEXT("Failed registration should not resolve to a previous script function")));
+			TestRunner->AddExpectedErrorPlain(
+				TEXT("and 'void Stable()' (Code: asALREADY_REGISTERED"),
+				EAutomationExpectedErrorFlags::Contains,
+				1);
+			FAngelscriptBoundFunction Invalid = Type.Method("void Stable()", &NoOpFailedBindGuard);
+			Invalid
+				.EditorOnly()
+				.NoDiscard()
+				.CompileOutEntirely();
+			FAngelscriptBoundFunction PostFailure = Type.Method("void PostFailure()", &NoOpFailedBindGuard);
 
-		FAngelscriptBinds::CompileOutPreviousBind();
-		FAngelscriptBinds::CompileOutPreviousBindAsMethodChain();
-
-		ASSERT_THAT(AreEqual(FailedFunctionId, FAngelscriptBinds::GetPreviousFunctionId(), TEXT("Compile-out helpers should leave the failed previous function id unchanged")));
-		ASSERT_THAT(IsNull(FAngelscriptBinds::GetPreviousBind(), TEXT("Compile-out helpers should leave the failed previous bind unresolved")));
+			ASSERT_THAT(IsFalse(
+				Invalid.IsValid(),
+				TEXT("The duplicate registration should return an invalid exact result")));
+			ASSERT_THAT(IsFalse(
+				PostFailure.IsValid(),
+				TEXT("The first registration failure should reject later registrations")));
+			ASSERT_THAT(IsTrue(
+				Binds.HasRegistrationFailure(),
+				TEXT("The explicit target context should preserve the first registration failure")));
+			ASSERT_THAT(IsFalse(
+				SuccessfulFunction->traits.GetTrait(asTRAIT_EDITOR_ONLY)
+					|| SuccessfulFunction->traits.GetTrait(asTRAIT_NODISCARD)
+					|| SuccessfulFunction->compileOutType != asECompileOutType::CompileCalls,
+				TEXT("Fluent mutations on an invalid exact result must not cross-write the earlier successful function")));
 
 		}
 	}

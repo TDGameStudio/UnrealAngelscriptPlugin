@@ -1,20 +1,23 @@
 #include "AngelscriptBinds.h"
 
-#include "HAL/PlatformMisc.h"
+#include "Bind_FPlatformMisc_Functions.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FPlatformMisc((int32)FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	FAngelscriptBinds::FNamespace Ns("FPlatformMisc");
-	FAngelscriptBinds::BindGlobalFunction("void RequestExit(bool Force)", [](bool Force)
+	void BindFPlatformMisc(FAngelscriptBinds& Binds)
 	{
-		FPlatformMisc::RequestExit(Force, nullptr);
-	});
-	FAngelscriptBinds::BindGlobalFunction("void RequestExit(bool Force, const FString& CallSite)", [](bool Force, const FString& CallSite)
-	{
-		FPlatformMisc::RequestExit(Force, *CallSite);
-	});
-	FAngelscriptBinds::BindGlobalFunction("FString GetEnvironmentVariable(const FString& VariableName) no_discard", [](const FString& VariableName)
-	{
-		return FPlatformMisc::GetEnvironmentVariable(*VariableName);
-	});
-});
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FPlatformMisc");
+		Binds.BindGlobalFunctionForTarget("void RequestExit(bool Force)", &FAngelscriptFPlatformMiscBinds::RequestExit);
+		Binds.BindGlobalFunctionForTarget(
+			"void RequestExit(bool Force, const FString& CallSite)",
+			&FAngelscriptFPlatformMiscBinds::RequestExitWithCallSite);
+		Binds.BindGlobalFunctionForTarget(
+			"FString GetEnvironmentVariable(const FString& VariableName) no_discard",
+			&FAngelscriptFPlatformMiscBinds::GetEnvironmentVariable);
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FPlatformMisc(
+	TEXT("FPlatformMisc"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFPlatformMisc);

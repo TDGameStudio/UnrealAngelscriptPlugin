@@ -95,6 +95,49 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUObjectBindingsTest,
 			TEXT("GetOuter and GetPathName should be callable for AS-created UObject handles"), 1)));
 	}
 
+	TEST_METHOD(NewObjectAndGetTypedOuterPreserveConcreteTypes)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		const FString ScriptSource = ASTEST_AS(R"AS(
+			int ExactResultOutputTypeSmoke()
+			{
+				UTexture2D ParentTexture = NewObject(
+					GetTransientPackage(),
+					UTexture2D,
+					n"UObjectBindingTypedParent");
+				UTexture2D ChildTexture = NewObject(
+					ParentTexture,
+					UTexture2D,
+					n"UObjectBindingTypedChild");
+
+				UTexture2D TypedTextureOuter = ChildTexture.GetTypedOuter(UTexture2D);
+				UTexture TypedTextureBaseOuter = ChildTexture.GetTypedOuter(UTexture);
+
+				int Result = ParentTexture != nullptr ? 1 : 0;
+				Result |= TypedTextureOuter == ParentTexture ? 2 : 0;
+				Result |= TypedTextureBaseOuter == ParentTexture ? 4 : 0;
+				return Result;
+			}
+			)AS");
+
+		FScopedAngelscriptModule Module(
+			*TestRunner,
+			Engine,
+			TEXT("ASUObject_ExactResultOutputTypeSmoke"),
+			ScriptSource);
+		ASSERT_THAT(IsTrue(Module.IsValid(), TEXT("UObject exact-result output-type module should compile")));
+		if (!Module.IsValid())
+		{
+			return;
+		}
+
+		ASSERT_THAT(IsTrue(ExecuteAndExpectInt(*TestRunner, Engine, Module.GetModule(),
+			TEXT("int ExactResultOutputTypeSmoke()"),
+			TEXT("NewObject and GetTypedOuter should preserve concrete output types and object identity"), 7)));
+	}
+
 	TEST_METHOD(TypeQueryAndCastContractSmoke)
 	{
 		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();

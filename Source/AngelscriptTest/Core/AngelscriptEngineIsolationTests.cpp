@@ -212,6 +212,8 @@ const FString AliasName = MakeIsolationName(TEXT("Alias"));
 const FString ToStringName = MakeIsolationName(TEXT("ToString"));
 FAngelscriptClassBind BindClass;
 BindClass.TypeName = MakeIsolationName(TEXT("BindDb"));
+FAngelscriptBinds BindsA(*EngineA);
+FAngelscriptBinds BindsB(*EngineB);
 int32 BaselineToStringCountA = 0;
 int32 BaselineBindDatabaseClassCountA = 0;
 int32 BaselineToStringCountB = 0;
@@ -231,26 +233,36 @@ int32 BaselineBindDatabaseClassCountB = 0;
 
 {
 	FAngelscriptEngineScope ScopeA(*EngineA);
-	TSharedPtr<FAngelscriptType> IntType = FAngelscriptType::GetByAngelscriptTypeName(TEXT("int"));
+	TSharedPtr<FAngelscriptType> IntType = FAngelscriptType::GetByAngelscriptTypeName(
+		BindsA.GetTargetTypeDatabase(),
+		TEXT("int"));
 	if (!LocalAssert.IsTrue(IntType.IsValid(), TEXT("Full engine isolation test should resolve the built-in int type inside engine A")))
 	{
 		return false;
 	}
 
-	FAngelscriptType::RegisterAlias(AliasName, IntType.ToSharedRef());
-	FAngelscriptBinds::AddSkipEntry(FName(TEXT("EngineIsolationActor")), FName(TEXT("OnlyEngineA")));
-	FToStringHelper::Register(ToStringName, +[](void*, FString& OutString)
+	FAngelscriptType::RegisterAlias(BindsA.GetTargetTypeDatabase(), AliasName, IntType.ToSharedRef());
+	BindsA.GetTargetBindState().SkipBindNames.Add(MakeTuple(
+		FName(TEXT("EngineIsolationActor")),
+		FName(TEXT("OnlyEngineA"))));
+	FToStringHelper::Register(BindsA, ToStringName, +[](void*, FString& OutString)
 	{
 		OutString = TEXT("EngineA");
 	});
-	FAngelscriptBindDatabase::Get().Classes.Add(BindClass);
+	BindsA.GetTargetBindDatabase().Classes.Add(BindClass);
 }
 
 {
 	FAngelscriptEngineScope ScopeB(*EngineB);
 	bool bOk = true;
-	bOk &= LocalAssert.IsNull(FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get(), TEXT("Engine B should not see aliases registered through engine A"));
-	bOk &= LocalAssert.IsFalse(FAngelscriptBinds::CheckForSkipEntry(FName(TEXT("EngineIsolationActor")), FName(TEXT("OnlyEngineA"))), TEXT("Engine B should not inherit skip entries registered through engine A"));
+	bOk &= LocalAssert.IsNull(
+		FAngelscriptType::GetByAngelscriptTypeName(BindsB.GetTargetTypeDatabase(), AliasName).Get(),
+		TEXT("Engine B should not see aliases registered through engine A"));
+	bOk &= LocalAssert.IsFalse(
+		BindsB.GetTargetBindState().SkipBindNames.Contains(MakeTuple(
+			FName(TEXT("EngineIsolationActor")),
+			FName(TEXT("OnlyEngineA")))),
+		TEXT("Engine B should not inherit skip entries registered through engine A"));
 	bOk &= LocalAssert.AreEqual(BaselineToStringCountB, FAngelscriptEngineIsolationTestAccess::GetToStringCount(*EngineB), TEXT("Engine B should keep its original ToString registry baseline"));
 	bOk &= LocalAssert.AreEqual(BaselineBindDatabaseClassCountB, FAngelscriptEngineIsolationTestAccess::GetBindDatabaseClassCount(*EngineB), TEXT("Engine B should keep its original bind database baseline"));
 	if (!bOk)
@@ -262,8 +274,14 @@ int32 BaselineBindDatabaseClassCountB = 0;
 {
 	FAngelscriptEngineScope ScopeA(*EngineA);
 	bool bOk = true;
-	bOk &= LocalAssert.IsNotNull(FAngelscriptType::GetByAngelscriptTypeName(AliasName).Get(), TEXT("Engine A should keep its alias registration"));
-	bOk &= LocalAssert.IsTrue(FAngelscriptBinds::CheckForSkipEntry(FName(TEXT("EngineIsolationActor")), FName(TEXT("OnlyEngineA"))), TEXT("Engine A should keep its skip entry registration"));
+	bOk &= LocalAssert.IsNotNull(
+		FAngelscriptType::GetByAngelscriptTypeName(BindsA.GetTargetTypeDatabase(), AliasName).Get(),
+		TEXT("Engine A should keep its alias registration"));
+	bOk &= LocalAssert.IsTrue(
+		BindsA.GetTargetBindState().SkipBindNames.Contains(MakeTuple(
+			FName(TEXT("EngineIsolationActor")),
+			FName(TEXT("OnlyEngineA")))),
+		TEXT("Engine A should keep its skip entry registration"));
 	bOk &= LocalAssert.AreEqual(BaselineToStringCountA + 1, FAngelscriptEngineIsolationTestAccess::GetToStringCount(*EngineA), TEXT("Engine A should retain its extra ToString registry entry"));
 	bOk &= LocalAssert.AreEqual(BaselineBindDatabaseClassCountA + 1, FAngelscriptEngineIsolationTestAccess::GetBindDatabaseClassCount(*EngineA), TEXT("Engine A should retain its extra bind database class"));
 	return bOk;

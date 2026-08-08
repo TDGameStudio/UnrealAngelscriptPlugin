@@ -1,31 +1,33 @@
-#include "AngelscriptEngine.h"
-#include "AngelscriptType.h"
 #include "AngelscriptBinds.h"
 
-#include "HAL/PlatformProcess.h"
+#include "Bind_FPlatformProcess_Functions.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FPlatformProcess((int32)FAngelscriptBinds::EOrder::Late, []
+namespace
 {
+	void BindFPlatformProcess(FAngelscriptBinds& Binds)
 	{
-		FAngelscriptBinds::FNamespace ns("FPlatformProcess");
-
-		// Paths
-		FAngelscriptBinds::BindGlobalFunction("FString UserDir()", []() { return FString(FPlatformProcess::UserDir()); });
-		FAngelscriptBinds::BindGlobalFunction("FString UserSettingsDir()", []() { return FString(FPlatformProcess::UserSettingsDir()); });
-		FAngelscriptBinds::BindGlobalFunction("FString UserTempDir()", []() { return FString(FPlatformProcess::UserTempDir()); });
-		FAngelscriptBinds::BindGlobalFunction("FString ApplicationSettingsDir()", []() { return FString(FPlatformProcess::ApplicationSettingsDir()); });
-		FAngelscriptBinds::BindGlobalFunction("FString ExecutablePath()", []() { return FString(FPlatformProcess::ExecutablePath()); });
-		FAngelscriptBinds::BindGlobalFunction("FString ExecutableName()", []() { return FString(FPlatformProcess::ExecutableName()); });
-		FAngelscriptBinds::BindGlobalFunction("FString CurrentWorkingDirectory()", []() { return FPlatformProcess::GetCurrentWorkingDirectory(); });
-
-		// URLs
-		FAngelscriptBinds::BindGlobalFunction("void LaunchURL(const FString& URL, const FString& Params = FString())", [](const FString& URL, const FString& Params) { FPlatformProcess::LaunchURL(*URL, *Params, nullptr); });
-		FAngelscriptBinds::BindGlobalFunction("void LaunchURL(const FString& URL, const FString& Params, FString& OutError)", [](const FString& URL, const FString& Params, FString& Error) { FPlatformProcess::LaunchURL(*URL, *Params, &Error); });
-		FAngelscriptBinds::BindGlobalFunction("bool CanLaunchURL(const FString& URL)", [](const FString& URL) { return FPlatformProcess::CanLaunchURL(*URL); });
-
-		// Identity
-		FAngelscriptBinds::BindGlobalFunction("FString ComputerName()", []() { return FString(FPlatformProcess::ComputerName()); });
-		FAngelscriptBinds::BindGlobalFunction("FString UserName()", []() { return FString(FPlatformProcess::UserName()); });
-		FAngelscriptBinds::BindGlobalFunction("FString GameBundleId()", []() { return FPlatformProcess::GetGameBundleId(); });
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FPlatformProcess");
+		Binds.BindGlobalFunctionForTarget("FString UserDir()", &FAngelscriptFPlatformProcessBinds::UserDir);
+		Binds.BindGlobalFunctionForTarget("FString UserSettingsDir()", &FAngelscriptFPlatformProcessBinds::UserSettingsDir);
+		Binds.BindGlobalFunctionForTarget("FString UserTempDir()", &FAngelscriptFPlatformProcessBinds::UserTempDir);
+		Binds.BindGlobalFunctionForTarget("FString ApplicationSettingsDir()", &FAngelscriptFPlatformProcessBinds::ApplicationSettingsDir);
+		Binds.BindGlobalFunctionForTarget("FString ExecutablePath()", &FAngelscriptFPlatformProcessBinds::ExecutablePath);
+		Binds.BindGlobalFunctionForTarget("FString ExecutableName()", &FAngelscriptFPlatformProcessBinds::ExecutableName);
+		Binds.BindGlobalFunctionForTarget("FString CurrentWorkingDirectory()", &FAngelscriptFPlatformProcessBinds::CurrentWorkingDirectory);
+		Binds.BindGlobalFunctionForTarget(
+			"void LaunchURL(const FString& URL, const FString& Params = FString())",
+			&FAngelscriptFPlatformProcessBinds::LaunchUrl);
+		Binds.BindGlobalFunctionForTarget(
+			"void LaunchURL(const FString& URL, const FString& Params, FString& OutError)",
+			&FAngelscriptFPlatformProcessBinds::LaunchUrlWithError);
+		Binds.BindGlobalFunctionForTarget("bool CanLaunchURL(const FString& URL)", &FAngelscriptFPlatformProcessBinds::CanLaunchUrl);
+		Binds.BindGlobalFunctionForTarget("FString ComputerName()", &FAngelscriptFPlatformProcessBinds::ComputerName);
+		Binds.BindGlobalFunctionForTarget("FString UserName()", &FAngelscriptFPlatformProcessBinds::UserName);
+		Binds.BindGlobalFunctionForTarget("FString GameBundleId()", &FAngelscriptFPlatformProcessBinds::GameBundleId);
 	}
-});
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FPlatformProcess(
+	TEXT("FPlatformProcess"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFPlatformProcess);

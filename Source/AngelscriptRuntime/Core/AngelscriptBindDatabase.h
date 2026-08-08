@@ -130,6 +130,7 @@ public:
 
 	TMap<UObject*, FString> HeaderLinks;
 	static FString GetSourceHeader(UField* Field);
+	static FString GetSourceHeader(UField* Field, const FAngelscriptBindDatabase& Database);
 
 private:
 	void Serialize(FArchive& Archive);

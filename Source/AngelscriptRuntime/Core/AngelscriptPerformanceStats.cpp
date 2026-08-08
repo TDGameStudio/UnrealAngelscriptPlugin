@@ -4,7 +4,7 @@ CSV_DEFINE_CATEGORY_MODULE(ANGELSCRIPTRUNTIME_API, Angelscript, true);
 
 DEFINE_STAT(STAT_AngelscriptStartupBindDatabase);
 DEFINE_STAT(STAT_AngelscriptStartupBindScriptTypes);
-DEFINE_STAT(STAT_AngelscriptBindsCallBinds);
+DEFINE_STAT(STAT_AngelscriptBindsExecuteCallbacks);
 DEFINE_STAT(STAT_AngelscriptCompileInitial);
 DEFINE_STAT(STAT_AngelscriptCompileModules);
 DEFINE_STAT(STAT_AngelscriptReloadHotReload);
@@ -24,7 +24,7 @@ namespace
 		static const TArray<FName> ScopeNames = {
 			TEXT("Angelscript.Startup.BindDatabase"),
 			TEXT("Angelscript.Startup.BindScriptTypes"),
-			TEXT("Angelscript.Binds.CallBinds"),
+			TEXT("Angelscript.Binds.ExecuteCallbacks"),
 			TEXT("Angelscript.Compile.Initial"),
 			TEXT("Angelscript.Compile.Modules"),
 			TEXT("Angelscript.Reload.HotReload"),

@@ -7,6 +7,7 @@
 #include "Helper_CppType.h"
 #include "Helper_GetTypeInfo.h"
 #include "Helper_ToString.h"
+#include "Bind_FString_Functions.h"
 
 #include "StartAngelscriptHeaders.h"
 //#include "as_scriptengine.h"
@@ -132,7 +133,7 @@ static bool AddFormatOrderedArgument(FStringFormatOrderedArguments& OutFormatOrd
 	return false;
 }
 
-static void Generic_FormatString(asIScriptGeneric* Generic)
+void FAngelscriptFStringBinds::Format(asIScriptGeneric* Generic)
 {
 	const FString& Format = *reinterpret_cast<FString*>(Generic->GetArgAddress(0));
 
@@ -147,74 +148,81 @@ static void Generic_FormatString(asIScriptGeneric* Generic)
 	new (Generic->GetAddressOfReturnLocation()) FString(OutString);
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString(FAngelscriptBinds::EOrder::Early, []
+class FAngelscriptFStringFactory final : public asIStringFactory
 {
-	// Register string type
-	auto FString_ = FAngelscriptBinds::ValueClass<FString>("FString", FBindFlags());
-	FAngelscriptType::Register(MakeShared<FStringType>());
-
-	TGetStaticTypeInfo<FString>::SetForEngine(FAngelscriptEngine::Get().GetScriptEngine(), FString_.GetTypeInfo());
-
-	FString_.Constructor("void f()", [](FString* Address)
+public:
+	const void* GetStringConstant(const char* Data, asUINT Length) override
 	{
-		new(Address) FString();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FString_, "FString");
+		FUTF8ToTCHAR Convertor(Data, Length);
+		auto* String = new FString();
+		String->AppendChars(Convertor.Get(), Convertor.Length());
+		return String;
+	}
 
-	FString_.Constructor("void f(const FString& Other)", [](FString* Address, const FString& Other)
+	int ReleaseStringConstant(const void* String) override
 	{
-		new(Address) FString(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FString_, "FString");
+		delete static_cast<const FString*>(String);
+		return 0;
+	}
 
-	FString_.Destructor("void f()", [](FString& Str)
+	int GetRawStringData(const void* String, char* Data, asUINT* Length) const override
 	{
-		Str.~FString();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_DESTRUCTOR(FString_, "FString");
-	
+		const FString* UnrealString = static_cast<const FString*>(String);
+		if (UnrealString->Len() == 0)
+		{
+			if (Length != nullptr)
+			{
+				*Length = 0;
+			}
+			return 0;
+		}
+
+		FTCHARToUTF8 Convertor(&(*UnrealString)[0], UnrealString->Len());
+		if (Length != nullptr)
+		{
+			*Length = Convertor.Length();
+		}
+		if (Data != nullptr)
+		{
+			FMemory::Memcpy(Data, Convertor.Get(), Convertor.Length());
+		}
+
+		return 0;
+	}
+};
+
+static void BindFStringTypeDeclarations(FAngelscriptBinds& Binds)
+{
+	Binds.ValueClassForTarget<FString>("FString", FBindFlags());
+}
+
+static void BindFStringInfrastructure(FAngelscriptBinds& Binds)
+{
+	auto FString_ = Binds.ExistingClassForTarget("FString");
+	Binds.RegisterTypeForTarget(MakeShared<FStringType>());
+	TGetStaticTypeInfo<FString>::SetForEngine(&Binds.GetTargetScriptEngine(), FString_.GetTypeInfo());
+	Binds.GetTargetScriptEngine().RegisterStringFactory("FString", new FAngelscriptFStringFactory());
+}
+
+static void BindFStringCore(FAngelscriptBinds& Binds)
+{
+	auto FString_ = Binds.ExistingClassForTarget("FString");
+
+	FString_.Constructor("void f()", &FAngelscriptFStringBinds::ConstructDefault, "FString", true).NoDiscard();
+
+	FString_.Constructor("void f(const FString& Other)", &FAngelscriptFStringBinds::ConstructCopy, "FString", true)
+		.NoDiscard();
+
+	FString_.Destructor("void f()", &FAngelscriptFStringBinds::Destruct, "FString", true).NoDiscard();
+
 	// Bind operator overloads
 	FString_.Method("FString& opAssign(const FString& Other)", METHODPR_TRIVIAL(FString&, FString, operator=, (const FString&)));
 	FString_.Method("FString& opAddAssign(const FString& Other)", METHODPR_TRIVIAL(FString&, FString, operator+=, (const FString&)));
-	FString_.Method("bool opEquals(const FString& Other) const", [](const FString& Left, const FString& Right) -> bool
-	{
-		return Left == Right;
-	});
-	FString_.Method("int opCmp(const FString& Other) const", [](const FString& Left, const FString& Right) -> int
-	{
-		return Left.Compare(Right);
-	});
-	FString_.Method("FString opAdd(const FString& Other) const", [](const FString& Left, const FString& Right)
-	{
-		return Left + Right;
-	});
-
-	FString_.Method("int16& opIndex(int32 Index)", [](FString& String, int32 Index) -> TCHAR&
-	{
-		if (!String.IsValidIndex(Index))
-		{
-			FAngelscriptEngine::Throw("String index out of bounds.");
-			static TCHAR InvalidChar;
-			return InvalidChar;
-		}
-
-		return String[Index];
-	});
-
-	FString_.Method("const int16& opIndex(int32 Index) const", [](const FString& String, int32 Index) -> const TCHAR&
-	{
-		if (!String.IsValidIndex(Index))
-		{
-			FAngelscriptEngine::Throw("String index out of bounds.");
-			static TCHAR InvalidChar;
-			return InvalidChar;
-		}
-
-		return String[Index];
-	});
+	FString_.Method("bool opEquals(const FString& Other) const", &FAngelscriptFStringBinds::Equals);
+	FString_.Method("int opCmp(const FString& Other) const", &FAngelscriptFStringBinds::Compare);
+	FString_.Method("FString opAdd(const FString& Other) const", &FAngelscriptFStringBinds::Add);
+	FString_.Method("int16& opIndex(int32 Index)", &FAngelscriptFStringBinds::Index);
+	FString_.Method("const int16& opIndex(int32 Index) const", &FAngelscriptFStringBinds::IndexConst);
 
 	FString_.Method("FString& Append(const FString& Other) accept_temporary_this", METHODPR_TRIVIAL(FString&, FString, Append, (const FString&)));
 	FString_.Method("FString& AppendChar(int16 Character) accept_temporary_this", METHODPR_TRIVIAL(FString&, FString, AppendChar, (TCHAR)));
@@ -230,10 +238,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString(FAngelscriptBinds::EOr
 	FString_.Method("void Reserve(int Count)", METHOD_TRIVIAL(FString, Reserve));
 	FString_.Method("void Shrink()", METHOD_TRIVIAL(FString, Shrink));
 	FString_.Method("bool IsValidIndex(int Index) const", METHOD_TRIVIAL(FString, IsValidIndex));
-	FString_.Method("void RemoveAt(int Index, int Count)", [](FString& String, int32 Index, int32 Count)
-	{
-		String.RemoveAt(Index, Count);
-	});
+	FString_.Method("void RemoveAt(int Index, int Count)", &FAngelscriptFStringBinds::RemoveAt);
 	FString_.Method("void RemoveSpacesInline()", METHOD_TRIVIAL(FString, RemoveSpacesInline));
 
 	// Handling as string
@@ -241,11 +246,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString(FAngelscriptBinds::EOr
 	FString_.Method("bool IsNumeric() const", METHOD_TRIVIAL(FString, IsNumeric));
 	FString_.Method("FString Reverse() const", METHOD_TRIVIAL(FString, Reverse));
 
-	FString_.Method("FString ConvertTabsToSpaces(int32 InSpacesPerTab) const",
-	[](const FString& Str, int32 InSpacesPerTab) -> FString
-	{
-		return Str.ConvertTabsToSpaces(InSpacesPerTab);
-	});
+	FString_.Method("FString ConvertTabsToSpaces(int32 InSpacesPerTab) const", &FAngelscriptFStringBinds::ConvertTabsToSpaces);
 
 	// Substring handling
 	FString_.Method("bool RemoveFromStart(const FString& Prefix, ESearchCase SearchCase = ESearchCase::IgnoreCase)", METHODPR_TRIVIAL(bool, FString, RemoveFromStart, (const FString&,ESearchCase::Type)));
@@ -259,34 +260,17 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString(FAngelscriptBinds::EOr
 
 	FString_.Method("bool Split(const FString& Needle, FString& OutLeft, FString& OutRight, "
 		"ESearchCase SearchCase = ESearchCase::IgnoreCase, ESearchDir SearchDir = ESearchDir::FromStart) const",
-	[](const FString& Str, const FString& Needle, FString& OutLeft, FString& OutRight, ESearchCase::Type SearchCase, ESearchDir::Type SearchDir)
-	{
-		return Str.Split(Needle, &OutLeft, &OutRight, SearchCase, SearchDir);
-	});
+		&FAngelscriptFStringBinds::Split);
 
 	FString_.Method("FString Replace(const FString& From, const FString& To, ESearchCase SearchCase = ESearchCase::IgnoreCase) const",
-	[](const FString& Str, const FString& From, const FString& To, ESearchCase::Type SearchCase) -> FString
-	{
-		return Str.Replace(*From, *To, SearchCase);
-	});
+		&FAngelscriptFStringBinds::Replace);
 
 	FString_.Method("int ReplaceInline(const FString& SearchText, const FString& ReplacementText, ESearchCase SearchCase = ESearchCase::IgnoreCase)",
-	[](FString& Str, const FString& SearchText, const FString& ReplacementText, ESearchCase::Type SearchCase) -> int32
-	{
-		return Str.ReplaceInline(*SearchText, *ReplacementText, SearchCase);
-	});
+		&FAngelscriptFStringBinds::ReplaceInline);
 
-	FString_.Method("FString ReplaceCharWithEscapedChar() const",
-	[](const FString& Str) -> FString
-	{
-		return Str.ReplaceCharWithEscapedChar();
-	});
+	FString_.Method("FString ReplaceCharWithEscapedChar() const", &FAngelscriptFStringBinds::ReplaceCharWithEscapedChar);
 
-	FString_.Method("FString ReplaceEscapedCharWithChar() const",
-	[](const FString& Str) -> FString
-	{
-		return Str.ReplaceEscapedCharWithChar();
-	});
+	FString_.Method("FString ReplaceEscapedCharWithChar() const", &FAngelscriptFStringBinds::ReplaceEscapedCharWithChar);
 
 	// Substring finding
 	FString_.Method(
@@ -315,165 +299,37 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString(FAngelscriptBinds::EOr
 		METHODPR_TRIVIAL(bool, FString, Equals, (const FString&, ESearchCase::Type)const));
 
 	// Case handling
-	FString_.Method("FString ToUpper() const", [](const FString& Str) -> FString
-	{
-		return Str.ToUpper();
-	});
-
-	FString_.Method("FString ToLower() const", [](const FString& Str) -> FString
-	{
-		return Str.ToLower();
-	});
+	FString_.Method("FString ToUpper() const", &FAngelscriptFStringBinds::ToUpper);
+	FString_.Method("FString ToLower() const", &FAngelscriptFStringBinds::ToLower);
 
 	// Whitespace handling
 	FString_.Method("FString LeftPad(int Count) const", METHOD_TRIVIAL(FString, LeftPad));
 	FString_.Method("FString RightPad(int Count) const", METHOD_TRIVIAL(FString, RightPad));
-	FString_.Method("FString TrimQuotes(bool& OutQuotesRemoved) const", [](const FString Str, bool& OutQuotesRemoved) -> FString
-	{
-		return Str.TrimQuotes(&OutQuotesRemoved);
-	});
-
-	FString_.Method("FString TrimStartAndEnd() const", [](const FString& Str) -> FString
-	{
-		return Str.TrimStartAndEnd();
-	});
-
-	FString_.Method("FString TrimStart() const", [](const FString& Str) -> FString
-	{
-		return Str.TrimStart();
-	});
-
-	FString_.Method("FString TrimEnd() const", [](const FString& Str) -> FString
-	{
-		return Str.TrimEnd();
-	});
-
-	FString_.Method("FString TrimChar(int16 CharacterToTrim) const",
-	[](const FString& Str, TCHAR CharacterToTrim) -> FString
-	{
-		return Str.TrimChar(CharacterToTrim);
-	});
+	FString_.Method("FString TrimQuotes(bool& OutQuotesRemoved) const", &FAngelscriptFStringBinds::TrimQuotes);
+	FString_.Method("FString TrimStartAndEnd() const", &FAngelscriptFStringBinds::TrimStartAndEnd);
+	FString_.Method("FString TrimStart() const", &FAngelscriptFStringBinds::TrimStart);
+	FString_.Method("FString TrimEnd() const", &FAngelscriptFStringBinds::TrimEnd);
+	FString_.Method("FString TrimChar(int16 CharacterToTrim) const", &FAngelscriptFStringBinds::TrimChar);
 
 	FString_.Method("int32 Compare(const FString& Other, ESearchCase SearchCase = ESearchCase::CaseSensitive) const", METHODPR_TRIVIAL(int32, FString, Compare, (const FString&, ESearchCase::Type) const));
 
 	// Conversion
 	FString_.Method("bool ToBool() const", METHOD_TRIVIAL(FString, ToBool));
+	FString_.Method("FString ToDisplayName(bool bIsBool = false) const", &FAngelscriptFStringBinds::ToDisplayName);
+	FString_.Method("uint GetHash() const", &FAngelscriptFStringBinds::GetHash);
 
-	class FStringFactory : public asIStringFactory
-	{
-		const void* GetStringConstant(const char* Data, asUINT Length) override
-		{
-			FUTF8ToTCHAR Convertor(Data, Length);
-			auto* Str = new FString();
-			Str->AppendChars(Convertor.Get(), Convertor.Length());
-			return Str;
-		}
-
-		int ReleaseStringConstant(const void* Str) override
-		{
-			delete (FString*)Str;
-			return 0;
-		}
-
-		int GetRawStringData(const void* Str, char* Data, asUINT* Length) const override
-		{
-			FString* UnrealString = (FString*)Str;
-			if (UnrealString->Len() == 0)
-			{
-				if (Length != nullptr)
-					*Length = 0;
-				return 0;
-			}
-
-			FTCHARToUTF8 Convertor(&(*UnrealString)[0], UnrealString->Len());
-
-			if (Length != nullptr)
-			{
-				*Length = Convertor.Length();
-			}
-			if (Data != nullptr)
-			{
-				FMemory::Memcpy(Data, Convertor.Get(), Convertor.Length());
-			}
-
-			return 0;
-		}
-	};
-
-	FString_.Method("FString ToDisplayName(bool bIsBool = false) const", 
-	[](FString& Str, bool bIsBool) -> FString
-	{
-		return FName::NameToDisplayString(Str, bIsBool);
-	});
-	
-	FString_.Method("uint GetHash() const", [](const FString& Str) -> uint32
-	{
-		return GetTypeHash(Str);
-	});
-
-	// Register string factory with engine
-	FAngelscriptEngine::Get().Engine->RegisterStringFactory("FString", new FStringFactory());
-});
-
-static TArray<FToStringType>& GetToStringList()
-{
-	if (FAngelscriptEngine* Engine = FAngelscriptEngine::TryGetCurrentEngine())
-	{
-		if (TArray<FToStringType>* List = Engine->GetToStringList())
-		{
-			return *List;
-		}
-	}
-	// Fallback: process-wide metadata-only list reachable when no engine context
-	// is set (e.g. static init before engine creation). Writes that could expose
-	// engine-owned `asITypeInfo*` across engines (see ToString.TypeInfo) MUST be
-	// fenced via IsEngineOwnedToStringList() before assigning.
-	static TArray<FToStringType> LegacyToStringList;
-	return LegacyToStringList;
 }
 
-// Returns true if `List` is the current engine's owned ToStringList rather than
-// the process-wide fallback. Callers about to write engine-owned pointers
-// (such as `FToStringType::TypeInfo`) into a list entry MUST gate the write on
-// this check, so the fallback stays metadata-only and cannot leak an
-// `asITypeInfo*` between engines.
-static bool IsEngineOwnedToStringList(const TArray<FToStringType>& List)
+void FToStringHelper::Register(FAngelscriptBinds& Binds, const FString& TypeName, FToStringHelper::FToStringFunction ToString, bool bImplicitConversion, bool bIsHandleType)
 {
-	if (FAngelscriptEngine* Engine = FAngelscriptEngine::TryGetCurrentEngine())
-	{
-		return Engine->GetToStringList() == &List;
-	}
-	return false;
-}
-
-void FToStringHelper::Register(const FString& TypeName, FToStringHelper::FToStringFunction ToString, bool bImplicitConversion, bool bIsHandleType)
-{
-	GetToStringList().Add({TypeName, nullptr, ToString, bImplicitConversion, bIsHandleType});
-}
-
-void FToStringHelper::Reset()
-{
-	GetToStringList().Reset();
-}
-
-#if WITH_DEV_AUTOMATION_TESTS
-int32 FToStringHelper::GetRegisteredTypeCountForTesting()
-{
-	return GetToStringList().Num();
-}
-#endif
-
-static FString Type_ToString(void* Obj, asCScriptFunction* ScriptFunction)
-{
-	auto Func = (FToStringHelper::FToStringFunction)ScriptFunction->userData;
-	FString Str;
-	Func(Obj, Str);
-	return Str;
+	Binds.GetTargetToStringList().Add({TypeName, nullptr, ToString, bImplicitConversion, bIsHandleType});
 }
 
 void FToStringHelper::Generic_AppendToString(FString& AppendTo, void* ValuePtr, int TypeId)
 {
-	asITypeInfo* TypeInfo = FAngelscriptEngine::Get().Engine->GetTypeInfoById(TypeId);
+	FAngelscriptEngine& RuntimeEngine = FAngelscriptEngine::Get();
+	FAngelscriptBinds RuntimeBinds(RuntimeEngine);
+	asITypeInfo* TypeInfo = RuntimeEngine.Engine->GetTypeInfoById(TypeId);
 
 	// If it's a UObject, print its name
 	if (TypeInfo != nullptr && (TypeInfo->GetFlags() & asOBJ_REF) != 0)
@@ -491,7 +347,7 @@ void FToStringHelper::Generic_AppendToString(FString& AppendTo, void* ValuePtr, 
 			if (asClass == nullptr) return;
 
 			FString Suffix;
-			auto& Delegate = FAngelscriptEngine::Get().GetDebugObjectSuffix();
+			auto& Delegate = RuntimeEngine.GetDebugObjectSuffix();
 			if (Delegate.IsBound())
 			{
 				Delegate.Execute(Object, Suffix);
@@ -582,7 +438,7 @@ void FToStringHelper::Generic_AppendToString(FString& AppendTo, void* ValuePtr, 
 	// See if we have any ToString helper functions
 	if (TypeInfo != nullptr && (TypeInfo->GetFlags() & asOBJ_VALUE))
 	{
-		for (auto& ToString : GetToStringList())
+		for (const FToStringType& ToString : RuntimeBinds.GetTargetToStringList())
 		{
 			if (ToString.TypeInfo == TypeInfo)
 			{
@@ -930,7 +786,7 @@ struct FFormatSpecifier
 	}
 };
 
-static FString ApplyFormatString(const FString& Str, const FString& Specifier)
+FString FAngelscriptFStringBinds::ApplyFormatString(const FString& Str, const FString& Specifier)
 {
 	FString OutStr = Str;
 	FFormatSpecifier Spec(Specifier);
@@ -938,7 +794,7 @@ static FString ApplyFormatString(const FString& Str, const FString& Specifier)
 	return OutStr;
 }
 
-static FString ApplyFormat(void* ValuePtr, int TypeId, const FString& Specifier)
+FString FAngelscriptFStringBinds::ApplyFormatValue(void* ValuePtr, int TypeId, const FString& Specifier)
 {
 	FFormatSpecifier Spec(Specifier);
 	FString OutStr;
@@ -992,7 +848,7 @@ static FString ApplyFormat(void* ValuePtr, int TypeId, const FString& Specifier)
 	return OutStr;
 }
 
-static FString ApplyFormatBool(bool Value, const FString& Specifier)
+FString FAngelscriptFStringBinds::ApplyFormatBool(bool Value, const FString& Specifier)
 {
 	FString OutStr = Value ? TEXT("true") : TEXT("false");
 
@@ -1160,7 +1016,7 @@ static FString ApplyFormatInteger(T Number, const FString& Specifier)
 }
 
 template<typename T>
-static FString ApplyFormatFloat(T Number, const FString& Specifier)
+static FString ApplyFormatFloatingPoint(T Number, const FString& Specifier)
 {
 	FString OutStr;
 	OutStr.Reserve(16);
@@ -1274,12 +1130,61 @@ static FString ApplyFormatFloat(T Number, const FString& Specifier)
 	return OutStr;
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString_Conversion((int32)FAngelscriptBinds::EOrder::Late+10, []
+FString FAngelscriptFStringBinds::ApplyFormatInt32(int32 Value, const FString& Specifier)
 {
-	auto FString_ = FAngelscriptBinds::ExistingClass("FString");
+	return ApplyFormatInteger<int32, false, uint32>(Value, Specifier);
+}
 
-	auto& ToStringList = GetToStringList();
-	const bool bIsEngineOwnedList = IsEngineOwnedToStringList(ToStringList);
+FString FAngelscriptFStringBinds::ApplyFormatUInt32(uint32 Value, const FString& Specifier)
+{
+	return ApplyFormatInteger<uint32, true, uint32>(Value, Specifier);
+}
+
+FString FAngelscriptFStringBinds::ApplyFormatInt64(int64 Value, const FString& Specifier)
+{
+	return ApplyFormatInteger<int64, false, uint64>(Value, Specifier);
+}
+
+FString FAngelscriptFStringBinds::ApplyFormatUInt64(uint64 Value, const FString& Specifier)
+{
+	return ApplyFormatInteger<uint64, true, uint64>(Value, Specifier);
+}
+
+FString FAngelscriptFStringBinds::ApplyFormatInt16(int16 Value, const FString& Specifier)
+{
+	return ApplyFormatInteger<int16, false, uint16>(Value, Specifier);
+}
+
+FString FAngelscriptFStringBinds::ApplyFormatUInt16(uint16 Value, const FString& Specifier)
+{
+	return ApplyFormatInteger<uint16, true, uint16>(Value, Specifier);
+}
+
+FString FAngelscriptFStringBinds::ApplyFormatInt8(int8 Value, const FString& Specifier)
+{
+	return ApplyFormatInteger<int8, false, uint8>(Value, Specifier);
+}
+
+FString FAngelscriptFStringBinds::ApplyFormatUInt8(uint8 Value, const FString& Specifier)
+{
+	return ApplyFormatInteger<uint8, true, uint8>(Value, Specifier);
+}
+
+FString FAngelscriptFStringBinds::ApplyFormatFloat(float Value, const FString& Specifier)
+{
+	return ApplyFormatFloatingPoint(Value, Specifier);
+}
+
+FString FAngelscriptFStringBinds::ApplyFormatDouble(double Value, const FString& Specifier)
+{
+	return ApplyFormatFloatingPoint(Value, Specifier);
+}
+
+static void BindFStringConversion(FAngelscriptBinds& Binds)
+{
+	auto FString_ = Binds.ExistingClassForTarget("FString");
+
+	auto& ToStringList = Binds.GetTargetToStringList();
 
 	for (auto& ToString : ToStringList)
 	{
@@ -1292,169 +1197,128 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FString_Conversion((int32)FAng
 
 		{
 			FString Decl = FString::Printf(TEXT("FString opAdd(const %s Value) const"), *QualifiedType);
-			FString_.Method(Decl, [](FString& Str, asCScriptFunction* ScriptFunction, void* Value) -> FString
-			{
-				FString OutValue = Str;
-
-				auto Func = (FToStringHelper::FToStringFunction)ScriptFunction->userData;
-				Func(Value, OutValue);
-
-				return OutValue;
-			}, (void*)ToString.ToString);
-			FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+			FString_.Method(Decl, &FAngelscriptFStringBinds::AddConverted, (void*)ToString.ToString)
+				.PassScriptFunctionAsFirstParam();
 		}
 
 		{
 			FString Decl = FString::Printf(TEXT("FString& opAddAssign(const %s Value)"), *QualifiedType);
-			FString_.Method(Decl, [](FString& Str, asCScriptFunction* ScriptFunction, void* Value) -> FString&
-			{
-				auto Func = (FToStringHelper::FToStringFunction)ScriptFunction->userData;
-				Func(Value, Str);
-				return Str;
-			}, (void*)ToString.ToString);
-			FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+			FString_.Method(Decl, &FAngelscriptFStringBinds::AddAssignConverted, (void*)ToString.ToString)
+				.PassScriptFunctionAsFirstParam();
 		}
 
 		{
 			FString Decl = FString::Printf(TEXT("FString& Append(const %s Value) accept_temporary_this"), *QualifiedType);
-			FString_.Method(Decl, [](FString& Str, asCScriptFunction* ScriptFunction, void* Value) -> FString&
-			{
-				auto Func = (FToStringHelper::FToStringFunction)ScriptFunction->userData;
-				Func(Value, Str);
-				return Str;
-			}, (void*)ToString.ToString);
-			FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+			FString_.Method(Decl, &FAngelscriptFStringBinds::AppendConverted, (void*)ToString.ToString)
+				.PassScriptFunctionAsFirstParam();
 		}
 
-		auto* Type = FAngelscriptEngine::Get().Engine->GetTypeInfoByName(TCHAR_TO_ANSI(*ObjectType));
+		auto* Type = Binds.GetTargetScriptEngine().GetTypeInfoByName(TCHAR_TO_ANSI(*ObjectType));
 		if (Type != nullptr)
 		{
-			// Only the engine-owned ToStringList may cache a per-engine
-			// `asITypeInfo*`. The fallback list stays metadata-only so it can
-			// never expose an Engine A pointer to Engine B's bind path.
-			if (bIsEngineOwnedList)
-			{
-				ToString.TypeInfo = Type;
-			}
-			FAngelscriptBinds::BindMethodDirect(Type->GetName(), "FString ToString() const",
-				asFUNCTION(Type_ToString), asCALL_CDECL_OBJFIRST,
-				ASAutoCaller::MakeFunctionCaller(Type_ToString), (void*)ToString.ToString);
-			FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+			ToString.TypeInfo = Type;
+			auto BoundType = Binds.ExistingClassForTarget(Type->GetName());
+			BoundType.Method("FString ToString() const", &FAngelscriptFStringBinds::TypeToString, (void*)ToString.ToString)
+				.PassScriptFunctionAsFirstParam();
 		}
 
 		if (ToString.bImplicitConversion)
 		{
 			FString Decl = FString::Printf(TEXT("void f(const %s Value)"), *QualifiedType);
-			FString_.Constructor(Decl, [](FString* Str, asCScriptFunction* ScriptFunction, void* Value)
-			{
-				new(Str) FString();
-				auto Func = (FToStringHelper::FToStringFunction)ScriptFunction->userData;
-				Func(Value, *Str);
-			}, (void*)ToString.ToString);
-			FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+			FString_.Constructor(Decl, &FAngelscriptFStringBinds::ConstructConverted, (void*)ToString.ToString)
+				.PassScriptFunctionAsFirstParam();
 		}
 	}
 
 	// Static conversion
 	{
-		FAngelscriptBinds::FNamespace ns("FString");
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FString");
 
-		FAngelscriptBinds::BindGlobalFunction("FString Join(const TArray<FString>& StringArray, const FString& Separator) no_discard",
-		[](const TArray<FString>& StringArray, const FString& Separator) {
-			return FString::Join(StringArray, *Separator);
-		});
+		Binds.BindGlobalFunctionForTarget(
+			"FString Join(const TArray<FString>& StringArray, const FString& Separator) no_discard",
+			&FAngelscriptFStringBinds::Join);
+		Binds.BindGlobalFunctionForTarget("FString FromInt(int32 Num) no_discard", &FAngelscriptFStringBinds::FromInt);
+		Binds.BindGlobalFunctionForTarget(
+			"FString SanitizeFloat(float64 InFloat, int32 InMinFractionalDigits = 1) no_discard",
+			&FAngelscriptFStringBinds::SanitizeFloat);
+		Binds.BindGlobalFunctionForTarget(
+			"FString FormatAsNumber(int32 InNumber) no_discard",
+			&FAngelscriptFStringBinds::FormatAsNumber);
+		Binds.BindGlobalFunctionForTarget("FString Chr(int16 Ch) no_discard", &FAngelscriptFStringBinds::Chr);
+		Binds.BindGlobalFunctionForTarget(
+			"FString ChrN(int32 NumCharacters, int16 Char) no_discard",
+			&FAngelscriptFStringBinds::ChrN);
 
-		FAngelscriptBinds::BindGlobalFunction("FString FromInt(int32 Num) no_discard",
-		[](int32 Num) { return FString::FromInt(Num); });
-
-		FAngelscriptBinds::BindGlobalFunction("FString SanitizeFloat(float64 InFloat, int32 InMinFractionalDigits = 1) no_discard",
-		[](double InFloat, int32 InMinFractionalDigits) { return FString::SanitizeFloat(InFloat, InMinFractionalDigits); });
-
-		FAngelscriptBinds::BindGlobalFunction("FString FormatAsNumber(int32 InNumber) no_discard",
-		[](int32 InNumber) { return FString::FormatAsNumber(InNumber); });
-
-		FAngelscriptBinds::BindGlobalFunction("FString Chr(int16 Ch) no_discard",
-		[](TCHAR Ch) { return FString::Chr(Ch); });
-
-		FAngelscriptBinds::BindGlobalFunction("FString ChrN(int32 NumCharacters, int16 Char) no_discard",
-		[](int32 NumCharacters, TCHAR Char) { return FString::ChrN(NumCharacters, Char); });
-
-		FAngelscriptBinds::BindGlobalGenericFunction("FString Format(const FString& Format, const ?& Arg0) no_discard", &Generic_FormatString);
-		FAngelscriptBinds::BindGlobalGenericFunction("FString Format(const FString& Format, const ?& Arg0, const ?& Arg1) no_discard", &Generic_FormatString);
-		FAngelscriptBinds::BindGlobalGenericFunction("FString Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2) no_discard", &Generic_FormatString);
-		FAngelscriptBinds::BindGlobalGenericFunction("FString Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2, const ?& Arg3) no_discard", &Generic_FormatString);
-		FAngelscriptBinds::BindGlobalGenericFunction("FString Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2, const ?& Arg3, const ?& Arg4) no_discard", &Generic_FormatString);
+		Binds.BindGlobalGenericFunctionForTarget(
+			"FString Format(const FString& Format, const ?& Arg0) no_discard",
+			&FAngelscriptFStringBinds::Format);
+		Binds.BindGlobalGenericFunctionForTarget(
+			"FString Format(const FString& Format, const ?& Arg0, const ?& Arg1) no_discard",
+			&FAngelscriptFStringBinds::Format);
+		Binds.BindGlobalGenericFunctionForTarget(
+			"FString Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2) no_discard",
+			&FAngelscriptFStringBinds::Format);
+		Binds.BindGlobalGenericFunctionForTarget(
+			"FString Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2, const ?& Arg3) no_discard",
+			&FAngelscriptFStringBinds::Format);
+		Binds.BindGlobalGenericFunctionForTarget(
+			"FString Format(const FString& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2, const ?& Arg3, const ?& Arg4) no_discard",
+			&FAngelscriptFStringBinds::Format);
 
 		// Format specifiers
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(int32 Value, const FString& Specifier)", &ApplyFormatInteger<int32, false, uint32>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(uint32 Value, const FString& Specifier)", &ApplyFormatInteger<uint32, true, uint32>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(int64 Value, const FString& Specifier)", &ApplyFormatInteger<int64, false, uint64>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(uint64 Value, const FString& Specifier)", &ApplyFormatInteger<uint64, true, uint64>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(int16 Value, const FString& Specifier)", &ApplyFormatInteger<int16, false, uint16>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(uint16 Value, const FString& Specifier)", &ApplyFormatInteger<uint16, true, uint16>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(int8 Value, const FString& Specifier)", &ApplyFormatInteger<int8, false, uint8>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(uint8 Value, const FString& Specifier)", &ApplyFormatInteger<uint8, true, uint8>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(bool Value, const FString& Specifier)", &ApplyFormatBool);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(float32 Value, const FString& Specifier)", &ApplyFormatFloat<float>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(float64 Value, const FString& Specifier)", &ApplyFormatFloat<double>);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(const FString& Value, const FString& Specifier)", &ApplyFormatString);
-		FAngelscriptBinds::BindGlobalFunction("FString ApplyFormat(const ?& Value, const FString& Specifier)", &ApplyFormat);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(int32 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatInt32);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(uint32 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatUInt32);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(int64 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatInt64);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(uint64 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatUInt64);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(int16 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatInt16);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(uint16 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatUInt16);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(int8 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatInt8);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(uint8 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatUInt8);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(bool Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatBool);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(float32 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatFloat);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(float64 Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatDouble);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(const FString& Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatString);
+		Binds.BindGlobalFunctionForTarget("FString ApplyFormat(const ?& Value, const FString& Specifier)", &FAngelscriptFStringBinds::ApplyFormatValue);
 	}
 
-	FString_.Method("FString opAdd(const ?& Value) const",
-	[](const FString& Str, void* ValuePtr, int TypeId) -> FString
-	{
-		FString NewStr = Str;
-		FToStringHelper::Generic_AppendToString(NewStr, ValuePtr, TypeId);
-		return NewStr;
-	});
-
-	FString_.Method("FString& opAddAssign(const ?& Value)",
-	[](FString& Str, void* ValuePtr, int TypeId) -> FString&
-	{
-		FToStringHelper::Generic_AppendToString(Str, ValuePtr, TypeId);
-		return Str;
-	});
-
-	FString_.Method("FString& Append(const ?& Value) accept_temporary_this",
-	[](FString& Str, void* ValuePtr, int TypeId) -> FString&
-	{
-		FToStringHelper::Generic_AppendToString(Str, ValuePtr, TypeId);
-		return Str;
-	});
+	FString_.Method("FString opAdd(const ?& Value) const", &FAngelscriptFStringBinds::AddValue);
+	FString_.Method("FString& opAddAssign(const ?& Value)", &FAngelscriptFStringBinds::AddAssignValue);
+	FString_.Method(
+		"FString& Append(const ?& Value) accept_temporary_this",
+		&FAngelscriptFStringBinds::AppendValue);
 
 	// Array parsing
-	FString_.Method("int ParseIntoArray(TArray<FString>& OutArray, const FString& Delimiter, bool bCullEmpty = true) const",
-	[](const FString& Str, TArray<FString>& OutArray, const FString& Delimiter, bool bCullEmpty) -> int
-	{
-		return Str.ParseIntoArray(OutArray, *Delimiter, bCullEmpty);
-	});
+	FString_.Method(
+		"int ParseIntoArray(TArray<FString>& OutArray, const FString& Delimiter, bool bCullEmpty = true) const",
+		&FAngelscriptFStringBinds::ParseIntoArray);
+	FString_.Method(
+		"int ParseIntoArray(TArray<FString>& OutArray, const TArray<FString>& Delimiters, bool bCullEmpty = true) const",
+		&FAngelscriptFStringBinds::ParseIntoArrayMulti);
+	FString_.Method(
+		"int ParseIntoArrayLines(TArray<FString>& OutArray, bool bCullEmpty = true) const",
+		&FAngelscriptFStringBinds::ParseIntoArrayLines);
+	FString_.Method(
+		"int ParseIntoArrayWS(TArray<FString>& OutArray, bool bCullEmpty = true) const",
+		&FAngelscriptFStringBinds::ParseIntoArrayWhitespace);
+}
 
-	FString_.Method("int ParseIntoArray(TArray<FString>& OutArray, const TArray<FString>& Delimiters, bool bCullEmpty = true) const",
-	[](const FString& Str, TArray<FString>& OutArray, const TArray<FString>& Delimiters, bool bCullEmpty) -> int
-	{
-		if (Delimiters.Num() > 16)
-		{
-			FAngelscriptEngine::Throw("More than 16 delimiters is not supported by ParseIntoArray.");
-			return 0;
-		}
+static void BindFStringManualBindings(FAngelscriptBinds& Binds)
+{
+	BindFStringCore(Binds);
+	BindFStringConversion(Binds);
+}
 
-		const TCHAR* DelimList[16];
-		for (int32 i = 0, Count = Delimiters.Num(); i < Count; ++i)
-			DelimList[i] = *Delimiters[i];
+AS_FORCE_LINK const FAngelscriptBind Bind_FString_TypeDeclarations(
+	TEXT("FString.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFStringTypeDeclarations);
 
-		return Str.ParseIntoArray(OutArray, DelimList, Delimiters.Num(), bCullEmpty);
-	});
+AS_FORCE_LINK const FAngelscriptBind Bind_FString_TypeInfrastructure(
+	TEXT("FString.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFStringInfrastructure);
 
-	FString_.Method("int ParseIntoArrayLines(TArray<FString>& OutArray, bool bCullEmpty = true) const",
-	[](const FString& Str, TArray<FString>& OutArray, bool bCullEmpty) -> int
-	{
-		return Str.ParseIntoArrayLines(OutArray, bCullEmpty);
-	});
-
-	FString_.Method("int ParseIntoArrayWS(TArray<FString>& OutArray, bool bCullEmpty = true) const",
-	[](const FString& Str, TArray<FString>& OutArray, bool bCullEmpty) -> int
-	{
-		return Str.ParseIntoArrayWS(OutArray, nullptr, bCullEmpty);
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_FString_ManualBindings(
+	TEXT("FString.ManualBindings"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFStringManualBindings);

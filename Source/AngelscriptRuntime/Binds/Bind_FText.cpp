@@ -1,20 +1,12 @@
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
-#include "AngelscriptDocs.h"
 
-#include "Containers/UnrealString.h"
-#include "UObject/TextProperty.h"
-
+#include "Bind_FText_Functions.h"
 #include "Helper_CppType.h"
 #include "Helper_GetTypeInfo.h"
 #include "Helper_ToString.h"
 
-#include "StartAngelscriptHeaders.h"
-//#include "as_objecttype.h"
-//#include "as_scriptengine.h"
-#include "source/as_objecttype.h"
-#include "source/as_scriptengine.h"
-#include "EndAngelscriptHeaders.h"
+#include "UObject/TextProperty.h"
 
 struct FTextType : TAngelscriptCppPropertyType<FTextProperty>
 {
@@ -23,7 +15,7 @@ struct FTextType : TAngelscriptCppPropertyType<FTextProperty>
 		return TEXT("FText");
 	}
 
-	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, struct FDebuggerValue& Value) const override
+	bool GetDebuggerValue(const FAngelscriptTypeUsage& Usage, void* Address, FDebuggerValue& Value) const override
 	{
 		FText& NativeValue = Usage.ResolvePrimitive<FText>(Address);
 
@@ -31,7 +23,6 @@ struct FTextType : TAngelscriptCppPropertyType<FTextProperty>
 		Value.Usage = Usage;
 		Value.Address = Address;
 		Value.Value = TEXT("FText: \"") + NativeValue.ToString() + TEXT("\"");
-
 		return true;
 	}
 
@@ -48,218 +39,110 @@ struct FTextType : TAngelscriptCppPropertyType<FTextProperty>
 
 	bool IsValueEqual(const FAngelscriptTypeUsage& Usage, void* SourcePtr, void* DestinationPtr) const override
 	{
-		// We use the 'is it the same locale string' compare here, instead of
-		// the lexical compare, because properties of this type should not be
-		// considered equal for reload purposes if they are the same string but
-		// point to different locale entries.
-		return (*(FText*)SourcePtr).IdenticalTo(*(FText*)DestinationPtr);
+		return static_cast<FText*>(SourcePtr)->IdenticalTo(*static_cast<FText*>(DestinationPtr));
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FText(FAngelscriptBinds::EOrder::Early, []
+namespace
 {
-	auto ETextIdenticalModeFlags_ = FAngelscriptBinds::Enum("ETextIdenticalModeFlags");
-	ETextIdenticalModeFlags_["None"]  = ETextIdenticalModeFlags::None;
-	ETextIdenticalModeFlags_["DeepCompare"] = ETextIdenticalModeFlags::DeepCompare;
-	ETextIdenticalModeFlags_["LexicalCompareInvariants"] = ETextIdenticalModeFlags::LexicalCompareInvariants;
-
-	auto EDateTimeStyle_ = FAngelscriptBinds::Enum("EDateTimeStyle");
-	EDateTimeStyle_["Default"] = EDateTimeStyle::Default;
-	EDateTimeStyle_["Short"] = EDateTimeStyle::Short;
-	EDateTimeStyle_["Medium"] = EDateTimeStyle::Medium;
-	EDateTimeStyle_["Long"] = EDateTimeStyle::Long;
-	EDateTimeStyle_["Full"] = EDateTimeStyle::Full;
-
-	// Register text type
-	auto FText_ = FAngelscriptBinds::ValueClass<FText>("FText", FBindFlags());
-	FAngelscriptType::Register(MakeShared<FTextType>());
-
-	TGetStaticTypeInfo<FText>::SetForEngine(FAngelscriptEngine::Get().GetScriptEngine(), FText_.GetTypeInfo());
-
-	FText_.Constructor("void f()", [](FText* Address)
+	void BindFTextType(FAngelscriptBinds& Binds)
 	{
-		new(Address) FText();
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FText_, "FText");
+		auto IdenticalMode = Binds.EnumForTarget("ETextIdenticalModeFlags");
+		IdenticalMode["None"] = ETextIdenticalModeFlags::None;
+		IdenticalMode["DeepCompare"] = ETextIdenticalModeFlags::DeepCompare;
+		IdenticalMode["LexicalCompareInvariants"] = ETextIdenticalModeFlags::LexicalCompareInvariants;
 
-	FText_.Constructor("void f(const FText& Other)", [](FText* Address, const FText& Other)
-	{
-		new(Address) FText(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FText_, "FText");
+		auto DateTimeStyle = Binds.EnumForTarget("EDateTimeStyle");
+		DateTimeStyle["Default"] = EDateTimeStyle::Default;
+		DateTimeStyle["Short"] = EDateTimeStyle::Short;
+		DateTimeStyle["Medium"] = EDateTimeStyle::Medium;
+		DateTimeStyle["Long"] = EDateTimeStyle::Long;
+		DateTimeStyle["Full"] = EDateTimeStyle::Full;
 
-	FText_.Destructor("void f()", [](FText& Str)
-	{
-		Str.~FText();
-	});
-	SCRIPT_TRIVIAL_NATIVE_DESTRUCTOR(FText_, "FText");
-
-	FText_.Method("bool IsEmpty() const", METHOD_TRIVIAL(FText, IsEmpty));
-	FText_.Method("bool IsEmptyOrWhitespace() const", METHOD_TRIVIAL(FText, IsEmptyOrWhitespace));
-	FText_.Method("bool IsTransient() const", METHOD_TRIVIAL(FText, IsTransient));
-	FText_.Method("bool IsCultureInvariant() const", METHOD_TRIVIAL(FText, IsCultureInvariant));
-	FText_.Method("bool IsInitializedFromString() const", METHOD_TRIVIAL(FText, IsInitializedFromString));
-	FText_.Method("bool IsFromStringTable() const", METHOD_TRIVIAL(FText, IsFromStringTable));
-	FText_.Method("bool IdenticalTo( const FText& Other, const ETextIdenticalModeFlags CompareModeFlags = ETextIdenticalModeFlags::None ) const", METHOD_TRIVIAL(FText, IdenticalTo));
-
-	FText_.Method("FText& opAssign(const FText& Other)", METHODPR_TRIVIAL(FText&, FText, operator=, (const FText&)));
-
-	FToStringHelper::Register(TEXT("FText"), [](void* Ptr, FString& Str)
-	{
-		Str += ((FText*)Ptr)->ToString();
-	});
-});
-
-template <typename InternalType, typename ExternalType>
-FORCEINLINE static bool AddPrimitiveFormatOrderedArgument(FFormatOrderedArguments& OutFormatOrderedArguments, const void* Ptr)
-{
-	const InternalType Value = *reinterpret_cast<const ExternalType*>(Ptr);
-	OutFormatOrderedArguments.Emplace(FFormatArgumentValue(Value));
-	return true;
-}
-
-static bool AddFormatOrderedArgument(FFormatOrderedArguments& OutFormatOrderedArguments, const void* Ptr, int TypeId)
-{
-	// primitive types
-	switch (TypeId & asTYPEID_MASK_SEQNBR)
-	{
-	case asTYPEID_INT8:		return AddPrimitiveFormatOrderedArgument<int32, int8>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_INT16:	return AddPrimitiveFormatOrderedArgument<int32, int16>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_INT32:	return AddPrimitiveFormatOrderedArgument<int32, int32>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_INT64:	return AddPrimitiveFormatOrderedArgument<int64, int64>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_UINT8:	return AddPrimitiveFormatOrderedArgument<uint32, uint8>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_UINT16:	return AddPrimitiveFormatOrderedArgument<uint32, uint16>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_UINT32:	return AddPrimitiveFormatOrderedArgument<uint32, uint32>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_UINT64:	return AddPrimitiveFormatOrderedArgument<uint64, uint64>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_FLOAT32:	return AddPrimitiveFormatOrderedArgument<float, float>(OutFormatOrderedArguments, Ptr);
-	case asTYPEID_FLOAT64:	return AddPrimitiveFormatOrderedArgument<double, double>(OutFormatOrderedArguments, Ptr);
+		Binds.ValueClassForTarget<FText>("FText", FBindFlags());
 	}
 
-	// custom types
-	asITypeInfo* TypeInfo = FAngelscriptEngine::Get().Engine->GetTypeInfoById(TypeId);
-	if (ensure(TypeInfo != nullptr))
+	void BindFTextInfrastructure(FAngelscriptBinds& Binds)
 	{
-		// enum
-		if ((TypeInfo->GetFlags() & asOBJ_ENUM) != 0)
+		Binds.RegisterTypeForTarget(MakeShared<FTextType>());
+		auto Text = Binds.ExistingClassForTarget("FText");
+		TGetStaticTypeInfo<FText>::SetForEngine(Binds.GetTargetEngine().GetScriptEngine(), Text.GetTypeInfo());
+		FToStringHelper::Register(Binds, TEXT("FText"), &FAngelscriptFTextBinds::AppendToString);
+	}
+
+	void BindFTextFunctions(FAngelscriptBinds& Binds)
+	{
+		auto Text = Binds.ExistingClassForTarget("FText");
+		Text.Constructor("void f()", &FAngelscriptFTextBinds::ConstructDefault, "FText", true).NoDiscard();
+		Text.Constructor("void f(const FText& Other)", &FAngelscriptFTextBinds::ConstructCopy, "FText", true).NoDiscard();
+		Text.Destructor("void f()", &FAngelscriptFTextBinds::Destroy).NativeDestructor("FText", true);
+
+		Text.Method("bool IsEmpty() const", METHOD_TRIVIAL(FText, IsEmpty));
+		Text.Method("bool IsEmptyOrWhitespace() const", METHOD_TRIVIAL(FText, IsEmptyOrWhitespace));
+		Text.Method("bool IsTransient() const", METHOD_TRIVIAL(FText, IsTransient));
+		Text.Method("bool IsCultureInvariant() const", METHOD_TRIVIAL(FText, IsCultureInvariant));
+		Text.Method("bool IsInitializedFromString() const", METHOD_TRIVIAL(FText, IsInitializedFromString));
+		Text.Method("bool IsFromStringTable() const", METHOD_TRIVIAL(FText, IsFromStringTable));
+		Text.Method("bool IdenticalTo( const FText& Other, const ETextIdenticalModeFlags CompareModeFlags = ETextIdenticalModeFlags::None ) const", METHOD_TRIVIAL(FText, IdenticalTo));
+		Text.Method("FText& opAssign(const FText& Other)", METHODPR_TRIVIAL(FText&, FText, operator=, (const FText&)));
+
 		{
-			const uint32 Value = *reinterpret_cast<const uint8*>(Ptr);
-			OutFormatOrderedArguments.Emplace(FFormatArgumentValue(Value));
-			return true;
+			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FText");
+			Binds.BindGlobalFunctionForTarget("FText FromStringTable(const FName InTableId, const FString& InKey, const EStringTableLoadingPolicy InLoadingPolicy = EStringTableLoadingPolicy::FindOrLoad) no_discard", FUNC_TRIVIAL(FText::FromStringTable));
+			Binds.BindGlobalFunctionForTarget("FText FromName(const FName& Val) no_discard", FUNC_TRIVIAL(FText::FromName));
+			Binds.BindGlobalFunctionForTarget("FText FromString(const FString& Val) no_discard", FUNCPR_TRIVIAL(FText, FText::FromString, (const FString&)));
+			Binds.BindGlobalFunctionForTarget("FText AsCultureInvariant(const FString& Val) no_discard", &FAngelscriptFTextBinds::AsCultureInvariant);
+			Binds.BindGlobalFunctionForTarget("FText Join(const FText& Delimiter, const TArray<FFormatArgumentValue>& Args) no_discard", FUNCPR_TRIVIAL(FText, FText::Join, (const FText&, const TArray<FFormatArgumentValue>&)));
+			Binds.BindGlobalFunctionForTarget("FText Join(const FText& Delimiter, const TArray<FText>& Args) no_discard", FUNCPR_TRIVIAL(FText, FText::Join, (const FText&, const TArray<FText>&)));
+
+			Binds.BindGlobalFunctionForTarget("FText AsDate(const FDateTime& DateTime, const EDateTimeStyle::Type DateStyle = EDateTimeStyle::Default) no_discard", &FAngelscriptFTextBinds::AsDate);
+			Binds.BindGlobalFunctionForTarget("FText AsDateTime(const FDateTime& DateTime, const EDateTimeStyle::Type DateStyle = EDateTimeStyle::Default, const EDateTimeStyle::Type TimeStyle = EDateTimeStyle::Default) no_discard", &FAngelscriptFTextBinds::AsDateTime);
+			Binds.BindGlobalFunctionForTarget("FText AsTime(const FDateTime& DateTime, const EDateTimeStyle::Type TimeStyle = EDateTimeStyle::Default) no_discard", &FAngelscriptFTextBinds::AsTime);
+			Binds.BindGlobalFunctionForTarget("FText AsTimespan(const FTimespan& Timespan) no_discard", &FAngelscriptFTextBinds::AsTimespan);
+
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(float32 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<float>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(float64 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<double>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(int8 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<int8>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(int16 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<int16>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(int32 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<int32>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(int64 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<int64>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(uint8 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<uint8>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(uint16 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<uint16>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(uint32 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<uint32>);
+			Binds.BindGlobalFunctionForTarget("FText AsNumber(uint64 Val, const FNumberFormattingOptions& Options) no_discard", &FAngelscriptFTextBinds::AsNumber<uint64>);
+			Binds.BindGlobalFunctionForTarget("FText AsMemory(uint64 NumBytes) no_discard", &FAngelscriptFTextBinds::AsMemory);
+
+			Binds.BindGlobalGenericFunctionForTarget("FText Format(const FText& Format, const ?& Arg0) no_discard", &FAngelscriptFTextBinds::GenericTextFormat);
+			Binds.BindGlobalGenericFunctionForTarget("FText Format(const FText& Format, const ?& Arg0, const ?& Arg1) no_discard", &FAngelscriptFTextBinds::GenericTextFormat);
+			Binds.BindGlobalGenericFunctionForTarget("FText Format(const FText& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2) no_discard", &FAngelscriptFTextBinds::GenericTextFormat);
+			Binds.BindGlobalGenericFunctionForTarget("FText Format(const FText& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2, const ?& Arg3) no_discard", &FAngelscriptFTextBinds::GenericTextFormat);
+			Binds.BindGlobalGenericFunctionForTarget("FText Format(const FText& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2, const ?& Arg3, const ?& Arg4) no_discard", &FAngelscriptFTextBinds::GenericTextFormat);
+			Binds.BindGlobalFunctionForTarget("FText Format(const FText& Format, const TMap<FString, FFormatArgumentValue>& Arguments) no_discard", &FAngelscriptFTextBinds::NamedTextFormat);
+			Binds.BindGlobalFunctionForTarget("FText Format(const FText& Format, const TArray<FFormatArgumentValue>& Arguments) no_discard", &FAngelscriptFTextBinds::OrderedTextFormat);
+			Binds.BindGlobalFunctionForTarget("void GetFormatPatternParameters(const FText& Fmt, TArray<FString>&out ParameterNames)", &FAngelscriptFTextBinds::GetFormatPatternParameters);
 		}
 
-		// ftext
-		if (TGetStaticTypeInfo<FText>::IsForEngine(FAngelscriptEngine::Get().GetScriptEngine(), TypeInfo))
-		{
-			const FText& Value = *reinterpret_cast<const FText*>(Ptr);
-			OutFormatOrderedArguments.Emplace(FFormatArgumentValue(Value));
-			return true;
-		}
-
-		const FString Message = FString::Printf(TEXT("Invalid argument type passed to FText::Format: %s"), ANSI_TO_TCHAR(TypeInfo->GetName()));
-		FAngelscriptEngine::Throw(TCHAR_TO_ANSI(*Message));
-		return false;
+		Binds.BindGlobalFunctionForTarget(
+			"FText NSLOCTEXT(const FString& Namespace, const FString& Key, const FString& Text) no_discard",
+			&FAngelscriptFTextBinds::MakeLocalizableText)
+			.Documentation(TEXT(
+				"Function for using localization texts in Angelscript. Emulates NSLOCTEXT macro.\n"
+				"Only string literals can be used as input arguments from Angelscript.\n"
+				"Using variables (like FString) will run but will cause errors when strings are gathered for localization."));
 	}
-
-	FAngelscriptEngine::Throw("Invalid argument type passed to FText::Format");
-	return false;
 }
 
-static void Generic_TextFormat(asIScriptGeneric* Generic)
-{
-	const FText& Format = *reinterpret_cast<FText*>(Generic->GetArgAddress(0));
+AS_FORCE_LINK const FAngelscriptBind Bind_FText_Type(
+	TEXT("FText.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFTextType);
 
-	bool bSuccess = true;
-	FFormatOrderedArguments FormatOrderedArguments;
-	for (int i = 1; bSuccess && i < Generic->GetArgCount(); ++i)
-	{
-		bSuccess &= AddFormatOrderedArgument(FormatOrderedArguments, Generic->GetArgAddress(i), Generic->GetArgTypeId(i));
-	}
+AS_FORCE_LINK const FAngelscriptBind Bind_FText_Infrastructure(
+	TEXT("FText.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFTextInfrastructure);
 
-	const FText OutText = bSuccess ? FText::Format(Format, FormatOrderedArguments) : FText();
-	new (Generic->GetAddressOfReturnLocation()) FText(OutText);
-}
-
-static FText Named_TextFormat(const FText& Format, const TMap<FString, FFormatArgumentValue>& Arguments)
-{
-	FFormatNamedArguments FormatArguments;
-	FormatArguments.Reserve(Arguments.Num());
-	for (auto& Argument : Arguments)
-	{
-		FormatArguments.Add(Argument.Key, Argument.Value);
-	}
-	return FText::Format(Format, FormatArguments);
-}
-
-template<typename Type>
-static FText AsNumber_TextFormat(Type Val, const FNumberFormattingOptions& Options)
-{
-	return FText::AsNumber(Val, &Options);
-}
-
-static FText Ordered_TextFormat(const FText& Format, const TArray<FFormatArgumentValue>& Arguments)
-{
-	return FText::Format(Format, Arguments);
-}
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FText_Operations(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FText_ = FAngelscriptBinds::ExistingClass("FText");
-
-	{
-		FAngelscriptBinds::FNamespace ns("FText");
-		FAngelscriptBinds::BindGlobalFunction("FText FromStringTable(const FName InTableId, const FString& InKey, const EStringTableLoadingPolicy InLoadingPolicy = EStringTableLoadingPolicy::FindOrLoad) no_discard", FUNC_TRIVIAL(FText::FromStringTable));
-		FAngelscriptBinds::BindGlobalFunction("FText FromName(const FName& Val) no_discard", FUNC_TRIVIAL(FText::FromName));
-		FAngelscriptBinds::BindGlobalFunction("FText FromString(const FString& Val) no_discard", FUNCPR_TRIVIAL(FText, FText::FromString, (const FString&)));
-		FAngelscriptBinds::BindGlobalFunction("FText AsCultureInvariant(const FString& Val) no_discard", [](const FString& Val) -> FText { return FText::AsCultureInvariant(Val); });
-		FAngelscriptBinds::BindGlobalFunction("FText Join(const FText& Delimiter, const TArray<FFormatArgumentValue>& Args) no_discard", FUNCPR_TRIVIAL(FText, FText::Join, (const FText&, const TArray<FFormatArgumentValue>&)));
-		FAngelscriptBinds::BindGlobalFunction("FText Join(const FText& Delimiter, const TArray<FText>& Args) no_discard", FUNCPR_TRIVIAL(FText, FText::Join, (const FText&, const TArray<FText>&)));
-
-		FAngelscriptBinds::BindGlobalFunction("FText AsDate(const FDateTime& DateTime, const EDateTimeStyle::Type DateStyle = EDateTimeStyle::Default) no_discard",
-			[](const FDateTime& DateTime, const EDateTimeStyle::Type DateStyle) -> FText { return FText::AsDate(DateTime, DateStyle); });
-		FAngelscriptBinds::BindGlobalFunction("FText AsDateTime(const FDateTime& DateTime, const EDateTimeStyle::Type DateStyle = EDateTimeStyle::Default, const EDateTimeStyle::Type TimeStyle = EDateTimeStyle::Default) no_discard",
-			[](const FDateTime& DateTime, const EDateTimeStyle::Type DateStyle, const EDateTimeStyle::Type TimeStyle) -> FText { return FText::AsDateTime(DateTime, DateStyle, TimeStyle); });
-		FAngelscriptBinds::BindGlobalFunction("FText AsTime(const FDateTime& DateTime, const EDateTimeStyle::Type TimeStyle = EDateTimeStyle::Default) no_discard",
-			[](const FDateTime& DateTime, const EDateTimeStyle::Type TimeStyle) -> FText { return FText::AsTime(DateTime, TimeStyle); });
-		FAngelscriptBinds::BindGlobalFunction("FText AsTimespan(const FTimespan& Timespan) no_discard",
-			[](const FTimespan& Timespan) -> FText { return FText::AsTimespan(Timespan); });
-
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(float32 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<float>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(float64 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<double>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(int8 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<int8>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(int16 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<int16>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(int32 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<int32>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(int64 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<int64>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(uint8 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<uint8>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(uint16 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<uint16>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(uint32 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<uint32>);
-		FAngelscriptBinds::BindGlobalFunction("FText AsNumber(uint64 Val, const FNumberFormattingOptions& Options) no_discard", &AsNumber_TextFormat<uint64>);
-		
-		FAngelscriptBinds::BindGlobalFunction("FText AsMemory(uint64 NumBytes) no_discard",
-			[](uint64 NumBytes) -> FText { return FText::AsMemory(NumBytes); });
-
-		FAngelscriptBinds::BindGlobalGenericFunction("FText Format(const FText& Format, const ?& Arg0) no_discard", &Generic_TextFormat);
-		FAngelscriptBinds::BindGlobalGenericFunction("FText Format(const FText& Format, const ?& Arg0, const ?& Arg1) no_discard", &Generic_TextFormat);
-		FAngelscriptBinds::BindGlobalGenericFunction("FText Format(const FText& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2) no_discard", &Generic_TextFormat);
-		FAngelscriptBinds::BindGlobalGenericFunction("FText Format(const FText& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2, const ?& Arg3) no_discard", &Generic_TextFormat);
-		FAngelscriptBinds::BindGlobalGenericFunction("FText Format(const FText& Format, const ?& Arg0, const ?& Arg1, const ?& Arg2, const ?& Arg3, const ?& Arg4) no_discard", &Generic_TextFormat);
-		FAngelscriptBinds::BindGlobalFunction("FText Format(const FText& Format, const TMap<FString, FFormatArgumentValue>& Arguments) no_discard", &Named_TextFormat);
-		FAngelscriptBinds::BindGlobalFunction("FText Format(const FText& Format, const TArray<FFormatArgumentValue>& Arguments) no_discard", &Ordered_TextFormat);
-
-		FAngelscriptBinds::BindGlobalFunction("void GetFormatPatternParameters(const FText& Fmt, TArray<FString>&out ParameterNames)",
-			[](const FText& Fmt, TArray<FString>& ParameterNames) -> void { FText::GetFormatPatternParameters(Fmt, ParameterNames); });
-	}
-
-	FAngelscriptBinds::BindGlobalFunction("FText NSLOCTEXT(const FString& Namespace, const FString& Key, const FString& Text) no_discard",
-	[](const FString& Namespace, const FString& Key, const FString& Text) -> FText
-	{
-		// Call the internal function directly here so we don't gather this line for localization
-		return FText::AsLocalizable_Advanced(*Namespace, *Key, Text);
-	});
-	SCRIPT_BIND_DOCUMENTATION(
-	 "Function for using localization texts in Angelscript. Emulates NSLOCTEXT macro.\n"
-	 "Only string literals can be used as input arguments from Angelscript.\n"
-	 "Using variables (like FString) will run but will cause errors when strings are gathered for localization.")
-
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_FText(
+	TEXT("FText.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFTextFunctions);

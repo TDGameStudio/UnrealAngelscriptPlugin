@@ -4,8 +4,9 @@
 
 #if AS_CAN_GENERATE_JIT
 
-struct FAngelscriptBinds;
+struct FAngelscriptEngine;
 struct FNativeFunctionContext;
+class UFunction;
 
 struct FNativeFunctionCall
 {
@@ -22,6 +23,44 @@ enum class EScriptFunctionCallMethod : uint8
 	PointerCall,
 };
 
+#if WITH_DEV_AUTOMATION_TESTS
+enum class EAngelscriptNativeFormKind : uint8
+{
+	Unknown,
+	Constructor,
+	Destructor,
+	Assignment,
+	UObjectCast,
+	Method,
+	Function,
+	FunctionHeader,
+	UFunction,
+	TArrayIndex,
+	TArrayIteratorCreate,
+	TArrayIteratorProceed,
+	TemplateInstantiatedCall,
+	DelegateExecute,
+	MulticastExecute,
+	EventFunctionExecute,
+	PushArgument,
+	PushArgumentRef,
+};
+
+struct ANGELSCRIPTRUNTIME_API FAngelscriptNativeFormDebugInfo
+{
+	EAngelscriptNativeFormKind Kind = EAngelscriptNativeFormKind::Unknown;
+	FString Name;
+	FString CustomForm;
+	FString TargetType;
+	FString Header;
+	const UFunction* UnrealFunction = nullptr;
+	bool bTrivial = false;
+	bool bGuaranteed = false;
+	bool bNeedsCompare = false;
+	bool bNeedsCopy = false;
+};
+#endif
+
 struct ANGELSCRIPTRUNTIME_API FScriptFunctionNativeForm
 {
 	virtual ~FScriptFunctionNativeForm() {}
@@ -36,87 +75,42 @@ struct ANGELSCRIPTRUNTIME_API FScriptFunctionNativeForm
 	virtual bool CanCallCustom(const FNativeFunctionContext& Context) const { return false; }
 	virtual bool ShouldCustomLookupScriptFunction(const FNativeFunctionContext& Context) const { return false; }
 	virtual FNativeFunctionCall GenerateCustomCall(FNativeFunctionContext& Context, struct FStaticJITContext& JITContext) const { return FNativeFunctionCall{}; }
+#if WITH_DEV_AUTOMATION_TESTS
+	virtual FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const = 0;
+#endif
 
 	static FScriptFunctionNativeForm* GetNativeForm(class asIScriptFunction* ScriptFunction);
-	static void ReleaseAllNativeForms();
 
-	// Diagnostic — returns the number of native-form entries currently held in
-	// the global GScriptNativeForms map. Used by Memory.BindFreeEvidence
-	// regression tests to assert the table does not accumulate across engine
-	// cycles. Always returns 0 outside JIT-capable builds.
+	// Diagnostic — returns the number of native-form entries currently owned by
+	// live engine states. Used by Memory.BindFreeEvidence regression tests to
+	// assert the tables do not accumulate across engine cycles. Always returns 0
+	// outside JIT-capable builds.
 	static int32 NumNativeForms();
-
-	static void BindNativeConstructor(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial, const ANSICHAR* CustomForm = nullptr);
-	static void BindNativeDestructor(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial);
-	static void BindNativeUObjectCast(FAngelscriptBinds& Binds, const FString& TargetType, bool bGuaranteed);
-	static void BindNativeAssignment(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial);
-	static void BindNativeMethod(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial);
-	static void BindNativeFunction(const ANSICHAR* Name, bool bTrivial);
-	static void BindNativeFunctionHeader(const ANSICHAR* Name, bool bTrivial, const ANSICHAR* Header);
-	static void BindUFunction(class UFunction* Function, const FString& Name, bool bTrivial);
-
-	static void BindTArrayIteratorCreate(FAngelscriptBinds& Binds);
-	static void BindTArrayIteratorProceed(FAngelscriptBinds& Binds);
-	static void BindTArrayIndex(FAngelscriptBinds& Binds);
-
-	static void BindTemplateInstantiatedCall(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial, bool bNeedsCompare, bool bNeedsCopy);
-
-	static void BindDelegateExecute();
-	static void BindMulticastExecute();
-	static void BindEventFunctionExecute();
-	static void BindPushArg();
-	static void BindPushArgRef();
+	static void BindNativeConstructor(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial, const ANSICHAR* CustomForm = nullptr);
+	static void BindNativeDestructor(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial);
+	static void BindNativeAssignment(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial);
+	static void BindNativeUObjectCast(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const FString& TargetType, bool bGuaranteed);
+	static void BindNativeMethod(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial);
+	static void BindNativeFunction(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial);
+	static void BindNativeFunctionHeader(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial, const ANSICHAR* Header);
+	static void BindUFunction(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, UFunction* Function, const FString& Name, bool bTrivial);
+	static void BindTArrayIteratorCreate(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction);
+	static void BindTArrayIteratorProceed(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction);
+	static void BindTArrayIndex(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction);
+	static void BindTemplateInstantiatedCall(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial, bool bNeedsCompare, bool bNeedsCopy);
+	static void BindDelegateExecute(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction);
+	static void BindMulticastExecute(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction);
+	static void BindEventFunctionExecute(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction);
+	static void BindPushArg(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction);
+	static void BindPushArgRef(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction);
 
 	static const ANSICHAR* AllocateAnsiTypeName(const FString& TypeName);
 };
 
-#define SCRIPT_NATIVE_CONSTRUCTOR(Binds, Name) FScriptFunctionNativeForm::BindNativeConstructor(Binds, Name, false);
-#define SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, Name) FScriptFunctionNativeForm::BindNativeConstructor(Binds, Name, true);
-#define SCRIPT_TRIVIAL_NATIVE_DESTRUCTOR(Binds, Name) FScriptFunctionNativeForm::BindNativeDestructor(Binds, Name, true);
-#define SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR_CUSTOMFORM(Binds, Name, CustomForm) FScriptFunctionNativeForm::BindNativeConstructor(Binds, Name, true, CustomForm);
-#define SCRIPT_TRIVIAL_NATIVE_ASSIGNMENT(Binds, Name) FScriptFunctionNativeForm::BindNativeAssignment(Binds, Name, true);
-#define SCRIPT_TRIVIAL_NATIVE_UOBJECT_CAST(Binds, TargetType, Guaranteed) FScriptFunctionNativeForm::BindNativeUObjectCast(Binds, TargetType, Guaranteed);
-#define SCRIPT_NATIVE_METHOD(Binds, Name, Trivial) FScriptFunctionNativeForm::BindNativeMethod(Binds, Name, Trivial);
-#define SCRIPT_NATIVE_FUNCTION(Name, Trivial) FScriptFunctionNativeForm::BindNativeFunction(Name, Trivial);
-#define SCRIPT_NATIVE_FUNCTION_HEADER(Name, Trivial, Header) FScriptFunctionNativeForm::BindNativeFunctionHeader(Name, Trivial, Header);
-#define SCRIPT_NATIVE_UFUNCTION(UnrealFunction, Name, Trivial) FScriptFunctionNativeForm::BindUFunction(UnrealFunction, Name, Trivial)
-#define SCRIPT_NATIVE_TARRAY_INDEX(Binds) FScriptFunctionNativeForm::BindTArrayIndex(Binds)
-#define SCRIPT_NATIVE_TARRAY_ITERATOR_CREATE(Binds) FScriptFunctionNativeForm::BindTArrayIteratorCreate(Binds)
-#define SCRIPT_NATIVE_TARRAY_ITERATOR_PROCEED(Binds) FScriptFunctionNativeForm::BindTArrayIteratorProceed(Binds)
-#define SCRIPT_NATIVE_DELEGATE_EXECUTE() FScriptFunctionNativeForm::BindDelegateExecute()
-#define SCRIPT_NATIVE_MULTICAST_EXECUTE() FScriptFunctionNativeForm::BindMulticastExecute()
-#define SCRIPT_NATIVE_PUSH_ARG() FScriptFunctionNativeForm::BindPushArg()
-#define SCRIPT_NATIVE_PUSH_ARG_REF() FScriptFunctionNativeForm::BindPushArgRef()
-#define SCRIPT_NATIVE_EVENT_FUNCTION_EXECUTE() FScriptFunctionNativeForm::BindEventFunctionExecute()
-#define SCRIPT_NATIVE_TEMPLATED_CALL(Binds, Name, Trivial) FScriptFunctionNativeForm::BindTemplateInstantiatedCall(Binds, Name, Trivial, false, false)
-#define SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(Binds, Name, Trivial) FScriptFunctionNativeForm::BindTemplateInstantiatedCall(Binds, Name, Trivial, true, false)
-#define SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY(Binds, Name, Trivial) FScriptFunctionNativeForm::BindTemplateInstantiatedCall(Binds, Name, Trivial, false, true)
-#define SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(Binds, Name, Trivial) FScriptFunctionNativeForm::BindTemplateInstantiatedCall(Binds, Name, Trivial, true, true)
-
-#else // AS_CAN_GENERATE_JIT
-
-#define SCRIPT_NATIVE_CONSTRUCTOR(Binds, Name)
-#define SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(Binds, Name)
-#define SCRIPT_TRIVIAL_NATIVE_DESTRUCTOR(Binds, Name)
-#define SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR_CUSTOMFORM(Binds, Name, CustomForm)
-#define SCRIPT_TRIVIAL_NATIVE_ASSIGNMENT(Binds, Name)
-#define SCRIPT_TRIVIAL_NATIVE_UOBJECT_CAST(Binds, TargetType, Guaranteed)
-#define SCRIPT_NATIVE_METHOD(Binds, Name, Trivial)
-#define SCRIPT_NATIVE_FUNCTION(Name, Trivial) 
-#define SCRIPT_NATIVE_FUNCTION_HEADER(Name, Trivial, Header) 
-#define SCRIPT_NATIVE_UFUNCTION(UnrealFunction)
-#define SCRIPT_NATIVE_TARRAY_INDEX(Binds) 
-#define SCRIPT_NATIVE_TARRAY_ITERATOR_CREATE(Binds) 
-#define SCRIPT_NATIVE_TARRAY_ITERATOR_PROCEED(Binds) 
-#define SCRIPT_NATIVE_TEMPLATED_CALL(Binds, Name, Trivial) 
-#define SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOMPARE(Binds, Name, Trivial) 
-#define SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY(Binds, Name, Trivial) 
-#define SCRIPT_NATIVE_TEMPLATED_CALL_NEEDSCOPY_NEEDSCOMPARE(Binds, Name, Trivial) 
-
-#define SCRIPT_NATIVE_DELEGATE_EXECUTE() 
-#define SCRIPT_NATIVE_MULTICAST_EXECUTE() 
-#define SCRIPT_NATIVE_PUSH_ARG() 
-#define SCRIPT_NATIVE_PUSH_ARG_REF() 
-#define SCRIPT_NATIVE_EVENT_FUNCTION_EXECUTE() 
+struct ANGELSCRIPTRUNTIME_API FAngelscriptNativeFormState
+{
+	~FAngelscriptNativeFormState();
+	TMap<asIScriptFunction*, FScriptFunctionNativeForm*> Forms;
+};
 
 #endif // AS_CAN_GENERATE_JIT

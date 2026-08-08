@@ -184,7 +184,9 @@ Bindings/CQTest 文件里如果一个类型有多个独立覆盖面，应拆成�
 - `TEST_METHOD` 名称必须说明场景。
 - `FScopedAngelscriptModule` 应在对应 `TEST_METHOD` 内创建，module name 与场景名对应。
 - `ExpectGlobalInts` / `Execute...` 等 helper 的返回值必须被 `ASSERT_THAT(IsTrue(...))` 或同等级断言消费。
-- 允许保留文件级 native bind 注册对象，例如 `AS_FORCE_LINK const FAngelscriptBinds::FBind ...`，因为这类对象必须在 AS bind 初始化期注册；但测试流程、fixture 和断言仍应留在 `TEST_CLASS_WITH_FLAGS` 内。
+- 允许保留文件级 native bind 注册对象，例如 `AS_FORCE_LINK const FAngelscriptBind ...`，因为其元数据必须在进程级 collection seal 前入队。每条都应显式选择 `EAngelscriptBindPhase`，callback 接收 `FAngelscriptBinds&`；测试流程、fixture 和断言仍应留在 `TEST_CLASS_WITH_FLAGS` 内。
+- 专门验证 DSL 兼容性的 fixture 可以保留受支持的非捕获 callable lambda。模拟生产源码布局的 fixture 应遵循命名 callable 规则：自定义 callable body 放到有语义的 owner；pointer-only bind 不创建空 `_Functions.h/.cpp` companion。
+- 注册后恰好一个短 fluent trait 时，只有完整 raw line 不超过 120 列才可同行。长 registration 自己闭合；多个 trait 必须各占一条同级缩进续行。trait 断言必须基于准确返回的 `FAngelscriptBoundFunction` / `FAngelscriptBoundProperty`，不能依赖隐式 previous-bind 状态。
 
 ## 内联 AngelScript Fixture 规则
 

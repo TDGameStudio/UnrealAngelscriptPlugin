@@ -2,8 +2,8 @@
 #include "StaticJIT/AngelscriptBytecodes.h"
 #if AS_CAN_GENERATE_JIT
 #include "ClassGenerator/ASStruct.h"
+#include "Core/AngelscriptBindDatabase.h"
 #include "StaticJIT/AngelscriptStaticJIT.h"
-#include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 #include "UObject/Class.h"
 #include "Templates/Casts.h"
@@ -22,9 +22,58 @@
 #include "EndAngelscriptHeaders.h"
 
 #include "HAL/FileManager.h"
+#include <atomic>
 
+namespace
+{
+	std::atomic<int32> GNativeFormCount{0};
+	uint8 GNativeFormUserDataKey = 0;
 
-static TMap<asIScriptFunction*, FScriptFunctionNativeForm*> GScriptNativeForms;
+	asPWORD GetNativeFormUserDataType()
+	{
+		return reinterpret_cast<asPWORD>(&GNativeFormUserDataKey);
+	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FString MakeNativeFormDebugString(const ANSICHAR* Value)
+	{
+		return Value != nullptr ? FString(ANSI_TO_TCHAR(Value)) : FString();
+	}
+#endif
+
+	void AddNativeForm(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, FScriptFunctionNativeForm* NativeForm)
+	{
+		if (ScriptFunction == nullptr || NativeForm == nullptr || !Engine.bGeneratePrecompiledData)
+		{
+			delete NativeForm;
+			return;
+		}
+
+		FAngelscriptNativeFormState* State = Engine.GetNativeFormState();
+		check(State != nullptr);
+		Engine.GetScriptEngine()->SetUserData(State, GetNativeFormUserDataType());
+		if (FScriptFunctionNativeForm** Existing = State->Forms.Find(ScriptFunction))
+		{
+			delete *Existing;
+			*Existing = NativeForm;
+		}
+		else
+		{
+			State->Forms.Add(ScriptFunction, NativeForm);
+			GNativeFormCount.fetch_add(1, std::memory_order_relaxed);
+		}
+	}
+
+}
+
+FAngelscriptNativeFormState::~FAngelscriptNativeFormState()
+{
+	GNativeFormCount.fetch_sub(Forms.Num(), std::memory_order_relaxed);
+	for (const TPair<asIScriptFunction*, FScriptFunctionNativeForm*>& Pair : Forms)
+	{
+		delete Pair.Value;
+	}
+}
 
 FScriptFunctionNativeForm* FScriptFunctionNativeForm::GetNativeForm(class asIScriptFunction* InScriptFunction)
 {
@@ -52,25 +101,21 @@ FScriptFunctionNativeForm* FScriptFunctionNativeForm::GetNativeForm(class asIScr
 			return GetNativeForm(ObjectType->engine->scriptFunctions[ObjectType->templateBaseType->methods[MethodIndex]]);
 	}
 
-	auto** Item = GScriptNativeForms.Find(ScriptFunction);
-	if (Item != nullptr)
-		return *Item;
-	else
-		return nullptr;
-}
-
-void FScriptFunctionNativeForm::ReleaseAllNativeForms()
-{
-	for (auto& Pair : GScriptNativeForms)
+	FAngelscriptNativeFormState* State = static_cast<FAngelscriptNativeFormState*>(ScriptFunction->engine->GetUserData(GetNativeFormUserDataType()));
+	if (State == nullptr)
 	{
-		delete Pair.Value;
+		return nullptr;
 	}
-	GScriptNativeForms.Empty();
+	if (FScriptFunctionNativeForm** Found = State->Forms.Find(ScriptFunction))
+	{
+		return *Found;
+	}
+	return nullptr;
 }
 
 int32 FScriptFunctionNativeForm::NumNativeForms()
 {
-	return GScriptNativeForms.Num();
+	return GNativeFormCount.load(std::memory_order_relaxed);
 }
 
 int32 FNativeFunctionContext::AppendArgumentsTo(FString& CallCode, int32 ArgumentStart)
@@ -96,6 +141,18 @@ struct FScriptNativeConstructor : public FScriptFunctionNativeForm
 		: Name(InName), bTrivial(InTrivial), CustomForm(InCustomForm)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::Constructor;
+		Info.Name = MakeNativeFormDebugString(Name);
+		Info.CustomForm = MakeNativeFormDebugString(CustomForm);
+		Info.bTrivial = bTrivial;
+		return Info;
+	}
+#endif
 
 	bool ShouldIgnoreObjectArgument() const override
 	{
@@ -123,11 +180,9 @@ struct FScriptNativeConstructor : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindNativeConstructor(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial, const ANSICHAR* CustomForm)
+void FScriptFunctionNativeForm::BindNativeConstructor(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial, const ANSICHAR* CustomForm)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeConstructor(Name, bTrivial, CustomForm));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeConstructor(Name, bTrivial, CustomForm));
 }
 
 struct FScriptNativeDestructor : public FScriptFunctionNativeForm
@@ -139,6 +194,17 @@ struct FScriptNativeDestructor : public FScriptFunctionNativeForm
 		: Name(InName), bTrivial(InTrivial)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::Destructor;
+		Info.Name = MakeNativeFormDebugString(Name);
+		Info.bTrivial = bTrivial;
+		return Info;
+	}
+#endif
 
 	bool ShouldIgnoreObjectArgument() const override
 	{
@@ -167,11 +233,9 @@ struct FScriptNativeDestructor : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindNativeDestructor(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial)
+void FScriptFunctionNativeForm::BindNativeDestructor(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeDestructor(Name, bTrivial));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeDestructor(Name, bTrivial));
 }
 
 struct FScriptNativeAssignment : public FScriptFunctionNativeForm
@@ -183,6 +247,17 @@ struct FScriptNativeAssignment : public FScriptFunctionNativeForm
 		: Name(InName), bTrivial(InTrivial)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::Assignment;
+		Info.Name = MakeNativeFormDebugString(Name);
+		Info.bTrivial = bTrivial;
+		return Info;
+	}
+#endif
 
 	bool ShouldIgnoreObjectArgument() const override
 	{
@@ -210,11 +285,9 @@ struct FScriptNativeAssignment : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindNativeAssignment(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial)
+void FScriptFunctionNativeForm::BindNativeAssignment(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeAssignment(Name, bTrivial));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeAssignment(Name, bTrivial));
 }
 
 struct FScriptNativeUObjectCast : public FScriptFunctionNativeForm
@@ -226,6 +299,17 @@ struct FScriptNativeUObjectCast : public FScriptFunctionNativeForm
 		: TargetType(InTargetType), bGuaranteed(InGuaranteed)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::UObjectCast;
+		Info.TargetType = TargetType;
+		Info.bGuaranteed = bGuaranteed;
+		return Info;
+	}
+#endif
 
 	bool ShouldIgnoreObjectArgument() const override
 	{
@@ -341,11 +425,9 @@ struct FScriptNativeUObjectCast : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindNativeUObjectCast(FAngelscriptBinds& Binds, const FString& TargetType, bool bGuaranteed)
+void FScriptFunctionNativeForm::BindNativeUObjectCast(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const FString& TargetType, bool bGuaranteed)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeUObjectCast(TargetType, bGuaranteed));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeUObjectCast(TargetType, bGuaranteed));
 }
 
 struct FScriptNativeMethod : public FScriptFunctionNativeForm
@@ -357,6 +439,17 @@ struct FScriptNativeMethod : public FScriptFunctionNativeForm
 		: Name(InName), bTrivial(InTrivial)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::Method;
+		Info.Name = MakeNativeFormDebugString(Name);
+		Info.bTrivial = bTrivial;
+		return Info;
+	}
+#endif
 
 	bool ShouldIgnoreObjectArgument() const override
 	{
@@ -379,11 +472,9 @@ struct FScriptNativeMethod : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindNativeMethod(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial)
+void FScriptFunctionNativeForm::BindNativeMethod(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeMethod(Name, bTrivial));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeMethod(Name, bTrivial));
 }
 
 struct FScriptNativeFunction : public FScriptFunctionNativeForm
@@ -395,6 +486,17 @@ struct FScriptNativeFunction : public FScriptFunctionNativeForm
 		: Name(InName), bTrivial(InTrivial)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::Function;
+		Info.Name = MakeNativeFormDebugString(Name);
+		Info.bTrivial = bTrivial;
+		return Info;
+	}
+#endif
 
 	bool IsTrivialFunction(EScriptFunctionCallMethod Method) const override
 	{
@@ -412,11 +514,9 @@ struct FScriptNativeFunction : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindNativeFunction(const ANSICHAR* Name, bool bTrivial)
+void FScriptFunctionNativeForm::BindNativeFunction(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeFunction(Name, bTrivial));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeFunction(Name, bTrivial));
 }
 
 struct FScriptNativeFunctionHeader : public FScriptFunctionNativeForm
@@ -429,6 +529,18 @@ struct FScriptNativeFunctionHeader : public FScriptFunctionNativeForm
 		: Name(InName), Header(InHeader), bTrivial(InTrivial)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::FunctionHeader;
+		Info.Name = MakeNativeFormDebugString(Name);
+		Info.Header = MakeNativeFormDebugString(Header);
+		Info.bTrivial = bTrivial;
+		return Info;
+	}
+#endif
 
 	bool IsTrivialFunction(EScriptFunctionCallMethod Method) const override
 	{
@@ -450,11 +562,9 @@ struct FScriptNativeFunctionHeader : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindNativeFunctionHeader(const ANSICHAR* Name, bool bTrivial, const ANSICHAR* Header)
+void FScriptFunctionNativeForm::BindNativeFunctionHeader(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, const ANSICHAR* Name, bool bTrivial, const ANSICHAR* Header)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeFunctionHeader(Name, bTrivial, Header));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeFunctionHeader(Name, bTrivial, Header));
 }
 
 struct FScriptNativeUFunction : public FScriptFunctionNativeForm
@@ -469,6 +579,18 @@ struct FScriptNativeUFunction : public FScriptFunctionNativeForm
 		, bTrivial(InTrivial)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::UFunction;
+		Info.Name = Name;
+		Info.UnrealFunction = Function;
+		Info.bTrivial = bTrivial;
+		return Info;
+	}
+#endif
 
 	bool CanSkipInformSystemFunction() const override
 	{
@@ -541,11 +663,9 @@ struct FScriptNativeUFunction : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindUFunction(class UFunction* Function, const FString& Name, bool bTrivial)
+void FScriptFunctionNativeForm::BindUFunction(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, UFunction* Function, const FString& Name, bool bTrivial)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeUFunction(Function, Name, bTrivial));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeUFunction(Function, Name, bTrivial));
 }
 
 struct FScriptNativeTArrayIteratorProceed : public FScriptFunctionNativeForm
@@ -553,6 +673,15 @@ struct FScriptNativeTArrayIteratorProceed : public FScriptFunctionNativeForm
 	FScriptNativeTArrayIteratorProceed()
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::TArrayIteratorProceed;
+		return Info;
+	}
+#endif
 
 	bool CanCallCustom(const FNativeFunctionContext& Context) const override
 	{
@@ -603,11 +732,9 @@ struct FScriptNativeTArrayIteratorProceed : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindTArrayIteratorProceed(FAngelscriptBinds& Binds)
+void FScriptFunctionNativeForm::BindTArrayIteratorProceed(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeTArrayIteratorProceed());
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeTArrayIteratorProceed());
 }
 
 struct FScriptNativeTemplateInstantiation : public FScriptFunctionNativeForm
@@ -621,6 +748,19 @@ struct FScriptNativeTemplateInstantiation : public FScriptFunctionNativeForm
 		: Name(InName), bTrivial(InTrivial), bNeedsCompare(InNeedsCompare), bNeedsCopy(InNeedsCopy)
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::TemplateInstantiatedCall;
+		Info.Name = MakeNativeFormDebugString(Name);
+		Info.bTrivial = bTrivial;
+		Info.bNeedsCompare = bNeedsCompare;
+		Info.bNeedsCopy = bNeedsCopy;
+		return Info;
+	}
+#endif
 
 	bool IsTrivialFunction(EScriptFunctionCallMethod Method) const override
 	{
@@ -714,11 +854,15 @@ struct FScriptNativeTemplateInstantiation : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindTemplateInstantiatedCall(FAngelscriptBinds& Binds, const ANSICHAR* Name, bool bTrivial, bool bNeedsCompare, bool bNeedsCopy)
+void FScriptFunctionNativeForm::BindTemplateInstantiatedCall(
+	FAngelscriptEngine& Engine,
+	asIScriptFunction* ScriptFunction,
+	const ANSICHAR* Name,
+	bool bTrivial,
+	bool bNeedsCompare,
+	bool bNeedsCopy)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeTemplateInstantiation(Name, bTrivial, bNeedsCompare, bNeedsCopy));
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeTemplateInstantiation(Name, bTrivial, bNeedsCompare, bNeedsCopy));
 }
 
 struct FScriptNativeTArrayIteratorCreate : public FScriptFunctionNativeForm
@@ -726,6 +870,15 @@ struct FScriptNativeTArrayIteratorCreate : public FScriptFunctionNativeForm
 	FScriptNativeTArrayIteratorCreate()
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::TArrayIteratorCreate;
+		return Info;
+	}
+#endif
 
 	bool CanCallCustom(const FNativeFunctionContext& Context) const override
 	{
@@ -788,15 +941,22 @@ struct FScriptNativeTArrayIteratorCreate : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindTArrayIteratorCreate(FAngelscriptBinds& Binds)
+void FScriptFunctionNativeForm::BindTArrayIteratorCreate(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeTArrayIteratorCreate());
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeTArrayIteratorCreate());
 }
 
 struct FScriptNativeTArrayIndex : public FScriptFunctionNativeForm
 {
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::TArrayIndex;
+		return Info;
+	}
+#endif
+
 	bool IsTrivialFunction(EScriptFunctionCallMethod Method) const override
 	{
 		return true;
@@ -871,11 +1031,9 @@ struct FScriptNativeTArrayIndex : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindTArrayIndex(FAngelscriptBinds& Binds)
+void FScriptFunctionNativeForm::BindTArrayIndex(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeTArrayIndex());
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeTArrayIndex());
 }
 
 const ANSICHAR* FScriptFunctionNativeForm::AllocateAnsiTypeName(const FString& TypeName)
@@ -895,6 +1053,15 @@ struct FScriptNativePushArg : public FScriptFunctionNativeForm
 	{
 	}
 
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::PushArgument;
+		return Info;
+	}
+#endif
+
 	bool CanCallCustom(const FNativeFunctionContext& Context) const override
 	{
 		return true;
@@ -912,11 +1079,9 @@ struct FScriptNativePushArg : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindPushArg()
+void FScriptFunctionNativeForm::BindPushArg(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativePushArg());
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativePushArg());
 }
 
 struct FScriptNativePushArgRef : public FScriptFunctionNativeForm
@@ -924,6 +1089,15 @@ struct FScriptNativePushArgRef : public FScriptFunctionNativeForm
 	FScriptNativePushArgRef()
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::PushArgumentRef;
+		return Info;
+	}
+#endif
 
 	bool CanCallCustom(const FNativeFunctionContext& Context) const override
 	{
@@ -942,11 +1116,9 @@ struct FScriptNativePushArgRef : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindPushArgRef()
+void FScriptFunctionNativeForm::BindPushArgRef(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativePushArgRef());
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativePushArgRef());
 }
 
 struct FScriptNativeDelegateExecute : public FScriptFunctionNativeForm
@@ -954,6 +1126,15 @@ struct FScriptNativeDelegateExecute : public FScriptFunctionNativeForm
 	FScriptNativeDelegateExecute()
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::DelegateExecute;
+		return Info;
+	}
+#endif
 
 	bool CanCallCustom(const FNativeFunctionContext& Context) const override
 	{
@@ -972,11 +1153,9 @@ struct FScriptNativeDelegateExecute : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindDelegateExecute()
+void FScriptFunctionNativeForm::BindDelegateExecute(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeDelegateExecute());
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeDelegateExecute());
 }
 
 struct FScriptNativeMulticastExecute : public FScriptFunctionNativeForm
@@ -984,6 +1163,15 @@ struct FScriptNativeMulticastExecute : public FScriptFunctionNativeForm
 	FScriptNativeMulticastExecute()
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::MulticastExecute;
+		return Info;
+	}
+#endif
 
 	bool CanCallCustom(const FNativeFunctionContext& Context) const override
 	{
@@ -1002,11 +1190,9 @@ struct FScriptNativeMulticastExecute : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindMulticastExecute()
+void FScriptFunctionNativeForm::BindMulticastExecute(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeMulticastExecute());
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeMulticastExecute());
 }
 
 struct FScriptNativeEventFunctionExecute : public FScriptFunctionNativeForm
@@ -1014,6 +1200,15 @@ struct FScriptNativeEventFunctionExecute : public FScriptFunctionNativeForm
 	FScriptNativeEventFunctionExecute()
 	{
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptNativeFormDebugInfo GetDebugInfoForTesting() const override
+	{
+		FAngelscriptNativeFormDebugInfo Info;
+		Info.Kind = EAngelscriptNativeFormKind::EventFunctionExecute;
+		return Info;
+	}
+#endif
 
 	bool CanCallCustom(const FNativeFunctionContext& Context) const override
 	{
@@ -1032,11 +1227,9 @@ struct FScriptNativeEventFunctionExecute : public FScriptFunctionNativeForm
 	}
 };
 
-void FScriptFunctionNativeForm::BindEventFunctionExecute()
+void FScriptFunctionNativeForm::BindEventFunctionExecute(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
-		return;
-	GScriptNativeForms.Add(FAngelscriptBinds::GetPreviousBind(), new FScriptNativeEventFunctionExecute());
+	AddNativeForm(Engine, ScriptFunction, new FScriptNativeEventFunctionExecute());
 }
 
 #endif // AS_CAN_GENERATE_JIT

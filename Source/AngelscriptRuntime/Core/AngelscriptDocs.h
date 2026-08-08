@@ -3,23 +3,40 @@
 
 #if WITH_EDITOR
 #define AS_DOC(FunctionId, Documentation) FAngelscriptDocs::AddUnrealDocumentation(FunctionId, Documentation);
-#define SCRIPT_BIND_DOCUMENTATION(Documentation) FAngelscriptDocs::AddUnrealDocumentation(FAngelscriptBinds::GetPreviousFunctionId(), TEXT(Documentation), TEXT(""), nullptr);
-#define SCRIPT_GLOBAL_DOCUMENTATION(Documentation) FAngelscriptDocs::AddDocumentationForGlobalVariable(FAngelscriptBinds::GetPreviousGlobalVariableId(), TEXT(Documentation));
 #else
 #define AS_DOC(...) 
-#define SCRIPT_BIND_DOCUMENTATION(...)
-#define SCRIPT_GLOBAL_DOCUMENTATION(...) 
 #endif
 
 class asIScriptEngine;
+struct FAngelscriptEngine;
+
+struct FPassedDoc
+{
+	FString Tooltip;
+	FString Category;
+	UFunction* Function = nullptr;
+};
+
+struct ANGELSCRIPTRUNTIME_API FAngelscriptDocumentationState
+{
+	TMap<int32, FPassedDoc> UnrealDocumentation;
+	TMap<int32, FString> UnrealTypeDocumentation;
+	TMap<int32, FString> GlobalVariableDocumentation;
+	TMap<TPair<int32, int32>, FString> UnrealPropertyDocumentation;
+};
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptDocs
 {
+	static void AddUnrealDocumentation(FAngelscriptEngine& Engine, int FunctionId, FStringView Documentation, FStringView Category, UFunction* Function);
 	static void AddUnrealDocumentation(int FunctionId, FStringView Documentation, FStringView Category, UFunction* Function);
+	static void AddUnrealDocumentationForType(FAngelscriptEngine& Engine, int TypeId, FStringView Documentation);
 	static void AddUnrealDocumentationForType(int TypeId, FStringView Documentation);
+	static void AddUnrealDocumentationForProperty(FAngelscriptEngine& Engine, int TypeId, int PropertyOffset, FStringView Documentation);
 	static void AddUnrealDocumentationForProperty(int TypeId, int PropertyOffset, FStringView Documentation);
+	static void AddDocumentationForGlobalVariable(FAngelscriptEngine& Engine, int GlobalVariableId, FStringView Documentation);
 	static void AddDocumentationForGlobalVariable(int GlobalVariableId, FStringView Documentation);
 
+	static const FString& GetUnrealDocumentation(const FAngelscriptEngine& Engine, int FunctionId);
 	static const FString& GetUnrealDocumentation(int FunctionId);
 	static const struct FPassedDoc& GetFullUnrealDocumentation(int FunctionId);
 	static void DumpDocumentation(asIScriptEngine* Engine);

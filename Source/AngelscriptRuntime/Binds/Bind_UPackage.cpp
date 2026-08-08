@@ -1,9 +1,17 @@
 #include "AngelscriptBinds.h"
 #include "UObject/Package.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_UPackage(FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	auto UPackage_ = FAngelscriptBinds::ExistingClass("UPackage");
+	void BindUPackage(FAngelscriptBinds& Binds)
+	{
+		auto UPackage_ = Binds.ExistingClassForTarget("UPackage");
 
-	UPackage_.Method("bool IsDirty() const", METHOD_TRIVIAL(UPackage, IsDirty));
-});
+		UPackage_.Method("bool IsDirty() const", METHOD_TRIVIAL(UPackage, IsDirty));
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UPackage(
+	TEXT("UPackage"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindUPackage);

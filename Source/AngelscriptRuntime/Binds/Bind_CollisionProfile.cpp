@@ -26,49 +26,55 @@ namespace CollisionProfileBind
 	}
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_CollisionProfile(FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	FAngelscriptBinds::FNamespace ns("CollisionProfile");
-
-	TArray<TSharedPtr<FName>> CollisionProfiles;
-	UCollisionProfile::GetProfileNames(CollisionProfiles);
-
-	static TArray<FName> CollisionProfileNames;
-	static TSet<FString> BoundIdentifiers;
-
-	CollisionProfileNames.Empty(CollisionProfiles.Num());
-	BoundIdentifiers.Empty(CollisionProfiles.Num());
-
-	for (int32 Index = 0; Index < CollisionProfiles.Num(); ++Index)
+	void BindCollisionProfile(FAngelscriptBinds& Binds)
 	{
-		const FName CollisionProfileName = *CollisionProfiles[Index].Get();
-		const FString Identifier = CollisionProfileBind::MakeIdentifier(CollisionProfileName);
-		if (Identifier.IsEmpty())
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "CollisionProfile");
+
+		TArray<TSharedPtr<FName>> CollisionProfiles;
+		UCollisionProfile::GetProfileNames(CollisionProfiles);
+
+		static TArray<FName> CollisionProfileNames;
+		static TSet<FString> BoundIdentifiers;
+
+		CollisionProfileNames.Empty(CollisionProfiles.Num());
+		BoundIdentifiers.Empty(CollisionProfiles.Num());
+
+		for (int32 Index = 0; Index < CollisionProfiles.Num(); ++Index)
 		{
-			UE_LOG(Angelscript, Warning, TEXT("Skipping empty CollisionProfile identifier for profile '%s'"), *CollisionProfileName.ToString());
-			continue;
-		}
+			const FName CollisionProfileName = *CollisionProfiles[Index].Get();
+			const FString Identifier = CollisionProfileBind::MakeIdentifier(CollisionProfileName);
+			if (Identifier.IsEmpty())
+			{
+				UE_LOG(Angelscript, Warning, TEXT("Skipping empty CollisionProfile identifier for profile '%s'"), *CollisionProfileName.ToString());
+				continue;
+			}
 
-		if (BoundIdentifiers.Contains(Identifier))
-		{
-			UE_LOG(Angelscript, Warning, TEXT("Skipping duplicate CollisionProfile identifier '%s' for profile '%s'"), *Identifier, *CollisionProfileName.ToString());
-			continue;
-		}
+			if (BoundIdentifiers.Contains(Identifier))
+			{
+				UE_LOG(Angelscript, Warning, TEXT("Skipping duplicate CollisionProfile identifier '%s' for profile '%s'"), *Identifier, *CollisionProfileName.ToString());
+				continue;
+			}
 
-		BoundIdentifiers.Add(Identifier);
-		CollisionProfileNames.Add(CollisionProfileName);
+			BoundIdentifiers.Add(Identifier);
+			CollisionProfileNames.Add(CollisionProfileName);
 
-		const FString Declaration = TEXT("const FName ") + Identifier;
-		FAngelscriptBinds::BindGlobalVariable(TCHAR_TO_ANSI(*Declaration), &CollisionProfileNames.Last());
+			const FString Declaration = TEXT("const FName ") + Identifier;
+			FAngelscriptBoundProperty BoundProfile = Binds.BindGlobalVariableForTarget(TCHAR_TO_ANSI(*Declaration), &CollisionProfileNames.Last());
 
 #if WITH_EDITORONLY_DATA
-		FCollisionResponseTemplate CollisionResponseTemplate;
-		if (UCollisionProfile::Get()->GetProfileTemplate(CollisionProfileName, CollisionResponseTemplate))
-		{
-			FAngelscriptDocs::AddDocumentationForGlobalVariable(
-				FAngelscriptBinds::GetPreviousGlobalVariableId(),
-				CollisionResponseTemplate.HelpMessage);
-		}
+			FCollisionResponseTemplate CollisionResponseTemplate;
+			if (BoundProfile.IsValid() && UCollisionProfile::Get()->GetProfileTemplate(CollisionProfileName, CollisionResponseTemplate))
+			{
+				FAngelscriptDocs::AddDocumentationForGlobalVariable(Binds.GetTargetEngine(), BoundProfile.GetPropertyId(), CollisionResponseTemplate.HelpMessage);
+			}
 #endif
+		}
 	}
-});
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_CollisionProfile(
+	TEXT("CollisionProfile"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindCollisionProfile);

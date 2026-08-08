@@ -1,6 +1,6 @@
 #include "ScriptEditorPrompts.h"
+#include "EditorMenuExtensions/ScriptEditorPrompts_Functions.h"
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
 #include "IStructureDetailsView.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
@@ -395,84 +395,41 @@ bool FScriptEditorPrompts::ShowPromptToCallFunctionOnObjects(UFunction* Function
 	return true;
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_ScriptEditorPrompts(FAngelscriptBinds::EOrder::Late, []()
+namespace
 {
-	FAngelscriptBinds::FNamespace Namespace("EditorPrompt");
+	void BindScriptEditorPrompts(FAngelscriptBinds& Binds)
+	{
+		FAngelscriptBinds::FNamespace Namespace(
+			Binds.GetTargetEngine(),
+			"EditorPrompt");
 
-	FAngelscriptBinds::BindGlobalFunction(
-		"bool ShowPromptForStruct(?& Struct)",
-		[](void* StructAddr, int TypeId) -> bool
-		{
-			const FAngelscriptTypeUsage Usage = FAngelscriptTypeUsage::FromTypeId(TypeId);
-			const UStruct* StructDef = Usage.GetUnrealStruct();
-			if (StructDef == nullptr)
-			{
-				FAngelscriptEngine::Throw("ShowPromptForStruct: not a valid USTRUCT");
-				return false;
-			}
+		Binds.BindGlobalFunctionForTarget(
+			"bool ShowPromptForStruct(?& Struct)",
+			&FAngelscriptScriptEditorPromptsBinds::ShowPromptForStruct);
 
-			TSharedRef<FStructOnScope> Struct = MakeShared<FStructOnScope>(StructDef, (uint8*)StructAddr);
-			return FScriptEditorPrompts::ShowPromptForStruct(Struct, FScriptEditorPromptOptions());
-		}
-	);
+		Binds.BindGlobalFunctionForTarget(
+			"bool ShowPromptForStruct(?& Struct, const FScriptEditorPromptOptions& Options)",
+			&FAngelscriptScriptEditorPromptsBinds::ShowPromptForStructWithOptions);
 
-	FAngelscriptBinds::BindGlobalFunction(
-		"bool ShowPromptForStruct(?& Struct, const FScriptEditorPromptOptions& Options)",
-		[](void* StructAddr, int TypeId, const FScriptEditorPromptOptions& Options) -> bool
-		{
-			const FAngelscriptTypeUsage Usage = FAngelscriptTypeUsage::FromTypeId(TypeId);
-			const UStruct* StructDef = Usage.GetUnrealStruct();
-			if (StructDef == nullptr)
-			{
-				FAngelscriptEngine::Throw("ShowPromptForStruct: not a valid USTRUCT");
-				return false;
-			}
+		Binds.BindGlobalFunctionForTarget(
+			"bool ShowPromptToCallFunction(UObject Object, FName FunctionName)",
+			&FAngelscriptScriptEditorPromptsBinds::ShowPromptToCallFunction);
 
-			TSharedRef<FStructOnScope> Struct = MakeShared<FStructOnScope>(StructDef, (uint8*)StructAddr);
-			return FScriptEditorPrompts::ShowPromptForStruct(Struct, Options);
-		}
-	);
+		Binds.BindGlobalFunctionForTarget(
+			"bool ShowPromptToCallFunction(UObject Object, FName FunctionName, const FScriptEditorPromptOptions& Options)",
+			&FAngelscriptScriptEditorPromptsBinds::ShowPromptToCallFunctionWithOptions);
 
-	FAngelscriptBinds::BindGlobalFunction(
-		"bool ShowPromptToCallFunction(UObject Object, FName FunctionName)",
-		[](UObject* Object, FName FunctionName) -> bool
-		{
-			return FScriptEditorPrompts::ShowPromptToCallFunction(Object, FunctionName, FScriptEditorPromptOptions(), TArray<UObject*>());
-		}
-	);
+		Binds.BindGlobalFunctionForTarget(
+			"bool ShowPromptToCallFunction(UObject Object, FName FunctionName, const FScriptEditorPromptOptions& Options, TArray<UObject> FirstParameterObjects)",
+			&FAngelscriptScriptEditorPromptsBinds::ShowPromptToCallFunctionWithObjects);
 
-	FAngelscriptBinds::BindGlobalFunction(
-		"bool ShowPromptToCallFunction(UObject Object, FName FunctionName, const FScriptEditorPromptOptions& Options)",
-		[](UObject* Object, FName FunctionName, const FScriptEditorPromptOptions& Options) -> bool
-		{
-			return FScriptEditorPrompts::ShowPromptToCallFunction(Object, FunctionName, Options, TArray<UObject*>());
-		}
-	);
+		Binds.BindGlobalFunctionForTarget(
+			"bool ShowPromptToCallFunctionOnObjects(TArray<UObject> Objects, FName FunctionName, const FScriptEditorPromptOptions& Options)",
+			&FAngelscriptScriptEditorPromptsBinds::ShowPromptToCallFunctionOnObjects);
+	}
+}
 
-	FAngelscriptBinds::BindGlobalFunction(
-		"bool ShowPromptToCallFunction(UObject Object, FName FunctionName, const FScriptEditorPromptOptions& Options, TArray<UObject> FirstParameterObjects)",
-		[](UObject* Object, FName FunctionName, const FScriptEditorPromptOptions& Options, TArray<UObject*> FirstParameterObjects) -> bool
-		{
-			return FScriptEditorPrompts::ShowPromptToCallFunction(Object, FunctionName, Options, FirstParameterObjects);
-		}
-	);
-
-	FAngelscriptBinds::BindGlobalFunction(
-		"bool ShowPromptToCallFunctionOnObjects(TArray<UObject> Objects, FName FunctionName, const FScriptEditorPromptOptions& Options)",
-		[](TArray<UObject*> Objects, FName FunctionName, const FScriptEditorPromptOptions& Options) -> bool
-		{
-			UFunction* FoundFunction = nullptr;
-			for (UObject* Object : Objects)
-			{
-				if (Object == nullptr)
-					continue;
-				FoundFunction = Object->GetClass()->FindFunctionByName(FunctionName);
-				if (FoundFunction != nullptr)
-					break;
-			}
-			if (FoundFunction == nullptr)
-				return false;
-			return FScriptEditorPrompts::ShowPromptToCallFunctionOnObjects(FoundFunction, Objects, Options);
-		}
-	);
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_ScriptEditorPrompts(
+	TEXT("ScriptEditorPrompts.ManualBindings"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindScriptEditorPrompts);

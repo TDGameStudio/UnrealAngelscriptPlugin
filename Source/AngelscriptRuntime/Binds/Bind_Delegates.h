@@ -116,3 +116,14 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptMulticastDelegateOperations
 		Delegate->RemoveAll(Object);
 	}
 };
+
+struct ANGELSCRIPTRUNTIME_API FAngelscriptSparseDelegateOperations
+{
+	static void Construct(FSparseDelegate* Delegate);
+	static void Destruct(FSparseDelegate* Delegate);
+	static bool IsBound(FSparseDelegate* Delegate);
+	static void Clear(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction);
+	static void AddUFunction(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& FunctionName);
+	static void Unbind(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& FunctionName);
+	static void UnbindObject(FSparseDelegate* Delegate, asCScriptFunction* ScriptFunction, UObject* Object, const FName& FunctionName);
+};

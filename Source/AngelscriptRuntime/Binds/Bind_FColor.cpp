@@ -3,71 +3,83 @@
 #include "AngelscriptBinds.h"
 #include "AngelscriptEngine.h"
 
+#include "Bind_FColor_Functions.h"
 #include "Helper_StructType.h"
 #include "Helper_ToString.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FColor(FAngelscriptBinds::EOrder::Late, []
+namespace
 {
-	auto FColor_ = FAngelscriptBinds::ExistingClass("FColor");
-
-	FColor_.Constructor("void f(uint8 R, uint8 G, uint8 B, uint8 A = 255)",
-	[](FColor* Address, uint8 R, uint8 G, uint8 B, uint8 A)
+	void BindFColorManual(FAngelscriptBinds& Binds)
 	{
-		new(Address) FColor(R, G, B, A);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FColor_, "FColor");
+		auto FColor_ = Binds.ExistingClassForTarget("FColor");
 
-	FColor_.Constructor("void f(uint DWColor)",
-	[](FColor* Address, uint32 DWColor)
-	{
-		new(Address) FColor(DWColor);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FColor_, "FColor");
+		FColor_.Constructor(
+			"void f(uint8 R, uint8 G, uint8 B, uint8 A = 255)",
+			&FAngelscriptFColorBinds::ConstructRGBA,
+			"FColor",
+			true)
+			.NoDiscard();
 
-	FColor_.Property("uint DWColor", 0);
+		FColor_.Constructor(
+			"void f(uint DWColor)",
+			&FAngelscriptFColorBinds::ConstructPacked,
+			"FColor",
+			true)
+			.NoDiscard();
 
-	FColor_.Method("bool opEquals(const FColor& ColorB) const",
-		METHODPR_TRIVIAL(bool, FColor, operator==, (const FColor&) const));
+		FColor_.Property("uint DWColor", 0);
 
-	FColor_.Method("void opAddAssign(const FColor& ColorB)",
-		METHODPR_TRIVIAL(void, FColor, operator+=, (const FColor&)));
+		FColor_.Method("bool opEquals(const FColor& ColorB) const",
+			METHODPR_TRIVIAL(bool, FColor, operator==, (const FColor&) const));
 
-	FToStringHelper::Register(TEXT("FColor"), [](void* Ptr, FString& Str)
-	{
-		Str += ((FColor*)Ptr)->ToString();
-	});
+		FColor_.Method("void opAddAssign(const FColor& ColorB)",
+			METHODPR_TRIVIAL(void, FColor, operator+=, (const FColor&)));
 
-	FColor_.Method("FString ToHex() const", METHOD_TRIVIAL(FColor, ToHex));
-	FColor_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FColor, InitFromString));
+		FColor_.Method("FString ToHex() const", METHOD_TRIVIAL(FColor, ToHex));
+		FColor_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FColor, InitFromString));
 
-	FColor_.Method("FLinearColor FromRGBE() const", METHOD_TRIVIAL(FColor, FromRGBE));
-	FColor_.Method("FLinearColor ReinterpretAsLinear() const", METHOD_TRIVIAL(FColor, ReinterpretAsLinear));
+		FColor_.Method("FLinearColor FromRGBE() const", METHOD_TRIVIAL(FColor, FromRGBE));
+		FColor_.Method("FLinearColor ReinterpretAsLinear() const", METHOD_TRIVIAL(FColor, ReinterpretAsLinear));
 
-	{
-		FAngelscriptBinds::FNamespace ns("FColor");
-		FAngelscriptBinds::BindGlobalFunction("FColor FromHex(const FString& HexString) no_discard", &FColor::FromHex);
-		FAngelscriptBinds::BindGlobalFunction("FColor MakeRandomColor() no_discard", &FColor::MakeRandomColor);
-		FAngelscriptBinds::BindGlobalFunction("FColor MakeRedToGreenColorFromScalar(float32 Scalar) no_discard", &FColor::MakeRedToGreenColorFromScalar);
-		FAngelscriptBinds::BindGlobalFunction("FColor MakeFromColorTemperature(float32 Temp) no_discard", &FColor::MakeFromColorTemperature);
+		{
+			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FColor");
+			Binds.BindGlobalFunctionForTarget("FColor FromHex(const FString& HexString) no_discard", &FColor::FromHex);
+			Binds.BindGlobalFunctionForTarget("FColor MakeRandomColor() no_discard", &FColor::MakeRandomColor);
+			Binds.BindGlobalFunctionForTarget("FColor MakeRedToGreenColorFromScalar(float32 Scalar) no_discard", &FColor::MakeRedToGreenColorFromScalar);
+			Binds.BindGlobalFunctionForTarget("FColor MakeFromColorTemperature(float32 Temp) no_discard", &FColor::MakeFromColorTemperature);
 
-		FAngelscriptBinds::BindGlobalVariable("FColor White", &FColor::White);
-		FAngelscriptBinds::BindGlobalVariable("FColor Black", &FColor::Black);
-		FAngelscriptBinds::BindGlobalVariable("FColor Transparent", &FColor::Transparent);
-		FAngelscriptBinds::BindGlobalVariable("FColor Red", &FColor::Red);
-		FAngelscriptBinds::BindGlobalVariable("FColor Green", &FColor::Green);
-		FAngelscriptBinds::BindGlobalVariable("FColor Blue", &FColor::Blue);
-		FAngelscriptBinds::BindGlobalVariable("FColor Yellow", &FColor::Yellow);
-		FAngelscriptBinds::BindGlobalVariable("FColor Cyan", &FColor::Cyan);
-		FAngelscriptBinds::BindGlobalVariable("FColor Magenta", &FColor::Magenta);
-		FAngelscriptBinds::BindGlobalVariable("FColor Orange", &FColor::Orange);
-		FAngelscriptBinds::BindGlobalVariable("FColor Purple", &FColor::Purple);
-		FAngelscriptBinds::BindGlobalVariable("FColor Turquoise", &FColor::Turquoise);
-		FAngelscriptBinds::BindGlobalVariable("FColor Silver", &FColor::Silver);
-		FAngelscriptBinds::BindGlobalVariable("FColor Emerald", &FColor::Emerald);
+			Binds.BindGlobalVariableForTarget("FColor White", &FColor::White);
+			Binds.BindGlobalVariableForTarget("FColor Black", &FColor::Black);
+			Binds.BindGlobalVariableForTarget("FColor Transparent", &FColor::Transparent);
+			Binds.BindGlobalVariableForTarget("FColor Red", &FColor::Red);
+			Binds.BindGlobalVariableForTarget("FColor Green", &FColor::Green);
+			Binds.BindGlobalVariableForTarget("FColor Blue", &FColor::Blue);
+			Binds.BindGlobalVariableForTarget("FColor Yellow", &FColor::Yellow);
+			Binds.BindGlobalVariableForTarget("FColor Cyan", &FColor::Cyan);
+			Binds.BindGlobalVariableForTarget("FColor Magenta", &FColor::Magenta);
+			Binds.BindGlobalVariableForTarget("FColor Orange", &FColor::Orange);
+			Binds.BindGlobalVariableForTarget("FColor Purple", &FColor::Purple);
+			Binds.BindGlobalVariableForTarget("FColor Turquoise", &FColor::Turquoise);
+			Binds.BindGlobalVariableForTarget("FColor Silver", &FColor::Silver);
+			Binds.BindGlobalVariableForTarget("FColor Emerald", &FColor::Emerald);
+		}
+
+		auto FLinearColor_ = Binds.ExistingClassForTarget("FLinearColor");
+		FLinearColor_.Method("FColor ToFColor(bool bSRGB) const", METHOD_TRIVIAL(FLinearColor, ToFColor));
 	}
 
-	auto FLinearColor_ = FAngelscriptBinds::ExistingClass("FLinearColor");
-	FLinearColor_.Method("FColor ToFColor(bool bSRGB) const", METHOD_TRIVIAL(FLinearColor, ToFColor));
-});
+	void BindFColorToStringContribution(FAngelscriptBinds& Binds)
+	{
+		FToStringHelper::Register(Binds, TEXT("FColor"), &FAngelscriptFColorBinds::AppendToString);
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FColor(
+	TEXT("FColor"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFColorManual);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FColor_ToStringContribution(
+	TEXT("FColor.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFColorToStringContribution);

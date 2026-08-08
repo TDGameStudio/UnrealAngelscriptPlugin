@@ -259,42 +259,42 @@ struct FBoolType : TPrimitiveAngelscriptType<bool, FBoolProperty>
 		if (Params.bCanRead && !BindClass.HasGetter(NativeProperty->GetName()))
 		{
 			FString Decl = FString::Printf(TEXT("bool Get%s() const"), *PropName);
-			BindClass.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::GetBoolFromProperty), (void*)NativeProperty);
-			FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+			FAngelscriptBoundFunction Getter = BindClass.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::GetBoolFromProperty), (void*)NativeProperty)
+				.PassScriptFunctionAsFirstParam();
 
 #if WITH_EDITOR
 			if (bIsDeprecated)
-				BindClass.DeprecatePreviousBind(TCHAR_TO_ANSI(*DeprecationMessage));
+				Getter.Deprecated(TCHAR_TO_ANSI(*DeprecationMessage));
 
-			BindClass.SetPreviousBindIsGeneratedAccessor(true);
+			Getter.GeneratedAccessor();
 
 			const FString& Tooltip = BoolProp->GetMetaData(NAME_Property_ToolTip);
 			if (Tooltip.Len() != 0)
-				FAngelscriptDocs::AddUnrealDocumentation(FAngelscriptBinds::GetPreviousFunctionId(), Tooltip, TEXT(""), nullptr);
+				Getter.Documentation(Tooltip);
 
 			if (BoolProp->HasAnyPropertyFlags(CPF_EditorOnly))
-				BindClass.SetPreviousBindIsEditorOnly(true);
+				Getter.EditorOnly();
 #endif
 		}
 
 		if ((Params.bCanWrite || Params.bCanEdit) && !BindClass.HasSetter(NativeProperty->GetName()))
 		{
 			FString Decl = FString::Printf(TEXT("void Set%s(bool Value)"), *PropName);
-			BindClass.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::SetBoolFromProperty), Params, (void*)NativeProperty);
-			FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+			FAngelscriptBoundFunction Setter = BindClass.Method(Decl, FUNC_TRIVIAL(FAngelscriptBindHelpers::SetBoolFromProperty), Params, (void*)NativeProperty)
+				.PassScriptFunctionAsFirstParam();
 
 #if WITH_EDITOR
 			if (bIsDeprecated)
-				BindClass.DeprecatePreviousBind(TCHAR_TO_ANSI(*DeprecationMessage));
+				Setter.Deprecated(TCHAR_TO_ANSI(*DeprecationMessage));
 
-			BindClass.SetPreviousBindIsGeneratedAccessor(true);
+			Setter.GeneratedAccessor();
 
 			const FString& Tooltip = BoolProp->GetMetaData(NAME_Property_ToolTip);
 			if (Tooltip.Len() != 0)
-				FAngelscriptDocs::AddUnrealDocumentation(FAngelscriptBinds::GetPreviousFunctionId(), Tooltip, TEXT(""), nullptr);
+				Setter.Documentation(Tooltip);
 
 			if (BoolProp->HasAnyPropertyFlags(CPF_EditorOnly))
-				BindClass.SetPreviousBindIsEditorOnly(true);
+				Setter.EditorOnly();
 #endif
 		}
 
@@ -592,282 +592,218 @@ static float AS_THRESH_NORMALS_ARE_ORTHOGONAL_flt = THRESH_NORMALS_ARE_ORTHOGONA
 static float AS_NAN_flt = NAN;
 static double AS_NAN_dbl = NAN;
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_PrimitiveTypes(FAngelscriptBinds::EOrder::Early, []
+namespace
 {
-	auto IntType = MakeShared<FIntType>();
-	FAngelscriptType::Register(IntType);
-
-	auto UIntType = MakeShared<FUIntType>();
-	FAngelscriptType::Register(UIntType);
-
-	FAngelscriptType::Register(MakeShared<FInt64Type>());
-	FAngelscriptType::Register(MakeShared<FUInt64Type>());
-	FAngelscriptType::Register(MakeShared<FInt16Type>());
-	FAngelscriptType::Register(MakeShared<FUInt16Type>());
-	FAngelscriptType::Register(MakeShared<FInt8Type>());
-	FAngelscriptType::Register(MakeShared<FUInt8Type>());
-
-	auto* ConfigSettings = GetDefault<UAngelscriptSettings>();
-
-	auto BoolType = MakeShared<FBoolType>();
-	FAngelscriptType::ScriptBoolType() = BoolType;
-	FAngelscriptType::Register(BoolType);
-
-	auto FloatType = MakeShared<FFloatType>(
-		ConfigSettings->bScriptFloatIsFloat64 ? TEXT("float32") : TEXT("float")
-	);
-	FAngelscriptType::ScriptFloatType() = FloatType;
-	FAngelscriptType::Register(FloatType);
-
-	auto DoubleType = MakeShared<FDoubleType>(
-		ConfigSettings->bScriptFloatIsFloat64 ? TEXT("float") : TEXT("float64")
-	);
-	FAngelscriptType::ScriptDoubleType() = DoubleType;
-	FAngelscriptType::Register(DoubleType);
-
-	auto ExtendedType = MakeShared<FUnrealFloatParamExtendedToDoubleType>(
-		ConfigSettings->bScriptFloatIsFloat64 ? TEXT("float") : TEXT("float64")
-	);
-	FAngelscriptType::ScriptFloatParamExtendedToDoubleType() = ExtendedType;
-
-	// Make sure all the aliased types will be found correctly
-	FAngelscriptType::RegisterAlias(TEXT("double"), DoubleType);
-	FAngelscriptType::RegisterAlias(TEXT("int32"), IntType);
-	FAngelscriptType::RegisterAlias(TEXT("uint32"), UIntType);
-
-	if (ConfigSettings->bScriptFloatIsFloat64)
-		FAngelscriptType::RegisterAlias(TEXT("float64"), DoubleType);
-	else
-		FAngelscriptType::RegisterAlias(TEXT("float32"), FloatType);
-
-	FAngelscriptBinds::BindGlobalVariable("const uint8 MIN_uint8", &AS_MIN_uint8);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_uint8);
-	SCRIPT_GLOBAL_DOCUMENTATION("Lowest number a uint8 can hold (0)");
-
-	FAngelscriptBinds::BindGlobalVariable("const uint16 MIN_uint16", &AS_MIN_uint16);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_uint16);
-	SCRIPT_GLOBAL_DOCUMENTATION("Lowest number a uint16 can hold (0)");
-
-	FAngelscriptBinds::BindGlobalVariable("const uint32 MIN_uint32", &AS_MIN_uint32);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_uint32);
-	SCRIPT_GLOBAL_DOCUMENTATION("Lowest number a uint32 can hold (0)");
-	
-	FAngelscriptBinds::BindGlobalVariable("const uint64 MIN_uint64", &AS_MIN_uint64);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_uint64);
-	SCRIPT_GLOBAL_DOCUMENTATION("Lowest number a uint64 can hold (0)");
-
-	FAngelscriptBinds::BindGlobalVariable("const int8 MIN_int8", &AS_MIN_int8);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_int8);
-	SCRIPT_GLOBAL_DOCUMENTATION("Lowest number an int8 can hold (-128)");
-
-	FAngelscriptBinds::BindGlobalVariable("const int16 MIN_int16", &AS_MIN_int16);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_int16);
-	SCRIPT_GLOBAL_DOCUMENTATION("Lowest number an int16 can hold (-32768)");
-
-	FAngelscriptBinds::BindGlobalVariable("const int32 MIN_int32", &AS_MIN_int32);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_int32);
-	SCRIPT_GLOBAL_DOCUMENTATION("Lowest number an int32 can hold (-2147483648)");
-
-	FAngelscriptBinds::BindGlobalVariable("const int64 MIN_int64", &AS_MIN_int64);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_int64);
-	SCRIPT_GLOBAL_DOCUMENTATION("Lowest number an int64 can hold (-9223372036854775808)");
-
-	FAngelscriptBinds::BindGlobalVariable("const uint8 MAX_uint8", &AS_MAX_uint8);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_uint8);
-	SCRIPT_GLOBAL_DOCUMENTATION("Highest number a uint8 can hold (255)");
-
-	FAngelscriptBinds::BindGlobalVariable("const uint16 MAX_uint16", &AS_MAX_uint16);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_uint16);
-	SCRIPT_GLOBAL_DOCUMENTATION("Highest number a uint16 can hold (65535)");
-
-	FAngelscriptBinds::BindGlobalVariable("const uint32 MAX_uint32", &AS_MAX_uint32);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_uint32);
-	SCRIPT_GLOBAL_DOCUMENTATION("Highest number a uint32 can hold (4294967295)");
-
-	FAngelscriptBinds::BindGlobalVariable("const uint64 MAX_uint64", &AS_MAX_uint64);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_uint64);
-	SCRIPT_GLOBAL_DOCUMENTATION("Highest number a uint64 can hold (18446744073709551615)");
-
-	FAngelscriptBinds::BindGlobalVariable("const int8 MAX_int8", &AS_MAX_int8);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_int8);
-	SCRIPT_GLOBAL_DOCUMENTATION("Highest number an int8 can hold (127)");
-
-	FAngelscriptBinds::BindGlobalVariable("const int16 MAX_int16", &AS_MAX_int16);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_int16);
-	SCRIPT_GLOBAL_DOCUMENTATION("Highest number an int8 can hold (32767)");
-
-	FAngelscriptBinds::BindGlobalVariable("const int32 MAX_int32", &AS_MAX_int32);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_int32);
-	SCRIPT_GLOBAL_DOCUMENTATION("Highest number an int32 can hold (2147483647)");
-
-	FAngelscriptBinds::BindGlobalVariable("const int64 MAX_int64", &AS_MAX_int64);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_int64);
-	SCRIPT_GLOBAL_DOCUMENTATION("Highest number an int64 can hold (9223372036854775807)");
-
-	if (!ConfigSettings->bDeprecateDoubleType)
+	template<typename T>
+	void BindPrimitiveConstant(
+		FAngelscriptBinds& Binds,
+		const ANSICHAR* Declaration,
+		T* Address,
+		const TCHAR* Documentation = nullptr)
 	{
-		FAngelscriptBinds::BindGlobalVariable("const float64 MIN_dbl", &AS_MIN_dbl);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_dbl);
-		SCRIPT_GLOBAL_DOCUMENTATION("Smallest positive number a double can hold (~0.0000...001)");
+		static_assert(sizeof(T) <= sizeof(asQWORD));
 
-		FAngelscriptBinds::BindGlobalVariable("const float64 MAX_dbl", &AS_MAX_dbl);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_dbl);
-		SCRIPT_GLOBAL_DOCUMENTATION("Largest positive number a double can hold (~10^308)");
+		asQWORD RawValue = 0;
+		FMemory::Memcpy(&RawValue, Address, sizeof(T));
+		FAngelscriptBoundProperty BoundConstant = Binds.BindGlobalVariableForTarget(Declaration, Address)
+			.PureConstant(RawValue);
 
-		FAngelscriptBinds::BindGlobalVariable("const float64 NAN_dbl", &AS_NAN_dbl);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_NAN_dbl);
-		SCRIPT_GLOBAL_DOCUMENTATION("Special Not-a-Number value for double floating point");
+#if WITH_EDITOR
+		if (BoundConstant.IsValid() && Documentation != nullptr)
+		{
+			FAngelscriptDocs::AddDocumentationForGlobalVariable(
+				Binds.GetTargetEngine(),
+				BoundConstant.GetPropertyId(),
+				Documentation);
+		}
+#endif
 	}
 
-	if (ConfigSettings->bScriptFloatIsFloat64)
+	void BindPrimitiveTypeInfrastructure(FAngelscriptBinds& Binds)
 	{
-		FAngelscriptBinds::BindGlobalVariable("const float64 MIN_flt", &AS_MIN_dbl);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_dbl);
-		SCRIPT_GLOBAL_DOCUMENTATION("Smallest positive number a float can hold (~0.0000...001)");
+		FAngelscriptTypeDatabase& TypeDatabase = Binds.GetTargetTypeDatabase();
+		const UAngelscriptSettings* ConfigSettings = Binds.GetTargetEngine().ConfigSettings;
+		check(ConfigSettings != nullptr);
 
-		FAngelscriptBinds::BindGlobalVariable("const float64 MAX_flt", &AS_MAX_dbl);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_dbl);
-		SCRIPT_GLOBAL_DOCUMENTATION("Largest positive number a float can hold (~10^308)");
+		auto IntType = MakeShared<FIntType>();
+		Binds.RegisterTypeForTarget(IntType);
 
-		FAngelscriptBinds::BindGlobalVariable("const float64 NAN_flt", &AS_NAN_dbl);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_NAN_dbl);
-		SCRIPT_GLOBAL_DOCUMENTATION("Special Not-a-Number value for floating point");
+		auto UIntType = MakeShared<FUIntType>();
+		Binds.RegisterTypeForTarget(UIntType);
+
+		Binds.RegisterTypeForTarget(MakeShared<FInt64Type>());
+		Binds.RegisterTypeForTarget(MakeShared<FUInt64Type>());
+		Binds.RegisterTypeForTarget(MakeShared<FInt16Type>());
+		Binds.RegisterTypeForTarget(MakeShared<FUInt16Type>());
+		Binds.RegisterTypeForTarget(MakeShared<FInt8Type>());
+		Binds.RegisterTypeForTarget(MakeShared<FUInt8Type>());
+
+		auto BoolType = MakeShared<FBoolType>();
+		TypeDatabase.ScriptBoolType = BoolType;
+		Binds.RegisterTypeForTarget(BoolType);
+
+		auto FloatType = MakeShared<FFloatType>(
+			ConfigSettings->bScriptFloatIsFloat64 ? TEXT("float32") : TEXT("float"));
+		TypeDatabase.ScriptFloatType = FloatType;
+		Binds.RegisterTypeForTarget(FloatType);
+
+		auto DoubleType = MakeShared<FDoubleType>(
+			ConfigSettings->bScriptFloatIsFloat64 ? TEXT("float") : TEXT("float64"));
+		TypeDatabase.ScriptDoubleType = DoubleType;
+		Binds.RegisterTypeForTarget(DoubleType);
+
+		auto ExtendedType = MakeShared<FUnrealFloatParamExtendedToDoubleType>(
+			ConfigSettings->bScriptFloatIsFloat64 ? TEXT("float") : TEXT("float64"));
+		TypeDatabase.ScriptFloatParamExtendedToDoubleType = ExtendedType;
+
+		// Make sure all the aliased types will be found correctly.
+		TypeDatabase.TypesByAngelscriptName.Add(TEXT("double"), DoubleType);
+		TypeDatabase.TypesByAngelscriptName.Add(TEXT("int32"), IntType);
+		TypeDatabase.TypesByAngelscriptName.Add(TEXT("uint32"), UIntType);
+
+		if (ConfigSettings->bScriptFloatIsFloat64)
+			TypeDatabase.TypesByAngelscriptName.Add(TEXT("float64"), DoubleType);
+		else
+			TypeDatabase.TypesByAngelscriptName.Add(TEXT("float32"), FloatType);
 	}
-	else
+
+	void BindPrimitiveConstants(FAngelscriptBinds& Binds)
 	{
-		FAngelscriptBinds::BindGlobalVariable("const float32 MIN_flt", &AS_MIN_flt);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MIN_flt);
-		SCRIPT_GLOBAL_DOCUMENTATION("Smallest positive number a float can hold (~0.0000...001)");
+		const UAngelscriptSettings* ConfigSettings = Binds.GetTargetEngine().ConfigSettings;
+		check(ConfigSettings != nullptr);
 
-		FAngelscriptBinds::BindGlobalVariable("const float32 MAX_flt", &AS_MAX_flt);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_MAX_flt);
-		SCRIPT_GLOBAL_DOCUMENTATION("Largest positive number a float can hold (~10^38)");
+		BindPrimitiveConstant(Binds, "const uint8 MIN_uint8", &AS_MIN_uint8, TEXT("Lowest number a uint8 can hold (0)"));
+		BindPrimitiveConstant(Binds, "const uint16 MIN_uint16", &AS_MIN_uint16, TEXT("Lowest number a uint16 can hold (0)"));
+		BindPrimitiveConstant(Binds, "const uint32 MIN_uint32", &AS_MIN_uint32, TEXT("Lowest number a uint32 can hold (0)"));
+		BindPrimitiveConstant(Binds, "const uint64 MIN_uint64", &AS_MIN_uint64, TEXT("Lowest number a uint64 can hold (0)"));
+		BindPrimitiveConstant(Binds, "const int8 MIN_int8", &AS_MIN_int8, TEXT("Lowest number an int8 can hold (-128)"));
+		BindPrimitiveConstant(Binds, "const int16 MIN_int16", &AS_MIN_int16, TEXT("Lowest number an int16 can hold (-32768)"));
+		BindPrimitiveConstant(Binds, "const int32 MIN_int32", &AS_MIN_int32, TEXT("Lowest number an int32 can hold (-2147483648)"));
+		BindPrimitiveConstant(Binds, "const int64 MIN_int64", &AS_MIN_int64, TEXT("Lowest number an int64 can hold (-9223372036854775808)"));
 
-		FAngelscriptBinds::BindGlobalVariable("const float32 NAN_flt", &AS_NAN_flt);
-		FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_NAN_flt);
-		SCRIPT_GLOBAL_DOCUMENTATION("Special Not-a-Number value for floating point");
+		BindPrimitiveConstant(Binds, "const uint8 MAX_uint8", &AS_MAX_uint8, TEXT("Highest number a uint8 can hold (255)"));
+		BindPrimitiveConstant(Binds, "const uint16 MAX_uint16", &AS_MAX_uint16, TEXT("Highest number a uint16 can hold (65535)"));
+		BindPrimitiveConstant(Binds, "const uint32 MAX_uint32", &AS_MAX_uint32, TEXT("Highest number a uint32 can hold (4294967295)"));
+		BindPrimitiveConstant(Binds, "const uint64 MAX_uint64", &AS_MAX_uint64, TEXT("Highest number a uint64 can hold (18446744073709551615)"));
+		BindPrimitiveConstant(Binds, "const int8 MAX_int8", &AS_MAX_int8, TEXT("Highest number an int8 can hold (127)"));
+		BindPrimitiveConstant(Binds, "const int16 MAX_int16", &AS_MAX_int16, TEXT("Highest number an int8 can hold (32767)"));
+		BindPrimitiveConstant(Binds, "const int32 MAX_int32", &AS_MAX_int32, TEXT("Highest number an int32 can hold (2147483647)"));
+		BindPrimitiveConstant(Binds, "const int64 MAX_int64", &AS_MAX_int64, TEXT("Highest number an int64 can hold (9223372036854775807)"));
+
+		if (!ConfigSettings->bDeprecateDoubleType)
+		{
+			BindPrimitiveConstant(Binds, "const float64 MIN_dbl", &AS_MIN_dbl, TEXT("Smallest positive number a double can hold (~0.0000...001)"));
+			BindPrimitiveConstant(Binds, "const float64 MAX_dbl", &AS_MAX_dbl, TEXT("Largest positive number a double can hold (~10^308)"));
+			BindPrimitiveConstant(Binds, "const float64 NAN_dbl", &AS_NAN_dbl, TEXT("Special Not-a-Number value for double floating point"));
+		}
+
+		if (ConfigSettings->bScriptFloatIsFloat64)
+		{
+			BindPrimitiveConstant(Binds, "const float64 MIN_flt", &AS_MIN_dbl, TEXT("Smallest positive number a float can hold (~0.0000...001)"));
+			BindPrimitiveConstant(Binds, "const float64 MAX_flt", &AS_MAX_dbl, TEXT("Largest positive number a float can hold (~10^308)"));
+			BindPrimitiveConstant(Binds, "const float64 NAN_flt", &AS_NAN_dbl, TEXT("Special Not-a-Number value for floating point"));
+		}
+		else
+		{
+			BindPrimitiveConstant(Binds, "const float32 MIN_flt", &AS_MIN_flt, TEXT("Smallest positive number a float can hold (~0.0000...001)"));
+			BindPrimitiveConstant(Binds, "const float32 MAX_flt", &AS_MAX_flt, TEXT("Largest positive number a float can hold (~10^38)"));
+			BindPrimitiveConstant(Binds, "const float32 NAN_flt", &AS_NAN_flt, TEXT("Special Not-a-Number value for floating point"));
+		}
+
+		BindPrimitiveConstant(Binds, "const float64 EULERS_NUMBER", &AS_EULERS_NUMBER, TEXT("Euler's number, also known as `e` (2.71828...)"));
+		BindPrimitiveConstant(Binds, "const float64 PI", &AS_PI, TEXT("Pi, also known as `π` (3.14159...)"));
+		BindPrimitiveConstant(Binds, "const float64 HALF_PI", &AS_HALF_PI, TEXT("Half the value of Pi (1.57079...)"));
+		BindPrimitiveConstant(Binds, "const float64 TWO_PI", &AS_TWO_PI, TEXT("Double the value of Pi (6.28318...)"));
+		BindPrimitiveConstant(Binds, "const float64 SMALL_NUMBER", &AS_SMALL_NUMBER, TEXT("A very small number (0.00000001, or 1e-8)"));
+		BindPrimitiveConstant(Binds, "const float64 KINDA_SMALL_NUMBER", &AS_KINDA_SMALL_NUMBER, TEXT("A somewhat small number (0.0001, or 1e-4)"));
+		BindPrimitiveConstant(Binds, "const float64 BIG_NUMBER", &AS_BIG_NUMBER, TEXT("A very large number (~10^38)"));
+		BindPrimitiveConstant(Binds, "const float64 THRESH_VECTOR_NORMALIZED", &AS_THRESH_VECTOR_NORMALIZED);
+		BindPrimitiveConstant(Binds, "const float64 THRESH_NORMALS_ARE_PARALLEL", &AS_THRESH_NORMALS_ARE_PARALLEL);
+		BindPrimitiveConstant(Binds, "const float64 THRESH_NORMALS_ARE_ORTHOGONAL", &AS_THRESH_NORMALS_ARE_ORTHOGONAL);
+
+		BindPrimitiveConstant(Binds, "const float32 __EULERS_NUMBER_flt", &AS_EULERS_NUMBER_flt);
+		BindPrimitiveConstant(Binds, "const float32 __PI_flt", &AS_PI_flt);
+		BindPrimitiveConstant(Binds, "const float32 __HALF_PI_flt", &AS_HALF_PI_flt);
+		BindPrimitiveConstant(Binds, "const float32 __TWO_PI_flt", &AS_TWO_PI_flt);
+		BindPrimitiveConstant(Binds, "const float32 __SMALL_NUMBER_flt", &AS_SMALL_NUMBER_flt);
+		BindPrimitiveConstant(Binds, "const float32 __KINDA_SMALL_NUMBER_flt", &AS_KINDA_SMALL_NUMBER_flt);
+		BindPrimitiveConstant(Binds, "const float32 __BIG_NUMBER_flt", &AS_BIG_NUMBER_flt);
+		BindPrimitiveConstant(Binds, "const float32 __THRESH_VECTOR_NORMALIZED_flt", &AS_THRESH_VECTOR_NORMALIZED_flt);
+		BindPrimitiveConstant(Binds, "const float32 __THRESH_NORMALS_ARE_PARALLEL_flt", &AS_THRESH_NORMALS_ARE_PARALLEL_flt);
+		BindPrimitiveConstant(Binds, "const float32 __THRESH_NORMALS_ARE_ORTHOGONAL_flt", &AS_THRESH_NORMALS_ARE_ORTHOGONAL_flt);
 	}
 
-	FAngelscriptBinds::BindGlobalVariable("const float64 EULERS_NUMBER", &AS_EULERS_NUMBER);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_EULERS_NUMBER);
-	SCRIPT_GLOBAL_DOCUMENTATION("Euler's number, also known as `e` (2.71828...)");
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 PI", &AS_PI);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_PI);
-	SCRIPT_GLOBAL_DOCUMENTATION("Pi, also known as `π` (3.14159...)");
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 HALF_PI", &AS_HALF_PI);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_HALF_PI);
-	SCRIPT_GLOBAL_DOCUMENTATION("Half the value of Pi (1.57079...)");
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 TWO_PI", &AS_TWO_PI);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_TWO_PI);
-	SCRIPT_GLOBAL_DOCUMENTATION("Double the value of Pi (6.28318...)");
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 SMALL_NUMBER", &AS_SMALL_NUMBER);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_SMALL_NUMBER);
-	SCRIPT_GLOBAL_DOCUMENTATION("A very small number (0.00000001, or 1e-8)");
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 KINDA_SMALL_NUMBER", &AS_KINDA_SMALL_NUMBER);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_KINDA_SMALL_NUMBER);
-	SCRIPT_GLOBAL_DOCUMENTATION("A somewhat small number (0.0001, or 1e-4)");
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 BIG_NUMBER", &AS_BIG_NUMBER);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_BIG_NUMBER);
-	SCRIPT_GLOBAL_DOCUMENTATION("A very large number (~10^38)");
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 THRESH_VECTOR_NORMALIZED", &AS_THRESH_VECTOR_NORMALIZED);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_THRESH_VECTOR_NORMALIZED);
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 THRESH_NORMALS_ARE_PARALLEL", &AS_THRESH_NORMALS_ARE_PARALLEL);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_THRESH_NORMALS_ARE_PARALLEL);
-
-	FAngelscriptBinds::BindGlobalVariable("const float64 THRESH_NORMALS_ARE_ORTHOGONAL", &AS_THRESH_NORMALS_ARE_ORTHOGONAL);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_THRESH_NORMALS_ARE_ORTHOGONAL);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __EULERS_NUMBER_flt", &AS_EULERS_NUMBER_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_EULERS_NUMBER_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __PI_flt", &AS_PI_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_PI_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __HALF_PI_flt", &AS_HALF_PI_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_HALF_PI_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __TWO_PI_flt", &AS_TWO_PI_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_TWO_PI_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __SMALL_NUMBER_flt", &AS_SMALL_NUMBER_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_SMALL_NUMBER_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __KINDA_SMALL_NUMBER_flt", &AS_KINDA_SMALL_NUMBER_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_KINDA_SMALL_NUMBER_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __BIG_NUMBER_flt", &AS_BIG_NUMBER_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_BIG_NUMBER_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __THRESH_VECTOR_NORMALIZED_flt", &AS_THRESH_VECTOR_NORMALIZED_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_THRESH_VECTOR_NORMALIZED_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __THRESH_NORMALS_ARE_PARALLEL_flt", &AS_THRESH_NORMALS_ARE_PARALLEL_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_THRESH_NORMALS_ARE_PARALLEL_flt);
-
-	FAngelscriptBinds::BindGlobalVariable("const float32 __THRESH_NORMALS_ARE_ORTHOGONAL_flt", &AS_THRESH_NORMALS_ARE_ORTHOGONAL_flt);
-	FAngelscriptBinds::SetPreviousBoundGlobalVariablePureConstant(AS_THRESH_NORMALS_ARE_ORTHOGONAL_flt);
-
-	FToStringHelper::Register(TEXT("int8"), [](void* Ptr, FString& Str)
+	void BindPrimitiveToStringContribution(FAngelscriptBinds& Binds)
 	{
-		Str += FString::Printf(TEXT("%d"), *(int8*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("int8"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%d"), *(int8*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("int16"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::Printf(TEXT("%d"), *(int16*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("int16"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%d"), *(int16*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("int32"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::Printf(TEXT("%d"), *(int32*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("int32"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%d"), *(int32*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("int64"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::Printf(TEXT("%lld"), *(int64*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("int64"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%lld"), *(int64*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("uint8"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::Printf(TEXT("%u"), *(uint8*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("uint8"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%u"), *(uint8*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("uint16"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::Printf(TEXT("%u"), *(uint16*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("uint16"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%u"), *(uint16*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("uint32"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::Printf(TEXT("%u"), *(uint32*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("uint32"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%u"), *(uint32*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("uint64"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::Printf(TEXT("%llu"), *(uint64*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("uint64"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%llu"), *(uint64*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("float32"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::SanitizeFloat(*(float*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("float32"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::SanitizeFloat(*(float*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("float64"), [](void* Ptr, FString& Str)
-	{
-		Str += FString::SanitizeFloat(*(double*)Ptr);
-	});
+		FToStringHelper::Register(Binds, TEXT("float64"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::SanitizeFloat(*(double*)Ptr);
+		});
 
-	FToStringHelper::Register(TEXT("bool"), [](void* Ptr, FString& Str)
-	{
-		Str += *(bool*)Ptr ? TEXT("true") : TEXT("false");
-	});
-});
+		FToStringHelper::Register(Binds, TEXT("bool"), [](void* Ptr, FString& Str)
+		{
+			Str += *(bool*)Ptr ? TEXT("true") : TEXT("false");
+		});
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes_TypeInfrastructure(
+	TEXT("PrimitiveTypes.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindPrimitiveTypeInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes_ToStringContribution(
+	TEXT("PrimitiveTypes.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindPrimitiveToStringContribution);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes(
+	TEXT("PrimitiveTypes.Constants"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindPrimitiveConstants);
 

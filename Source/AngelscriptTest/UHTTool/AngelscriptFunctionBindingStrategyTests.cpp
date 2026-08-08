@@ -39,6 +39,97 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionBindingStrategyContractTests,
 	"Angelscript.CppTests.UHTToolResolver.FunctionBindingStrategy",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
+	TEST_METHOD(RuntimeLinkedEmitterUsesExplicitGeneratedCallback)
+	{
+		FString EmitterContents;
+		FString ModelContents;
+		const FString EmitterPath = FPaths::Combine(
+			GetPluginDirectory(),
+			TEXT("Source/AngelscriptUHTTool/AngelscriptFunctionBindingEmitters.cs"));
+		const FString ModelPath = FPaths::Combine(
+			GetPluginDirectory(),
+			TEXT("Source/AngelscriptUHTTool/AngelscriptFunctionBindingModels.cs"));
+
+		ASSERT_THAT(IsTrue(
+			FFileHelper::LoadFileToString(EmitterContents, *EmitterPath),
+			*FString::Printf(TEXT("Runtime-linked emitter should be readable: %s"), *EmitterPath)));
+		ASSERT_THAT(IsTrue(
+			FFileHelper::LoadFileToString(ModelContents, *ModelPath),
+			*FString::Printf(TEXT("Runtime-linked model should be readable: %s"), *ModelPath)));
+
+		ASSERT_THAT(IsTrue(
+			EmitterContents.Contains(TEXT("MaxBindingsPerRuntimeLinkedHelperFunction = 256")),
+			TEXT("Runtime-linked emitter should preserve 256-entry batches")));
+		ASSERT_THAT(IsTrue(
+			EmitterContents.Contains(TEXT("BindGeneratedFunctionBindings_"))
+				&& EmitterContents.Contains(TEXT("FAngelscriptBinds& Binds"))
+				&& EmitterContents.Contains(TEXT("EAngelscriptBindPhase::GeneratedBindings")),
+			TEXT("Runtime-linked emitter should build one named explicit GeneratedBindings callback")));
+		ASSERT_THAT(IsTrue(
+			ModelContents.Contains(TEXT("Binds.RegisterGeneratedFunctionBindingForTarget")),
+			TEXT("Runtime-linked model should emit explicit generated registrations")));
+		ASSERT_THAT(IsFalse(
+			EmitterContents.Contains(TEXT("FAngelscriptBinds::FBind"))
+				|| EmitterContents.Contains(TEXT("FAngelscriptBinds::EOrder"))
+				|| ModelContents.Contains(TEXT("FAngelscriptBinds::RegisterGeneratedFunctionBinding(")),
+			TEXT("Runtime-linked generator sources should not retain legacy provider syntax")));
+	}
+
+	TEST_METHOD(NativeModuleEmitterPreservesTargetModuleIndependenceAndBridgeLayout)
+	{
+		FString EmitterContents;
+		FString BridgeContents;
+		FString LayoutVersionContents;
+		const FString EmitterPath = FPaths::Combine(
+			GetPluginDirectory(),
+			TEXT("Source/AngelscriptUHTTool/AngelscriptFunctionBindingEmitters.cs"));
+		const FString BridgePath = FPaths::Combine(
+			GetPluginDirectory(),
+			TEXT("Source/AngelscriptRuntime/FunctionBinding/NativeModuleFunctionBindingBridge.h"));
+		const FString LayoutVersionPath = FPaths::Combine(
+			GetPluginDirectory(),
+			TEXT("Source/AngelscriptUHTTool/native-module-function-binding-layout-version.txt"));
+
+		ASSERT_THAT(IsTrue(FFileHelper::LoadFileToString(EmitterContents, *EmitterPath)));
+		ASSERT_THAT(IsTrue(FFileHelper::LoadFileToString(BridgeContents, *BridgePath)));
+		ASSERT_THAT(IsTrue(FFileHelper::LoadFileToString(LayoutVersionContents, *LayoutVersionPath)));
+
+		const int32 TargetShardStart = EmitterContents.Find(
+			TEXT("private static StringBuilder BuildNativeModuleFunctionAddressShard"),
+			ESearchCase::CaseSensitive);
+		const int32 TargetShardEnd = EmitterContents.Find(
+			TEXT("private static string BuildNativeModuleFunctionBindingThunkName"),
+			ESearchCase::CaseSensitive,
+			ESearchDir::FromStart,
+			TargetShardStart + 1);
+		ASSERT_THAT(IsTrue(
+			TargetShardStart != INDEX_NONE && TargetShardEnd > TargetShardStart,
+			TEXT("NativeModuleFunctionAddress shard emitter section should remain discoverable")));
+
+		const FString TargetShardEmitter = EmitterContents.Mid(
+			TargetShardStart,
+			TargetShardEnd - TargetShardStart);
+		ASSERT_THAT(IsTrue(
+			TargetShardEmitter.Contains(TEXT("#include \\\"Features/IModularFeatures.h\\\""))
+				&& TargetShardEmitter.Contains(TEXT("RegisterModularFeature"))
+				&& TargetShardEmitter.Contains(TEXT("UnregisterModularFeature")),
+			TEXT("Target-module shards should preserve modular-feature arrival and unload transport")));
+		ASSERT_THAT(IsTrue(
+			TargetShardEmitter.Contains(TEXT("sizeof(FAngelscriptNativeModuleFunctionBindingCallFrame) == 48"))
+				&& TargetShardEmitter.Contains(TEXT("sizeof(FAngelscriptNativeModuleFunctionBinding) == 32"))
+				&& TargetShardEmitter.Contains(TEXT("sizeof(FAngelscriptNativeModuleFunctionBindingView) == 32")),
+			TEXT("Target-module shards should preserve the callframe, POD, and view ABI guards")));
+		ASSERT_THAT(IsFalse(
+			TargetShardEmitter.Contains(TEXT("AngelscriptBinds"))
+				|| TargetShardEmitter.Contains(TEXT("AngelscriptRuntime"))
+				|| TargetShardEmitter.Contains(TEXT("NativeModuleFunctionBindingBridge.h")),
+			TEXT("Target-module shards should remain independent of AngelscriptRuntime")));
+		ASSERT_THAT(IsTrue(
+			LayoutVersionContents.Contains(TEXT("0xA5C0DE02"))
+				&& BridgeContents.Contains(TEXT("0xA5C0DE02u")),
+			TEXT("Runtime bridge and target emitter should retain the current layout-version token")));
+	}
+
 	TEST_METHOD(CompileOptionsUseTheGlobalFunctionBindingMethod)
 	{
 		FString HeaderContents;
@@ -121,7 +212,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptFunctionBindingOutputContractTests,
 		bool bPassed = true;
 		bPassed &= ReadFile(FPaths::Combine(GetGeneratedDirectory(), TEXT("AS_FunctionBindingStatistics.json")), StatisticsContents, *TestRunner);
 		bPassed &= ReadFile(FPaths::Combine(GetGeneratedDirectory(), TEXT("AS_FunctionBindingDiagnostics.csv")), DiagnosticsContents, *TestRunner);
-		bPassed &= ReadFile(FPaths::Combine(GetGeneratedDirectory(), TEXT("AS_FunctionBinding_Engine_000.gen.cpp")), RuntimeShardContents, *TestRunner);
+		bPassed &= ReadFile(FPaths::Combine(GetGeneratedDirectory(), TEXT("AS_FunctionBinding_Engine.gen.cpp")), RuntimeShardContents, *TestRunner);
 		if (!bPassed)
 		{
 			return;

@@ -51,9 +51,6 @@ public:
 	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
 	TArray<FString> PreprocessorFlags;
 
-	UPROPERTY(Config, EditDefaultsOnly, Category = "Angelscript", Meta = (ConfigRestartRequired = true))
-	TArray<FName> DisabledBindNames;
-
 	/* Whether to use the new automatic import system (explicit import statements no longer used) */
 	UPROPERTY(Config, EditDefaultsOnly, Category = "Backwards Compatibility", Meta = (ConfigRestartRequired = true))
 	bool bAutomaticImports = true;

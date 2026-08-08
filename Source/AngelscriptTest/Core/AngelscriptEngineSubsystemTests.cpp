@@ -93,6 +93,14 @@ public:
 			ASSERT_THAT(IsTrue(
 				Subsystem->GetEngine() == AmbientEngine.Get(),
 				TEXT("EngineSubsystem should keep the same ambient engine after repeated initialization")));
+
+			// This fixture constructs a transient subsystem directly rather than through
+			// the engine subsystem collection. Mirror the production lifecycle before the
+			// ambient engine is destroyed so the tickable cannot retain a borrowed pointer.
+			Subsystem->Deinitialize();
+			ASSERT_THAT(IsNull(
+				Subsystem->GetEngine(),
+				TEXT("EngineSubsystem deinitialization should release its borrowed engine pointer")));
 		}
 
 		ASSERT_THAT(IsNotNull(

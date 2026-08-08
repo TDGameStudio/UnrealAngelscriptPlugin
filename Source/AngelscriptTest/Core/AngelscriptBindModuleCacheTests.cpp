@@ -67,16 +67,13 @@ const TArray<FString> ExpectedBindModules = MakeExpectedBindModules();
 		const FString MissingCachePath = FPaths::Combine(CacheDirectory, TEXT("MissingBindModules.Cache"));
 
 		IFileManager::Get().MakeDirectory(*CacheDirectory, true);
-		FAngelscriptBinds::ResetBindState();
 		ON_SCOPE_EXIT
 		{
-			FAngelscriptBinds::ResetBindState();
 			IFileManager::Get().DeleteDirectory(*CacheDirectory, false, true);
 		};
 
-		TArray<FString>& BindModuleNames = FAngelscriptBinds::GetBindModuleNames();
-		BindModuleNames = ExpectedBindModules;
-		FAngelscriptBinds::SaveBindModules(CachePath);
+		TArray<FString> BindModuleNames = ExpectedBindModules;
+		FAngelscriptBinds::SaveBindModules(CachePath, BindModuleNames);
 
 		if (!this->Assert.IsTrue(
 				IFileManager::Get().FileExists(*CachePath),
@@ -102,20 +99,20 @@ const TArray<FString> ExpectedBindModules = MakeExpectedBindModules();
 			return;
 		}
 
-		FAngelscriptBinds::ResetBindState();
+		BindModuleNames.Reset();
 		if (!this->Assert.AreEqual(
 				0,
-				FAngelscriptBinds::GetBindModuleNames().Num(),
+				BindModuleNames.Num(),
 				TEXT("BindModuleCache reset should clear the in-memory bind module list before reload")))
 		{
 			return;
 		}
 
-		FAngelscriptBinds::LoadBindModules(CachePath);
+		FAngelscriptBinds::LoadBindModules(CachePath, BindModuleNames);
 		if (!ExpectBindModuleSequence(
 				*TestRunner,
 				TEXT("BindModuleCache round-trip"),
-				FAngelscriptBinds::GetBindModuleNames(),
+				BindModuleNames,
 				ExpectedBindModules))
 		{
 			return;
@@ -133,10 +130,10 @@ const TArray<FString> ExpectedBindModules = MakeExpectedBindModules();
 			return;
 		}
 
-		FAngelscriptBinds::LoadBindModules(MissingCachePath);
+		FAngelscriptBinds::LoadBindModules(MissingCachePath, BindModuleNames);
 		ASSERT_THAT(AreEqual(
 			0,
-			FAngelscriptBinds::GetBindModuleNames().Num(),
+			BindModuleNames.Num(),
 			TEXT("BindModuleCache missing-file load should clear stale in-memory bind module names")));
 	}
 };

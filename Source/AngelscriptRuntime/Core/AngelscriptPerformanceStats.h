@@ -11,7 +11,7 @@ CSV_DECLARE_CATEGORY_MODULE_EXTERN(ANGELSCRIPTRUNTIME_API, Angelscript);
 
 DECLARE_CYCLE_STAT_EXTERN(TEXT("Angelscript.Startup.BindDatabase"), STAT_AngelscriptStartupBindDatabase, STATGROUP_Angelscript, ANGELSCRIPTRUNTIME_API);
 DECLARE_CYCLE_STAT_EXTERN(TEXT("Angelscript.Startup.BindScriptTypes"), STAT_AngelscriptStartupBindScriptTypes, STATGROUP_Angelscript, ANGELSCRIPTRUNTIME_API);
-DECLARE_CYCLE_STAT_EXTERN(TEXT("Angelscript.Binds.CallBinds"), STAT_AngelscriptBindsCallBinds, STATGROUP_Angelscript, ANGELSCRIPTRUNTIME_API);
+DECLARE_CYCLE_STAT_EXTERN(TEXT("Angelscript.Binds.ExecuteCallbacks"), STAT_AngelscriptBindsExecuteCallbacks, STATGROUP_Angelscript, ANGELSCRIPTRUNTIME_API);
 DECLARE_CYCLE_STAT_EXTERN(TEXT("Angelscript.Compile.Initial"), STAT_AngelscriptCompileInitial, STATGROUP_Angelscript, ANGELSCRIPTRUNTIME_API);
 DECLARE_CYCLE_STAT_EXTERN(TEXT("Angelscript.Compile.Modules"), STAT_AngelscriptCompileModules, STATGROUP_Angelscript, ANGELSCRIPTRUNTIME_API);
 DECLARE_CYCLE_STAT_EXTERN(TEXT("Angelscript.Reload.HotReload"), STAT_AngelscriptReloadHotReload, STATGROUP_Angelscript, ANGELSCRIPTRUNTIME_API);
@@ -40,7 +40,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptPerformanceStats
 
 #define AS_PERF_SCOPE_STARTUP_BIND_DATABASE() ANGELSCRIPT_PERF_SCOPE("Angelscript.Startup.BindDatabase", STAT_AngelscriptStartupBindDatabase, Startup_BindDatabase)
 #define AS_PERF_SCOPE_STARTUP_BIND_SCRIPT_TYPES() ANGELSCRIPT_PERF_SCOPE("Angelscript.Startup.BindScriptTypes", STAT_AngelscriptStartupBindScriptTypes, Startup_BindScriptTypes)
-#define AS_PERF_SCOPE_BINDS_CALL_BINDS() ANGELSCRIPT_PERF_SCOPE("Angelscript.Binds.CallBinds", STAT_AngelscriptBindsCallBinds, Binds_CallBinds)
+#define AS_PERF_SCOPE_BINDS_EXECUTE_CALLBACKS() ANGELSCRIPT_PERF_SCOPE("Angelscript.Binds.ExecuteCallbacks", STAT_AngelscriptBindsExecuteCallbacks, Binds_ExecuteCallbacks)
 #define AS_PERF_SCOPE_COMPILE_INITIAL() ANGELSCRIPT_PERF_SCOPE("Angelscript.Compile.Initial", STAT_AngelscriptCompileInitial, Compile_Initial)
 #define AS_PERF_SCOPE_COMPILE_MODULES() ANGELSCRIPT_PERF_SCOPE("Angelscript.Compile.Modules", STAT_AngelscriptCompileModules, Compile_Modules)
 #define AS_PERF_SCOPE_RELOAD_HOT_RELOAD() ANGELSCRIPT_PERF_SCOPE("Angelscript.Reload.HotReload", STAT_AngelscriptReloadHotReload, Reload_HotReload)

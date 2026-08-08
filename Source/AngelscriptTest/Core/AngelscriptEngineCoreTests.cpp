@@ -162,43 +162,6 @@ FAngelscriptEngine& Engine = ASTEST_CREATE_ENGINE();
 		}
 	}
 
-	TEST_METHOD(LastFullDestroyClearsTypeState)
-	{
-		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
-FCoreTestContextStackGuard ContextGuard;
-		DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized())
-		{
-			FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
-		}
-		ContextGuard.DiscardSavedStack();
-		ON_SCOPE_EXIT
-		{
-			if (FAngelscriptEngine::IsInitialized())
-			{
-				FAngelscriptTestEngineScopeAccess::DestroyGlobalEngine();
-			}
-			DestroySharedTestEngine();
-		};
-
-		TUniquePtr<FAngelscriptEngine> FullEngine = CreateFullTestEngine();
-		if (!this->Assert.IsNotNull(FullEngine.Get(), TEXT("Last full destroy core test should create a full engine")))
-		{
-			return;
-		}
-
-		{
-			FAngelscriptEngineScope Scope(*FullEngine);
-			if (!this->Assert.IsTrue(FAngelscriptType::GetTypes().Num() > 0, TEXT("Last full destroy core test should populate type metadata while the full engine is alive")))
-			{
-				return;
-			}
-		}
-
-		FullEngine.Reset();
-		(void)this->Assert.AreEqual(0, FAngelscriptType::GetTypes().Num(), TEXT("Last full destroy core test should clear type metadata after the final full owner is destroyed"));
-	}
-
 	TEST_METHOD(FullDestroyAllowsCleanRecreate)
 	{
 		FScopedAngelscriptEngineResolutionSuppressionForTesting NoCurrentEngineScope;
@@ -218,6 +181,7 @@ FCoreTestContextStackGuard ContextGuard;
 			DestroySharedTestEngine();
 		};
 
+		const FString FirstEpochAlias = TEXT("Automation.EngineCore.FirstEpochTypeAlias");
 		TUniquePtr<FAngelscriptEngine> FirstEngine = CreateFullTestEngine();
 		if (!this->Assert.IsNotNull(FirstEngine.Get(), TEXT("Full destroy recreate core test should create the first full engine")))
 		{
@@ -226,17 +190,26 @@ FCoreTestContextStackGuard ContextGuard;
 
 		{
 			FAngelscriptEngineScope Scope(*FirstEngine);
-			if (!this->Assert.IsTrue(FAngelscriptType::GetTypes().Num() > 0, TEXT("Full destroy recreate core test should populate type metadata during the first epoch")))
+			const TArray<TSharedRef<FAngelscriptType>>& FirstEpochTypes = FAngelscriptType::GetTypes();
+			if (!this->Assert.IsTrue(FirstEpochTypes.Num() > 0, TEXT("Full destroy recreate core test should populate type metadata during the first epoch")))
+			{
+				return;
+			}
+			FAngelscriptTypeDatabase* FirstEpochDatabase = FirstEngine->GetTypeDatabase();
+			if (!this->Assert.IsNotNull(FirstEpochDatabase, TEXT("Full destroy recreate core test should expose the first engine type database")))
+			{
+				return;
+			}
+			FAngelscriptType::RegisterAlias(*FirstEpochDatabase, FirstEpochAlias, FirstEpochTypes[0]);
+			if (!this->Assert.IsNotNull(
+				FAngelscriptType::GetByAngelscriptTypeName(*FirstEpochDatabase, FirstEpochAlias).Get(),
+				TEXT("Full destroy recreate core test should install a first-epoch-only type alias")))
 			{
 				return;
 			}
 		}
 
 		FirstEngine.Reset();
-		if (!this->Assert.AreEqual(0, FAngelscriptType::GetTypes().Num(), TEXT("Full destroy recreate core test should clear type metadata after the first epoch ends")))
-		{
-			return;
-		}
 
 		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
 		if (!this->Assert.IsNotNull(SecondEngine.Get(), TEXT("Full destroy recreate core test should create a second full engine after cleanup")))
@@ -247,6 +220,17 @@ FCoreTestContextStackGuard ContextGuard;
 		{
 			FAngelscriptEngineScope Scope(*SecondEngine);
 			if (!this->Assert.IsTrue(FAngelscriptType::GetTypes().Num() > 0, TEXT("Full destroy recreate core test should repopulate type metadata during the recreated epoch")))
+			{
+				return;
+			}
+			FAngelscriptTypeDatabase* SecondEpochDatabase = SecondEngine->GetTypeDatabase();
+			if (!this->Assert.IsNotNull(SecondEpochDatabase, TEXT("Full destroy recreate core test should expose the recreated engine type database")))
+			{
+				return;
+			}
+			if (!this->Assert.IsNull(
+				FAngelscriptType::GetByAngelscriptTypeName(*SecondEpochDatabase, FirstEpochAlias).Get(),
+				TEXT("Full destroy recreate core test should not leak first-epoch aliases into the recreated engine")))
 			{
 				return;
 			}
@@ -335,11 +319,6 @@ class ARecreateAnnotatedActorA : AActor
 		}
 		CollectGarbage(RF_NoFlags, true);
 		FirstEngine.Reset();
-
-		if (!this->Assert.AreEqual(0, FAngelscriptType::GetTypes().Num(), TEXT("Annotated recreate test should clear type metadata after the first full engine exits")))
-		{
-			return;
-		}
 
 		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
 		if (!this->Assert.IsNotNull(SecondEngine.Get(), TEXT("Annotated recreate test should create the second full engine")))
@@ -471,11 +450,6 @@ class ARecreateAnnotatedActor : AActor
 		CollectGarbage(RF_NoFlags, true);
 		FirstEngine.Reset();
 		CollectGarbage(RF_NoFlags, true);
-
-		if (!this->Assert.AreEqual(0, FAngelscriptType::GetTypes().Num(), TEXT("Annotated same-name recreate test should clear type metadata after the first full engine exits")))
-		{
-			return;
-		}
 
 		TUniquePtr<FAngelscriptEngine> SecondEngine = CreateFullTestEngine();
 		if (!this->Assert.IsNotNull(SecondEngine.Get(), TEXT("Annotated same-name recreate test should create the second full engine")))

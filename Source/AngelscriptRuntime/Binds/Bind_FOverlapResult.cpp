@@ -1,41 +1,25 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
-#include "Engine/EngineTypes.h"
+
 #include "Engine/OverlapResult.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FOverlapResult(FAngelscriptBinds::EOrder::Late, []
+#include "Bind_FOverlapResult_Functions.h"
+
+namespace
 {
-	auto FOverlapResult_ = FAngelscriptBinds::ExistingClass("FOverlapResult");
-
-	FOverlapResult_.Property("int ItemIndex", &FOverlapResult::ItemIndex);
-
-	FOverlapResult_.Method("void SetComponent(UPrimitiveComponent InComp)", [](FOverlapResult* OverlapResult, UPrimitiveComponent* Comp)
+	void BindFOverlapResult(FAngelscriptBinds& Binds)
 	{
-		OverlapResult->Component = Comp;
-	});
+		auto FOverlapResult_ = Binds.ExistingClassForTarget("FOverlapResult");
+		FOverlapResult_.Property("int ItemIndex", &FOverlapResult::ItemIndex);
+		FOverlapResult_.Method("void SetComponent(UPrimitiveComponent InComp)", &FAngelscriptFOverlapResultBinds::SetComponent);
+		FOverlapResult_.Method("UPrimitiveComponent GetComponent() const", &FAngelscriptFOverlapResultBinds::GetComponent);
+		FOverlapResult_.Method("void SetActor(AActor InActor)", &FAngelscriptFOverlapResultBinds::SetActor);
+		FOverlapResult_.Method("AActor GetActor() const", &FAngelscriptFOverlapResultBinds::GetActor);
+		FOverlapResult_.Method("bool GetbBlockingHit() const", &FAngelscriptFOverlapResultBinds::GetBlockingHit);
+		FOverlapResult_.Method("void SetBlockingHit(bool bIsBlocking)", &FAngelscriptFOverlapResultBinds::SetBlockingHit);
+	}
+}
 
-	FOverlapResult_.Method("UPrimitiveComponent GetComponent() const", [](FOverlapResult* OverlapResult)->UPrimitiveComponent*
-	{
-		return OverlapResult->GetComponent();
-	});
-
-	FOverlapResult_.Method("void SetActor(AActor InActor)", [](FOverlapResult* OverlapResult, AActor* Actor)
-	{
-		OverlapResult->OverlapObjectHandle = FActorInstanceHandle(Actor);
-	});
-
-	FOverlapResult_.Method("AActor GetActor() const", [](FOverlapResult* OverlapResult)->AActor*
-	{
-		return OverlapResult->GetActor();
-	});
-
-	FOverlapResult_.Method("bool GetbBlockingHit() const", [](FOverlapResult* OverlapResult)->bool
-	{
-		return OverlapResult->bBlockingHit;
-	});
-
-	FOverlapResult_.Method("void SetBlockingHit(bool bIsBlocking)", [](FOverlapResult* OverlapResult, bool bIsBlocking)
-	{
-		OverlapResult->bBlockingHit = bIsBlocking;
-	});
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_FOverlapResult(
+	TEXT("FOverlapResult"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFOverlapResult);

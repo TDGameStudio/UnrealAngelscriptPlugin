@@ -76,28 +76,48 @@ void UAngelscriptSubsystem::EnsurePrimaryEngineInitialized()
 		return;
 	}
 
-	if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
+	FString BindPreparationDiagnostic;
+	if (!FAngelscriptBind::PrepareForEngineInitialization(BindPreparationDiagnostic))
 	{
-		PrimaryEngine = CurrentEngine;
-		bOwnsPrimaryEngine = false;
-		bInitializedPrimaryEngine = true;
-		if (PrimaryEngine->GetScriptEngine() == nullptr)
-		{
-			UE_LOG(Angelscript, Display, TEXT("[EngineSubsystemStartup] Initializing ambient primary engine=%p."), PrimaryEngine);
-			PrimaryEngine->Initialize();
-		}
-		else
-		{
-			UE_LOG(Angelscript, Verbose, TEXT("[EngineSubsystemStartup] Adopted ambient primary engine=%p."), PrimaryEngine);
-		}
+		UE_LOG(Angelscript, Error, TEXT("[EngineSubsystemStartup] Direct bind preparation failed: %s"), *BindPreparationDiagnostic);
 		return;
 	}
 
+	if (FAngelscriptEngine* CurrentEngine = FAngelscriptEngine::TryGetCurrentEngine())
+	{
+		if (CurrentEngine->GetScriptEngine() == nullptr)
+		{
+			UE_LOG(Angelscript, Display, TEXT("[EngineSubsystemStartup] Initializing ambient primary engine=%p."), CurrentEngine);
+			if (!CurrentEngine->Initialize())
+			{
+				UE_LOG(Angelscript, Error, TEXT("[EngineSubsystemStartup] Ambient primary engine binding failed; engine was not published."));
+				return;
+			}
+		}
+		else if (!CurrentEngine->IsReadyForPublication())
+		{
+			UE_LOG(Angelscript, Error, TEXT("[EngineSubsystemStartup] Ambient engine=%p is partially initialized and cannot be published."), CurrentEngine);
+			return;
+		}
+
+		PrimaryEngine = CurrentEngine;
+		bOwnsPrimaryEngine = false;
+		bInitializedPrimaryEngine = true;
+		UE_LOG(Angelscript, Verbose, TEXT("[EngineSubsystemStartup] Adopted ambient primary engine=%p."), PrimaryEngine);
+		return;
+	}
+
+	UE_LOG(Angelscript, Display, TEXT("[EngineSubsystemStartup] Creating owned primary engine=%p."), &OwnedEngine);
+	if (!OwnedEngine.Initialize())
+	{
+		UE_LOG(Angelscript, Error, TEXT("[EngineSubsystemStartup] Owned primary engine binding failed; engine was not published."));
+		OwnedEngine.Shutdown();
+		return;
+	}
 	PrimaryEngine = &OwnedEngine;
 	bOwnsPrimaryEngine = true;
 	bInitializedPrimaryEngine = true;
-	UE_LOG(Angelscript, Display, TEXT("[EngineSubsystemStartup] Created owned primary engine=%p."), PrimaryEngine);
-	PrimaryEngine->Initialize();
+	UE_LOG(Angelscript, Display, TEXT("[EngineSubsystemStartup] Published owned primary engine=%p."), PrimaryEngine);
 }
 
 UAngelscriptSubsystem* UAngelscriptSubsystem::Get()

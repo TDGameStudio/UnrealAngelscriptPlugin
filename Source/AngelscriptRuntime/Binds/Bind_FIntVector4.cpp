@@ -1,19 +1,17 @@
 #include "AngelscriptBinds.h"
-#include "AngelscriptEngine.h"
 
 #include "Helper_StructType.h"
 #include "Helper_ToString.h"
 
+#include "Bind_FIntVector4_Functions.h"
+
 struct FIntVector4Type : TAngelscriptCoreStructType<FIntVector4, TBaseStructure<FIntVector4>, false>
 {
-	FString GetAngelscriptTypeName() const override
-	{
-		return TEXT("FIntVector4");
-	}
+	FString GetAngelscriptTypeName() const override { return TEXT("FIntVector4"); }
 
 	void ConstructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const override
 	{
-		new(DestinationPtr) FIntVector4(0);
+		new (DestinationPtr) FIntVector4(0);
 	}
 
 	bool NeedConstruct(const FAngelscriptTypeUsage& Usage) const override { return false; }
@@ -26,72 +24,75 @@ struct FIntVector4Type : TAngelscriptCoreStructType<FIntVector4, TBaseStructure<
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FIntVector4(FAngelscriptBinds::EOrder::Early, []
+namespace
 {
-	FBindFlags Flags;
-	Flags.bPOD = true;
-
-	auto FIntVector4_ = FAngelscriptBinds::ValueClass<FIntVector4>("FIntVector4", Flags);
-
-	FIntVector4_.Constructor("void f(int32 X, int32 Y, int32 Z, int32 W)", [](FIntVector4* Address, int32 X, int32 Y, int32 Z, int32 W)
+	void BindFIntVector4Type(FAngelscriptBinds& Binds)
 	{
-		new(Address) FIntVector4(X, Y, Z, W);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FIntVector4_, "FIntVector4");
+		FBindFlags Flags;
+		Flags.bPOD = true;
+		Binds.ValueClassForTarget<FIntVector4>("FIntVector4", Flags);
+		Binds.RegisterTypeForTarget(MakeShared<FIntVector4Type>());
+	}
 
-	FIntVector4_.Constructor("void f()", [](FIntVector4* Address)
+	void BindFIntVector4ToStringContribution(FAngelscriptBinds& Binds)
 	{
-		new(Address) FIntVector4(0);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR_CUSTOMFORM(FIntVector4_, "FIntVector4", "0");
+		FToStringHelper::Register(Binds, TEXT("FIntVector4"), &FAngelscriptFIntVector4Binds::AppendToString);
+	}
 
-	FIntVector4_.Constructor("void f(int32 F)", [](FIntVector4* Address, int32 I)
+	void BindFIntVector4Functions(FAngelscriptBinds& Binds)
 	{
-		new(Address) FIntVector4(I);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FIntVector4_, "FIntVector4");
+		auto FIntVector4_ = Binds.ExistingClassForTarget("FIntVector4");
+		FIntVector4_.Constructor(
+			"void f(int32 X, int32 Y, int32 Z, int32 W)",
+			&FAngelscriptFIntVector4Binds::ConstructXYZW,
+			"FIntVector4",
+			true)
+			.NoDiscard();
+		FIntVector4_.Constructor("void f()", &FAngelscriptFIntVector4Binds::ConstructZero)
+			.NoDiscard()
+			.NativeConstructor("FIntVector4", true, "0");
+		FIntVector4_.Constructor(
+			"void f(int32 F)",
+			&FAngelscriptFIntVector4Binds::ConstructScalar,
+			"FIntVector4",
+			true)
+			.NoDiscard();
+		FIntVector4_.Constructor(
+			"void f(const FIntVector4& Other)",
+			&FAngelscriptFIntVector4Binds::ConstructCopy,
+			"FIntVector4",
+			true)
+			.NoDiscard();
+		FIntVector4_.Property("int32 X", &FIntVector4::X);
+		FIntVector4_.Property("int32 Y", &FIntVector4::Y);
+		FIntVector4_.Property("int32 Z", &FIntVector4::Z);
+		FIntVector4_.Property("int32 W", &FIntVector4::W);
+		FIntVector4_.Method("FIntVector4& opAssign(const FIntVector4& Other)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator=, (const FIntVector4&)));
+		FIntVector4_.Method("FIntVector4 opAdd(const FIntVector4& Other) const", METHODPR_TRIVIAL(FIntVector4, FIntVector4, operator+, (const FIntVector4&) const));
+		FIntVector4_.Method("FIntVector4 opSub(const FIntVector4& Other) const", METHODPR_TRIVIAL(FIntVector4, FIntVector4, operator-, (const FIntVector4&) const));
+		FIntVector4_.Method("FIntVector4 opNeg() const", &FAngelscriptFIntVector4Binds::Negate);
+		FIntVector4_.Method("FIntVector4 opMul(int32 Scale) const", METHODPR_TRIVIAL(FIntVector4, FIntVector4, operator*, (int32) const));
+		FIntVector4_.Method("FIntVector4 opDiv(int32 Divisor) const", METHODPR_TRIVIAL(FIntVector4, FIntVector4, operator/, (int32) const));
+		FIntVector4_.Method("FIntVector4& opMulAssign(int32 Scale)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator*=, (int32)));
+		FIntVector4_.Method("FIntVector4& opDivAssign(int32 Scale)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator/=, (int32)));
+		FIntVector4_.Method("FIntVector4 opAddAssign(const FIntVector4& Other)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator+=, (const FIntVector4&)));
+		FIntVector4_.Method("FIntVector4 opSubAssign(const FIntVector4& Other)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator-=, (const FIntVector4&)));
+		FIntVector4_.Method("const int32& opIndex(int32 Index)", METHODPR_TRIVIAL(int32&, FIntVector4, operator[], (const int32)));
+		FIntVector4_.Method("bool opEquals(const FIntVector4& Other) const", METHODPR_TRIVIAL(bool, FIntVector4, operator==, (const FIntVector4&) const));
+	}
+}
 
-	FIntVector4_.Constructor("void f(const FIntVector4& Other)", [](FIntVector4* Address, const FIntVector4& Other)
-	{
-		new(Address) FIntVector4(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FIntVector4_, "FIntVector4");
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4_Type(
+	TEXT("FIntVector4.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFIntVector4Type);
 
-	FIntVector4_.Property("int32 X", &FIntVector4::X);
-	FIntVector4_.Property("int32 Y", &FIntVector4::Y);
-	FIntVector4_.Property("int32 Z", &FIntVector4::Z);
-	FIntVector4_.Property("int32 W", &FIntVector4::W);
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4_ToStringContribution(
+	TEXT("FIntVector4.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFIntVector4ToStringContribution);
 
-	FIntVector4_.Method("FIntVector4& opAssign(const FIntVector4& Other)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator=, (const FIntVector4&)));
-
-	FIntVector4_.Method("FIntVector4 opAdd(const FIntVector4& Other) const", METHODPR_TRIVIAL(FIntVector4, FIntVector4, operator+, (const FIntVector4&) const));
-	FIntVector4_.Method("FIntVector4 opSub(const FIntVector4& Other) const", METHODPR_TRIVIAL(FIntVector4, FIntVector4, operator-, (const FIntVector4&) const));
-	// Implementing using a lambda since FIntVector4 doesn't have operator-() at all (don't want to modify the engine to add it at this point)
-	FIntVector4_.Method("FIntVector4 opNeg() const", [](FIntVector4* Vec) {return FIntVector4(-Vec->X, -Vec->Y, -Vec->Z, -Vec->W);});
-
-	FIntVector4_.Method("FIntVector4 opMul(int32 Scale) const", METHODPR_TRIVIAL(FIntVector4, FIntVector4, operator*, (int32) const));
-	FIntVector4_.Method("FIntVector4 opDiv(int32 Divisor) const", METHODPR_TRIVIAL(FIntVector4, FIntVector4, operator/, (int32) const));
-
-	FIntVector4_.Method("FIntVector4& opMulAssign(int32 Scale)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator*=, (int32)));
-	FIntVector4_.Method("FIntVector4& opDivAssign(int32 Scale)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator/=, (int32)));
-
-	FIntVector4_.Method("FIntVector4 opAddAssign(const FIntVector4& Other)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator+=, (const FIntVector4&)));
-	FIntVector4_.Method("FIntVector4 opSubAssign(const FIntVector4& Other)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator-=, (const FIntVector4&)));
-
-	FIntVector4_.Method("const int32& opIndex(int32 Index)", METHODPR_TRIVIAL(int32&, FIntVector4, operator[], (const int32)));
-
-	FIntVector4_.Method("bool opEquals(const FIntVector4& Other) const", METHODPR_TRIVIAL(bool, FIntVector4, operator==, (const FIntVector4&) const));
-
-	FToStringHelper::Register(TEXT("FIntVector4"), [](void* Ptr, FString& Str)
-	{
-		FIntVector4* Vec = (FIntVector4*)Ptr;
-		Str += FString::Printf(TEXT("X=%s Y=%s Z=%s W=%s"), *LexToString(Vec->X), *LexToString(Vec->Y), *LexToString(Vec->Z), *LexToString(Vec->W));
-	});
-
-	auto VectorType = MakeShared<FIntVector4Type>();
-	FAngelscriptType::Register(VectorType);
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4(
+	TEXT("FIntVector4.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFIntVector4Functions);

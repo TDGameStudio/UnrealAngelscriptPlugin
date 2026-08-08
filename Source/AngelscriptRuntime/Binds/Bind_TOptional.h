@@ -162,6 +162,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptOptionalBinds
 	}
 
 	static void* Get(FAngelscriptOptional& Optional, asCObjectType* Meta, void* DefaultValuePtr);
+	static bool ValidateTemplate(asITypeInfo* TemplateType, asCString* ErrorMessage);
 
 	template<typename T>
 	static void* Get_Template(TOptional<T>& Optional, void* DefaultValuePtr)

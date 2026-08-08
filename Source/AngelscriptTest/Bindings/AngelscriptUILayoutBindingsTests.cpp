@@ -95,6 +95,24 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptUILayoutBindingsTest,
 			ExpectGlobalInts(*TestRunner, Engine, M,  Cases),
 			TEXT("ExpectGlobalInts should pass")));
 	}
+
+	TEST_METHOD(FGeometryMethodsCompileTogether)
+	{
+		FAngelscriptEngine& Engine = ASTEST_GET_ENGINE();
+		FAngelscriptEngineScope Scope(Engine);
+
+		FScopedAngelscriptModule Mod(*TestRunner, Engine, TEXT("ASUILayout_Geometry"), ASTEST_AS(R"AS(
+			FVector2D ExerciseGeometry(const FGeometry& Geometry, const FVector2D& AbsolutePosition)
+			{
+				FVector2D LocalPosition = Geometry.AbsoluteToLocal(AbsolutePosition);
+				FVector2D RoundTrip = Geometry.LocalToAbsolute(LocalPosition);
+				FGeometry Child = Geometry.MakeChild(LocalPosition, Geometry.GetLocalSize());
+				return RoundTrip + Geometry.GetAbsoluteSize() + Child.GetLocalSize();
+			}
+			)AS"));
+
+		ASSERT_THAT(IsTrue(Mod.IsValid(), TEXT("FGeometry method signatures should compile together")));
+	}
 };
 
 #endif // WITH_ANGELSCRIPT_UNITTESTS

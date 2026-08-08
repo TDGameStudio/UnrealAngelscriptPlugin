@@ -10,6 +10,7 @@
 #include "AngelscriptSourceProvider.h"
 #include "AngelscriptType.h"
 #include "AngelscriptMemoryTags.h"
+#include "StaticJIT/StaticJITConfig.h"
 
 #include "AngelscriptEngine.generated.h"
 
@@ -43,6 +44,8 @@ class asCContext;
 class FAngelscriptBindDatabase;
 struct FAngelscriptTypeDatabase;
 struct FAngelscriptBindState;
+struct FAngelscriptDocumentationState;
+struct FAngelscriptNativeFormState;
 struct FToStringType;
 
 class FAngelscriptScriptTestHotReloadRunner;
@@ -169,8 +172,11 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineConfig
 	UPROPERTY()
 	bool bRunningCommandlet = false;
 
-	UPROPERTY()
-	TSet<FName> DisabledBindNames;
+#if WITH_DEV_AUTOMATION_TESTS
+	// Test-only fault injection used to prove binding failures cannot publish a
+	// partially initialized engine. Production configuration has no equivalent.
+	bool bInjectDirectBindFailureForTesting = false;
+#endif
 
 	static FAngelscriptEngineConfig FromCurrentProcess();
 };
@@ -323,6 +329,10 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 
 #if WITH_DEV_AUTOMATION_TESTS
 	void EnsureScriptTestHotReloadRunnerForTesting();
+	bool ShouldInjectDirectBindFailureForTesting() const
+	{
+		return RuntimeConfig.bInjectDirectBindFailureForTesting;
+	}
 
 	FAngelscriptScriptTestHotReloadRunner*
 		GetScriptTestHotReloadRunnerForTesting() const
@@ -334,9 +344,10 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	static bool IsForcingPreprocessEditorCodeForCurrentContext();
 	static bool IsScriptDevelopmentModeForCurrentContext();
 
-	void Initialize();
+	bool Initialize();
 	/* Initialize bindings and runtime services without scanning Script roots or compiling disk scripts. */
-	void InitializeWithoutInitialCompile();
+	bool InitializeWithoutInitialCompile();
+	bool IsReadyForPublication() const { return bReadyForPublication; }
 	void Shutdown();
 	FInterfaceMethodSignature* RegisterInterfaceMethodSignature(FName FunctionName);
 	void ReleaseInterfaceMethodSignature(FInterfaceMethodSignature* Signature);
@@ -348,7 +359,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	bool DiscardModule(const TCHAR* ModuleName);
 
 	/* Initially bind all engine types to angelscript. */
-	void BindScriptTypes();
+	bool BindScriptTypes();
 
 	/* Initially compile all script files in global folders. */
 	void InitialCompile();
@@ -540,13 +551,12 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 private:
 	FString MakeModuleName(const FString& ModuleName) const;
 	bool ShouldInitializeThreaded();
-	TSet<FName> CollectDisabledBindNames() const;
 	void AcquireProcessPackages();
 	void ReleaseProcessPackages();
 	#if WITH_DEV_AUTOMATION_TESTS
 	#endif
 	void PreInitialize_GameThread();
-	void Initialize_AnyThread();
+	bool Initialize_AnyThread();
 	void PostInitialize_GameThread();
 
 	void SetOutdated(asIScriptModule* OldModule);
@@ -629,6 +639,10 @@ private:
 	TUniquePtr<TArray<FToStringType>> ToStringList;
 	TUniquePtr<FAngelscriptBindDatabase> BindDatabase;
 	TUniquePtr<FBlueprintEventSignatureRegistry> BlueprintEventSignatureRegistry;
+	TUniquePtr<FAngelscriptDocumentationState> DocumentationState;
+#if AS_CAN_GENERATE_JIT
+	TUniquePtr<FAngelscriptNativeFormState> NativeFormState;
+#endif
 	TArray<FName> StaticNames;
 	TMap<FName, int32> StaticNamesByIndex;
 
@@ -640,6 +654,8 @@ private:
 
 	TSharedPtr<FAngelscriptEngineLifetimeToken> LifetimeToken;
 	bool bHoldsProcessPackageReference = false;
+	bool bReadyForPublication = false;
+	bool bExtensionsAttached = false;
 	UPROPERTY()
 	UObject* WorldContextObject = nullptr;
 
@@ -759,6 +775,10 @@ public:
 	TArray<FToStringType>* GetToStringList() const;
 	FAngelscriptBindDatabase* GetBindDatabase() const;
 	FBlueprintEventSignatureRegistry* GetBlueprintEventSignatureRegistry() const;
+	FAngelscriptDocumentationState* GetDocumentationState() const;
+#if AS_CAN_GENERATE_JIT
+	FAngelscriptNativeFormState* GetNativeFormState() const;
+#endif
 
 	TMap<FName, class asITypeInfo*>& GetScriptEnumTypeLookup() { return ScriptEnumTypeLookupByName; }
 	const TMap<FName, class asITypeInfo*>& GetScriptEnumTypeLookup() const { return ScriptEnumTypeLookupByName; }

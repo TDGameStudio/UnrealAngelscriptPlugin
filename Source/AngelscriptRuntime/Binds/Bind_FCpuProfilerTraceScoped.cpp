@@ -1,14 +1,22 @@
 #include "AngelscriptBinds.h"
-#include "FCpuProfilerTraceScoped.h"
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TraceCPUProfilerEventScoped(FAngelscriptBinds::EOrder::Late, []
+#include "Bind_FCpuProfilerTraceScoped_Functions.h"
+
+namespace
 {
-	auto FCpuProfilerTraceScoped_ = FAngelscriptBinds::ExistingClass("FCpuProfilerTraceScoped");
-
-	FCpuProfilerTraceScoped_.Constructor("void f(const FName& EventID)", [](FCpuProfilerTraceScoped* Address, const FName& EventID)
+	void BindFCpuProfilerTraceScoped(FAngelscriptBinds& Binds)
 	{
-		new(Address) FCpuProfilerTraceScoped(EventID);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FCpuProfilerTraceScoped_, "FCpuProfilerTraceScoped");
-});
+		auto FCpuProfilerTraceScoped_ = Binds.ExistingClassForTarget("FCpuProfilerTraceScoped");
+		FCpuProfilerTraceScoped_.Constructor(
+			"void f(const FName& EventID)",
+			&FAngelscriptFCpuProfilerTraceScopedBinds::Construct,
+			"FCpuProfilerTraceScoped",
+			true)
+			.NoDiscard();
+	}
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TraceCPUProfilerEventScoped(
+	TEXT("FCpuProfilerTraceScoped"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFCpuProfilerTraceScoped);

@@ -1,5 +1,5 @@
 // Single top-level LLM tag for all Angelscript memory.
-// Only placed at allocator gateways (SDKAlloc, CallBinds, ClassGenerator, CompileModules).
+// Only placed at allocator gateways (SDKAlloc, BindScriptTypes, ClassGenerator, CompileModules).
 // All AS-internal allocations flow through SDKAlloc/asAllocMem, so one tag at
 // the gateway covers the entire SDK footprint.
 

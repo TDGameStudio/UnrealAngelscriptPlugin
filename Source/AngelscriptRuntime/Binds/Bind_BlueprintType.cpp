@@ -44,33 +44,36 @@
 #include "EndAngelscriptHeaders.h"
 
 #if !AS_USE_BIND_DB && WITH_EDITOR
-// Toggle for the Bind_Defaults Late+100 Phase 2A ParallelFor (Step 3.1).
+// Toggle for the BlueprintType ReflectionBindings prepare ParallelFor.
 // Default true: parallel prepare across BindOrder indices.
 // Set 0 to fall back to single-threaded prepare for diagnosis or rollback.
 // Read once at the entry of Phase 2A to keep behavior stable for the run.
 static TAutoConsoleVariable<bool> CVarBindParallelPrepare(
 	TEXT("as.Bind.ParallelPrepare"),
 	true,
-	TEXT("If true (default), Bind_Defaults Late+100 Phase 2A runs the per-BindOrder prepare loop in ParallelFor. ")
+	TEXT("If true (default), BlueprintType ReflectionBindings prepares each class in ParallelFor. ")
 	TEXT("Set 0 to fall back to single-threaded prepare. Phase 2B (commit) is always single-threaded on GameThread."),
 	ECVF_Default);
 
 // Implemented in Bind_BlueprintCallable.cpp / Bind_BlueprintEvent.cpp.
-// Used by the Bind_Defaults Late+100 Phase 2A/2B split (single-threaded prepare in
-// Step 2.4; ParallelFor prepare in Step 3.3).
+// Used by the BlueprintType ReflectionBindings prepare/commit split.
 extern void BindBlueprintCallable_Prepare(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
 	struct FUFunctionBindPrep& Prep);
 extern void BindBlueprintCallable_FromPrep(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	struct FUFunctionBindPrep& Prep,
 	FAngelscriptMethodBind& DBBind);
 extern void BindBlueprintEvent_Prepare(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	UFunction* Function,
 	struct FUFunctionBindPrep& Prep);
 extern void BindBlueprintEvent_FromPrep(
+	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
 	struct FUFunctionBindPrep& Prep,
 	FAngelscriptMethodBind& DBBind);
@@ -83,7 +86,176 @@ static const FName NAME_ScriptCallable("ScriptCallable");
 static const FName NAME_Func_Tooltip("ToolTip");
 static const FName NAME_META_DisallowInstantiation("AngelscriptDisallowInstantiation");
 
-static void BindUClassLookup();
+namespace
+{
+	struct FAngelscriptBlueprintTypeBinds
+	{
+		static bool ValidateSubclassOfTemplate(asITypeInfo* TemplateType, asCString* ErrorMessage)
+		{
+			return ValidateObjectTemplate(TemplateType, ErrorMessage);
+		}
+
+		static void ConstructObjectPtr(TObjectPtr<UObject>* ObjectPtr)
+		{
+			new (ObjectPtr) TObjectPtr<UObject>(nullptr);
+		}
+
+		static void CopyConstructObjectPtr(
+			TObjectPtr<UObject>* ObjectPtr,
+			const TObjectPtr<UObject>* Other)
+		{
+			new (ObjectPtr) TObjectPtr<UObject>(*Other);
+		}
+
+		static TObjectPtr<UObject>& AssignObjectPtr(
+			TObjectPtr<UObject>* ObjectPtr,
+			const TObjectPtr<UObject>* Other)
+		{
+			*ObjectPtr = *Other;
+			return *ObjectPtr;
+		}
+
+		static bool ValidateObjectPtrTemplate(asITypeInfo* TemplateType, asCString* ErrorMessage)
+		{
+			return ValidateObjectTemplate(TemplateType, ErrorMessage);
+		}
+
+		static void ConstructObjectPtrFromObject(TObjectPtr<UObject>* ObjectPtr, UObject* Object)
+		{
+			new (ObjectPtr) TObjectPtr<UObject>(Object);
+		}
+
+		static UObject* ConvertObjectPtrToObject(const TObjectPtr<UObject>* ObjectPtr)
+		{
+			return ObjectPtr->Get();
+		}
+
+		static bool ObjectPtrsEqual(
+			const TObjectPtr<UObject>& ObjectPtr,
+			const TObjectPtr<UObject>& Other)
+		{
+			return ObjectPtr == Other;
+		}
+
+		static bool ObjectPtrEqualsObject(const TObjectPtr<UObject>& ObjectPtr, UObject* Other)
+		{
+			return ObjectPtr == Other;
+		}
+
+		static TObjectPtr<UObject>* AssignObjectToObjectPtr(
+			TObjectPtr<UObject>* ObjectPtr,
+			UObject* Object)
+		{
+			*ObjectPtr = Object;
+			return ObjectPtr;
+		}
+
+		static UObject* GetObjectPtrObject(TObjectPtr<UObject>* ObjectPtr)
+		{
+			return ObjectPtr->Get();
+		}
+
+		static void ConstructWeakObjectPtr(TWeakObjectPtr<UObject>* ObjectPtr)
+		{
+			new (ObjectPtr) TWeakObjectPtr<UObject>(nullptr);
+		}
+
+		static void CopyConstructWeakObjectPtr(
+			TWeakObjectPtr<UObject>* ObjectPtr,
+			const TWeakObjectPtr<UObject>* Other)
+		{
+			new (ObjectPtr) TWeakObjectPtr<UObject>(*Other);
+		}
+
+		static TWeakObjectPtr<UObject>& AssignWeakObjectPtr(
+			TWeakObjectPtr<UObject>* ObjectPtr,
+			const TWeakObjectPtr<UObject>* Other)
+		{
+			*ObjectPtr = *Other;
+			return *ObjectPtr;
+		}
+
+		static bool ValidateWeakObjectPtrTemplate(asITypeInfo* TemplateType, asCString* ErrorMessage)
+		{
+			return ValidateObjectTemplate(TemplateType, ErrorMessage);
+		}
+
+		static void ConstructWeakObjectPtrFromObject(
+			TWeakObjectPtr<UObject>* ObjectPtr,
+			UObject* Object)
+		{
+			new (ObjectPtr) TWeakObjectPtr<UObject>(Object);
+		}
+
+		static UObject* ConvertWeakObjectPtrToObject(const TWeakObjectPtr<UObject>* ObjectPtr)
+		{
+			return ObjectPtr->Get();
+		}
+
+		static bool WeakObjectPtrsEqual(
+			const TWeakObjectPtr<UObject>& ObjectPtr,
+			const TWeakObjectPtr<UObject>& Other)
+		{
+			return ObjectPtr == Other;
+		}
+
+		static bool WeakObjectPtrEqualsObject(
+			const TWeakObjectPtr<UObject>& ObjectPtr,
+			UObject* Other)
+		{
+			return ObjectPtr == Other;
+		}
+
+		static TWeakObjectPtr<UObject>* AssignObjectToWeakObjectPtr(
+			TWeakObjectPtr<UObject>* ObjectPtr,
+			UObject* Object)
+		{
+			*ObjectPtr = Object;
+			return ObjectPtr;
+		}
+
+		static UObject* GetWeakObjectPtrObject(TWeakObjectPtr<UObject>* ObjectPtr)
+		{
+			return ObjectPtr->Get();
+		}
+
+		static bool IsWeakObjectPtrValid(TWeakObjectPtr<UObject>* ObjectPtr)
+		{
+			return ObjectPtr->IsValid();
+		}
+
+		static bool IsWeakObjectPtrStale(TWeakObjectPtr<UObject>* ObjectPtr)
+		{
+			return ObjectPtr->IsStale();
+		}
+
+		static bool IsWeakObjectPtrExplicitlyNull(TWeakObjectPtr<UObject>* ObjectPtr)
+		{
+			return ObjectPtr->IsExplicitlyNull();
+		}
+
+	private:
+		static bool ValidateObjectTemplate(asITypeInfo* TemplateType, asCString* ErrorMessage)
+		{
+			if (TemplateType->GetSubTypeCount() != 1)
+			{
+				return false;
+			}
+
+			auto* SubType = TemplateType->GetSubType(0);
+			if (SubType == nullptr || (SubType->GetFlags() & asOBJ_VALUE) != 0)
+			{
+				if (ErrorMessage != nullptr)
+				{
+					*ErrorMessage = "Subtype must be a class type";
+				}
+				return false;
+			}
+
+			return true;
+		}
+	};
+}
 
 /**
  * Type operations for an UObject type.
@@ -93,13 +265,19 @@ struct FUObjectType : TAngelscriptPODType<UObject*>
 	UClass* Class = nullptr;
 	FString ClassName;
 	asITypeInfo* ClassScriptType = nullptr;
+	const FAngelscriptBindDatabase* BindDatabase = nullptr;
 
-	FUObjectType(UClass* InClass, const FString& InClassName, asITypeInfo* InScriptType = nullptr)
-		: Class(InClass), ClassName(InClassName), ClassScriptType(InScriptType)
+	FUObjectType(
+		UClass* InClass,
+		const FString& InClassName,
+		const FAngelscriptBindDatabase& InBindDatabase,
+		asITypeInfo* InScriptType = nullptr)
+		: Class(InClass)
+		, ClassName(InClassName)
+		, ClassScriptType(InScriptType)
+		, BindDatabase(&InBindDatabase)
 	{
 	}
-
-	FUObjectType() {}
 
 	virtual FString GetAngelscriptTypeName() const override
 	{
@@ -669,7 +847,8 @@ struct FUObjectType : TAngelscriptPODType<UObject*>
 		}
 		else if (Class != nullptr)
 		{
-			FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Class);
+			check(BindDatabase != nullptr);
+			FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(Class, *BindDatabase);
 			if (ClassHeaderPath.Len() != 0)
 			{
 				OutCppForm.CppType = ClassName + TEXT("*");
@@ -684,93 +863,120 @@ struct FUObjectType : TAngelscriptPODType<UObject*>
 };
 
 #if WITH_EDITOR
-ANGELSCRIPTRUNTIME_API bool IsEditorOnlyClass(UClass* Class);
-ANGELSCRIPTRUNTIME_API bool ShouldDisallowInstantiation(UClass* Class);
+ANGELSCRIPTRUNTIME_API bool IsEditorOnlyClassForTarget(FAngelscriptEngine& Engine, UClass* Class);
+static bool ShouldDisallowInstantiationForTarget(FAngelscriptEngine& Engine, UClass* Class);
 #endif
 
-static void BindUClass(UClass* Class, const FString& TypeName)
-{	
-	// Bind into angelscript engine
-	auto Class_ = FAngelscriptBinds::ReferenceClass(TypeName, Class);
-	// Register angelscript type
-	auto Type = MakeShared<FUObjectType>(Class, TypeName, Class_.GetTypeInfo());
-	FAngelscriptType::Register(Type);
-
-	// Tell the angelscript type what UClass is associated with it
-	auto* TypeInfo = (asCTypeInfo*)Class_.GetTypeInfo();
-	if (TypeInfo != nullptr)
+static void DeclareUClassForTarget(
+	FAngelscriptBinds& Binds,
+	UClass* Class,
+	const FString& TypeName)
+{
+	FAngelscriptBinds ClassBinds = Binds.ReferenceClassForTarget(TypeName, Class);
+	auto* TypeInfo = static_cast<asCTypeInfo*>(ClassBinds.GetTypeInfo());
+	if (TypeInfo == nullptr)
 	{
-		TypeInfo->plainUserData = (SIZE_T)Class;
+		return;
+	}
 
 #if WITH_EDITOR
-		const FString& Tooltip = Class->GetMetaData(NAME_Func_Tooltip);
-		if (Tooltip.Len() != 0)
-			FAngelscriptDocs::AddUnrealDocumentationForType(TypeInfo->GetTypeId(), Tooltip);
-
-		if (IsEditorOnlyClass(Class))
-			TypeInfo->flags |= asOBJ_EDITOR_ONLY;
-
-		if (ShouldDisallowInstantiation(Class))
-			TypeInfo->flags |= asOBJ_DISALLOW_INSTANTIATION;
-#endif
+	const FString& Tooltip = Class->GetMetaData(NAME_Func_Tooltip);
+	if (Tooltip.Len() != 0)
+	{
+		FAngelscriptDocs::AddUnrealDocumentationForType(
+			Binds.GetTargetEngine(),
+			TypeInfo->GetTypeId(),
+			Tooltip);
 	}
+
+	if (IsEditorOnlyClassForTarget(Binds.GetTargetEngine(), Class))
+		TypeInfo->flags |= asOBJ_EDITOR_ONLY;
+
+	if (ShouldDisallowInstantiationForTarget(Binds.GetTargetEngine(), Class))
+		TypeInfo->flags |= asOBJ_DISALLOW_INSTANTIATION;
+#endif
 }
 
-static void BindStaticClass(FAngelscriptBinds& Binds, const FString& TypeName, UClass* Class)
+static void RegisterUClassTypeForTarget(
+	FAngelscriptBinds& Binds,
+	UClass* Class,
+	const FString& TypeName)
+{
+	asITypeInfo* TypeInfo = Binds.GetTargetScriptEngine().GetTypeInfoByName(TCHAR_TO_ANSI(*TypeName));
+	if (!ensureMsgf(TypeInfo != nullptr, TEXT("Missing declared BlueprintType class '%s'."), *TypeName))
+	{
+		return;
+	}
+
+	Binds.RegisterTypeForTarget(MakeShared<FUObjectType>(
+		Class,
+		TypeName,
+		Binds.GetTargetBindDatabase(),
+		TypeInfo));
+}
+
+static void BindStaticClassForTarget(
+	FAngelscriptBinds& Binds,
+	const FString& TypeName,
+	UClass* Class)
 {
 	// Bind the StaticClass() function.
-	if (FAngelscriptEngine::Get().ConfigSettings->StaticClassDeprecation != EAngelscriptStaticClassMode::Disallowed)
+	const EAngelscriptStaticClassMode StaticClassMode =
+		Binds.GetTargetEngine().ConfigSettings->StaticClassDeprecation;
+	if (StaticClassMode != EAngelscriptStaticClassMode::Disallowed)
 	{
-		FAngelscriptBinds::FNamespace ns(TypeName);
-		FAngelscriptBinds::BindGlobalFunction("UClass StaticClass()", FUNC_TRIVIAL(FAngelscriptBindHelpers::GetStaticClassFromClass), Class);
-		FAngelscriptBinds::PreviousBindPassScriptFunctionAsFirstParam();
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), TypeName);
+		FAngelscriptBoundFunction StaticClassFunction = Binds.BindGlobalFunctionForTarget(
+			"UClass StaticClass()",
+			FUNC_TRIVIAL(FAngelscriptBindHelpers::GetStaticClassFromClass),
+			Class)
+			.PassScriptFunctionAsFirstParam();
 
-		if (FAngelscriptEngine::Get().ConfigSettings->StaticClassDeprecation == EAngelscriptStaticClassMode::Deprecated)
-			FAngelscriptBinds::DeprecatePreviousBind("Types can now be used as values directly");
+		if (StaticClassMode == EAngelscriptStaticClassMode::Deprecated)
+		{
+			StaticClassFunction.Deprecated("Types can now be used as values directly");
+		}
 	}
 
 	// Bind the static class global variable used for direct type access
 	{
 		FString Decl = FString::Printf(TEXT("const TSubclassOf<UObject> __StaticType_%s"), *TypeName);
 		TSubclassOf<UObject>* ClassValue = new TSubclassOf<UObject>(Class);
-		FAngelscriptBinds::BindGlobalVariable(Decl, ClassValue);
+		Binds.BindGlobalVariableForTarget(Decl, ClassValue);
 	}
 }
 
 #if AS_USE_BIND_DB
 // From Bind_BlueprintEvent.cpp
-extern void BindBlueprintEvent(TSharedRef<FAngelscriptType> InType, UFunction* Function, FAngelscriptMethodBind& DBMethod);
+extern void BindBlueprintEvent(
+	FAngelscriptBinds& Binds,
+	TSharedRef<FAngelscriptType> InType,
+	UFunction* Function,
+	FAngelscriptMethodBind& DBMethod);
 
 // From Bind_BlueprintCallable.cpp
-extern void BindBlueprintCallable(TSharedRef<FAngelscriptType> InType, UFunction* Function, FAngelscriptMethodBind& DBMethod);
+extern void BindBlueprintCallable(
+	FAngelscriptBinds& Binds,
+	TSharedRef<FAngelscriptType> InType,
+	UFunction* Function,
+	FAngelscriptMethodBind& DBMethod);
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_BlueprintType_Declarations(FAngelscriptBinds::EOrder::Early, []
-{
-	for (auto& DBBind : FAngelscriptBindDatabase::Get().Classes)
-	{
-		UClass* Class = FindObject<UClass>(nullptr, *DBBind.UnrealPath);
-		if (Class == nullptr)
-			continue;
-
-		DBBind.ResolvedClass = Class;
-		BindUClass(Class, DBBind.TypeName);
-	}
-
-	BindUClassLookup();
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBinds::EOrder::Late + 100, []
+static void BindBlueprintTypeReflectionBindings(FAngelscriptBinds& Binds)
 {
 	FAngelscriptScopeTimer Timer(TEXT("blueprinttype bindings"));
-	auto* ScriptEngine = FAngelscriptEngine::Get().Engine;
+	asIScriptEngine* ScriptEngine = &Binds.GetTargetScriptEngine();
+	FAngelscriptTypeDatabase& TypeDatabase = Binds.GetTargetTypeDatabase();
+	FAngelscriptBindDatabase& BindDatabase = Binds.GetTargetBindDatabase();
 
-	for (auto& DBBind : FAngelscriptBindDatabase::Get().Classes)
+	for (FAngelscriptClassBind& DBBind : BindDatabase.Classes)
 	{
 		UClass* Class = DBBind.ResolvedClass;
 		if (Class == nullptr)
 			continue;
 
-		auto ClassType = FAngelscriptType::GetByClass(Class);
+		const TSharedRef<FAngelscriptType>* ClassType = TypeDatabase.TypesByClass.Find(Class);
+		if (ClassType == nullptr)
+			continue;
 		auto* SuperClass = Class->GetSuperClass();
 
 		for (auto& DBFunc : DBBind.Methods)
@@ -780,29 +986,29 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 				continue;
 
 			if (Function->HasAnyFunctionFlags(FUNC_BlueprintEvent | FUNC_NetFuncFlags))
-				BindBlueprintEvent(ClassType.ToSharedRef(), Function, DBFunc);
+				BindBlueprintEvent(Binds, *ClassType, Function, DBFunc);
 			else
-				BindBlueprintCallable(ClassType.ToSharedRef(), Function, DBFunc);
+				BindBlueprintCallable(Binds, *ClassType, Function, DBFunc);
 		}
 	}
 
-	for (auto& DBBind : FAngelscriptBindDatabase::Get().Classes)
+	for (FAngelscriptClassBind& DBBind : BindDatabase.Classes)
 	{
 		UClass* Class = DBBind.ResolvedClass;
 		if (Class == nullptr)
 			continue;
 	
-		FAngelscriptBinds Binds = FAngelscriptBinds::ExistingClass(DBBind.TypeName);
-		auto* ScriptType = Binds.GetTypeInfo();
+		FAngelscriptBinds ClassBinds = Binds.ExistingClassForTarget(DBBind.TypeName);
+		auto* ScriptType = ClassBinds.GetTypeInfo();
 
 		// Inherit properties an functions from the parent class
 		if (Class->GetSuperClass() != nullptr)
 		{
-			auto InheritType = FAngelscriptType::GetByClass(Class->GetSuperClass());
+			const TSharedRef<FAngelscriptType>* InheritType = TypeDatabase.TypesByClass.Find(Class->GetSuperClass());
 			// Check if superclass is bound in angelscript before performing lookup
 			if (InheritType != nullptr)
 			{
-				auto* InheritScriptType = ScriptEngine->GetTypeInfoByName(TCHAR_TO_ANSI(*InheritType->GetAngelscriptTypeName()));
+				auto* InheritScriptType = ScriptEngine->GetTypeInfoByName(TCHAR_TO_ANSI(*(*InheritType)->GetAngelscriptTypeName()));
 
 				if (InheritScriptType != nullptr)
 				{
@@ -824,16 +1030,16 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 
 			if (DBProp.Declaration.Len() != 0)
 			{
-				Binds.Property(DBProp.Declaration, Property->GetOffset_ForUFunction());
+				ClassBinds.Property(DBProp.Declaration, Property->GetOffset_ForUFunction());
 			}
 			else
 			{
-				FAngelscriptTypeUsage Usage = FAngelscriptTypeUsage::FromProperty(Property);
+				FAngelscriptTypeUsage Usage = FAngelscriptTypeUsage::FromProperty(TypeDatabase, Property);
 				if (!Usage.IsValid())
 					continue;
 
 				FAngelscriptType::FBindParams Params;
-				Params.BindClass = &Binds;
+				Params.BindClass = &ClassBinds;
 				Params.NameOverride = DBProp.UnrealPath;
 				Params.bCanRead = DBProp.bCanRead;
 				Params.bCanWrite = DBProp.bCanWrite;
@@ -841,17 +1047,28 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 			}
 		}
 
-		BindStaticClass(Binds, DBBind.TypeName, Class);
 	}
-});
+}
 
 #elif !AS_USE_BIND_DB
 
 // From Bind_BlueprintEvent.cpp
-extern void BindBlueprintEvent(TSharedRef<FAngelscriptType> InType, UFunction* Function, FAngelscriptMethodBind& DBMethod, const TCHAR* OverrideName = nullptr);
+extern void BindBlueprintEvent(
+	FAngelscriptBinds& Binds,
+	TSharedRef<FAngelscriptType> InType,
+	UFunction* Function,
+	FAngelscriptMethodBind& DBMethod,
+	const TCHAR* OverrideName = nullptr);
 
 // From Bind_BlueprintCallable.cpp
-extern void BindBlueprintCallable(TSharedRef<FAngelscriptType> InType, UFunction* Function, FAngelscriptMethodBind& DBMethod, const TCHAR* OverrideName = nullptr);
+extern void BindBlueprintCallable(
+	FAngelscriptBinds& Binds,
+	TSharedRef<FAngelscriptType> InType,
+	UFunction* Function,
+	FAngelscriptMethodBind& DBMethod,
+	const TCHAR* OverrideName = nullptr);
+
+static const TArray<TObjectPtr<UClass>>& GetOrCaptureBlueprintTypeClasses(FAngelscriptBinds& Binds);
 
 /**
  * Binds declarations of all BlueprintType UObjects at the earliest possible
@@ -866,8 +1083,11 @@ void ResetCachedEditorClasses()
 	GCachedEditorClasses.Empty();
 }
 
-bool IsEditorOnlyClass(UClass* Class)
+static bool IsStructurallyEditorOnlyClass(UClass* Class)
 {
+	if (Class == nullptr)
+		return false;
+
 	TMap<UClass*, bool>& CachedEditorClasses = GCachedEditorClasses;
 	bool* CachedValue = CachedEditorClasses.Find(Class);
 	if (CachedValue != nullptr)
@@ -877,12 +1097,6 @@ bool IsEditorOnlyClass(UClass* Class)
 
 	// Check if the class lives in an editor-only module package
 	if (Class->GetOutermost()->HasAnyPackageFlags(PKG_EditorOnly | PKG_UncookedOnly))
-	{
-		bIsEditor = true;
-	}
-
-	// Check if the class is in a package that's specifically marked editor only by the game
-	if (!bIsEditor && FAngelscriptEngine::Get().ConfigSettings->AdditionalEditorOnlyScriptPackageNames.Contains(Class->GetOutermost()->GetFName()))
 	{
 		bIsEditor = true;
 	}
@@ -904,15 +1118,28 @@ bool IsEditorOnlyClass(UClass* Class)
 	}
 
 	if (!bIsEditor && Class->GetSuperClass() != nullptr)
-		bIsEditor = IsEditorOnlyClass(Class->GetSuperClass());
+		bIsEditor = IsStructurallyEditorOnlyClass(Class->GetSuperClass());
 
 	CachedEditorClasses.Add(Class, bIsEditor);
 	return bIsEditor;
 }
 
-bool ShouldDisallowInstantiation(UClass* Class)
+bool IsEditorOnlyClassForTarget(FAngelscriptEngine& Engine, UClass* Class)
 {
-	if (!FAngelscriptEngine::Get().ConfigSettings->bAllowRawConstructorsForComponentsAndActors)
+	if (IsStructurallyEditorOnlyClass(Class))
+		return true;
+
+	for (UClass* CheckClass = Class; CheckClass != nullptr; CheckClass = CheckClass->GetSuperClass())
+	{
+		if (Engine.ConfigSettings->AdditionalEditorOnlyScriptPackageNames.Contains(CheckClass->GetOutermost()->GetFName()))
+			return true;
+	}
+
+	return false;
+}
+static bool ShouldDisallowInstantiationForTarget(FAngelscriptEngine& Engine, UClass* Class)
+{
+	if (!Engine.ConfigSettings->bAllowRawConstructorsForComponentsAndActors)
 	{
 		if (Class->IsChildOf(AActor::StaticClass()))
 			return true;
@@ -927,7 +1154,7 @@ bool ShouldDisallowInstantiation(UClass* Class)
 }
 #endif
 
-bool ShouldBindEngineType(UClass* Class)
+static bool ShouldBindEngineTypeForTarget(FAngelscriptEngine& Engine, UClass* Class)
 {
 	if (Class == nullptr)
 		return false;
@@ -942,9 +1169,9 @@ bool ShouldBindEngineType(UClass* Class)
 
 #if WITH_EDITOR
 	// Don't bind classes in editor modules in simulate-cooked mode
-	if (!FAngelscriptEngine::ShouldUseEditorScriptsForCurrentContext())
+	if (!Engine.ShouldUseEditorScripts())
 	{
-		if (IsEditorOnlyClass(Class))
+		if (IsEditorOnlyClassForTarget(Engine, Class))
 			return false;
 	}
 #endif
@@ -1001,27 +1228,6 @@ bool ShouldBindEngineType(UClass* Class)
 	return false;
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_BlueprintType_Declarations(FAngelscriptBinds::EOrder::Early, []
-{
-	// Bind any clasess that are BlueprintType	
-
-	//WILL-EDIT?
-	for (UClass* Class : TObjectRange<UClass>()) //Could this be parallel for? Have to create all maps first
-	{					
-		if (!ShouldBindEngineType(Class))
-		{			
-			continue;
-		}
-
-		// Bind into angelscript engine
-		FString ClassName = FAngelscriptType::GetBoundClassName(Class);
-		BindUClass(Class, ClassName);
-		
-	}
-
-	BindUClassLookup();
-});
-
 /**
  * Binds everything that was declared as a blueprint accessible UPROPERTY()
  */
@@ -1044,7 +1250,7 @@ void BindProperties(FAngelscriptBinds Binds, TSharedRef<FAngelscriptType> Type, 
 		FProperty* Property = *It;
 
 		// Don't bind editor-only stuff in simulate cooked mode
-		if (!FAngelscriptEngine::ShouldUseEditorScriptsForCurrentContext() && Property->HasAnyPropertyFlags(CPF_EditorOnly))
+		if (!Binds.GetTargetEngine().ShouldUseEditorScripts() && Property->HasAnyPropertyFlags(CPF_EditorOnly))
 			continue;
 
 		FAngelscriptType::FBindParams Params = GetPropertyBindParams(Property);
@@ -1054,7 +1260,7 @@ void BindProperties(FAngelscriptBinds Binds, TSharedRef<FAngelscriptType> Type, 
 			continue;
 
 		// Bind using angelscript type system otherwise
-		FAngelscriptTypeUsage Usage = FAngelscriptTypeUsage::FromProperty(Property);
+		FAngelscriptTypeUsage Usage = FAngelscriptTypeUsage::FromProperty(Binds.GetTargetTypeDatabase(), Property);
 		if (!Usage.IsValid())
 			continue;
 
@@ -1068,7 +1274,13 @@ void BindProperties(FAngelscriptBinds Binds, TSharedRef<FAngelscriptType> Type, 
 
 		const FString& Tooltip = Property->GetMetaData(NAME_Func_Tooltip);
 		if (Tooltip.Len() != 0)
-			FAngelscriptDocs::AddUnrealDocumentationForProperty(Binds.GetTypeInfo()->GetTypeId(), Property->GetOffset_ForUFunction(), Tooltip);
+		{
+			FAngelscriptDocs::AddUnrealDocumentationForProperty(
+				Binds.GetTargetEngine(),
+				Binds.GetTypeInfo()->GetTypeId(),
+				Property->GetOffset_ForUFunction(),
+				Tooltip);
+		}
 #endif
 
 		if (Usage.Type->BindProperty(Usage, Params, Property))
@@ -1139,10 +1351,11 @@ void BindProperties(FAngelscriptBinds Binds, TSharedRef<FAngelscriptType> Type, 
 	}
 }
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBinds::EOrder::Late+100, []
+static void BindBlueprintTypeReflectionBindings(FAngelscriptBinds& Binds)
 {
 	FAngelscriptScopeTimer Timer(TEXT("blueprinttype bindings"));
-	auto* ScriptEngine = FAngelscriptEngine::Get().Engine;
+	asIScriptEngine* ScriptEngine = &Binds.GetTargetScriptEngine();
+	FAngelscriptTypeDatabase& TypeDatabase = Binds.GetTargetTypeDatabase();
 	const double T0 = FPlatformTime::Seconds();
 
 	struct FBindOrder
@@ -1164,7 +1377,12 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 
 	struct FClassVisiter
 	{
-		static void Visit(asIScriptEngine* ScriptEngine, UClass* Class, TArray<FBindOrder>& ClassesToBind, TSet<UClass*>& VisitedClasses)
+		static void Visit(
+			asIScriptEngine* ScriptEngine,
+			FAngelscriptTypeDatabase& TypeDatabase,
+			UClass* Class,
+			TArray<FBindOrder>& ClassesToBind,
+			TSet<UClass*>& VisitedClasses)
 		{
 			bool bAlreadyVisited = false;
 			VisitedClasses.Add(Class, &bAlreadyVisited);
@@ -1174,7 +1392,10 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 
 			FBindOrder BindOrder;
 			BindOrder.Class = Class;
-			BindOrder.Type = FAngelscriptType::GetByClass(Class);
+			if (const TSharedRef<FAngelscriptType>* RegisteredType = TypeDatabase.TypesByClass.Find(Class))
+			{
+				BindOrder.Type = *RegisteredType;
+			}
 			if (!BindOrder.Type.IsValid())
 				return;
 
@@ -1182,9 +1403,12 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 
 			if (auto* SuperClass = Class->GetSuperClass())
 			{
-				Visit(ScriptEngine, Class->GetSuperClass(), ClassesToBind, VisitedClasses);
+				Visit(ScriptEngine, TypeDatabase, SuperClass, ClassesToBind, VisitedClasses);
 
-				BindOrder.InheritType = FAngelscriptType::GetByClass(Class->GetSuperClass());
+				if (const TSharedRef<FAngelscriptType>* RegisteredSuperType = TypeDatabase.TypesByClass.Find(SuperClass))
+				{
+					BindOrder.InheritType = *RegisteredSuperType;
+				}
 				if (BindOrder.InheritType.IsValid())
 					BindOrder.InheritScriptType = ScriptEngine->GetTypeInfoByName(TCHAR_TO_ANSI(*BindOrder.InheritType->GetAngelscriptTypeName()));
 			}
@@ -1193,8 +1417,10 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 		};
 	};
 
-	for (UClass* Class : TObjectRange<UClass>())
-		FClassVisiter::Visit(ScriptEngine, Class, ClassesToBind, VisitedClasses);
+	for (const TObjectPtr<UClass>& ClassPtr : GetOrCaptureBlueprintTypeClasses(Binds))
+	{
+		FClassVisiter::Visit(ScriptEngine, TypeDatabase, ClassPtr.Get(), ClassesToBind, VisitedClasses);
+	}
 
 	const double TCollect = FPlatformTime::Seconds();
 
@@ -1202,7 +1428,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 	int32 TotalFuncsBound = 0;
 
 	// Opt 6: cache the editor-context flag once (stable for the duration of Phase 2).
-	const bool bUseEditorScripts = FAngelscriptEngine::ShouldUseEditorScriptsForCurrentContext();
+	const bool bUseEditorScripts = Binds.GetTargetEngine().ShouldUseEditorScripts();
 
 	// ---- Phase 1.5: Prewarm UClass NameArray on the GameThread (Step 3.2) ----
 	// UClass::FindFunctionByName triggers a lazy GenerateFunctionList walk that mutates
@@ -1236,7 +1462,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 	{
 		AS_BIND_PHASE_SCOPE(EBindLatePhase::Phase2_Prepare);
 
-		auto PreparePerClass = [&ClassesToBind, bUseEditorScripts](int32 ClassIdx)
+		auto PreparePerClass = [&Binds, &ClassesToBind, bUseEditorScripts](int32 ClassIdx)
 		{
 #if WITH_DEV_AUTOMATION_TESTS
 			const double WorkerStartSeconds = FPlatformTime::Seconds();
@@ -1272,15 +1498,15 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 				FUFunctionBindPrep Prep;
 				if (Function->HasAnyFunctionFlags(FUNC_BlueprintEvent | FUNC_NetFuncFlags))
 				{
-					BindBlueprintEvent_Prepare(ClassType.ToSharedRef(), Function, Prep);
+					BindBlueprintEvent_Prepare(Binds, ClassType.ToSharedRef(), Function, Prep);
 				}
 				else if (Function->HasAnyFunctionFlags(FUNC_BlueprintCallable | FUNC_BlueprintPure))
 				{
-					BindBlueprintCallable_Prepare(ClassType.ToSharedRef(), Function, Prep);
+					BindBlueprintCallable_Prepare(Binds, ClassType.ToSharedRef(), Function, Prep);
 				}
 				else if (Function->HasMetaData(NAME_ScriptCallable))
 				{
-					BindBlueprintCallable_Prepare(ClassType.ToSharedRef(), Function, Prep);
+					BindBlueprintCallable_Prepare(Binds, ClassType.ToSharedRef(), Function, Prep);
 				}
 				else
 				{
@@ -1321,7 +1547,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 	// global script declarations).
 	{
 		ensureMsgf(IsInGameThread(),
-			TEXT("[AS] Bind_Defaults Late+100 Phase 2B commit must run on GameThread (AS Engine writes are not thread-safe)."));
+			TEXT("[AS] BlueprintType ReflectionBindings commit must run on GameThread (AS Engine writes are not thread-safe)."));
 		AS_BIND_PHASE_SCOPE(EBindLatePhase::Phase2_Commit);
 		FScopedBindCaches ScopedBindCaches;
 
@@ -1338,11 +1564,11 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 
 				if (Prep.Kind == FUFunctionBindPrep::EKind::Event)
 				{
-					BindBlueprintEvent_FromPrep(ClassType.ToSharedRef(), Prep, DBMethod);
+					BindBlueprintEvent_FromPrep(Binds, ClassType.ToSharedRef(), Prep, DBMethod);
 				}
 				else
 				{
-					BindBlueprintCallable_FromPrep(ClassType.ToSharedRef(), Prep, DBMethod);
+					BindBlueprintCallable_FromPrep(Binds, ClassType.ToSharedRef(), Prep, DBMethod);
 				}
 
 				if (DBMethod.UnrealPath.Len() != 0 && !Prep.Function->HasAnyFunctionFlags(FUNC_EditorOnly))
@@ -1372,7 +1598,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 		}
 
 		FString TypeName = BindOrder.Type->GetAngelscriptTypeName();
-		FAngelscriptBinds Binds = FAngelscriptBinds::ExistingClass(TypeName);
+		FAngelscriptBinds ClassBinds = Binds.ExistingClassForTarget(TypeName);
 
 		if (BindOrder.InheritScriptType != nullptr)
 		{
@@ -1381,13 +1607,11 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 		}
 
 		// Bind UObject properties
-		BindProperties(Binds, ClassType.ToSharedRef(), BindOrder.DBBind.Properties);
-
-		BindStaticClass(Binds, TypeName, BindOrder.Class);
+		BindProperties(ClassBinds, ClassType.ToSharedRef(), BindOrder.DBBind.Properties);
 
 		BindOrder.DBBind.TypeName = TypeName;
 		BindOrder.DBBind.UnrealPath = BindOrder.Class->GetPathName();
-		FAngelscriptBindDatabase::Get().Classes.Add(BindOrder.DBBind);
+		Binds.GetTargetBindDatabase().Classes.Add(BindOrder.DBBind);
 	}
 
 	const double TPropsInherit = FPlatformTime::Seconds();
@@ -1438,7 +1662,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 		// Round 1: Register each interface's own methods
 		for (auto& Entry : InterfacesToBind)
 		{
-			FAngelscriptBinds Binds = FAngelscriptBinds::ExistingClass(Entry.TypeName);
+			FAngelscriptBinds InterfaceBinds = Binds.ExistingClassForTarget(Entry.TypeName);
 
 			for (TFieldIterator<UFunction> FuncIt(Entry.InterfaceClass, EFieldIteratorFlags::ExcludeSuper); FuncIt; ++FuncIt)
 			{
@@ -1466,7 +1690,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 				for (TFieldIterator<FProperty> PropIt(Function); PropIt && (PropIt->PropertyFlags & CPF_Parm); ++PropIt)
 				{
 					FProperty* Property = *PropIt;
-					FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromProperty(Property);
+					FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromProperty(TypeDatabase, Property);
 					if (!Type.IsValid())
 					{
 						bAllTypesValid = false;
@@ -1498,8 +1722,8 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 				if (InterfaceScriptType != nullptr && InterfaceScriptType->GetMethodByName(TCHAR_TO_ANSI(*FuncName)) != nullptr)
 					continue;
 
-				FInterfaceMethodSignature* Sig = FAngelscriptEngine::Get().RegisterInterfaceMethodSignature(FName(*FuncName));
-				Binds.GenericMethod(Declaration, CallInterfaceMethod, Sig);
+				FInterfaceMethodSignature* Sig = Binds.GetTargetEngine().RegisterInterfaceMethodSignature(FName(*FuncName));
+				InterfaceBinds.GenericMethod(Declaration, CallInterfaceMethod, Sig);
 				++TotalInterfaceMethodsBound;
 
 				UE_LOG(Angelscript, Verbose,
@@ -1517,12 +1741,12 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 			if (!SuperInterface->HasAnyClassFlags(CLASS_Interface))
 				continue;
 
-			auto SuperType = FAngelscriptType::GetByClass(SuperInterface);
-			if (!SuperType.IsValid())
+			const TSharedRef<FAngelscriptType>* SuperType = TypeDatabase.TypesByClass.Find(SuperInterface);
+			if (SuperType == nullptr)
 				continue;
 
 			asITypeInfo* ChildScriptType = ScriptEngine->GetTypeInfoByName(TCHAR_TO_ANSI(*Entry.TypeName));
-			asITypeInfo* ParentScriptType = ScriptEngine->GetTypeInfoByName(TCHAR_TO_ANSI(*SuperType->GetAngelscriptTypeName()));
+			asITypeInfo* ParentScriptType = ScriptEngine->GetTypeInfoByName(TCHAR_TO_ANSI(*(*SuperType)->GetAngelscriptTypeName()));
 			if (ChildScriptType != nullptr && ParentScriptType != nullptr)
 			{
 				ChildScriptType->CopySystemType(ParentScriptType);
@@ -1549,45 +1773,33 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_Defaults((int32)FAngelscriptBi
 		(TPropsInherit - TGetterSetter) * 1000.0,
 		(TInterfaceBind - TPropsInherit) * 1000.0,
 		(TInterfaceBind - T0) * 1000.0);
-});
+}
 
 #endif // AS_USE_BIND_DB
 
 /*
  * Bind TSubclassOf<> template
  */
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TSubclassOf_Declaration((int32)FAngelscriptBinds::EOrder::Early, []
+static void BindTSubclassOfTypeDeclarations(FAngelscriptBinds& Binds)
 {
 	FBindFlags Flags;
 	Flags.bTemplate = true;
 	Flags.TemplateType = "<T>";
 	Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
 
-	auto TSubclassOf_ = FAngelscriptBinds::ValueClass<TSubclassOf<UObject>>("TSubclassOf<class T>", Flags);
-	TSubclassOf_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::Construct));
-	TSubclassOf_.Constructor("void f(const TSubclassOf<T>& Other)", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::CopyConstruct));
-	TSubclassOf_.Method("TSubclassOf<T>& opAssign(const TSubclassOf<T>& Other)", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::Assign));
-
-	TSubclassOf_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)",
-	[](asITypeInfo* TemplateType, asCString* ErrorMessage) -> bool
-	{
-		if (TemplateType->GetSubTypeCount() != 1)
-			return false;
-
-		auto* SubType = TemplateType->GetSubType(0);
-		if (SubType == nullptr || SubType->GetFlags() & asOBJ_VALUE)
-		{
-			if (ErrorMessage != nullptr)
-				*ErrorMessage = "Subtype must be a class type";
-			return false;
-		}
-		return true;
-	});
-});
+	Binds.ValueClassForTarget<TSubclassOf<UObject>>(
+		"TSubclassOf<class T>",
+		Flags);
+}
 
 struct FSubclassOfType : TAngelscriptCppType<TSubclassOf<UObject>>
 {
-	static asITypeInfo* BaseTypeInfo;
+	const FAngelscriptBindDatabase* BindDatabase = nullptr;
+
+	explicit FSubclassOfType(const FAngelscriptBindDatabase& InBindDatabase)
+		: BindDatabase(&InBindDatabase)
+	{
+	}
 
 	virtual FString GetAngelscriptTypeName() const override
 	{
@@ -1757,7 +1969,8 @@ struct FSubclassOfType : TAngelscriptCppType<TSubclassOf<UObject>>
 		UClass* MetaClass = GetMetaClass(Usage);
 		if (MetaClass != nullptr)
 		{
-			FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(MetaClass);
+			check(BindDatabase != nullptr);
+			FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(MetaClass, *BindDatabase);
 			if (ClassHeaderPath.Len() != 0)
 			{
 				OutCppForm.CppType = FString::Printf(TEXT("TSubclassOf<%s%s>"), MetaClass->GetPrefixCPP(), *MetaClass->GetName());
@@ -1796,35 +2009,71 @@ struct FSubclassOfType : TAngelscriptCppType<TSubclassOf<UObject>>
 	}
 };
 
-asITypeInfo* FSubclassOfType::BaseTypeInfo = nullptr;
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TSubclassOf((int32)FAngelscriptBinds::EOrder::Late-10, []
+static void BindTSubclassOfMethodSurface(FAngelscriptBinds& Binds)
 {
-	auto TSubclassOf_ = FAngelscriptBinds::ExistingClass("TSubclassOf<T>");
-	FSubclassOfType::BaseTypeInfo = FAngelscriptEngine::Get().Engine->GetTypeInfoByName("TSubclassOf");
+	auto TSubclassOf_ = Binds.ExistingClassForTarget("TSubclassOf<T>");
+	TSubclassOf_.Constructor(
+		"void f()",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::Construct));
+	TSubclassOf_.Constructor(
+		"void f(const TSubclassOf<T>& Other)",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::CopyConstruct));
+	TSubclassOf_.Method(
+		"TSubclassOf<T>& opAssign(const TSubclassOf<T>& Other)",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::Assign));
+	TSubclassOf_.TemplateCallback(
+		"bool f(int&in Type, int&out ErrorMessage)",
+		&FAngelscriptBlueprintTypeBinds::ValidateSubclassOfTemplate);
 
-	TSubclassOf_.ImplicitConstructor("void f(UClass Class)", FUNC(FAngelscriptSubclassOfHelpers::ImplicitConstruct));
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	TSubclassOf_.Method("UClass opImplConv() const", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::GetClass));
-	TSubclassOf_.Method("UObject opImplConv() const", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::GetClass));
+	TSubclassOf_.ImplicitConstructor(
+		"void f(UClass Class)",
+		FUNC(FAngelscriptSubclassOfHelpers::ImplicitConstruct))
+		.PassScriptObjectTypeAsFirstParam();
+	TSubclassOf_.Method(
+		"UClass opImplConv() const",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::GetClass));
+	TSubclassOf_.Method(
+		"UObject opImplConv() const",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::GetClass));
 
-	TSubclassOf_.Method("void Set(UClass Class) const", FUNC(FAngelscriptSubclassOfHelpers::SetClass));
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
-	TSubclassOf_.Method("void opAssign(UClass Class)", FUNC(FAngelscriptSubclassOfHelpers::SetClass));
-	FAngelscriptBinds::PreviousBindPassScriptObjectTypeAsFirstParam();
+	TSubclassOf_.Method(
+		"void Set(UClass Class) const",
+		FUNC(FAngelscriptSubclassOfHelpers::SetClass))
+		.PassScriptObjectTypeAsFirstParam();
+	TSubclassOf_.Method(
+		"void opAssign(UClass Class)",
+		FUNC(FAngelscriptSubclassOfHelpers::SetClass))
+		.PassScriptObjectTypeAsFirstParam();
 
-	TSubclassOf_.Method("bool opEquals(const TSubclassOf<T>& Other) const", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::OpEquals));
-	TSubclassOf_.Method("bool opEquals(UClass Other) const", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::OpEqualsClass));
+	TSubclassOf_.Method(
+		"bool opEquals(const TSubclassOf<T>& Other) const",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::OpEquals));
+	TSubclassOf_.Method(
+		"bool opEquals(UClass Other) const",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::OpEqualsClass));
 
-	TSubclassOf_.Method("UClass Get() const", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::GetClass));
-	TSubclassOf_.Method("bool IsValid() const", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::IsValid));
-	TSubclassOf_.Method("bool IsChildOf(UClass Other) const", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::IsChildOf));
-	TSubclassOf_.Method("T handle_only GetDefaultObject() const", FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::GetDefaultObject));
-});
+	TSubclassOf_.Method(
+		"UClass Get() const",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::GetClass));
+	TSubclassOf_.Method(
+		"bool IsValid() const",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::IsValid));
+	TSubclassOf_.Method(
+		"bool IsChildOf(UClass Other) const",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::IsChildOf));
+	TSubclassOf_.Method(
+		"T handle_only GetDefaultObject() const",
+		FUNC_TRIVIAL(FAngelscriptSubclassOfHelpers::GetDefaultObject));
+}
 
 struct FObjectPtrType : TAngelscriptCppType<TObjectPtr<UObject>>
 {
-	static asITypeInfo* BaseTypeInfo;
+	const FAngelscriptBindDatabase* BindDatabase = nullptr;
+
+	explicit FObjectPtrType(const FAngelscriptBindDatabase& InBindDatabase)
+		: BindDatabase(&InBindDatabase)
+	{
+	}
 
 	virtual FString GetAngelscriptTypeName() const override
 	{
@@ -2018,7 +2267,8 @@ struct FObjectPtrType : TAngelscriptCppType<TObjectPtr<UObject>>
 		UClass* ObjectClass = GetObjectClass(Usage);
 		if (ObjectClass != nullptr)
 		{
-			FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(ObjectClass);
+			check(BindDatabase != nullptr);
+			FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(ObjectClass, *BindDatabase);
 			if (ClassHeaderPath.Len() != 0)
 			{
 				OutCppForm.CppType = FString::Printf(TEXT("TObjectPtr<%s%s>"), ObjectClass->GetPrefixCPP(), *ObjectClass->GetName());
@@ -2064,95 +2314,67 @@ struct FObjectPtrType : TAngelscriptCppType<TObjectPtr<UObject>>
 	}
 };
 
-asITypeInfo* FObjectPtrType::BaseTypeInfo = nullptr;
-
 /*
  * Bind TObjectPtr<> template
  */
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TObjectPtr_Declaration((int32)FAngelscriptBinds::EOrder::Early, []
+static void BindTObjectPtrTypeDeclarations(FAngelscriptBinds& Binds)
 {
 	FBindFlags Flags;
 	Flags.bTemplate = true;
 	Flags.TemplateType = "<T>";
 	Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
 
-	auto TObjectPtr_ = FAngelscriptBinds::ValueClass<TObjectPtr<UObject>>("TObjectPtr<class T>", Flags);
-	TObjectPtr_.Constructor("void f()", [](TObjectPtr<UObject>* Ptr)
-	{
-		new (Ptr) TObjectPtr<UObject>(nullptr);
-	});
+	Binds.ValueClassForTarget<TObjectPtr<UObject>>(
+		"TObjectPtr<class T>",
+		Flags);
+}
 
-	TObjectPtr_.Constructor("void f(const TObjectPtr<T>& Other)", [](TObjectPtr<UObject>* Ptr, const TObjectPtr<UObject>* Other)
-	{
-		new (Ptr) TObjectPtr<UObject>(*Other);
-	});
-
-	TObjectPtr_.Method("TObjectPtr<T>& opAssign(const TObjectPtr<T>& Other)", [](TObjectPtr<UObject>* Ptr, const TObjectPtr<UObject>* Other) -> TObjectPtr<UObject>&
-	{
-		*Ptr = *Other;
-		return *Ptr;
-	});
-
-	TObjectPtr_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)",
-	[](asITypeInfo* TemplateType, asCString* ErrorMessage) -> bool
-	{
-		if (TemplateType->GetSubTypeCount() != 1)
-			return false;
-
-		auto* SubType = TemplateType->GetSubType(0);
-		if (SubType == nullptr || SubType->GetFlags() & asOBJ_VALUE)
-		{
-			if (ErrorMessage != nullptr)
-				*ErrorMessage = "Subtype must be a class type";
-			return false;
-		}
-		return true;
-	});
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TObjectPtr((int32)FAngelscriptBinds::EOrder::Late-10, []
+static void BindTObjectPtrMethodSurface(FAngelscriptBinds& Binds)
 {
-	auto TObjectPtr_ = FAngelscriptBinds::ExistingClass("TObjectPtr<T>");
-	FObjectPtrType::BaseTypeInfo = FAngelscriptEngine::Get().Engine->GetTypeInfoByName("TObjectPtr");
+	auto TObjectPtr_ = Binds.ExistingClassForTarget("TObjectPtr<T>");
+	TObjectPtr_.Constructor("void f()", &FAngelscriptBlueprintTypeBinds::ConstructObjectPtr);
+	TObjectPtr_.Constructor(
+		"void f(const TObjectPtr<T>& Other)",
+		&FAngelscriptBlueprintTypeBinds::CopyConstructObjectPtr);
+	TObjectPtr_.Method(
+		"TObjectPtr<T>& opAssign(const TObjectPtr<T>& Other)",
+		&FAngelscriptBlueprintTypeBinds::AssignObjectPtr);
+	TObjectPtr_.TemplateCallback(
+		"bool f(int&in Type, int&out ErrorMessage)",
+		&FAngelscriptBlueprintTypeBinds::ValidateObjectPtrTemplate);
 
-	TObjectPtr_.ImplicitConstructor("void f(T handle_only Object)", [](TObjectPtr<UObject>* Ptr, UObject* Object)
-	{
-		new (Ptr) TObjectPtr<UObject>(Object);
-	});
+	TObjectPtr_.ImplicitConstructor(
+		"void f(T handle_only Object)",
+		&FAngelscriptBlueprintTypeBinds::ConstructObjectPtrFromObject);
+	TObjectPtr_.Method(
+		"T handle_only opImplConv() const",
+		&FAngelscriptBlueprintTypeBinds::ConvertObjectPtrToObject);
 
-	TObjectPtr_.Method("T handle_only opImplConv() const", [](const TObjectPtr<UObject>* Ptr)
-	{
-		return Ptr->Get();
-	});
+	TObjectPtr_.Method(
+		"bool opEquals(const TObjectPtr<T>& Other) const",
+		&FAngelscriptBlueprintTypeBinds::ObjectPtrsEqual);
 
-	TObjectPtr_.Method("bool opEquals(const TObjectPtr<T>& Other) const",
-	[](const TObjectPtr<UObject>& Self, const TObjectPtr<UObject>& Other) -> bool
-	{
-		return Self == Other;
-	});
+	TObjectPtr_.Method(
+		"bool opEquals(const T handle_only Other) const",
+		&FAngelscriptBlueprintTypeBinds::ObjectPtrEqualsObject);
 
-	TObjectPtr_.Method("bool opEquals(const T handle_only Other) const",
-	[](const TObjectPtr<UObject>& Self, UObject* Other) -> bool
-	{
-		return Self == Other;
-	});
+	TObjectPtr_.Method(
+		"TObjectPtr<T>& opAssign(T handle_only Other)",
+		&FAngelscriptBlueprintTypeBinds::AssignObjectToObjectPtr);
 
-	TObjectPtr_.Method("TObjectPtr<T>& opAssign(T handle_only Other)",
-	[](TObjectPtr<UObject>* Self, UObject* Other)
-	{
-		*Self = Other;
-		return Self;
-	});
-
-	TObjectPtr_.Method("T handle_only Get() const", [](TObjectPtr<UObject>* Ptr)
-	{
-		return Ptr->Get();
-	});
-});
+	TObjectPtr_.Method(
+		"T handle_only Get() const",
+		&FAngelscriptBlueprintTypeBinds::GetObjectPtrObject);
+}
 
 struct FWeakObjectPtrType : TAngelscriptCppType<TWeakObjectPtr<UObject>>
 {
-	static asITypeInfo* BaseTypeInfo;
+	const FAngelscriptBindDatabase* BindDatabase = nullptr;
+
+	explicit FWeakObjectPtrType(const FAngelscriptBindDatabase& InBindDatabase)
+		: BindDatabase(&InBindDatabase)
+	{
+	}
 
 	virtual FString GetAngelscriptTypeName() const override
 	{
@@ -2314,7 +2536,8 @@ struct FWeakObjectPtrType : TAngelscriptCppType<TWeakObjectPtr<UObject>>
 		UClass* ObjectClass = GetObjectClass(Usage);
 		if (ObjectClass != nullptr)
 		{
-			FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(ObjectClass);
+			check(BindDatabase != nullptr);
+			FString ClassHeaderPath = FAngelscriptBindDatabase::GetSourceHeader(ObjectClass, *BindDatabase);
 			if (ClassHeaderPath.Len() != 0)
 			{
 				OutCppForm.CppType = FString::Printf(TEXT("TWeakObjectPtr<%s%s>"), ObjectClass->GetPrefixCPP(), *ObjectClass->GetName());
@@ -2360,130 +2583,220 @@ struct FWeakObjectPtrType : TAngelscriptCppType<TWeakObjectPtr<UObject>>
 	}
 };
 
-asITypeInfo* FWeakObjectPtrType::BaseTypeInfo = nullptr;
-
 /*
  * Bind TWeakObjectPtr<> template
  */
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TWeakObjectPtr_Declaration((int32)FAngelscriptBinds::EOrder::Early, []
+static void BindTWeakObjectPtrTypeDeclarations(FAngelscriptBinds& Binds)
 {
 	FBindFlags Flags;
 	Flags.bTemplate = true;
 	Flags.TemplateType = "<T>";
 	Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
 
-	auto TWeakObjectPtr_ = FAngelscriptBinds::ValueClass<TWeakObjectPtr<UObject>>("TWeakObjectPtr<class T>", Flags);
-	TWeakObjectPtr_.Constructor("void f()", [](TWeakObjectPtr<UObject>* Ptr)
-	{
-		new (Ptr) TWeakObjectPtr<UObject>(nullptr);
-	});
+	Binds.ValueClassForTarget<TWeakObjectPtr<UObject>>(
+		"TWeakObjectPtr<class T>",
+		Flags);
+}
 
-	TWeakObjectPtr_.Constructor("void f(const TWeakObjectPtr<T>& Other)", [](TWeakObjectPtr<UObject>* Ptr, const TWeakObjectPtr<UObject>* Other)
-	{
-		new (Ptr) TWeakObjectPtr<UObject>(*Other);
-	});
+static void BindTWeakObjectPtrMethodSurface(FAngelscriptBinds& Binds)
+{
+	auto TWeakObjectPtr_ = Binds.ExistingClassForTarget("TWeakObjectPtr<T>");
+	TWeakObjectPtr_.Constructor(
+		"void f()",
+		&FAngelscriptBlueprintTypeBinds::ConstructWeakObjectPtr);
+	TWeakObjectPtr_.Constructor(
+		"void f(const TWeakObjectPtr<T>& Other)",
+		&FAngelscriptBlueprintTypeBinds::CopyConstructWeakObjectPtr);
+	TWeakObjectPtr_.Method(
+		"TWeakObjectPtr<T>& opAssign(const TWeakObjectPtr<T>& Other)",
+		&FAngelscriptBlueprintTypeBinds::AssignWeakObjectPtr);
+	TWeakObjectPtr_.TemplateCallback(
+		"bool f(int&in Type, int&out ErrorMessage)",
+		&FAngelscriptBlueprintTypeBinds::ValidateWeakObjectPtrTemplate);
 
-	TWeakObjectPtr_.Method("TWeakObjectPtr<T>& opAssign(const TWeakObjectPtr<T>& Other)", [](TWeakObjectPtr<UObject>* Ptr, const TWeakObjectPtr<UObject>* Other) -> TWeakObjectPtr<UObject>&
-	{
-		*Ptr = *Other;
-		return *Ptr;
-	});
+	TWeakObjectPtr_.ImplicitConstructor(
+		"void f(T handle_only Object)",
+		&FAngelscriptBlueprintTypeBinds::ConstructWeakObjectPtrFromObject);
+	TWeakObjectPtr_.Method(
+		"T handle_only opImplConv() const",
+		&FAngelscriptBlueprintTypeBinds::ConvertWeakObjectPtrToObject);
 
-	TWeakObjectPtr_.TemplateCallback("bool f(int&in Type, int&out ErrorMessage)",
-	[](asITypeInfo* TemplateType, asCString* ErrorMessage) -> bool
-	{
-		if (TemplateType->GetSubTypeCount() != 1)
-			return false;
+	TWeakObjectPtr_.Method(
+		"bool opEquals(const TWeakObjectPtr<T>& Other) const",
+		&FAngelscriptBlueprintTypeBinds::WeakObjectPtrsEqual);
 
-		auto* SubType = TemplateType->GetSubType(0);
-		if (SubType == nullptr || SubType->GetFlags() & asOBJ_VALUE)
+	TWeakObjectPtr_.Method(
+		"bool opEquals(const T handle_only Other) const",
+		&FAngelscriptBlueprintTypeBinds::WeakObjectPtrEqualsObject);
+
+	TWeakObjectPtr_.Method(
+		"TWeakObjectPtr<T>& opAssign(T handle_only Other)",
+		&FAngelscriptBlueprintTypeBinds::AssignObjectToWeakObjectPtr);
+
+	TWeakObjectPtr_.Method(
+		"T handle_only Get() const",
+		&FAngelscriptBlueprintTypeBinds::GetWeakObjectPtrObject);
+
+	TWeakObjectPtr_.Method(
+		"bool IsValid() const",
+		&FAngelscriptBlueprintTypeBinds::IsWeakObjectPtrValid);
+
+	TWeakObjectPtr_.Method(
+		"bool IsStale() const",
+		&FAngelscriptBlueprintTypeBinds::IsWeakObjectPtrStale);
+
+	TWeakObjectPtr_.Method(
+		"bool IsExplicitlyNull() const",
+		&FAngelscriptBlueprintTypeBinds::IsWeakObjectPtrExplicitlyNull);
+}
+
+static FAngelscriptTypeUsage GetClassUsageForTarget(
+	FAngelscriptTypeDatabase& TypeDatabase,
+	UClass* Class)
+{
+	FAngelscriptTypeUsage Usage;
+	if (const TSharedRef<FAngelscriptType>* RegisteredType = TypeDatabase.TypesByClass.Find(Class))
+	{
+		Usage.Type = *RegisteredType;
+		return Usage;
+	}
+
+	UASClass* ScriptClass = Cast<UASClass>(Class);
+	if (ScriptClass != nullptr && ScriptClass->ScriptTypePtr != nullptr)
+	{
+		Usage.Type = TypeDatabase.ScriptObjectType;
+		Usage.ScriptClass = static_cast<asITypeInfo*>(ScriptClass->ScriptTypePtr);
+	}
+	return Usage;
+}
+
+#if AS_USE_BIND_DB
+
+static void BindBlueprintTypeReferenceClassDeclarations(FAngelscriptBinds& Binds)
+{
+	for (FAngelscriptClassBind& DBBind : Binds.GetTargetBindDatabase().Classes)
+	{
+		UClass* Class = FindObject<UClass>(nullptr, *DBBind.UnrealPath);
+		if (Class == nullptr)
 		{
-			if (ErrorMessage != nullptr)
-				*ErrorMessage = "Subtype must be a class type";
-			return false;
+			continue;
 		}
-		return true;
-	});
-});
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_TWeakObjectPtr((int32)FAngelscriptBinds::EOrder::Late-10, []
+		DBBind.ResolvedClass = Class;
+		DeclareUClassForTarget(Binds, Class, DBBind.TypeName);
+	}
+}
+
+static void RegisterBlueprintTypeReferenceClasses(FAngelscriptBinds& Binds)
 {
-	auto TWeakObjectPtr_ = FAngelscriptBinds::ExistingClass("TWeakObjectPtr<T>");
-	FObjectPtrType::BaseTypeInfo = FAngelscriptEngine::Get().Engine->GetTypeInfoByName("TWeakObjectPtr");
-
-	TWeakObjectPtr_.ImplicitConstructor("void f(T handle_only Object)", [](TWeakObjectPtr<UObject>* Ptr, UObject* Object)
+	for (FAngelscriptClassBind& DBBind : Binds.GetTargetBindDatabase().Classes)
 	{
-		new (Ptr) TWeakObjectPtr<UObject>(Object);
-	});
+		if (DBBind.ResolvedClass != nullptr)
+		{
+			RegisterUClassTypeForTarget(Binds, DBBind.ResolvedClass, DBBind.TypeName);
+		}
+	}
+}
 
-	TWeakObjectPtr_.Method("T handle_only opImplConv() const", [](const TWeakObjectPtr<UObject>* Ptr)
-	{
-		return Ptr->Get();
-	});
-
-	TWeakObjectPtr_.Method("bool opEquals(const TWeakObjectPtr<T>& Other) const",
-	[](const TWeakObjectPtr<UObject>& Self, const TWeakObjectPtr<UObject>& Other) -> bool
-	{
-		return Self == Other;
-	});
-
-	TWeakObjectPtr_.Method("bool opEquals(const T handle_only Other) const",
-	[](const TWeakObjectPtr<UObject>& Self, UObject* Other) -> bool
-	{
-		return Self == Other;
-	});
-
-	TWeakObjectPtr_.Method("TWeakObjectPtr<T>& opAssign(T handle_only Other)",
-	[](TWeakObjectPtr<UObject>* Self, UObject* Other)
-	{
-		*Self = Other;
-		return Self;
-	});
-
-	TWeakObjectPtr_.Method("T handle_only Get() const", [](TWeakObjectPtr<UObject>* Ptr)
-	{
-		return Ptr->Get();
-	});
-
-	TWeakObjectPtr_.Method("bool IsValid() const", [](TWeakObjectPtr<UObject>* Ptr)
-	{
-		return Ptr->IsValid();
-	});
-
-	TWeakObjectPtr_.Method("bool IsStale() const", [](TWeakObjectPtr<UObject>* Ptr)
-	{
-		return Ptr->IsStale();
-	});
-
-	TWeakObjectPtr_.Method("bool IsExplicitlyNull() const", [](TWeakObjectPtr<UObject>* Ptr)
-	{
-		return Ptr->IsExplicitlyNull();
-	});
-});
-
-static void BindUClassLookup()
+static void BindBlueprintTypeStaticClasses(FAngelscriptBinds& Binds)
 {
-	// Register the type used by TSubclassOf
-	TSharedRef<FSubclassOfType> SubclassOfType = MakeShared<FSubclassOfType>();
-	FAngelscriptType::Register(SubclassOfType);
+	for (FAngelscriptClassBind& DBBind : Binds.GetTargetBindDatabase().Classes)
+	{
+		if (DBBind.ResolvedClass != nullptr)
+		{
+			BindStaticClassForTarget(Binds, DBBind.TypeName, DBBind.ResolvedClass);
+		}
+	}
+}
+
+#else
+
+static const TArray<TObjectPtr<UClass>>& GetOrCaptureBlueprintTypeClasses(FAngelscriptBinds& Binds)
+{
+	FAngelscriptBindState& BindState = Binds.GetTargetBindState();
+	if (!BindState.bBlueprintTypeClassSnapshotCaptured)
+	{
+		for (UClass* Class : TObjectRange<UClass>())
+		{
+			if (ShouldBindEngineTypeForTarget(Binds.GetTargetEngine(), Class))
+			{
+				BindState.BlueprintTypeClassSnapshot.Add(Class);
+			}
+		}
+
+		BindState.BlueprintTypeClassSnapshot.Sort(
+			[](const UClass& Left, const UClass& Right)
+			{
+				return Left.GetPathName() < Right.GetPathName();
+			});
+		BindState.bBlueprintTypeClassSnapshotCaptured = true;
+	}
+
+	return BindState.BlueprintTypeClassSnapshot;
+}
+
+static void BindBlueprintTypeReferenceClassDeclarations(FAngelscriptBinds& Binds)
+{
+	for (const TObjectPtr<UClass>& ClassPtr : GetOrCaptureBlueprintTypeClasses(Binds))
+	{
+		UClass* Class = ClassPtr.Get();
+		DeclareUClassForTarget(Binds, Class, FAngelscriptType::GetBoundClassName(Class));
+	}
+}
+
+static void RegisterBlueprintTypeReferenceClasses(FAngelscriptBinds& Binds)
+{
+	for (const TObjectPtr<UClass>& ClassPtr : GetOrCaptureBlueprintTypeClasses(Binds))
+	{
+		UClass* Class = ClassPtr.Get();
+		RegisterUClassTypeForTarget(Binds, Class, FAngelscriptType::GetBoundClassName(Class));
+	}
+}
+
+static void BindBlueprintTypeStaticClasses(FAngelscriptBinds& Binds)
+{
+	for (const TObjectPtr<UClass>& ClassPtr : GetOrCaptureBlueprintTypeClasses(Binds))
+	{
+		UClass* Class = ClassPtr.Get();
+		BindStaticClassForTarget(Binds, FAngelscriptType::GetBoundClassName(Class), Class);
+	}
+}
+
+#endif
+
+static void BindBlueprintTypeInfrastructure(FAngelscriptBinds& Binds)
+{
+	RegisterBlueprintTypeReferenceClasses(Binds);
+
+	// Register the type used by TSubclassOf.
+	TSharedRef<FSubclassOfType> SubclassOfType = MakeShared<FSubclassOfType>(Binds.GetTargetBindDatabase());
+	Binds.RegisterTypeForTarget(SubclassOfType);
 
 	// Register a type that handles script object types generically.
 	// SetScriptObject takes a TSharedPtr (not TSharedRef) so we pass the
 	// implicit Ref->Ptr conversion explicitly.
-	TSharedRef<FUObjectType> ScriptObjectType = MakeShared<FUObjectType>(nullptr, TEXT("UObject"));
-	FAngelscriptType::SetScriptObject(ScriptObjectType);
+	TSharedRef<FUObjectType> ScriptObjectType = MakeShared<FUObjectType>(
+		nullptr,
+		TEXT("UObject"),
+		Binds.GetTargetBindDatabase());
+	FAngelscriptTypeDatabase& TargetTypeDatabase = Binds.GetTargetTypeDatabase();
+	TargetTypeDatabase.ScriptObjectType = ScriptObjectType;
 
-	// Register the type used by TObjectPtr
-	TSharedRef<FObjectPtrType> ObjectPtrType = MakeShared<FObjectPtrType>();
-	FAngelscriptType::Register(ObjectPtrType);
+	// Register the type used by TObjectPtr.
+	TSharedRef<FObjectPtrType> ObjectPtrType = MakeShared<FObjectPtrType>(Binds.GetTargetBindDatabase());
+	Binds.RegisterTypeForTarget(ObjectPtrType);
 
-	// Register the type used by TWeakObjectPtr
-	TSharedRef<FWeakObjectPtrType> WeakObjectPtrType = MakeShared<FWeakObjectPtrType>();
-	FAngelscriptType::Register(WeakObjectPtrType);
+	// Register the type used by TWeakObjectPtr.
+	TSharedRef<FWeakObjectPtrType> WeakObjectPtrType = MakeShared<FWeakObjectPtrType>(Binds.GetTargetBindDatabase());
+	Binds.RegisterTypeForTarget(WeakObjectPtrType);
 
 	// Register a type finder into the type system that
 	// can look up an ObjectProperty's inner angelscript type.
-	FAngelscriptType::RegisterTypeFinder([=](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
+	FAngelscriptTypeDatabase* TargetTypeDatabasePtr = &TargetTypeDatabase;
+	Binds.RegisterTypeFinderForTarget(
+		[SubclassOfType, ObjectPtrType, WeakObjectPtrType, TargetTypeDatabasePtr](
+			FProperty* Property,
+			FAngelscriptTypeUsage& Usage) -> bool
 	{
 		const FObjectProperty* ObjectProperty = CastField<FObjectProperty>(Property);
 		if (ObjectProperty == nullptr)
@@ -2492,7 +2805,9 @@ static void BindUClassLookup()
 			const FWeakObjectProperty* WeakObjectProperty = CastField<FWeakObjectProperty>(Property);
 			if (WeakObjectProperty != nullptr)
 			{
-				FAngelscriptTypeUsage InnerType = FAngelscriptTypeUsage::FromClass(WeakObjectProperty->PropertyClass);
+				FAngelscriptTypeUsage InnerType = GetClassUsageForTarget(
+					*TargetTypeDatabasePtr,
+					WeakObjectProperty->PropertyClass);
 				if (!InnerType.IsValid())
 					return false;
 					
@@ -2511,7 +2826,9 @@ static void BindUClassLookup()
 		// Detect TObjectPtr properties
 		if ((ObjectProperty->PropertyFlags & CPF_TObjectPtr) != 0)
 		{
-			FAngelscriptTypeUsage InnerType = FAngelscriptTypeUsage::FromClass(ObjectProperty->PropertyClass);
+			FAngelscriptTypeUsage InnerType = GetClassUsageForTarget(
+				*TargetTypeDatabasePtr,
+				ObjectProperty->PropertyClass);
 			if (!InnerType.IsValid())
 				return false;
 			
@@ -2528,7 +2845,9 @@ static void BindUClassLookup()
 
 		if (ClassProperty != nullptr && (ClassProperty->PropertyFlags & CPF_TObjectPtr) != 0)
 		{
-			FAngelscriptTypeUsage InnerType = FAngelscriptTypeUsage::FromClass(ClassProperty->PropertyClass);
+			FAngelscriptTypeUsage InnerType = GetClassUsageForTarget(
+				*TargetTypeDatabasePtr,
+				ClassProperty->PropertyClass);
 			if (!InnerType.IsValid())
 				return false;
 			
@@ -2544,7 +2863,9 @@ static void BindUClassLookup()
 		// Class properties are sometimes TSubclassOf<>
 		if (ClassProperty != nullptr && (ClassProperty->PropertyFlags & CPF_UObjectWrapper) != 0)
 		{
-			FAngelscriptTypeUsage InnerType = FAngelscriptTypeUsage::FromClass(ClassProperty->MetaClass);
+			FAngelscriptTypeUsage InnerType = GetClassUsageForTarget(
+				*TargetTypeDatabasePtr,
+				ClassProperty->MetaClass);
 			if (!InnerType.IsValid())
 				return false;
 
@@ -2558,7 +2879,57 @@ static void BindUClassLookup()
 		}
 
 		// Look up a regular object property type
-		Usage = FAngelscriptTypeUsage::FromClass(ObjectProperty->PropertyClass);
+		Usage = GetClassUsageForTarget(*TargetTypeDatabasePtr, ObjectProperty->PropertyClass);
 		return Usage.IsValid();
 	});
 }
+
+AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintType_ReferenceClassDeclarations(
+	TEXT("BlueprintType.ReferenceClasses"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindBlueprintTypeReferenceClassDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TObjectPtr_TypeDeclarations(
+	TEXT("TObjectPtr.Declaration"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindTObjectPtrTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TSubclassOf_TypeDeclarations(
+	TEXT("TSubclassOf.Declaration"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindTSubclassOfTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TWeakObjectPtr_TypeDeclarations(
+	TEXT("TWeakObjectPtr.Declaration"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindTWeakObjectPtrTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TObjectPtr_MethodSurface(
+	TEXT("TObjectPtr.MethodSurface"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTObjectPtrMethodSurface);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TSubclassOf_MethodSurface(
+	TEXT("TSubclassOf.MethodSurface"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTSubclassOfMethodSurface);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TWeakObjectPtr_MethodSurface(
+	TEXT("TWeakObjectPtr.MethodSurface"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindTWeakObjectPtrMethodSurface);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintType_Infrastructure(
+	TEXT("UObject.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindBlueprintTypeInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintType_ReflectionBindings(
+	TEXT("BlueprintType.ReflectionBindings"),
+	EAngelscriptBindPhase::ReflectionBindings,
+	&BindBlueprintTypeReflectionBindings);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintType_StaticClasses(
+	TEXT("BlueprintType.StaticClasses"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindBlueprintTypeStaticClasses);

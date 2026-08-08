@@ -280,7 +280,7 @@ void FAngelscriptEditorModule::GenerateNativeBinds()
 	TArray<FString> Keys;	
 	FAngelscriptBinds::GetRuntimeClassDB().GetKeys(Keys);
 	TArray<FString> ModuleArray;
-	FAngelscriptBinds::GetBindModuleNames().Empty();
+	TArray<FString> BindModuleNames;
 
 	for (int i = 0; i < Keys.Num(); i++)
 	{
@@ -292,7 +292,7 @@ void FAngelscriptEditorModule::GenerateNativeBinds()
 			ModuleName += FString::FromInt(i - (ModuleArray.Num() - 1));
 			GenerateNewModule(ModuleName, ModuleArray, false);
 			ModuleArray.Empty();
-			FAngelscriptBinds::GetBindModuleNames().Add(ModuleName);
+			BindModuleNames.Add(ModuleName);
 		}
 	}
 
@@ -302,7 +302,7 @@ void FAngelscriptEditorModule::GenerateNativeBinds()
 		ModuleName += FString::FromInt(Keys.Num() - ModuleArray.Num());
 		GenerateNewModule(ModuleName, ModuleArray, false);
 		ModuleArray.Empty();
-		FAngelscriptBinds::GetBindModuleNames().Add(ModuleName);
+		BindModuleNames.Add(ModuleName);
 	}
 	
 	Keys.Empty();
@@ -318,7 +318,7 @@ void FAngelscriptEditorModule::GenerateNativeBinds()
 			ModuleName += FString::FromInt(i - (ModuleArray.Num() - 1));
 			GenerateNewModule(ModuleName, ModuleArray, true);
 			ModuleArray.Empty();
-			FAngelscriptBinds::GetBindModuleNames().Add(ModuleName);
+			BindModuleNames.Add(ModuleName);
 		}
 	}
 
@@ -328,7 +328,7 @@ void FAngelscriptEditorModule::GenerateNativeBinds()
 		ModuleName += FString::FromInt(Keys.Num() - ModuleArray.Num());
 		GenerateNewModule(ModuleName, ModuleArray, true);
 		ModuleArray.Empty();
-		FAngelscriptBinds::GetBindModuleNames().Add(ModuleName);
+		BindModuleNames.Add(ModuleName);
 	}
 
 	TArray<FString> PublicDepends
@@ -348,7 +348,9 @@ void FAngelscriptEditorModule::GenerateNativeBinds()
 	//	FFileHelper::SaveStringArrayToFile(UpdatedBuildFile, *NativeBindsPath);
 	//}
 	
-	FAngelscriptBinds::SaveBindModules(FString(FAngelscriptEngine::GetScriptRootDirectory() / "BindModules.Cache"));
+	FAngelscriptBinds::SaveBindModules(
+		FAngelscriptEngine::GetScriptRootDirectory() / TEXT("BindModules.Cache"),
+		BindModuleNames);
 	//GameProjectUtils::BuildCodeProject(GameProjectUtils::GetCurrentProjectModules())	
 }
 
@@ -461,13 +463,9 @@ void FAngelscriptEditorModule::GenerateNewModule(FString ModuleName, TArray<FStr
 	FString BuildDir = NewDir + ModuleName + ".Build.cs";
 
 	FString HeaderDir = NewDir + "Public/" + ModuleName + "Module.h";
-	FString CPPDir = NewDir + "Private/" + ModuleName + "Module.cpp";
 	FString BaseCPPDir = NewDir + "Private/";
-	//FString HeaderDir = NewDir + "Source/" + ModuleName + "Module.h";
-	//FString CPPDir = NewDir + "Source/" + ModuleName + "Module.cpp";
 
-	TArray<FString> Header, CPPFile;
-	//GenerateSourceFiles(ModuleName, ModuleList, bIsEditor, Header, CPPFile);
+	TArray<FString> Header;
 	GenerateSourceFilesV2(ModuleName, ModuleList, bIsEditor, Header, BaseCPPDir);
 	
 	TArray<FString> BuildFile;
@@ -478,7 +476,6 @@ void FAngelscriptEditorModule::GenerateNewModule(FString ModuleName, TArray<FStr
 
 	FFileHelper::SaveStringArrayToFile(BuildFile, *BuildDir);
 	FFileHelper::SaveStringArrayToFile(Header, *HeaderDir);
-	//FFileHelper::SaveStringArrayToFile(CPPFile, *CPPDir);	
 
 	HeaderCache.Empty();
 }
@@ -556,7 +553,12 @@ void FAngelscriptEditorModule::GenerateBuildFile(FString ModuleName, TArray<FStr
 	Lines.Add("}"); //End Namespace
 }
 
-void FAngelscriptEditorModule::GenerateSourceFilesV2(FString NewModuleName, TArray<FString>& ModuleList, bool bIsEditor, TArray<FString>& Header, FString CPPDir)
+void FAngelscriptEditorModule::GenerateSourceFilesV2(
+	FString NewModuleName,
+	TArray<FString>& ModuleList,
+	bool bIsEditor,
+	TArray<FString>& Header,
+	FString CPPDir)
 {
 	//It's probably best to just do all of our bind registration inside the Module class
 	//I'd also review whether we really want to keep/serialize the database dictionaries
@@ -569,7 +571,7 @@ void FAngelscriptEditorModule::GenerateSourceFilesV2(FString NewModuleName, TArr
 	Header.Add("#pragma once\n");
 	Header.Add("#include \"CoreMinimal.h\"");
 	Header.Add("#include \"Modules/ModuleManager.h\"\n");
-	//Header.Add("#include \"AngelscriptBinds.h\"");
+	Header.Add("class FAngelscriptBinds;\n");
 
 	FString ClassLine = FString("class ");
 	FString API = NewModuleName.ToUpper() + "_API ";
@@ -588,17 +590,8 @@ void FAngelscriptEditorModule::GenerateSourceFilesV2(FString NewModuleName, TArr
 	ModuleCPP.Add("#include \"" + NewModuleName + "Module.h\"");
 	ModuleCPP.Add("#include \"AngelscriptBinds.h\"");
 
-	//Generate CPP File
+	// Generate CPP files.
 	FString ModuleClass = FString("F") + NewModuleName + "Module";
-	FString MacroLine = FString("IMPLEMENT_MODULE(") + ModuleClass + ", " + NewModuleName + ");\n";
-	ModuleCPP.Add(MacroLine);
-
-	ModuleCPP.Add(FString("void ") + ModuleClass + "::StartupModule()\n{\n");
-
-	ModuleCPP.Add("\tFAngelscriptBinds::RegisterBinds\n\t(");
-	ModuleCPP.Add("\t\t(int32)FAngelscriptBinds::EOrder::Late,");
-	ModuleCPP.Add("\t\t[]()");
-	ModuleCPP.Add("\t\t{");
 	TArray<FString> BindFunctionNames;
 	TSet<FString> ModuleSet(ModuleList);
 	int32 moduleCount = ModuleSet.Num();
@@ -684,7 +677,7 @@ void FAngelscriptEditorModule::GenerateSourceFilesV2(FString NewModuleName, TArr
 
 			FString BindFunction = "Bind_" + Class->GetName();
 			
-			CPPFuncs.Add("void " + ModuleClass + "::" + BindFunction + "()");
+			CPPFuncs.Add("void " + ModuleClass + "::" + BindFunction + "(FAngelscriptBinds& Binds)");
 			CPPFuncs.Add("{");
 
 			int32 emptyCheck = CPPFuncs.Num();
@@ -722,22 +715,34 @@ void FAngelscriptEditorModule::GenerateSourceFilesV2(FString NewModuleName, TArr
 		ModuleList = ModuleSet.Array();
 	}
 
-	for (FString str : BindFunctionNames)
+	ModuleCPP.Add("namespace");
+	ModuleCPP.Add("{");
+	ModuleCPP.Add(
+		"\tstatic void BindGeneratedFunctionBindings_" + NewModuleName + "(FAngelscriptBinds& Binds)");
+	ModuleCPP.Add("\t{");
+	for (const FString& BindFunctionName : BindFunctionNames)
 	{
-		ModuleCPP.Add("\t\t\t" + str + "();");
+		ModuleCPP.Add("\t\t" + ModuleClass + "::" + BindFunctionName + "(Binds);");
 	}
+	ModuleCPP.Add("\t}");
+	ModuleCPP.Add("}\n");
 
-	ModuleCPP.Add("\t\t}"); //End Lambda
-	ModuleCPP.Add("\t);\n"); //End Register call
+	ModuleCPP.Add(
+		"AS_FORCE_LINK const FAngelscriptBind Bind_AS_EditorCodeGen_" + NewModuleName + "(");
+	ModuleCPP.Add("\tTEXT(\"EditorCodeGen.FunctionBinding." + NewModuleName + "\"),");
+	ModuleCPP.Add("\tEAngelscriptBindPhase::GeneratedBindings,");
+	ModuleCPP.Add("\t&BindGeneratedFunctionBindings_" + NewModuleName + ");\n");
 
-	ModuleCPP.Add("}\n"); //End Startup Def
+	FString MacroLine = FString("IMPLEMENT_MODULE(") + ModuleClass + ", " + NewModuleName + ");\n";
+	ModuleCPP.Add(MacroLine);
+	ModuleCPP.Add(FString("void ") + ModuleClass + "::StartupModule()\n{\n}\n");
 
-	//Shutdown shouldn't have to do anything so can one line it
+	// Shutdown shouldn't have to do anything, so keep it empty.
 	ModuleCPP.Add(FString("void ") + ModuleClass + "::ShutdownModule()\n{\n}\n");
 
-	for (FString str : BindFunctionNames)
+	for (const FString& BindFunctionName : BindFunctionNames)
 	{
-		Header.Add("\tstatic void " + str + "();");
+		Header.Add("\tstatic void " + BindFunctionName + "(FAngelscriptBinds& Binds);");
 	}
 
 	Header.Add("};"); 
@@ -745,124 +750,14 @@ void FAngelscriptEditorModule::GenerateSourceFilesV2(FString NewModuleName, TArr
 	FFileHelper::SaveStringArrayToFile(ModuleCPP, *ModuleDir);	
 }
 
-void FAngelscriptEditorModule::GenerateSourceFiles(FString NewModuleName, TArray<FString> IncludeList, bool bIsEditor, TArray<FString>& Header, TArray<FString>& CPPFile)
-{
-	//It's probably best to just do all of our bind registration inside the Module class
-	//I'd also review whether we really want to keep/serialize the database dictionaries
-	//or just have a far simpler array of module names be saved.
-	//FAngelscriptBindDatabase& BindDB = FAngelscriptBindDatabase::Get();
-
-	TArray<TObjectPtr<UClass>> Classes;
-	
-	for (FString str : IncludeList)
-	{
-		if (!bIsEditor)
-		{
-			if (TArray<TObjectPtr<UClass>>* list = FAngelscriptBinds::GetRuntimeClassDB().Find(str))
-			{
-				Classes += *list;
-			}
-		}
-		else
-		{
-			if (TArray<TObjectPtr<UClass>>* list = FAngelscriptBinds::GetEditorClassDB().Find(str))
-			{
-				Classes += *list;
-			}			
-		}
-	}
-	
-	if (Classes.IsEmpty())
-		return;
-
-	//Generate Header
-	Header.Add("#pragma once\n");
-	Header.Add("#include \"CoreMinimal.h\"");
-	Header.Add("#include \"Modules/ModuleManager.h\"\n");
-	
-	FString ClassLine = FString("class ");
-	FString API = NewModuleName.ToUpper() + "_API ";	
-	//ClassLine += API;
-	ClassLine += "F" + NewModuleName + "Module : public FDefaultModuleImpl";
-	Header.Add(ClassLine);
-	
-	Header.Add("{");
-	Header.Add("public:");
-	Header.Add("\tvirtual void StartupModule() override;");
-	Header.Add("\tvirtual void ShutdownModule() override;");
-	Header.Add("};");
-
-	//Generate CPP File
-	FString ModuleClass = FString("F") + NewModuleName + "Module";	
-
-	CPPFile.Add("#include \"" + NewModuleName + "Module.h\"");
-	//CPPFile.Add("#include \"FunctionCallers.h\""); //Already referenced in binds, avoid redefinition
-	CPPFile.Add("#include \"AngelscriptBinds.h\"");
-	//Add Include loop here for all dependencies
-	TSet<FString> CurrentIncludes = TSet<FString>();
-	TArray<FString> Headers;
-	TArray<FString> ModuleNames;
-
-	for (auto Class : Classes)
-	{
-		FString HeaderPath = FString();
-		bool headerFound = FSourceCodeNavigation::FindClassHeaderPath(Class, HeaderPath);		
-		if (!headerFound) continue;
-		
-		Headers.Add(HeaderPath);
-		FString ModuleName;
-		FSourceCodeNavigation::FindClassModuleName(Class, ModuleName);
-		ModuleNames.Add(ModuleName);
-
-		int32 pubIndex = HeaderPath.Find("Public/", ESearchCase::IgnoreCase, ESearchDir::Type::FromEnd);
-		int32 privIndex = HeaderPath.Find("Private/", ESearchCase::IgnoreCase, ESearchDir::Type::FromEnd);
-		int32 classesIndex = HeaderPath.Find("Classes/", ESearchCase::IgnoreCase, ESearchDir::Type::FromEnd);
-
-		if (pubIndex > 0)
-			HeaderPath = HeaderPath.RightChop(pubIndex + 7);
-		if (privIndex > 0)
-			HeaderPath = HeaderPath.RightChop(privIndex + 8);
-		if (classesIndex > 0)
-			HeaderPath = HeaderPath.RightChop(classesIndex + 8);
-
-		FString Include = "#include ";
-		Include += '"';
-		Include += HeaderPath;
-		Include += '"';
-
-		if (!CurrentIncludes.Contains(Include))
-		{
-			CPPFile.Add(Include);
-			CurrentIncludes.Add(Include);
-		}
-	}
-
-	FString MacroLine = FString("IMPLEMENT_MODULE(") + ModuleClass + ", " + NewModuleName + ");\n";
-	CPPFile.Add(MacroLine);
-
-	CPPFile.Add(FString("void ") + ModuleClass + "::StartupModule()\n{\n");
-	
-	CPPFile.Add("\tFAngelscriptBinds::RegisterBinds\n\t(");
-	CPPFile.Add("\t\t(int32)FAngelscriptBinds::EOrder::Late,");
-	CPPFile.Add("\t\t[]()");
-	CPPFile.Add("\t\t{");
-
-	for (int i = 0; i < Classes.Num(); i++)
-	{		
-		//GenerateFunctionEntries(Classes[i], CPPFile, Headers[i], ModuleNames[i]); //Old signature
-		//CPPFile.Add("\n");
-	}
-
-	CPPFile.Add("\t\t}"); //End Lambda
-	CPPFile.Add("\t);\n"); //End Register call
-
-	CPPFile.Add("}\n"); //End Startup Def
-
-	//Shutdown shouldn't have to do anything so can one line it
-	CPPFile.Add(FString("void ") + ModuleClass + "::ShutdownModule()\n{\n}\n");
-}
-
-void FAngelscriptEditorModule::GenerateFunctionEntries(UClass* Class, TArray<FString>& File, TArray<FString>& CurrentIncludes, TSet<FString>& IncludeSet, FString HeaderPath, FString ModuleName, TSet<FString>& ModuleSet)
+void FAngelscriptEditorModule::GenerateFunctionEntries(
+	UClass* Class,
+	TArray<FString>& File,
+	TArray<FString>& CurrentIncludes,
+	TSet<FString>& IncludeSet,
+	FString HeaderPath,
+	FString ModuleName,
+	TSet<FString>& ModuleSet)
 {
 	FString ClassName = Class->GetPrefixCPP();
 	ClassName += Class->GetName();
@@ -1391,7 +1286,8 @@ void FAngelscriptEditorModule::GenerateFunctionEntries(UClass* Class, TArray<FSt
 
 		if (!Function->HasAnyFunctionFlags(FUNC_Static))
 		{
-			line = "\t\t\tFAngelscriptBinds::RegisterFunctionBinding(" + ClassName + "::StaticClass(), \"" + name + "\"";
+			line = "\tBinds.RegisterGeneratedFunctionBindingForTarget(" + ClassName
+				+ "::StaticClass(), \"" + name + "\"";
 			line += ", { ERASE_METHOD_PTR(";
 			line += ClassName + ", ";
 			line += name + ", (";
@@ -1401,7 +1297,8 @@ void FAngelscriptEditorModule::GenerateFunctionEntries(UClass* Class, TArray<FSt
 		{
 			origRet = origRet.Replace(L"static", L"", ESearchCase::CaseSensitive);
 
-			line = "\t\t\tFAngelscriptBinds::RegisterFunctionBinding(" + ClassName + "::StaticClass(), \"" + name + "\"";
+			line = "\tBinds.RegisterGeneratedFunctionBindingForTarget(" + ClassName
+				+ "::StaticClass(), \"" + name + "\"";
 			line += ", { ERASE_FUNCTION_PTR(";
 			//line += ClassName + ", ";
 			//line += name + ", (";
@@ -2039,361 +1936,6 @@ void SingleApproach(FString Header)
 	*/
 }
 
-void FAngelscriptEditorModule::GenerateFunctionEntriesOld2(UClass* Class, TArray<FString>& File, FString HeaderPath, FString ModuleName)
-{
-	FString ClassName = Class->GetPrefixCPP();
-	ClassName += Class->GetName();
-	
-	TArray<FName> FuncNames;
-	Class->GenerateFunctionList(FuncNames);
-	if (FuncNames.IsEmpty()) return;
-	
-	FString Header;	
-	//FFileHelper::LoadFileToString(Header, *HeaderPath);
-	TArray<FString> HeaderArray;
-	FFileHelper::LoadFileToStringArray(HeaderArray, *HeaderPath);
-	
-	for (FString str : HeaderArray)
-	{
-		Header += str;
-	}
-
-
-	TArray<int32> UFuncMacros;
-	TArray<int32> lineIndices;
-	//int32 startIndex = -1;	
-	//while (startIndex < Header.Len())
-	//{
-	//	FString subStr = "UFUNCTION";
-	//	int32 find = Header.Find(subStr, ESearchCase::CaseSensitive, ESearchDir::FromStart, startIndex);
-	//
-	//	if (find == INDEX_NONE)
-	//		break;
-	//
-	//	UFuncMacros.Add(find);
-	//	startIndex = find + subStr.Len();
-	//}
-
-	for (int i = 0; i < HeaderArray.Num(); i++)
-	{
-		int32 find = HeaderArray[i].Find("UFUNCTION", ESearchCase::CaseSensitive);
-		
-		if (find != INDEX_NONE)
-		{
-			//Might have to check from both directions
-			int32 comment = HeaderArray[i].Find("//");
-			int32 blockOpen = HeaderArray[i].Find("/*");
-			int32 blockClose = HeaderArray[i].Find("*/");
-
-			//This UFUNCTION is in a comment
-			if (comment > -1 && comment < find) 
-				continue;
-
-			//If Block comment open less then find, and close is not found or has a greater index than find fail
-			if (blockOpen > -1 && blockOpen < find && (blockClose == -1 || (blockClose > -1 && blockClose > find)))
-				continue;
-
-			//Mostly the same as above, but extra insurance
-			if (blockClose > -1 && blockClose > find && (blockOpen == -1) || (blockOpen > -1 && blockOpen < find))
-				continue;
-
-			UFuncMacros.Add(find);
-			lineIndices.Add(i);
-		}
-	}
-
-	TMap<UFunction*, TArray<int32>> FuncMap;
-	
-	for (FName Name : FuncNames)
-	{
-		if (UFunction* Function = Class->FindFunctionByName(Name))
-		{
-			if (Function->HasAnyFunctionFlags(FUNC_BlueprintCallable) && !Function->HasAnyFunctionFlags(FUNC_Static))
-			{
-				FString str = Name.ToString() + "(";
-
-				for (int line : lineIndices)
-				{					
-					int32 index = HeaderArray[line + 1].Find(str, ESearchCase::CaseSensitive, ESearchDir::FromStart);
-					if (index > -1)
-					{
-						int32 fullIndex = 0;
-						for (int i = 0; i < line + 1; i++)
-						{
-							fullIndex += HeaderArray[i].Len();
-						}
-						//would there be a +1?
-						FuncMap.Add(Function, TArray<int32>()).Add(fullIndex + index);
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	/*
-		Using the index we obtain, need to find the semicolon or {
-		Alternatively could try using a char stack to track opens and closes
-		Should just aim to copy the header file once the true start and end have been found
-		from there, we can use the UFunction args to remove the arg names, and using the return type
-		uproperty should yield the true start, I don't think there can be const returns but should check
-
-		As a general reminder, I think all we really need to do is find the potentially missing
-		const, class(fwd-decl), &, * 
-		
-		Ultimately we probably can run with what we originally had we just need better solutions
-		for then finding the UFunction generated version and peeking for the extra characters around 
-		the target terms
-
-		Maybe we do just need to use the TArray lines approach or possibly both
-
-	*/
-
-	for (auto& elem : FuncMap)
-	{
-		//name start in array at index 0
-		int32 startArgs = -1;
-		int32 endArgs = -1;
-		int32 retStart = -1;
-		int32 retEnd = -1;
-		int32 endFunc = -1; //Can be either ; or { this needs to include the func_const as well	
-
-		//Find the start of parameters and the definitive end of the function declaration
-		for (int32 i = elem.Value[0]; i < Header.Len(); i++)
-		{
-			if (startArgs != -1 && endFunc != -1)
-				break;
-
-			if (startArgs == -1 && Header[i] == '(')
-				startArgs = i;
-
-			if (endFunc == -1 && Header[i] == ';')
-				endFunc = i;			
-
-			if (endFunc == -1 && Header[i] == '{')
-				endFunc = i;
-		}
-
-		//Now find end of parameters - should be the first one you find starting from end of declaration
-		for (int32 i = endFunc; i > 0; i--)
-		{
-			if (endArgs == -1 && Header[i] == ')')
-			{
-				endArgs = i;
-				break;
-			}
-		}
-
-		//I really might have to find the ) on the UFUNCTION macro
-
-		//Find RetStart
-		if (FProperty* retProp = elem.Key->GetReturnProperty())
-		{
-			FString ExtendedType;
-			FString type = retProp->GetCPPType(&ExtendedType) + ExtendedType;
-			
-			if (retProp->HasAnyPropertyFlags(CPF_ConstParm))
-				retStart = Header.Find("const", ESearchCase::CaseSensitive, ESearchDir::FromEnd, elem.Value[0]);
-			else
-				retStart = Header.Find(type, ESearchCase::CaseSensitive, ESearchDir::FromEnd, elem.Value[0]);	
-		}
-		else
-		{
-			retStart = Header.Find("void", ESearchCase::CaseSensitive, ESearchDir::FromEnd, elem.Value[0]);
-		}
-
-		//Find the End, to be absolutely certain that any * or & are not missed
-		for (int i = elem.Value[0]; i > retStart; i--)
-		{
-			if (Header[i] != ' ' && i < elem.Value[0])
-			{
-				retEnd = i;
-				break;
-			}
-		}
-
-		//elem funcNameStart
-		FuncMap[elem.Key].Add(startArgs);
-		FuncMap[elem.Key].Add(endArgs);
-		FuncMap[elem.Key].Add(retStart);
-		FuncMap[elem.Key].Add(retEnd);
-		FuncMap[elem.Key].Add(endFunc);
-	}
-
-	for (auto& elem : FuncMap)
-	{
-		FString line = "\t\t\tFAngelscriptBinds::RegisterFunctionBinding(" + ClassName + "::StaticClass(), \"" + elem.Key->GetName() + "\"";
-		line += ", { ERASE_METHOD_PTR(";
-
-		int32 funcName = 0;
-		int32 startArgs = 1;
-		int32 endArgs = 2;
-		int32 retStart = 3;
-		int32 retEnd = 4;
-		int32 endFunc = 5;
-		UFunction* Function = elem.Key;
-
-		line += ClassName + ", ";
-		line += elem.Key->GetName() + ", ";
-		//line += "(";
-				
-		//FString args = Header.Mid(elem.Value[startArgs], (elem.Value[endArgs] - elem.Value[startArgs]) + 1);
-		FString args = FString("(");
-		bool firstArg = true;
-
-		for (TFieldIterator<FProperty> It(Function); It; ++It)
-		{
-			FProperty* prop = *It;
-
-			if (firstArg)
-				firstArg = false;
-			else
-				args += ", ";
-
-			args += prop->GetCPPType() + " " + prop->GetName();			
-
-			//args = args.Replace(*prop->GetName(), L"", ESearchCase::CaseSensitive);
-			//Can find argName then keep searching left until you find a , or (
-			//however that doesn't account for default values
-		}
-
-		args += ")";
-
-		if (Function->HasAnyFunctionFlags(FUNC_Const))
-			args += "const";
-
-		line += args + ", ";
-
-		FString ret = "ERASE_ARGUMENT_PACK(";
-		FString type = Header.Mid(elem.Value[retStart], (elem.Value[retEnd] - elem.Value[retStart]) + 1);
-		line += ret + type + ")) } );";
-		File.Add(line);
-	}
-}
-
-void FAngelscriptEditorModule::GenerateFunctionEntriesOld(UClass* Class, TArray<FString>& File, FString HeaderPath, FString ModuleName)
-{
-	FString ClassName = Class->GetPrefixCPP();
-	ClassName += Class->GetName();
-
-	TArray<FName> FuncNames;
-	Class->GenerateFunctionList(FuncNames);
-	if (FuncNames.IsEmpty()) return;
-	
-	//FString HeaderPath;
-	//TArray<FString> HeaderFile;
-	//FString HeaderFile;
-	//bool HeaderFound = FSourceCodeNavigation::FindClassHeaderPath(Class, HeaderPath);
-	//if (HeaderFound)
-	//{
-	//	//FFileHelper::LoadFileToStringArray(HeaderFile, *HeaderPath);
-	//	FFileHelper::LoadFileToString(HeaderFile, *HeaderPath);
-	//}
-
-	//ModuleName = FPaths::GetBaseFilename(ModuleName);
-	for (FName Name : FuncNames)
-	{
-		UFunction* Function = Class->FindFunctionByName(Name);
-		//TSharedPtr<FAngelscriptFunctionDesc> funcDesc = classDesc->GetMethodByScriptName(Name.ToString());
-		
-		if (Function != nullptr && Function->HasAnyFunctionFlags(FUNC_BlueprintCallable))
-		{
-			if (Function->HasAnyFunctionFlags(FUNC_Static)) //TO-DO: Add support for statics I think
-				continue;
-			
-			FString line = "\t\t\tFAngelscriptBinds::RegisterFunctionBinding(" + ClassName + "::StaticClass(), \"" + Name.ToString() + "\"";
-			line += ", { ERASE_METHOD_PTR(";
-
-			line += ClassName + ", ";
-			line += Name.ToString() + ", ";
-			line += "(";
-
-			FProperty* RetParm = nullptr;
-			bool firstArg = true;
-			
-			//const FString SymbolName = FString::Printf(TEXT("%s%s::%s"), Class->GetPrefixCPP(), *Class->GetName(), *Function->GetFullName());
-			//FString FileName = FString("something");
-			//uint32 LineNum = 0;
-			//bool FoundLine = FindFunctionDefinitionLine(SymbolName, ModuleName, LineNum, FileName);
-
-			//if (FileName == HeaderPath)
-			//	UE_LOG(Angelscript, Log, TEXT("Found Function definition file is header file"));
-			
-			//if (int32 index = HeaderFile.Find(Name.ToString(), ESearchCase::CaseSensitive))
-			//{
-			//
-			//}
-
-			for (TFieldIterator<FProperty> It(Function); It; ++It)
-			{
-				FProperty* prop = *It;
-				
-
-				//TO-DO: Use the HeaderFile TArray somewhere here to compare and properly check the func def
-
-				if (prop->HasAnyPropertyFlags(CPF_ReturnParm))
-				{
-					RetParm = prop;
-					continue;
-				}
-
-				if (firstArg)
-					firstArg = false;
-				else
-					line += ", ";
-
-				if (prop->HasAnyPropertyFlags(CPF_ConstParm))
-					line += "const ";
-
-				FString ExtendedType;
-				//FString type = prop->GetCPPType(&ExtendedType, CPPF_Implementation | CPPF_ArgumentOrReturnValue);
-				FString type = prop->GetCPPType(&ExtendedType);
-				FString fullType = type + ExtendedType;
-				line += fullType;
-
-				if (prop->HasAnyPropertyFlags(CPF_ReferenceParm | CPF_OutParm) && !prop->HasAnyPropertyFlags(CPF_NonNullable) && !fullType.EndsWith("*") && !FChar::IsLower(fullType[0]))
-					line += "&";
-			}
-
-			line += ")";
-
-			if (Function->HasAnyFunctionFlags(FUNC_Const))
-				line += "const";
-
-			line += ", ";
-
-			if (RetParm != nullptr)
-			{
-				line += "ERASE_ARGUMENT_PACK(";
-
-				if (RetParm->HasAnyPropertyFlags(CPF_ConstParm))
-					line += "const ";
-				
-				FString ExtendedType;
-				FString type = RetParm->GetCPPType(&ExtendedType);
-				//FString type = RetParm->GetCPPType(&ExtendedType, CPPF_Implementation | CPPF_ArgumentOrReturnValue);
-				FString fullType = type + ExtendedType;
-				line += fullType;
-
-				//if (RetParm->HasAnyPropertyFlags(CPF_ReferenceParm))
-				if (RetParm->HasAnyPropertyFlags(CPF_ReferenceParm | CPF_OutParm) && !fullType.EndsWith("*") && !FChar::IsLower(fullType[0]))
-					line += "&";
-
-				line += ")";
-			}
-
-			else
-			{
-				line += "ERASE_ARGUMENT_PACK(void)";
-			}
-
-			line += ") } );";				
-
-			File.Add(line);
-		}
-	} //END FUNCTIONS LOOP	
-}
-
 void PrintMetaData(FProperty* prop)
 {
 	TArray<FString> MyLog;
@@ -2505,119 +2047,6 @@ bool FORCENOINLINE FAngelscriptEditorModule::FindFunctionDefinitionLine(const FS
 #endif	// PLATFORM_WINDOWS
 	return false;
 }
-
-/*
-void GenerateSourceFilesOG(FString NewModuleName, TArray<FString> IncludeList, bool bIsEditor, TArray<FString>& Header, TArray<FString>& CPPFile)
-{
-	//It's probably best to just do all of our bind registration inside the Module class
-	//I'd also review whether we really want to keep/serialize the database dictionaries
-	//or just have a far simpler array of module names be saved.
-	//FAngelscriptBindDatabase& BindDB = FAngelscriptBindDatabase::Get();
-
-	TArray<TObjectPtr<UClass>> Classes;
-
-	for (FString str : IncludeList)
-	{
-		if (!bIsEditor)
-		{
-			if (TArray<TObjectPtr<UClass>>* list = FAngelscriptBinds::GetRuntimeClassDB().Find(str))
-			{
-				Classes += *list;
-			}
-		}
-		else
-		{
-			if (TArray<TObjectPtr<UClass>>* list = FAngelscriptBinds::GetEditorClassDB().Find(str))
-			{
-				Classes += *list;
-			}
-		}
-	}
-
-	if (Classes.IsEmpty())
-		return;
-
-	//Generate Header
-	Header.Add("#pragma once\n");
-	Header.Add("#include \"CoreMinimal.h\"");
-	Header.Add("#include \"Modules/ModuleManager.h\"\n");
-
-	FString ClassLine = FString("class ");
-	FString API = NewModuleName.ToUpper() + "_API ";
-	ClassLine += API;
-	ClassLine += "F" + NewModuleName + "Module : public FDefaultModuleImpl";
-	Header.Add(ClassLine);
-
-	Header.Add("{");
-	Header.Add("public:");
-	Header.Add("\tvirtual void StartupModule() override;");
-	Header.Add("\tvirtual void ShutdownModule() override;");
-	Header.Add("};");
-
-	//Generate CPP File
-	FString ModuleClass = FString("F") + NewModuleName + "Module";
-
-	CPPFile.Add("#include \"" + NewModuleName + "Module.h\"");
-	//CPPFile.Add("#include \"FunctionCallers.h\""); //Already referenced in binds, avoid redefinition
-	CPPFile.Add("#include \"AngelscriptBinds.h\"");
-	//Add Include loop here for all dependencies
-	TSet<FString> CurrentIncludes = TSet<FString>();
-
-	for (auto Class : Classes)
-	{
-		FString HeaderPath = FString();
-		bool headerFound = FSourceCodeNavigation::FindClassHeaderPath(Class, HeaderPath);
-
-		if (!headerFound) continue;
-
-		int32 pubIndex = HeaderPath.Find("Public/", ESearchCase::IgnoreCase, ESearchDir::Type::FromEnd);
-		int32 privIndex = HeaderPath.Find("Private/", ESearchCase::IgnoreCase, ESearchDir::Type::FromEnd);
-		int32 classesIndex = HeaderPath.Find("Classes/", ESearchCase::IgnoreCase, ESearchDir::Type::FromEnd);
-
-		if (pubIndex > 0)
-			HeaderPath = HeaderPath.RightChop(pubIndex + 7);
-		if (privIndex > 0)
-			HeaderPath = HeaderPath.RightChop(privIndex + 8);
-		if (classesIndex > 0)
-			HeaderPath = HeaderPath.RightChop(classesIndex + 8);
-
-		FString Include = "#include ";
-		Include += '"';
-		Include += HeaderPath;
-		Include += '"';
-
-		if (!CurrentIncludes.Contains(Include))
-		{
-			CPPFile.Add(Include);
-			CurrentIncludes.Add(Include);
-		}
-	}
-
-	FString MacroLine = FString("IMPLEMENT_MODULE(") + ModuleClass + ", " + NewModuleName + ");\n";
-	CPPFile.Add(MacroLine);
-
-	CPPFile.Add(FString("void ") + ModuleClass + "::StartupModule()\n{\n");
-
-	CPPFile.Add("\tFAngelscriptBinds::RegisterBinds\n\t((int32)FAngelscriptBinds::EOrder::Late,\n");
-
-	CPPFile.Add("\t\t[]()");
-	CPPFile.Add("\t\t{");
-
-	for (auto Class : Classes)
-	{
-		GenerateFunctionEntries(Class, CPPFile);
-		//CPPFile.Add("\n");
-	}
-
-	CPPFile.Add("\t\t}"); //End Lambda
-	CPPFile.Add("\t);\n"); //End Register call
-
-	CPPFile.Add("}\n"); //End Startup Def
-
-	//Shutdown shouldn't have to do anything so can one line it
-	CPPFile.Add(FString("void ") + ModuleClass + "::ShutdownModule()\n{\n}\n");
-}
-*/
 
 void FAngelscriptEditorModule::OriginalGenerate()
 {

@@ -1,4 +1,5 @@
 #include "AngelscriptBinds.h"
+#include "AngelscriptBindsInternal.h"
 #include "AngelscriptEngine.h"
 #include "AngelscriptSettings.h"
 #include "AngelscriptUhtCoverageTestTypes.h"
@@ -11,7 +12,8 @@
 #include "GameFramework/Actor.h"
 #include "Kismet/GameplayStatics.h"
 #include "CQTest.h"
-#include "Misc/Guid.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -20,427 +22,296 @@
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
-class asIScriptGeneric;
-
-struct FAngelscriptBindConfigTestAccess
-{
-	static void CallBinds(const TSet<FName>& DisabledBindNames)
-	{
-		FAngelscriptBinds::CallBinds(DisabledBindNames);
-	}
-
-	static void BindScriptTypes(FAngelscriptEngine& Engine)
-	{
-		Engine.BindScriptTypes();
-	}
-
-	static void SetRuntimeConfig(FAngelscriptEngine& Engine, const FAngelscriptEngineConfig& Config)
-	{
-		Engine.RuntimeConfig = Config;
-	}
-
-	static void DestroyGlobalEngine()
-	{
-		FAngelscriptEngine::DestroyGlobal();
-	}
-
-	static TSet<FName> CollectDisabledBindNames(const FAngelscriptEngine& Engine)
-	{
-		return Engine.CollectDisabledBindNames();
-	}
-};
-
-
 TEST_CLASS_WITH_FLAGS(FAngelscriptBindConfigTests,
 	"Angelscript.TestModule.Engine.BindConfig",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 {
 private:
-struct FBindExecutionRecorder
-{
-	static TMap<FName, int32>& GetCounts()
+	using FBindCollection = UE::Angelscript::Private::FAngelscriptBindCollection;
+
+	static bool LoadRuntimeSource(const TCHAR* RelativePath, FString& OutSource)
 	{
-		static TMap<FName, int32> Counts;
-		return Counts;
+		return FFileHelper::LoadFileToString(
+			OutSource,
+			*FPaths::Combine(
+				FPaths::ProjectPluginsDir(),
+				TEXT("Angelscript/Source/AngelscriptRuntime"),
+				RelativePath));
 	}
 
-	static void Reset(const FName CounterKey)
+	static void NoOpDirectBind(FAngelscriptBinds& Binds)
 	{
-		GetCounts().FindOrAdd(CounterKey) = 0;
+		(void)Binds;
 	}
 
-	static void Increment(const FName CounterKey)
+	static FAngelscriptBindRecord MakeDirectBindRecord(
+		const FName BindName,
+		const EAngelscriptBindPhase Phase,
+		const ANSICHAR* SourceFile,
+		const int32 SourceLine)
 	{
-		++GetCounts().FindOrAdd(CounterKey);
+		FAngelscriptBindRecord Record;
+		Record.OwnerModule = TEXT("AngelscriptTest");
+		Record.BindName = BindName;
+		Record.Phase = Phase;
+		Record.SourceFile = SourceFile;
+		Record.SourceLine = SourceLine;
+		Record.Callback = &NoOpDirectBind;
+		return Record;
 	}
 
-	static int32 Get(const FName CounterKey)
+	static FAngelscriptBindExecutionSnapshot ObserveStartupBindPass()
 	{
-		return GetCounts().FindRef(CounterKey);
-	}
-};
-
-static FName MakeUniqueBindTestName(const TCHAR* Prefix)
-{
-	return FName(*FString::Printf(TEXT("%s.%s"), Prefix, *FGuid::NewGuid().ToString(EGuidFormats::Digits)));
-}
-
-static TArray<FName> FindNewBindNames(const TArray<FName>& BeforeNames, const TArray<FName>& AfterNames)
-{
-	TSet<FName> ExistingNames;
-	for (const FName& BeforeName : BeforeNames)
-	{
-		ExistingNames.Add(BeforeName);
+		FAngelscriptBindExecutionObservation::Reset();
+		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(
+			FAngelscriptEngineConfig(),
+			Dependencies);
+		check(Engine.IsValid());
+		return FAngelscriptBindExecutionObservation::GetLastSnapshot();
 	}
 
-	TArray<FName> NewNames;
-	for (const FName& AfterName : AfterNames)
+	static bool IsFunctionEntryBound(const FAngelscriptFunctionBinding& Entry)
 	{
-		if (!ExistingNames.Contains(AfterName))
-		{
-			NewNames.Add(AfterName);
-		}
+		FGenericFuncPtr FuncPtr = Entry.FunctionPointer;
+		return FuncPtr.IsBound() && Entry.FunctionCaller.IsBound();
 	}
 
-	return NewNames;
-}
-
-static TSet<FName> BuildDisabledSetExcluding(const TArray<FName>& AllBindNames, const TSet<FName>& AllowedNames)
-{
-	TSet<FName> DisabledBindNames;
-	for (const FName& BindName : AllBindNames)
+	static bool AreFunctionEntriesEqual(
+		const FAngelscriptFunctionBinding& Left,
+		const FAngelscriptFunctionBinding& Right)
 	{
-		if (!AllowedNames.Contains(BindName))
-		{
-			DisabledBindNames.Add(BindName);
-		}
+		return FMemory::Memcmp(&Left.FunctionPointer, &Right.FunctionPointer, sizeof(FGenericFuncPtr)) == 0
+			&& FMemory::Memcmp(
+				&Left.FunctionCaller,
+				&Right.FunctionCaller,
+				sizeof(ASAutoCaller::FunctionCaller)) == 0;
 	}
 
-	return DisabledBindNames;
-}
-
-static void ExecuteIsolatedBinds(const TSet<FName>& DisabledBindNames)
-{
-	UE_SET_LOG_VERBOSITY(Angelscript, Fatal);
-	FAngelscriptBindConfigTestAccess::CallBinds(DisabledBindNames);
-	UE_SET_LOG_VERBOSITY(Angelscript, Log);
-}
-
-static FAngelscriptBindExecutionSnapshot ObserveStartupBindPass(const FAngelscriptEngineConfig& Config)
-{
-	DestroySharedTestEngine();
-	if (FAngelscriptEngine::IsInitialized())
+	static void CDECL NoOpGeneric(asIScriptGeneric* Generic)
 	{
-		FAngelscriptBindConfigTestAccess::DestroyGlobalEngine();
+		(void)Generic;
 	}
-
-	FAngelscriptBindExecutionObservation::Reset();
-	const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-	TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
-	check(Engine.IsValid());
-	FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
-	Engine.Reset();
-	DestroySharedTestEngine();
-
-	if (FAngelscriptEngine::IsInitialized())
-	{
-		FAngelscriptBindConfigTestAccess::DestroyGlobalEngine();
-	}
-
-	return Snapshot;
-}
-
-static int32 FindBindIndexByName(const TArray<FAngelscriptBinds::FBindInfo>& BindInfos, const FName BindName)
-{
-	for (int32 BindIndex = 0; BindIndex < BindInfos.Num(); ++BindIndex)
-	{
-		if (BindInfos[BindIndex].BindName == BindName)
-		{
-			return BindIndex;
-		}
-	}
-
-	return INDEX_NONE;
-}
-
-static const FAngelscriptBinds::FBindInfo* FindBindInfoByName(const TArray<FAngelscriptBinds::FBindInfo>& BindInfos, const FName BindName)
-{
-	for (const FAngelscriptBinds::FBindInfo& BindInfo : BindInfos)
-	{
-		if (BindInfo.BindName == BindName)
-		{
-			return &BindInfo;
-		}
-	}
-
-	return nullptr;
-}
-
-static bool IsFunctionEntryBound(const FAngelscriptFunctionBinding& Entry)
-{
-	FGenericFuncPtr FuncPtr = Entry.FunctionPointer;
-	return FuncPtr.IsBound() && Entry.FunctionCaller.IsBound();
-}
-
-static bool AreFunctionEntriesEqual(const FAngelscriptFunctionBinding& Left, const FAngelscriptFunctionBinding& Right)
-{
-	return FMemory::Memcmp(&Left.FunctionPointer, &Right.FunctionPointer, sizeof(FGenericFuncPtr)) == 0 &&
-		FMemory::Memcmp(&Left.FunctionCaller, &Right.FunctionCaller, sizeof(ASAutoCaller::FunctionCaller)) == 0;
-}
-
-static void CDECL NoOpGeneric(asIScriptGeneric* Generic)
-{
-	(void)Generic;
-}
 
 public:
-	TEST_METHOD(GlobalDisabledBindNames)
+	TEST_METHOD(RuntimeConfigurationHasNoBindingFilterSurface)
 	{
-UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.GlobalDisabledBindNames should access mutable settings")))
-		{
-			return;
-		}
+		FString SettingsHeader;
+		FString EngineHeader;
+		FString EngineImplementation;
+		FString BindsHeader;
+		FString BindsImplementation;
+		FString ObservationHeader;
+		FString ObservationImplementation;
+		FString StateDumpImplementation;
+		ASSERT_THAT(IsTrue(LoadRuntimeSource(TEXT("Core/AngelscriptSettings.h"), SettingsHeader)));
+		ASSERT_THAT(IsTrue(LoadRuntimeSource(TEXT("Core/AngelscriptEngine.h"), EngineHeader)));
+		ASSERT_THAT(IsTrue(LoadRuntimeSource(TEXT("Core/AngelscriptEngine.cpp"), EngineImplementation)));
+		ASSERT_THAT(IsTrue(LoadRuntimeSource(TEXT("Core/AngelscriptBinds.h"), BindsHeader)));
+		ASSERT_THAT(IsTrue(LoadRuntimeSource(TEXT("Core/AngelscriptBinds.cpp"), BindsImplementation)));
+		ASSERT_THAT(IsTrue(LoadRuntimeSource(TEXT("Testing/AngelscriptBindExecutionObservation.h"), ObservationHeader)));
+		ASSERT_THAT(IsTrue(LoadRuntimeSource(TEXT("Testing/AngelscriptBindExecutionObservation.cpp"), ObservationImplementation)));
+		ASSERT_THAT(IsTrue(LoadRuntimeSource(TEXT("Dump/AngelscriptStateDump.cpp"), StateDumpImplementation)));
 
-		const TArray<FName> PreviousDisabledBindNames = Settings->DisabledBindNames;
-		ON_SCOPE_EXIT
-		{
-			Settings->DisabledBindNames = PreviousDisabledBindNames;
+		const FString RuntimeFilteringSurface = SettingsHeader
+			+ EngineHeader
+			+ EngineImplementation
+			+ BindsHeader
+			+ BindsImplementation
+			+ ObservationHeader
+			+ ObservationImplementation
+			+ StateDumpImplementation;
+		const TArray<FString> ForbiddenFilteringSymbols = {
+			TEXT("DisabledBindNames"),
+			TEXT("CollectDisabledBindNames"),
+			TEXT("GetBindInfoList"),
+			TEXT("GetAllRegisteredBindNames"),
+			TEXT("CallBinds("),
+			TEXT("struct FBindInfo"),
+			TEXT("enum class EOrder"),
+			TEXT("BindOrder"),
+			TEXT("SkipFingerprint"),
+			TEXT("BindAlias"),
+			TEXT("ProviderAlias"),
+			TEXT("BindDependencies"),
+			TEXT("DependentBindNames"),
+			TEXT("DependencyCascade"),
 		};
 
-		const FName NamedBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Global"));
-		const FName CounterKey = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Global.Counter"));
-		FBindExecutionRecorder::Reset(CounterKey);
-
-		FAngelscriptBinds::FBind NamedBind(NamedBindName, [CounterKey]()
+		bool bPassed = true;
+		bPassed &= TestRunner->TestTrue(
+			TEXT("DisabledBindNames should not be exposed as a project setting"),
+			FindFProperty<FProperty>(UAngelscriptSettings::StaticClass(), TEXT("DisabledBindNames")) == nullptr);
+		for (const FString& ForbiddenSymbol : ForbiddenFilteringSymbols)
 		{
-			FBindExecutionRecorder::Increment(CounterKey);
-		});
-
-		const TArray<FName> AllBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
-		bool bOk = this->Assert.IsTrue(AllBindNames.Contains(NamedBindName), TEXT("BindConfig.GlobalDisabledBindNames should expose newly registered named binds"));
-
-		TSet<FName> AllowedBindNames;
-		AllowedBindNames.Add(NamedBindName);
-
-		ExecuteIsolatedBinds(BuildDisabledSetExcluding(AllBindNames, AllowedBindNames));
-		bOk &= this->Assert.AreEqual(1, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.GlobalDisabledBindNames should execute the named bind when it is enabled"));
-
-		FBindExecutionRecorder::Reset(CounterKey);
-		Settings->DisabledBindNames = { NamedBindName };
-
-		FAngelscriptEngineConfig Config;
-		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		FAngelscriptEngine Engine(Config, Dependencies);
-		FAngelscriptEngineScope EngineScope(Engine);
-		const TSet<FName> MergedDisabledBindNames = FAngelscriptBindConfigTestAccess::CollectDisabledBindNames(Engine);
-		bOk &= this->Assert.IsTrue(MergedDisabledBindNames.Contains(NamedBindName), TEXT("BindConfig.GlobalDisabledBindNames should merge the settings-level disabled bind name"));
-
-		TSet<FName> DisabledBindNames = BuildDisabledSetExcluding(AllBindNames, AllowedBindNames);
-		DisabledBindNames.Append(MergedDisabledBindNames);
-		ExecuteIsolatedBinds(DisabledBindNames);
-
-		bOk &= this->Assert.AreEqual(0, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.GlobalDisabledBindNames should skip execution when disabled in settings"));
-
-		const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList(MergedDisabledBindNames);
-		const FAngelscriptBinds::FBindInfo* NamedBindInfo = FindBindInfoByName(BindInfos, NamedBindName);
-		if (!this->Assert.IsNotNull(NamedBindInfo, TEXT("BindConfig.GlobalDisabledBindNames should expose bind info for the named bind")))
-		{
-			return;
+			bPassed &= TestRunner->TestFalse(
+				*FString::Printf(
+					TEXT("Binding runtime sources should not retain filtering symbol '%s'"),
+					*ForbiddenSymbol),
+				RuntimeFilteringSurface.Contains(ForbiddenSymbol));
 		}
-
-		bOk &= this->Assert.IsFalse(NamedBindInfo->bEnabled, TEXT("BindConfig.GlobalDisabledBindNames should report the disabled named bind as disabled"));
-		(void)bOk;
+		TestRunner->TestTrue(TEXT("Runtime binding configuration should not expose filtering or cascade state"), bPassed);
 	}
 
-	TEST_METHOD(EngineDisabledBindNames)
+	TEST_METHOD(BindingSourceChangesRequireRestartAfterCollectionSeal)
 	{
-UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.EngineDisabledBindNames should access mutable settings")))
-		{
-			return;
-		}
+		FBindCollection Collection;
+		FString Diagnostic;
+		Collection.Append(
+			MakeDirectBindRecord(
+				TEXT("InitialProvider"),
+				EAngelscriptBindPhase::ManualBindings,
+				"InitialProvider.cpp",
+				17),
+			Diagnostic);
+		ASSERT_THAT(IsTrue(Collection.Finalize(Diagnostic), TEXT("The direct callback collection should seal")));
+		const void* const SealedBacking = Collection.GetRecords().GetData();
 
-		const TArray<FName> PreviousDisabledBindNames = Settings->DisabledBindNames;
-		ON_SCOPE_EXIT
-		{
-			Settings->DisabledBindNames = PreviousDisabledBindNames;
+		const bool bAcceptedAfterSeal = Collection.Append(
+			MakeDirectBindRecord(
+				TEXT("ChangedProvider"),
+				EAngelscriptBindPhase::GeneratedBindings,
+				"ChangedProvider.cpp",
+				29),
+			Diagnostic);
+
+		bool bPassed = true;
+		bPassed &= TestRunner->TestFalse(TEXT("A source provider cannot join the process after seal"), bAcceptedAfterSeal);
+		bPassed &= TestRunner->TestTrue(
+			TEXT("A late source provider should require process restart and identify its declaration"),
+			Diagnostic.Contains(TEXT("restart"))
+				&& Diagnostic.Contains(TEXT("AngelscriptTest"))
+				&& Diagnostic.Contains(TEXT("ChangedProvider"))
+				&& Diagnostic.Contains(TEXT("GeneratedBindings"))
+				&& Diagnostic.Contains(TEXT("ChangedProvider.cpp:29")));
+		bPassed &= TestRunner->TestTrue(
+			TEXT("A late source provider should not rebuild or mutate the sealed collection"),
+			Collection.GetRecords().Num() == 1 && Collection.GetRecords().GetData() == SealedBacking);
+		TestRunner->TestTrue(TEXT("Binding source changes should take effect only after rebuild and restart"), bPassed);
+	}
+
+	TEST_METHOD(CollectionValidationAndSevenDirectPhasesOwnLifecycle)
+	{
+		FBindCollection InvalidCollection;
+		FString Diagnostic;
+		FAngelscriptBindRecord InvalidRecord = MakeDirectBindRecord(
+			TEXT("InvalidProvider"),
+			EAngelscriptBindPhase::ManualBindings,
+			"InvalidProvider.cpp",
+			11);
+		InvalidRecord.Callback = nullptr;
+		InvalidCollection.Append(MoveTemp(InvalidRecord), Diagnostic);
+
+		bool bPassed = true;
+		bPassed &= TestRunner->TestFalse(
+			TEXT("Collection validation should reject incomplete provider metadata"),
+			InvalidCollection.Finalize(Diagnostic));
+		bPassed &= TestRunner->TestFalse(
+			TEXT("A rejected collection should remain unsealed"),
+			InvalidCollection.IsSealed());
+
+		FBindCollection ValidCollection;
+		static const EAngelscriptBindPhase ReversePhases[] = {
+			EAngelscriptBindPhase::Finalization,
+			EAngelscriptBindPhase::PostReflectionBindings,
+			EAngelscriptBindPhase::ReflectionBindings,
+			EAngelscriptBindPhase::GeneratedBindings,
+			EAngelscriptBindPhase::ManualBindings,
+			EAngelscriptBindPhase::TypeInfrastructure,
+			EAngelscriptBindPhase::TypeDeclarations,
 		};
-		Settings->DisabledBindNames.Reset();
-
-		const FName NamedBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Engine"));
-		const FName CounterKey = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Engine.Counter"));
-		FBindExecutionRecorder::Reset(CounterKey);
-
-		FAngelscriptBinds::FBind NamedBind(NamedBindName, [CounterKey]()
+		for (int32 PhaseIndex = 0; PhaseIndex < UE_ARRAY_COUNT(ReversePhases); ++PhaseIndex)
 		{
-			FBindExecutionRecorder::Increment(CounterKey);
-		});
+			ValidCollection.Append(
+				MakeDirectBindRecord(
+					FName(*FString::Printf(TEXT("Phase%d"), PhaseIndex)),
+					ReversePhases[PhaseIndex],
+					"PhaseProvider.cpp",
+					20 + PhaseIndex),
+				Diagnostic);
+		}
+		bPassed &= TestRunner->TestTrue(
+			TEXT("A complete seven-phase collection should finalize"),
+			ValidCollection.Finalize(Diagnostic));
 
-		const TArray<FName> AllBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
-		bool bOk = this->Assert.IsTrue(AllBindNames.Contains(NamedBindName), TEXT("BindConfig.EngineDisabledBindNames should expose the named bind through the query API"));
-
-		TSet<FName> AllowedBindNames;
-		AllowedBindNames.Add(NamedBindName);
-
-		ExecuteIsolatedBinds(BuildDisabledSetExcluding(AllBindNames, AllowedBindNames));
-		bOk &= this->Assert.AreEqual(1, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.EngineDisabledBindNames should execute the named bind before engine-level filtering is applied"));
-
-		FBindExecutionRecorder::Reset(CounterKey);
-
-		FAngelscriptEngineConfig Config;
-		Config.DisabledBindNames.Add(NamedBindName);
-		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		FAngelscriptEngine Engine(Config, Dependencies);
-		FAngelscriptEngineScope EngineScope(Engine);
-		const TSet<FName> MergedDisabledBindNames = FAngelscriptBindConfigTestAccess::CollectDisabledBindNames(Engine);
-		bOk &= this->Assert.IsTrue(MergedDisabledBindNames.Contains(NamedBindName), TEXT("BindConfig.EngineDisabledBindNames should include the engine-level disabled bind name"));
-
-		TSet<FName> DisabledBindNames = BuildDisabledSetExcluding(AllBindNames, AllowedBindNames);
-		DisabledBindNames.Append(MergedDisabledBindNames);
-		ExecuteIsolatedBinds(DisabledBindNames);
-
-		bOk &= this->Assert.AreEqual(0, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.EngineDisabledBindNames should skip execution when disabled in the engine config"));
-		(void)bOk;
-	}
-
-	TEST_METHOD(UnnamedBindBackwardCompatibility)
-	{
-const TArray<FName> BaselineBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
-		const FName CounterKey = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Unnamed.Counter"));
-		FBindExecutionRecorder::Reset(CounterKey);
-
-		FAngelscriptBinds::FBind UnnamedBind([CounterKey]()
+		const TConstArrayView<FAngelscriptBindRecord> Records = ValidCollection.GetRecords();
+		bPassed &= TestRunner->TestEqual(TEXT("All seven direct phases should remain represented"), Records.Num(), 7);
+		if (Records.Num() == 7)
 		{
-			FBindExecutionRecorder::Increment(CounterKey);
-		}, nullptr);
-
-		const TArray<FName> AllBindNames = FAngelscriptBinds::GetAllRegisteredBindNames();
-		const TArray<FName> NewBindNames = FindNewBindNames(BaselineBindNames, AllBindNames);
-
-		FName GeneratedUnnamedBindName = NAME_None;
-		for (const FName& NewBindName : NewBindNames)
-		{
-			if (NewBindName.ToString().StartsWith(TEXT("UnnamedBind_")))
+			for (int32 PhaseIndex = 0; PhaseIndex < Records.Num(); ++PhaseIndex)
 			{
-				GeneratedUnnamedBindName = NewBindName;
-				break;
+				bPassed &= TestRunner->TestEqual(
+					*FString::Printf(TEXT("Direct phase %d should use fixed enum order"), PhaseIndex),
+					static_cast<int32>(Records[PhaseIndex].Phase),
+					PhaseIndex);
 			}
 		}
-
-		if (!this->Assert.IsFalse(NewBindNames.IsEmpty(), TEXT("BindConfig.UnnamedBindBackwardCompatibility should register at least one new bind name")))
-		{
-			return;
-		}
-
-		if (!this->Assert.IsTrue(GeneratedUnnamedBindName != NAME_None, TEXT("BindConfig.UnnamedBindBackwardCompatibility should auto-generate an unnamed bind name")))
-		{
-			return;
-		}
-
-		const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList();
-		const FAngelscriptBinds::FBindInfo* UnnamedBindInfo = FindBindInfoByName(BindInfos, GeneratedUnnamedBindName);
-		if (!this->Assert.IsNotNull(UnnamedBindInfo, TEXT("BindConfig.UnnamedBindBackwardCompatibility should expose bind info for the unnamed bind")))
-		{
-			return;
-		}
-
-		bool bOk = true;
-		bOk &= this->Assert.AreEqual(0, UnnamedBindInfo->BindOrder, TEXT("BindConfig.UnnamedBindBackwardCompatibility should default unnamed bind order to zero"));
-		bOk &= this->Assert.IsTrue(UnnamedBindInfo->bEnabled, TEXT("BindConfig.UnnamedBindBackwardCompatibility should report unnamed binds as enabled by default"));
-
-		TSet<FName> AllowedBindNames;
-		AllowedBindNames.Add(GeneratedUnnamedBindName);
-		ExecuteIsolatedBinds(BuildDisabledSetExcluding(AllBindNames, AllowedBindNames));
-
-		bOk &= this->Assert.AreEqual(1, FBindExecutionRecorder::Get(CounterKey), TEXT("BindConfig.UnnamedBindBackwardCompatibility should continue executing unnamed binds"));
-		(void)bOk;
+		TestRunner->TestTrue(TEXT("Collection validation and fixed direct phases should own binding lifecycle"), bPassed);
 	}
 
-	TEST_METHOD(StartupBindInfoPreservesOrder)
+	TEST_METHOD(DirectPostReflectionProvidersUseStableLexicalOrder)
 	{
-const FName EarlyBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.StartupOrder.Early"));
-		const FName LateBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.StartupOrder.Late"));
-		FAngelscriptBinds::FBind EarlyBind(EarlyBindName, -100, []() {});
-		FAngelscriptBinds::FBind LateBind(LateBindName, 100, []() {});
-
-		const TArray<FAngelscriptBinds::FBindInfo> BindInfos = FAngelscriptBinds::GetBindInfoList();
-		const int32 EarlyInfoIndex = FindBindIndexByName(BindInfos, EarlyBindName);
-		const int32 LateInfoIndex = FindBindIndexByName(BindInfos, LateBindName);
-		if (!this->Assert.IsTrue(EarlyInfoIndex != INDEX_NONE, TEXT("BindConfig.StartupBindInfoPreservesOrder should expose the early named bind in bind info"))
-			|| !this->Assert.IsTrue(LateInfoIndex != INDEX_NONE, TEXT("BindConfig.StartupBindInfoPreservesOrder should expose the late named bind in bind info")))
-		{
-			return;
-		}
-
-		const FAngelscriptBindExecutionSnapshot Snapshot = ObserveStartupBindPass(FAngelscriptEngineConfig());
-		if (!this->Assert.AreEqual(1, FAngelscriptBindExecutionObservation::GetInvocationCount(), TEXT("BindConfig.StartupBindInfoPreservesOrder should observe a single startup bind pass")))
-		{
-			return;
-		}
-
-		const int32 EarlyExecutionIndex = Snapshot.ExecutedBindNames.IndexOfByKey(EarlyBindName);
-		const int32 LateExecutionIndex = Snapshot.ExecutedBindNames.IndexOfByKey(LateBindName);
-		if (!this->Assert.IsTrue(EarlyExecutionIndex != INDEX_NONE, TEXT("BindConfig.StartupBindInfoPreservesOrder should execute the early named bind during startup"))
-			|| !this->Assert.IsTrue(LateExecutionIndex != INDEX_NONE, TEXT("BindConfig.StartupBindInfoPreservesOrder should execute the late named bind during startup")))
-		{
-			return;
-		}
-
-		bool bOk = true;
-		bOk &= this->Assert.IsTrue(EarlyInfoIndex < LateInfoIndex, TEXT("BindConfig.StartupBindInfoPreservesOrder should sort bind info by bind order"));
-		bOk &= this->Assert.IsTrue(EarlyExecutionIndex < LateExecutionIndex, TEXT("BindConfig.StartupBindInfoPreservesOrder should preserve the same order in the startup bind pass"));
-		(void)bOk;
-	}
-
-	TEST_METHOD(StartupPathMergesDisabledBindNames)
-	{
-UAngelscriptSettings* Settings = GetMutableDefault<UAngelscriptSettings>();
-		if (!this->Assert.IsNotNull(Settings, TEXT("BindConfig.StartupPathMergesDisabledBindNames should access mutable settings")))
-		{
-			return;
-		}
-
-		const TArray<FName> PreviousDisabledBindNames = Settings->DisabledBindNames;
-		ON_SCOPE_EXIT
-		{
-			Settings->DisabledBindNames = PreviousDisabledBindNames;
+		const FAngelscriptBindExecutionSnapshot Snapshot = ObserveStartupBindPass();
+		const TArray<FName> ExpectedProviderOrder = {
+			TEXT("AActor.PostReflection"),
+			TEXT("FunctionLibraryMixins.PostReflection"),
+			TEXT("Subsystems.PostReflection"),
+			TEXT("UActorComponent.PostReflection"),
 		};
-		Settings->DisabledBindNames.Reset();
 
-		const FName SettingsDisabledBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Startup.SettingsDisabled"));
-		const FName EngineDisabledBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Startup.EngineDisabled"));
-		const FName EnabledBindName = MakeUniqueBindTestName(TEXT("Automation.BindConfig.Startup.Enabled"));
-		FAngelscriptBinds::FBind SettingsDisabledBind(SettingsDisabledBindName, []() {});
-		FAngelscriptBinds::FBind EngineDisabledBind(EngineDisabledBindName, []() {});
-		FAngelscriptBinds::FBind EnabledBind(EnabledBindName, []() {});
-
-		Settings->DisabledBindNames = { SettingsDisabledBindName };
-		FAngelscriptEngineConfig Config;
-		Config.DisabledBindNames.Add(EngineDisabledBindName);
-
-		const FAngelscriptBindExecutionSnapshot Snapshot = ObserveStartupBindPass(Config);
-		if (!this->Assert.AreEqual(1, FAngelscriptBindExecutionObservation::GetInvocationCount(), TEXT("BindConfig.StartupPathMergesDisabledBindNames should observe one startup bind pass")))
+		TArray<int32> ExecutionIndices;
+		ExecutionIndices.Reserve(ExpectedProviderOrder.Num());
+		for (const FName ProviderName : ExpectedProviderOrder)
 		{
-			return;
+			const int32 ExecutionIndex = Snapshot.ExecutedBindNames.IndexOfByKey(ProviderName);
+			if (!this->Assert.IsTrue(
+				ExecutionIndex != INDEX_NONE,
+				*FString::Printf(
+					TEXT("BindConfig.DirectPostReflectionProvidersUseStableLexicalOrder should observe direct provider '%s' during startup"),
+					*ProviderName.ToString())))
+			{
+				return;
+			}
+			ExecutionIndices.Add(ExecutionIndex);
 		}
 
 		bool bOk = true;
-		bOk &= this->Assert.IsTrue(Snapshot.DisabledBindNames.Contains(SettingsDisabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should surface the settings-level disabled bind in the observed startup pass"));
-		bOk &= this->Assert.IsTrue(Snapshot.DisabledBindNames.Contains(EngineDisabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should surface the engine-level disabled bind in the observed startup pass"));
-		bOk &= this->Assert.IsFalse(Snapshot.ExecutedBindNames.Contains(SettingsDisabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should skip the settings-disabled bind during startup"));
-		bOk &= this->Assert.IsFalse(Snapshot.ExecutedBindNames.Contains(EngineDisabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should skip the engine-disabled bind during startup"));
-		bOk &= this->Assert.IsTrue(Snapshot.ExecutedBindNames.Contains(EnabledBindName), TEXT("BindConfig.StartupPathMergesDisabledBindNames should keep enabled binds visible in the startup execution list"));
+		for (int32 ProviderIndex = 1; ProviderIndex < ExecutionIndices.Num(); ++ProviderIndex)
+		{
+			bOk &= this->Assert.IsTrue(
+				ExecutionIndices[ProviderIndex - 1] < ExecutionIndices[ProviderIndex],
+				*FString::Printf(
+					TEXT("BindConfig.DirectPostReflectionProvidersUseStableLexicalOrder should execute '%s' before '%s'"),
+					*ExpectedProviderOrder[ProviderIndex - 1].ToString(),
+					*ExpectedProviderOrder[ProviderIndex].ToString()));
+		}
+		(void)bOk;
+	}
+
+	TEST_METHOD(ExecutionObservationOnlyRecordsWithinActivePass)
+	{
+		const FName BeforePassName(TEXT("Automation.BindConfig.Observation.BeforePass"));
+		const FName DuringPassName(TEXT("Automation.BindConfig.Observation.DuringPass"));
+		const FName AfterPassName(TEXT("Automation.BindConfig.Observation.AfterPass"));
+
+		FAngelscriptBindExecutionObservation::Reset();
+		ON_SCOPE_EXIT { FAngelscriptBindExecutionObservation::Reset(); };
+		FAngelscriptBindExecutionObservation::RecordExecutedBind(BeforePassName);
+		FAngelscriptBindExecutionObservation::BeginObservationPass();
+		FAngelscriptBindExecutionObservation::RecordExecutedBind(DuringPassName);
+		FAngelscriptBindExecutionObservation::EndObservationPass();
+		FAngelscriptBindExecutionObservation::RecordExecutedBind(AfterPassName);
+
+		const FAngelscriptBindExecutionSnapshot Snapshot = FAngelscriptBindExecutionObservation::GetLastSnapshot();
+		bool bOk = true;
+		bOk &= this->Assert.IsFalse(Snapshot.ExecutedBindNames.Contains(BeforePassName), TEXT("BindConfig.ExecutionObservationOnlyRecordsWithinActivePass should ignore records before BeginObservationPass"));
+		bOk &= this->Assert.IsTrue(Snapshot.ExecutedBindNames.Contains(DuringPassName), TEXT("BindConfig.ExecutionObservationOnlyRecordsWithinActivePass should accept records while the pass is active"));
+		bOk &= this->Assert.IsFalse(Snapshot.ExecutedBindNames.Contains(AfterPassName), TEXT("BindConfig.ExecutionObservationOnlyRecordsWithinActivePass should ignore records after EndObservationPass"));
 		(void)bOk;
 	}
 
 	TEST_METHOD(GeneratedBlueprintCallableEntriesPopulateClassMaps)
 	{
-DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
-		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
-
 		UFunction* DestroyActorFunction = AActor::StaticClass()->FindFunctionByName(TEXT("K2_DestroyActor"));
 		UFunction* GetPlayerControllerFunction = UGameplayStatics::StaticClass()->FindFunctionByName(TEXT("GetPlayerController"));
 		UFunction* IsDeveloperOnlyFunction = UASClass::StaticClass()->FindFunctionByName(TEXT("IsDeveloperOnly"));
@@ -453,8 +324,9 @@ DestroySharedTestEngine();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("GeneratedBlueprintCallableEntriesPopulateClassMaps should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptBinds Binds(*Engine);
 
-		auto& ClassFunctionBindings = FAngelscriptBinds::GetClassFunctionBindings();
+		auto& ClassFunctionBindings = Binds.GetTargetBindState().ClassFunctionBindings;
 		const TMap<FString, FAngelscriptFunctionBinding>* ActorEntries = ClassFunctionBindings.Find(AActor::StaticClass());
 		const TMap<FString, FAngelscriptFunctionBinding>* GameplayStaticsEntries = ClassFunctionBindings.Find(UGameplayStatics::StaticClass());
 		const TMap<FString, FAngelscriptFunctionBinding>* ScriptClassEntries = ClassFunctionBindings.Find(UASClass::StaticClass());
@@ -476,16 +348,21 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(RegisterFunctionBindingPreservesFirstRegistration)
 	{
-FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); };
+		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(
+			FAngelscriptEngineConfig(),
+			Dependencies);
+		ASSERT_THAT(IsTrue(Engine.IsValid(), TEXT("The first-registration test should create an explicit engine")));
+		FAngelscriptBinds Binds(*Engine);
 
-		const FString FunctionName = TEXT("K2_DestroyActor");
+		const FString FunctionName = TEXT("Automation_FirstRegistrationWins");
 		const FAngelscriptFunctionBinding FirstEntry = { ERASE_METHOD_PTR(AActor, K2_DestroyActor, (), ERASE_ARGUMENT_PACK(void)) };
 		const FAngelscriptFunctionBinding SecondEntry = { ERASE_NO_FUNCTION() };
-		FAngelscriptBinds::RegisterFunctionBinding(AActor::StaticClass(), FunctionName, FirstEntry);
-		FAngelscriptBinds::RegisterFunctionBinding(AActor::StaticClass(), FunctionName, SecondEntry);
+		Binds.RegisterFunctionBindingForTarget(AActor::StaticClass(), FunctionName, FirstEntry);
+		Binds.RegisterFunctionBindingForTarget(AActor::StaticClass(), FunctionName, SecondEntry);
 
-		const TMap<FString, FAngelscriptFunctionBinding>* ActorEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(AActor::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* ActorEntries =
+			Binds.GetTargetBindState().ClassFunctionBindings.Find(AActor::StaticClass());
 		if (!this->Assert.IsNotNull(ActorEntries, TEXT("RegisterFunctionBindingPreservesFirstRegistration should create a function entry map for AActor"))) { return; }
 		const FAngelscriptFunctionBinding* StoredEntry = ActorEntries->Find(FunctionName);
 		if (!this->Assert.IsNotNull(StoredEntry, TEXT("RegisterFunctionBindingPreservesFirstRegistration should keep the first function entry"))) { return; }
@@ -515,17 +392,15 @@ UFunction* WithOverride = UAngelscriptUhtCoverageTestLibrary::StaticClass()->Fin
 
 	TEST_METHOD(FunctionLevelScriptMethodUsesFirstParameterAsMixin)
 	{
-DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
-		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
-
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptBinds Binds(*Engine);
 
-		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UObject::StaticClass());
+		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(
+			Binds.GetTargetTypeDatabase(),
+			UObject::StaticClass());
 		UFunction* ScriptMethodFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("GetCoverageValue"));
 		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should resolve a host type for signature construction"))
 			|| !this->Assert.IsNotNull(ScriptMethodFunction, TEXT("FunctionLevelScriptMethodUsesFirstParameterAsMixin should find the ScriptMethod test function")))
@@ -543,17 +418,15 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait)
 	{
-DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
-		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
-
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptBinds Binds(*Engine);
 
-		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UObject::StaticClass());
+		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(
+			Binds.GetTargetTypeDatabase(),
+			UObject::StaticClass());
 		UFunction* RequiredWorldContextFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("RequiresWorldContext"));
 		UFunction* OptionalWorldContextFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("CallableWithoutWorldContext"));
 		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should resolve a host type for signature construction"))
@@ -563,13 +436,17 @@ DestroySharedTestEngine();
 
 		FAngelscriptFunctionSignature RequiredSignature(HostType.ToSharedRef(), RequiredWorldContextFunction);
 		FAngelscriptFunctionSignature OptionalSignature(HostType.ToSharedRef(), OptionalWorldContextFunction);
-		int RequiredFunctionId = FAngelscriptBinds::BindGlobalGenericFunction(RequiredSignature.Declaration, &NoOpGeneric);
-		int OptionalFunctionId = FAngelscriptBinds::BindGlobalGenericFunction(OptionalSignature.Declaration, &NoOpGeneric);
-		RequiredSignature.ModifyScriptFunction(RequiredFunctionId);
-		OptionalSignature.ModifyScriptFunction(OptionalFunctionId);
+		FAngelscriptBoundFunction RequiredBoundFunction =
+			Binds.BindGlobalGenericFunctionForTarget(RequiredSignature.Declaration, &NoOpGeneric);
+		FAngelscriptBoundFunction OptionalBoundFunction =
+			Binds.BindGlobalGenericFunctionForTarget(OptionalSignature.Declaration, &NoOpGeneric);
+		RequiredSignature.ModifyScriptFunction(RequiredBoundFunction);
+		OptionalSignature.ModifyScriptFunction(OptionalBoundFunction);
 
-		auto* RequiredScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(RequiredFunctionId));
-		auto* OptionalScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(OptionalFunctionId));
+		auto* RequiredScriptFunction = reinterpret_cast<asCScriptFunction*>(
+			Engine->GetScriptEngine()->GetFunctionById(RequiredBoundFunction.GetFunctionId()));
+		auto* OptionalScriptFunction = reinterpret_cast<asCScriptFunction*>(
+			Engine->GetScriptEngine()->GetFunctionById(OptionalBoundFunction.GetFunctionId()));
 		if (!this->Assert.IsNotNull(RequiredScriptFunction, TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a script function for the required world-context case"))
 			|| !this->Assert.IsNotNull(OptionalScriptFunction, TEXT("CallableWithoutWorldContextKeepsHiddenWorldContextButClearsTrait should create a script function for the optional world-context case")))
 		{ return; }
@@ -584,17 +461,15 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(ScriptAllowTemporaryThisAppendsAcceptTemporaryThis)
 	{
-DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
-		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
-
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptBinds Binds(*Engine);
 
-		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UObject::StaticClass());
+		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(
+			Binds.GetTargetTypeDatabase(),
+			UObject::StaticClass());
 		UFunction* TemporaryThisFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("GetTemporaryThisValue"));
 		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should resolve the host type"))
 			|| !this->Assert.IsNotNull(TemporaryThisFunction, TEXT("ScriptAllowTemporaryThisAppendsAcceptTemporaryThis should find the test function")))
@@ -609,17 +484,15 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(UnsafeDuringActorConstructionSetsUnsafeTrait)
 	{
-DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
-		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
-
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptBinds Binds(*Engine);
 
-		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(UObject::StaticClass());
+		TSharedPtr<FAngelscriptType> HostType = FAngelscriptType::GetByClass(
+			Binds.GetTargetTypeDatabase(),
+			UObject::StaticClass());
 		UFunction* UnsafeFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("UnsafeDuringConstruction"));
 		UFunction* SafeFunction = UAngelscriptUhtCoverageTestLibrary::StaticClass()->FindFunctionByName(TEXT("SafeDuringConstruction"));
 		if (!this->Assert.IsTrue(HostType.IsValid(), TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should resolve the host type"))
@@ -629,13 +502,17 @@ DestroySharedTestEngine();
 
 		FAngelscriptFunctionSignature UnsafeSignature(HostType.ToSharedRef(), UnsafeFunction);
 		FAngelscriptFunctionSignature SafeSignature(HostType.ToSharedRef(), SafeFunction);
-		const int UnsafeFunctionId = FAngelscriptBinds::BindGlobalGenericFunction(UnsafeSignature.Declaration, &NoOpGeneric);
-		const int SafeFunctionId = FAngelscriptBinds::BindGlobalGenericFunction(SafeSignature.Declaration, &NoOpGeneric);
-		UnsafeSignature.ModifyScriptFunction(UnsafeFunctionId);
-		SafeSignature.ModifyScriptFunction(SafeFunctionId);
+		FAngelscriptBoundFunction UnsafeBoundFunction =
+			Binds.BindGlobalGenericFunctionForTarget(UnsafeSignature.Declaration, &NoOpGeneric);
+		FAngelscriptBoundFunction SafeBoundFunction =
+			Binds.BindGlobalGenericFunctionForTarget(SafeSignature.Declaration, &NoOpGeneric);
+		UnsafeSignature.ModifyScriptFunction(UnsafeBoundFunction);
+		SafeSignature.ModifyScriptFunction(SafeBoundFunction);
 
-		auto* UnsafeScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(UnsafeFunctionId));
-		auto* SafeScriptFunction = reinterpret_cast<asCScriptFunction*>(FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(SafeFunctionId));
+		auto* UnsafeScriptFunction = reinterpret_cast<asCScriptFunction*>(
+			Engine->GetScriptEngine()->GetFunctionById(UnsafeBoundFunction.GetFunctionId()));
+		auto* SafeScriptFunction = reinterpret_cast<asCScriptFunction*>(
+			Engine->GetScriptEngine()->GetFunctionById(SafeBoundFunction.GetFunctionId()));
 		if (!this->Assert.IsNotNull(UnsafeScriptFunction, TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create the unsafe script function"))
 			|| !this->Assert.IsNotNull(SafeScriptFunction, TEXT("UnsafeDuringActorConstructionSetsUnsafeTrait should create the safe script function")))
 		{ return; }
@@ -648,20 +525,17 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(OverloadedExportedFunctionsCanRecoverDirectBind)
 	{
-DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
-		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
-
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptBinds Binds(*Engine);
 
 		UFunction* OverloadFunction = UAngelscriptUhtOverloadCoverageLibrary::StaticClass()->FindFunctionByName(TEXT("ResolveCoverageOverload"));
 		if (!this->Assert.IsNotNull(OverloadFunction, TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should find the reflected overload function"))) { return; }
 
-		const TMap<FString, FAngelscriptFunctionBinding>* OverloadEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(UAngelscriptUhtOverloadCoverageLibrary::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* OverloadEntries =
+			Binds.GetTargetBindState().ClassFunctionBindings.Find(UAngelscriptUhtOverloadCoverageLibrary::StaticClass());
 		if (!this->Assert.IsNotNull(OverloadEntries, TEXT("OverloadedExportedFunctionsCanRecoverDirectBind should populate entries for the overload test library"))) { return; }
 
 		const FAngelscriptFunctionBinding* OverloadEntry = OverloadEntries->Find(OverloadFunction->GetName());
@@ -672,19 +546,16 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(InlineDefinitionFunctionsCanRecoverDirectBind)
 	{
-DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
-		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
-
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptBinds Binds(*Engine);
 
 		UFunction* InlineFunction = URuntimeFloatCurveMixinLibrary::StaticClass()->FindFunctionByName(TEXT("GetNumKeys"));
 		if (!this->Assert.IsNotNull(InlineFunction, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should find the reflected inline function"))) { return; }
-		const TMap<FString, FAngelscriptFunctionBinding>* InlineEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(URuntimeFloatCurveMixinLibrary::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* InlineEntries =
+			Binds.GetTargetBindState().ClassFunctionBindings.Find(URuntimeFloatCurveMixinLibrary::StaticClass());
 		if (!this->Assert.IsNotNull(InlineEntries, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should populate entries for the inline function library"))) { return; }
 		const FAngelscriptFunctionBinding* InlineEntry = InlineEntries->Find(InlineFunction->GetName());
 		if (!this->Assert.IsNotNull(InlineEntry, TEXT("InlineDefinitionFunctionsCanRecoverDirectBind should register the reflected inline function"))) { return; }
@@ -694,19 +565,16 @@ DestroySharedTestEngine();
 
 	TEST_METHOD(InlineOutRefFunctionsCanRecoverDirectBind)
 	{
-DestroySharedTestEngine();
-		if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); }
-		FAngelscriptBinds::ResetBindState();
-		ON_SCOPE_EXIT { FAngelscriptBinds::ResetBindState(); DestroySharedTestEngine(); if (FAngelscriptEngine::IsInitialized()) { FAngelscriptBindConfigTestAccess::DestroyGlobalEngine(); } };
-
 		const FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 		TUniquePtr<FAngelscriptEngine> Engine = CreateScriptScanFreeFullEngineForTesting(FAngelscriptEngineConfig(), Dependencies);
 		if (!this->Assert.IsTrue(Engine.IsValid(), TEXT("InlineOutRefFunctionsCanRecoverDirectBind should create a testing engine"))) { return; }
 		FAngelscriptEngineScope EngineScope(*Engine);
+		FAngelscriptBinds Binds(*Engine);
 
 		UFunction* InlineFunction = URuntimeFloatCurveMixinLibrary::StaticClass()->FindFunctionByName(TEXT("GetTimeRange"));
 		if (!this->Assert.IsNotNull(InlineFunction, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should find the reflected out-ref function"))) { return; }
-		const TMap<FString, FAngelscriptFunctionBinding>* InlineEntries = FAngelscriptBinds::GetClassFunctionBindings().Find(URuntimeFloatCurveMixinLibrary::StaticClass());
+		const TMap<FString, FAngelscriptFunctionBinding>* InlineEntries =
+			Binds.GetTargetBindState().ClassFunctionBindings.Find(URuntimeFloatCurveMixinLibrary::StaticClass());
 		if (!this->Assert.IsNotNull(InlineEntries, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should populate entries for the inline function library"))) { return; }
 		const FAngelscriptFunctionBinding* InlineEntry = InlineEntries->Find(InlineFunction->GetName());
 		if (!this->Assert.IsNotNull(InlineEntry, TEXT("InlineOutRefFunctionsCanRecoverDirectBind should register the reflected out-ref function"))) { return; }

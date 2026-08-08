@@ -141,6 +141,68 @@ public:
 					FTraceHandle OverlapHandle;
 
 					UFUNCTION()
+					int VerifyTraceValueSurface()
+					{
+						FTraceHandle DefaultHandle;
+						FTraceHandle ExplicitHandle(42);
+						FTraceHandle EqualHandle(42);
+						bool bHandlesInitiallyEqual = ExplicitHandle == EqualHandle;
+						uint64 InitialHandleValue = ExplicitHandle._Handle;
+						ExplicitHandle._FrameNumber = 7;
+						ExplicitHandle._Index = 9;
+
+						FTraceDatum TraceDatum;
+						TraceDatum.Start = FVector(1.0f, 2.0f, 3.0f);
+						TraceDatum.End = FVector(4.0f, 5.0f, 6.0f);
+						TraceDatum.Rot = FQuat::Identity;
+						TraceDatum.TraceType = EAsyncTraceType::Multi;
+						TraceDatum.TraceChannel = ECollisionChannel::ECC_Visibility;
+						TraceDatum.UserData = 77;
+
+						FOverlapDatum OverlapDatum;
+						OverlapDatum.Pos = FVector(7.0f, 8.0f, 9.0f);
+						OverlapDatum.Rot = FQuat::Identity;
+						OverlapDatum.TraceChannel = ECollisionChannel::ECC_WorldDynamic;
+						OverlapDatum.UserData = 88;
+
+						return !DefaultHandle.IsValid()
+							&& DefaultHandle._Handle == 0
+							&& ExplicitHandle.IsValid()
+							&& InitialHandleValue == 42
+							&& bHandlesInitiallyEqual
+							&& !(ExplicitHandle == EqualHandle)
+							&& ExplicitHandle._FrameNumber == 7
+							&& ExplicitHandle._Index == 9
+							&& TraceDatum.Start == FVector(1.0f, 2.0f, 3.0f)
+							&& TraceDatum.End == FVector(4.0f, 5.0f, 6.0f)
+							&& TraceDatum.Rot == FQuat::Identity
+							&& TraceDatum.OutHits.Num() == 0
+							&& TraceDatum.TraceType == EAsyncTraceType::Multi
+							&& TraceDatum.TraceChannel == ECollisionChannel::ECC_Visibility
+							&& TraceDatum.UserData == 77
+							&& OverlapDatum.Pos == FVector(7.0f, 8.0f, 9.0f)
+							&& OverlapDatum.Rot == FQuat::Identity
+							&& OverlapDatum.OutOverlaps.Num() == 0
+							&& OverlapDatum.TraceChannel == ECollisionChannel::ECC_WorldDynamic
+							&& OverlapDatum.UserData == 88
+							&& EAsyncTraceType::Test != EAsyncTraceType::Single
+							&& EAsyncTraceType::Single != EAsyncTraceType::Multi ? 1 : 0;
+					}
+
+					UFUNCTION()
+					int VerifyInvalidQueryHelpers()
+					{
+						FTraceHandle InvalidHandle;
+						FTraceDatum TraceDatum;
+						FOverlapDatum OverlapDatum;
+
+						return !System::QueryTraceData(InvalidHandle, TraceDatum)
+							&& !System::QueryOverlapData(InvalidHandle, OverlapDatum)
+							&& !System::IsTraceHandleValid(InvalidHandle, false)
+							&& !System::IsTraceHandleValid(InvalidHandle, true) ? 1 : 0;
+					}
+
+					UFUNCTION()
 					int StartAsyncQueries()
 					{
 						FScriptTraceDelegate LineDelegate;
@@ -221,6 +283,16 @@ public:
 		}
 
 		int32 StartResult = 0;
+		int32 TraceValueSurfaceResult = 0;
+		int32 InvalidQueryHelpersResult = 0;
+		if (!ExecuteGeneratedIntMethod(*TestRunner, ScriptActor, ScriptClass, TEXT("VerifyTraceValueSurface"), TraceValueSurfaceResult)
+			|| !ExecuteGeneratedIntMethod(*TestRunner, ScriptActor, ScriptClass, TEXT("VerifyInvalidQueryHelpers"), InvalidQueryHelpersResult))
+		{
+			return;
+		}
+		ASSERT_THAT(AreEqual(1, TraceValueSurfaceResult, TEXT("Trace handle and datum value bindings should preserve constructor, property, enum, and equality behavior")));
+		ASSERT_THAT(AreEqual(1, InvalidQueryHelpersResult, TEXT("Invalid trace handles should safely dispatch through query and validity wrappers")));
+
 		if (!ExecuteGeneratedIntMethod(*TestRunner, ScriptActor, ScriptClass, TEXT("StartAsyncQueries"), StartResult))
 		{
 			return;

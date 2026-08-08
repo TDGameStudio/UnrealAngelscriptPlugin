@@ -342,3 +342,13 @@ void FAngelscriptCodeCoverageExtension::EnsureAttached(FAngelscriptEngine& Engin
 
 	GCodeCoverageExtension->OnEngineAttached(Engine);
 }
+
+void FAngelscriptCodeCoverageExtension::EnsureDetached(FAngelscriptEngine& Engine)
+{
+	if (!GCodeCoverageExtension.IsValid() || GetForEngine(Engine) == nullptr)
+	{
+		return;
+	}
+
+	GCodeCoverageExtension->OnEngineDetached(Engine);
+}

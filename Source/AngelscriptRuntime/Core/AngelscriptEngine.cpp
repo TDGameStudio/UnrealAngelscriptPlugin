@@ -48,6 +48,7 @@
 
 #include "Framework/Application/SlateApplication.h"
 #include "HAL/ThreadSafeBool.h"
+#include "Templates/Atomic.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Layout/SBorder.h"
@@ -734,13 +735,12 @@ TUniquePtr<FAngelscriptEngine> FAngelscriptEngine::Create(const FAngelscriptEngi
 	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] Create -> %p (bSkipInitialCompile=%d)"),
 		EngineInstance.Get(),
 		InConfig.bSkipInitialCompile ? 1 : 0);
-	if (InConfig.bSkipInitialCompile)
+	const bool bInitialized = InConfig.bSkipInitialCompile
+		? EngineInstance->InitializeWithoutInitialCompile()
+		: EngineInstance->Initialize();
+	if (!bInitialized)
 	{
-		EngineInstance->InitializeWithoutInitialCompile();
-	}
-	else
-	{
-		EngineInstance->Initialize();
+		EngineInstance.Reset();
 	}
 	return EngineInstance;
 }
@@ -939,52 +939,114 @@ bool FAngelscriptEngine::ShouldInitializeThreaded()
 	return !RuntimeConfig.bSkipThreadedInitialize;
 }
 
-void FAngelscriptEngine::Initialize()
+namespace
 {
+	bool ExecuteThreadedInitializationAndWait(TFunction<bool()> InitializationWork)
+	{
+		TAtomic<bool> bInitializationDone(false);
+		TAtomic<bool> bInitializationSucceeded(false);
+		AsyncTask(
+			ENamedThreads::AnyHiPriThreadHiPriTask,
+			[InitializationWork = MoveTemp(InitializationWork),
+			 &bInitializationDone,
+			 &bInitializationSucceeded]() mutable
+			{
+				bInitializationSucceeded.Store(InitializationWork());
+				bInitializationDone.Store(true);
+			});
+
+		while (!bInitializationDone.Load())
+		{
+			FCoreDelegates::OnAsyncLoadingFlushUpdate.Broadcast();
+			FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread);
+			FPlatformProcess::Sleep(0.002f);
+		}
+
+		return bInitializationSucceeded.Load();
+	}
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+ANGELSCRIPTRUNTIME_API bool GAngelscriptRunThreadedInitializationResultTransportForTesting(
+	const bool bWorkerResult)
+{
+	return ExecuteThreadedInitializationAndWait([bWorkerResult]()
+	{
+		return bWorkerResult;
+	});
+}
+#endif
+
+bool FAngelscriptEngine::Initialize()
+{
+	if (bReadyForPublication)
+	{
+		return true;
+	}
+	if (Engine != nullptr)
+	{
+		return false;
+	}
+
+	bReadyForPublication = false;
 	FAngelscriptEngineScope ScopedInitializingEngine(*this);
 
 	PreInitialize_GameThread();
 
 	if (ShouldInitializeThreaded())
 	{
-		volatile bool bInitializationDone = false;
-		AsyncTask(ENamedThreads::AnyHiPriThreadHiPriTask, [&] {
+		const bool bInitializationSucceeded = ExecuteThreadedInitializationAndWait([this]()
+		{
 			FGCScopeGuard GCLock;
 
 			auto* RealGameThreadTLD = GameThreadTLD;
 			GameThreadTLD = asCThreadManager::GetLocalData();
 			GameThreadTLD->primaryContext = RealGameThreadTLD->primaryContext;
 
-			Initialize_AnyThread();
+			const bool bSucceeded = Initialize_AnyThread();
 
 			GameThreadTLD->primaryContext = nullptr;
 			GameThreadTLD = RealGameThreadTLD;
-
-			bInitializationDone = true;
+			return bSucceeded;
 		});
 
-		while (!bInitializationDone)
+		if (!bInitializationSucceeded)
 		{
-			FCoreDelegates::OnAsyncLoadingFlushUpdate.Broadcast();
-			FTaskGraphInterface::Get().ProcessThreadUntilIdle(ENamedThreads::GameThread);
-			FPlatformProcess::Sleep(0.002f);
+			#if WITH_DEV_AUTOMATION_TESTS
+			FAngelscriptBindExecutionObservation::RecordPublicationResult(this, false);
+			#endif
+			return false;
 		}
 	}
 	else
 	{
-		Initialize_AnyThread();
+		if (!Initialize_AnyThread())
+		{
+			#if WITH_DEV_AUTOMATION_TESTS
+			FAngelscriptBindExecutionObservation::RecordPublicationResult(this, false);
+			#endif
+			return false;
+		}
 	}
 
 	PostInitialize_GameThread();
+	bReadyForPublication = true;
 	FAngelscriptEngineExtensionRegistry::Get().AttachEngine(*this);
+	bExtensionsAttached = true;
+	#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptBindExecutionObservation::RecordPublicationResult(this, true);
+	#endif
+	return true;
 }
 
-void FAngelscriptEngine::InitializeWithoutInitialCompile()
+bool FAngelscriptEngine::InitializeWithoutInitialCompile()
 {
 	if (Engine != nullptr)
 	{
-		return;
+		return bReadyForPublication;
 	}
+	bReadyForPublication = false;
+	FAngelscriptEngineScope ScopedInitializingEngine(*this);
 
 	bSimulateCooked = RuntimeConfig.bSimulateCooked;
 	bTestErrors = RuntimeConfig.bTestErrors;
@@ -1050,10 +1112,26 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 	{
 		BlueprintEventSignatureRegistry = MakeUnique<FBlueprintEventSignatureRegistry>();
 	}
+	if (!DocumentationState.IsValid())
+	{
+		DocumentationState = MakeUnique<FAngelscriptDocumentationState>();
+	}
+#if AS_CAN_GENERATE_JIT
+	if (!NativeFormState.IsValid())
+	{
+		NativeFormState = MakeUnique<FAngelscriptNativeFormState>();
+	}
+#endif
 
 	{
 		FAngelscriptEngineScope ScopedTestingEngine(*this);
-		BindScriptTypes();
+		if (!BindScriptTypes())
+		{
+			#if WITH_DEV_AUTOMATION_TESTS
+			FAngelscriptBindExecutionObservation::RecordPublicationResult(this, false);
+			#endif
+			return false;
+		}
 	}
 	GameThreadTLD->primaryContext = CreateContext();
 	bIsInitialCompileFinished = true;
@@ -1069,7 +1147,13 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 	FAngelscriptCodeCoverageExtension::EnsureAttached(*this);
 #endif
 
+	bReadyForPublication = true;
 	FAngelscriptEngineExtensionRegistry::Get().AttachEngine(*this);
+	bExtensionsAttached = true;
+	#if WITH_DEV_AUTOMATION_TESTS
+	FAngelscriptBindExecutionObservation::RecordPublicationResult(this, true);
+	#endif
+	return true;
 }
 
 void FAngelscriptEngine::AcquireProcessPackages()
@@ -1175,6 +1259,18 @@ FBlueprintEventSignatureRegistry* FAngelscriptEngine::GetBlueprintEventSignature
 	return BlueprintEventSignatureRegistry.Get();
 }
 
+FAngelscriptDocumentationState* FAngelscriptEngine::GetDocumentationState() const
+{
+	return DocumentationState.Get();
+}
+
+#if AS_CAN_GENERATE_JIT
+FAngelscriptNativeFormState* FAngelscriptEngine::GetNativeFormState() const
+{
+	return NativeFormState.Get();
+}
+#endif
+
 TArray<FToStringType>* FAngelscriptEngine::GetToStringList() const
 {
 	return ToStringList.Get();
@@ -1196,7 +1292,8 @@ int32 FAngelscriptEngine::GetToStringEntryCountForTesting() const
 
 FAngelscriptBindDatabase& FAngelscriptEngine::GetBindDatabaseForTesting() const
 {
-	return FAngelscriptBindDatabase::Get();
+	check(BindDatabase.IsValid());
+	return *BindDatabase;
 }
 
 void FAngelscriptEngine::SetUseEditorScriptsForTesting(bool bEnabled)
@@ -1426,6 +1523,10 @@ bool FAngelscriptEngine::DiscardModule(const TCHAR* ModuleName)
 // exit purge that reads it is single-threaded, so a plain bool is sufficient.
 static bool GAngelscriptEnginesReleasedForExit = false;
 
+#if WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS
+void GAngelscriptNativeModuleFunctionBindingUnregisterEngine(FAngelscriptEngine& Engine);
+#endif
+
 bool FAngelscriptEngine::AreEnginesReleasedForExit()
 {
 	return GAngelscriptEnginesReleasedForExit;
@@ -1444,6 +1545,9 @@ void FAngelscriptEngine::EnsureScriptTestHotReloadRunnerForTesting()
 
 void FAngelscriptEngine::Shutdown()
 {
+	bReadyForPublication = false;
+	const bool bHadAttachedExtensions = bExtensionsAttached;
+	bExtensionsAttached = false;
 	const bool bHadInitializedEngine = Engine != nullptr;
 	const bool bShouldReleaseOwnedEngine = Engine != nullptr;
 
@@ -1451,6 +1555,14 @@ void FAngelscriptEngine::Shutdown()
 		this,
 		bHadInitializedEngine ? TEXT("true") : TEXT("false"),
 		bShouldReleaseOwnedEngine ? TEXT("true") : TEXT("false"));
+
+#if WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS
+	// The native-module bridge keeps explicit engine targets so late feature
+	// arrival and unload can update each engine-owned binding table. Detach this
+	// target before BindState is reset; queued replay then observes an invalidated
+	// target record instead of retaining a raw engine pointer past Shutdown().
+	GAngelscriptNativeModuleFunctionBindingUnregisterEngine(*this);
+#endif
 
 	if (bHadInitializedEngine && IsInGameThread())
 	{
@@ -1476,10 +1588,17 @@ void FAngelscriptEngine::Shutdown()
 		ScriptTestHotReloadRunner = nullptr;
 	}
 
-	if (bHadInitializedEngine)
+	if (bHadAttachedExtensions)
 	{
 		FAngelscriptEngineExtensionRegistry::Get().DetachEngine(*this);
 	}
+
+#if WITH_AS_COVERAGE
+	// Full initialization can attach coverage before direct binding completes.
+	// Clean that one extension precisely when initialization fails before the
+	// registry lifecycle begins; never broadcast a detach to unrelated extensions.
+	FAngelscriptCodeCoverageExtension::EnsureDetached(*this);
+#endif
 
 	// Single-owner releases: the engine releases its own fields directly.
 #if WITH_AS_DEBUGSERVER
@@ -1631,6 +1750,10 @@ void FAngelscriptEngine::Shutdown()
 			GBlueprintEventsByScriptName.Empty();
 		}
 		BlueprintEventSignatureRegistry.Reset();
+		DocumentationState.Reset();
+#if AS_CAN_GENERATE_JIT
+		NativeFormState.Reset();
+#endif
 
 #if WITH_EDITOR
 		{
@@ -1639,10 +1762,6 @@ void FAngelscriptEngine::Shutdown()
 		}
 #endif
 
-#if AS_CAN_GENERATE_JIT
-		FScriptFunctionNativeForm::ReleaseAllNativeForms();
-#endif
-		FAngelscriptDocs::ResetAllDocumentation();
 	}
 
 	ActiveModules.Empty();
@@ -1857,7 +1976,7 @@ TArray<FString> FAngelscriptEngine::MakeAllScriptRoots(bool bOnlyProjectRoot)
 	return TemporaryEngine.DiscoverScriptRoots(bOnlyProjectRoot);
 }
 
-void FAngelscriptEngine::Initialize_AnyThread()
+bool FAngelscriptEngine::Initialize_AnyThread()
 {
 	bSimulateCooked = RuntimeConfig.bSimulateCooked;
 	bTestErrors = RuntimeConfig.bTestErrors;
@@ -1952,13 +2071,9 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	FAngelscriptCodeCoverageExtension::EnsureAttached(*this);
 #endif
 
-	// The bind database must exist on this engine BEFORE we load Binds.Cache below.
-	// FAngelscriptBindDatabase::Get() resolves to the *current engine's* instance, and if it
-	// has not been constructed yet Load() silently populates the fallback LegacyBindDatabase
-	// instead. The owned database is then created empty further down, and BindScriptTypes()
-	// reads that empty instance — leaving every reflected engine type (AActor, FMargin,
-	// UActorComponent, ...) unregistered and crashing dependent hand-written binds in cooked
-	// builds. Construct it up-front so Load() and the bind-time readers share one instance.
+	// The bind database must exist on this engine before Binds.Cache is loaded. The lifecycle
+	// mutates this owned instance directly so initialization never depends on ambient engine
+	// resolution or accidentally writes a process fallback database.
 	if (!BindDatabase.IsValid())
 	{
 		LLM_SCOPE_BYTAG(Angelscript);
@@ -1969,28 +2084,9 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	{
 		AS_PERF_SCOPE_STARTUP_BIND_DATABASE();
 		FAngelscriptScopeTimer Timer(TEXT("load bind database"));
-		FAngelscriptBindDatabase::Get().Load(GetScriptRootDirectory() / TEXT("Binds.Cache"), bGeneratePrecompiledData);
+		BindDatabase->Load(GetScriptRootDirectory() / TEXT("Binds.Cache"), bGeneratePrecompiledData);
 	}
 #endif	
-	//WILL-EDIT
-	TSharedPtr<IPlugin> plugin = IPluginManager::Get().FindPlugin("Angelscript");		
-
-	if (plugin)
-	{
-		FAngelscriptBinds::LoadBindModules(plugin->GetBaseDir() / "BindModules.Cache");
-	}
-
-	//WILL-EDIT: Load our auto-generated Bind Modules here
-	if (!FAngelscriptBinds::GetBindModuleNames().IsEmpty())
-	{
-		for (FString ModuleName : FAngelscriptBinds::GetBindModuleNames())
-		{			
-			if (!ModuleName.IsEmpty())
-			{				
-				FModuleManager::Get().LoadModule(FName(ModuleName), ELoadModuleFlags::LogFailures);				
-			}
-		}
-	}
 	// Construct the engine's owned databases. See Initialize() /
 	// InitializeWithoutInitialCompile() for the matching short path.
 	if (!TypeDatabase.IsValid())
@@ -2014,10 +2110,23 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	{
 		BlueprintEventSignatureRegistry = MakeUnique<FBlueprintEventSignatureRegistry>();
 	}
+	if (!DocumentationState.IsValid())
+	{
+		DocumentationState = MakeUnique<FAngelscriptDocumentationState>();
+	}
+#if AS_CAN_GENERATE_JIT
+	if (!NativeFormState.IsValid())
+	{
+		NativeFormState = MakeUnique<FAngelscriptNativeFormState>();
+	}
+#endif
 	//Set everything up for angelscript usage.
 	{
 		FAngelscriptScopeTimer Timer(TEXT("== bindings total =="));
-		BindScriptTypes();
+		if (!BindScriptTypes())
+		{
+			return false;
+		}
 	}
 	
 #if !AS_USE_BIND_DB
@@ -2027,11 +2136,11 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	if ((RuntimeConfig.bRunningCommandlet && !bSkipWriteBindDB) || bForceWriteBindDB)
 	{
 		UE_LOG(Angelscript, Log, TEXT("Writing angelscript bind database to Binds.Cache file"));
-		FAngelscriptBindDatabase::Get().Save(GetScriptRootDirectory() / TEXT("Binds.Cache"));
+		BindDatabase->Save(GetScriptRootDirectory() / TEXT("Binds.Cache"));
 	}
 
 #elif AS_USE_BIND_DB
-	FAngelscriptBindDatabase::Get().Clear();
+	BindDatabase->Clear();
 #endif
 
 	// Load precompiled data if it is available and we can use it
@@ -2154,6 +2263,7 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	FCoreDelegates::OnGetOnScreenMessages.AddRaw(this, &FAngelscriptEngine::GetOnScreenMessages);
 #endif
 	UpdateLineCallbackState();
+	return true;
 }
 
 bool FAngelscriptEngine::IsGeneratingPrecompiledData()
@@ -2428,7 +2538,7 @@ FAngelscriptContextPool::~FAngelscriptContextPool()
 		Context->Release();
 }
 
-void FAngelscriptEngine::BindScriptTypes()
+bool FAngelscriptEngine::BindScriptTypes()
 {
 	AS_PERF_SCOPE_STARTUP_BIND_SCRIPT_TYPES();
 	LLM_SCOPE_BYTAG(Angelscript);
@@ -2437,30 +2547,25 @@ void FAngelscriptEngine::BindScriptTypes()
 	#if WITH_DEV_AUTOMATION_TESTS
 	FAngelscriptBindExecutionObservation::BeginBindScriptTypesTiming();
 	FAngelscriptEnumTableBaselineProbe::Reset();
-	#endif
-
-	FAngelscriptBinds::CallBinds(CollectDisabledBindNames());
-
-	#if WITH_DEV_AUTOMATION_TESTS
-	FAngelscriptBindExecutionObservation::EndBindScriptTypesTiming();
-	FAngelscriptEnumTableBaselineProbe::MaybeAutoDump();
-	#endif
-}
-
-TSet<FName> FAngelscriptEngine::CollectDisabledBindNames() const
-{
-	TSet<FName> DisabledBindNames;
-	const UAngelscriptSettings* Settings = ConfigSettings != nullptr ? ConfigSettings : GetDefault<UAngelscriptSettings>();
-	if (Settings != nullptr)
+	ON_SCOPE_EXIT
 	{
-		for (const FName& BindName : Settings->DisabledBindNames)
-		{
-			DisabledBindNames.Add(BindName);
-		}
-	}
+		FAngelscriptBindExecutionObservation::EndBindScriptTypesTiming();
+		FAngelscriptEnumTableBaselineProbe::MaybeAutoDump();
+	};
+	#endif
 
-	DisabledBindNames.Append(RuntimeConfig.DisabledBindNames);
-	return DisabledBindNames;
+	FAngelscriptBinds DirectBinds(*this);
+	FString DirectBindDiagnostic;
+	if (!FAngelscriptBind::ExecuteRegisteredBinds(DirectBinds, DirectBindDiagnostic))
+	{
+		UE_LOG(
+			Angelscript,
+			Error,
+			TEXT("Direct AngelScript binding execution failed: %s"),
+			*DirectBindDiagnostic);
+		return false;
+	}
+	return true;
 }
 
 void FAngelscriptEngine::FindScriptFiles(

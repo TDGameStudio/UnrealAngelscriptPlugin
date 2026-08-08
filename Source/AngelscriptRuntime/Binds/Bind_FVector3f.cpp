@@ -3,9 +3,8 @@
 #include "Engine/NetSerialization.h"
 
 #include "AngelscriptBinds.h"
-#include "AngelscriptDocs.h"
-#include "AngelscriptEngine.h"
 
+#include "Bind_FVector3f_Functions.h"
 #include "Helper_StructType.h"
 #include "Helper_ToString.h"
 
@@ -103,41 +102,34 @@ struct FVector3fType : TAngelscriptVariantStructType<FVector3f>
 	}
 };
 
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector3f(FAngelscriptBinds::EOrder::Early, []
+static void BindFVector3fTypeDeclarations(FAngelscriptBinds& Binds)
 {
 	FBindFlags Flags;
 	Flags.bPOD = true;
 	Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
+	Binds.ValueClassForTarget<FVector3f>("FVector3f", Flags);
+}
 
-	auto FVector3f_ = FAngelscriptBinds::ValueClass<FVector3f>("FVector3f", Flags);
+static void BindFVector3fInfrastructure(FAngelscriptBinds& Binds)
+{
+	auto VectorType = MakeShared<FVector3fType>();
+	Binds.RegisterTypeForTarget(VectorType);
+	FToStringHelper::Register(Binds, TEXT("FVector3f"), &FAngelscriptFVector3fBinds::AppendToString);
+}
 
-	FVector3f_.Constructor("void f(float32 X, float32 Y, float32 Z)", [](FVector3f* Address, float X, float Y, float Z)
-	{
-		new(Address) FVector3f(X, Y, Z);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FVector3f_, "FVector3f");
+static void BindFVector3fManual(FAngelscriptBinds& Binds)
+{
+	auto FVector3f_ = Binds.ExistingClassForTarget("FVector3f");
 
-	FVector3f_.Constructor("void f()", [](FVector3f* Address)
-	{
-		new(Address) FVector3f(0.f);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR_CUSTOMFORM(FVector3f_, "FVector3f", "0.f");
-
-	FVector3f_.Constructor("void f(float32 F)", [](FVector3f* Address, float F)
-	{
-		new(Address) FVector3f(F);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FVector3f_, "FVector3f");
-
-	FVector3f_.Constructor("void f(const FVector3f& Other)", [](FVector3f* Address, const FVector3f& Other)
-	{
-		new(Address) FVector3f(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FVector3f_, "FVector3f");
+	FVector3f_.Constructor("void f(float32 X, float32 Y, float32 Z)", &FAngelscriptFVector3fBinds::ConstructXYZ, "FVector3f", true)
+		.NoDiscard();
+	FVector3f_.Constructor("void f()", &FAngelscriptFVector3fBinds::ConstructZero)
+		.NoDiscard()
+		.NativeConstructor("FVector3f", true, "0.f");
+	FVector3f_.Constructor("void f(float32 F)", &FAngelscriptFVector3fBinds::ConstructScalar, "FVector3f", true)
+		.NoDiscard();
+	FVector3f_.Constructor("void f(const FVector3f& Other)", &FAngelscriptFVector3fBinds::ConstructCopy, "FVector3f", true)
+		.NoDiscard();
 
 	FVector3f_.Property("float32 X", &FVector3f::X);
 	FVector3f_.Property("float32 Y", &FVector3f::Y);
@@ -176,32 +168,38 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector3f(FAngelscriptBinds::E
 
 	FVector3f_.Method("bool AllComponentsEqual(float32 Tolerance = __KINDA_SMALL_NUMBER_flt) const", METHOD_TRIVIAL(FVector3f, AllComponentsEqual));
 
-	FVector3f_.Method("bool Parallel(const FVector3f& Normal2, float32 ParallelCosineThreshold = __THRESH_NORMALS_ARE_PARALLEL_flt) const", FUNC_TRIVIAL(FVector3f::Parallel));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector3f_.Method(
+		"bool Parallel(const FVector3f& Normal2, float32 ParallelCosineThreshold = __THRESH_NORMALS_ARE_PARALLEL_flt) const",
+		FUNC_TRIVIAL(FVector3f::Parallel))
+		.Documentation(UTF8_TO_TCHAR(
 	 "* See if two normal vectors are nearly parallel, meaning the angle between them is close to 0 degrees. \n"
 	 "* @param  Normal1 First normalized vector.\n"
 	 "* @param  Normal1 Second normalized vector.\n"
 	 "* @param  ParallelCosineThreshold Normals are parallel if absolute value of dot product (cosine of angle between them) is greater than or equal to this. For example: cos(1.0 degrees). \n"
 	 "* @return true if vectors are nearly parallel, false otherwise. \n"
-	)
+	));
 
-	FVector3f_.Method("bool Coincident(const FVector3f& Normal2, float32 ParallelCosineThreshold = __THRESH_NORMALS_ARE_PARALLEL_flt) const", FUNC_TRIVIAL(FVector3f::Coincident));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector3f_.Method(
+		"bool Coincident(const FVector3f& Normal2, float32 ParallelCosineThreshold = __THRESH_NORMALS_ARE_PARALLEL_flt) const",
+		FUNC_TRIVIAL(FVector3f::Coincident))
+		.Documentation(UTF8_TO_TCHAR(
 	 "* See if two normal vectors are coincident (nearly parallel and point in the same direction).\n"
 	 "* @param  Normal1 First normalized vector.\n"
 	 "* @param  Normal2 Second normalized vector.\n"
 	 "* @param  ParallelCosineThreshold Normals are coincident if dot product (cosine of angle between them) is greater than or equal to this. For example: cos(1.0 degrees).\n"
 	 "* @return true if vectors are coincident (nearly parallel and point in the same direction), false otherwise.\n"
-	)
+	));
 
-	FVector3f_.Method("bool Orthogonal(const FVector3f& Normal2, float32 OrthogonalCosineThreshold = __THRESH_NORMALS_ARE_ORTHOGONAL_flt) const", FUNC_TRIVIAL(FVector3f::Orthogonal));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector3f_.Method(
+		"bool Orthogonal(const FVector3f& Normal2, float32 OrthogonalCosineThreshold = __THRESH_NORMALS_ARE_ORTHOGONAL_flt) const",
+		FUNC_TRIVIAL(FVector3f::Orthogonal))
+		.Documentation(UTF8_TO_TCHAR(
 	 "* See if two normal vectors are nearly orthogonal (perpendicular), meaning the angle between them is close to 90 degrees.\n"
 	 "* @param  Normal1 First normalized vector.\n"
 	 "* @param  Normal2 Second normalized vector.\n"
 	 "* @param  OrthogonalCosineThreshold Normals are orthogonal if absolute value of dot product (cosine of angle between them) is less than or equal to this. For example: cos(89.0 degrees).\n"
 	 "* @return true if vectors are orthogonal (perpendicular), false otherwise.\n"
-	)
+	));
 
 	FVector3f_.Method("float32 GetMax() const", METHOD_TRIVIAL(FVector3f, GetMax));
 	FVector3f_.Method("float32 GetAbsMax() const", METHOD_TRIVIAL(FVector3f, GetAbsMax));
@@ -255,19 +253,23 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector3f(FAngelscriptBinds::E
 
 	FVector3f_.Method("float32 CosineAngle2D(FVector3f B) const", METHOD_TRIVIAL(FVector3f, CosineAngle2D));
 
-	FVector3f_.Method("FVector3f ProjectOnTo(const FVector3f& A) const", METHOD_TRIVIAL(FVector3f, ProjectOnTo));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector3f_.Method(
+		"FVector3f ProjectOnTo(const FVector3f& A) const",
+		METHOD_TRIVIAL(FVector3f, ProjectOnTo))
+		.Documentation(UTF8_TO_TCHAR(
 	 "Gets a copy of this vector projected onto the input vector.\n\n"
 	 "@param A	Vector to project onto, does not assume it is normalized.\n"
 	 "@return Projected vector."
-	)
+	));
 
-	FVector3f_.Method("FVector3f ProjectOnToNormal(const FVector3f& Normal) const", METHOD_TRIVIAL(FVector3f, ProjectOnToNormal));
-	SCRIPT_BIND_DOCUMENTATION(
+	FVector3f_.Method(
+		"FVector3f ProjectOnToNormal(const FVector3f& Normal) const",
+		METHOD_TRIVIAL(FVector3f, ProjectOnToNormal))
+		.Documentation(UTF8_TO_TCHAR(
 	 "Gets a copy of this vector projected onto the input vector, which is assumed to be unit length.\n\n"
 	 "@param A	Normal vector to project onto (assumed to be unit length).\n"
 	 "@return Projected vector."
-	)
+	));
 
 	FVector3f_.Method("void FindBestAxisVectors(FVector3f& Axis1, FVector3f& Axis2) const", METHOD_TRIVIAL(FVector3f, FindBestAxisVectors));
 	FVector3f_.Method("void UnwindEuler() const", METHOD_TRIVIAL(FVector3f, UnwindEuler));
@@ -287,37 +289,35 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector3f(FAngelscriptBinds::E
 	FVector3f_.Method("float32 DistSquared2D(const FVector3f& Other) const", FUNC_TRIVIAL(FVector3f::DistSquared2D));
 
 	{
-		FAngelscriptBinds::FNamespace ns("FVector3f");
-		FAngelscriptBinds::BindGlobalVariable("const FVector3f ZeroVector", &FVector3f::ZeroVector);
-		FAngelscriptBinds::BindGlobalVariable("const FVector3f OneVector", &FVector3f::OneVector);
-		FAngelscriptBinds::BindGlobalVariable("const FVector3f UpVector", &FVector3f::UpVector);
-		FAngelscriptBinds::BindGlobalVariable("const FVector3f ForwardVector", &FVector3f::ForwardVector);
-		FAngelscriptBinds::BindGlobalVariable("const FVector3f RightVector", &FVector3f::RightVector);
+		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FVector3f");
+		Binds.BindGlobalVariableForTarget("const FVector3f ZeroVector", &FVector3f::ZeroVector);
+		Binds.BindGlobalVariableForTarget("const FVector3f OneVector", &FVector3f::OneVector);
+		Binds.BindGlobalVariableForTarget("const FVector3f UpVector", &FVector3f::UpVector);
+		Binds.BindGlobalVariableForTarget("const FVector3f ForwardVector", &FVector3f::ForwardVector);
+		Binds.BindGlobalVariableForTarget("const FVector3f RightVector", &FVector3f::RightVector);
 	}
 
-	FToStringHelper::Register(TEXT("FVector3f"), [](void* Ptr, FString& Str)
-	{
-		Str += ((FVector3f*)Ptr)->ToString();
-	});
-
-	auto VectorType = MakeShared<FVector3fType>();
-	FAngelscriptType::Register(VectorType);
-});
-
-AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FVector3f_Conversion(FAngelscriptBinds::EOrder::Late, []
-{
-	auto FVector3f_ = FAngelscriptBinds::ExistingClass("FVector3f");
 	FVector3f_.Method("FRotator3f ToOrientationRotator() const", METHOD_TRIVIAL(FVector3f, ToOrientationRotator));
 	FVector3f_.Method("FQuat4f ToOrientationQuat() const", METHOD_TRIVIAL(FVector3f, ToOrientationQuat));
 	FVector3f_.Method("FRotator3f Rotation() const", METHOD_TRIVIAL(FVector3f, Rotation));
 
 	FVector3f_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FVector3f, InitFromString));
 
-	FVector3f_.Constructor("void f(const FVector& Other)", [](FVector3f* Address, const FVector& Other)
-	{
-		new(Address) FVector3f(Other);
-	});
-	FAngelscriptBinds::SetPreviousBindNoDiscard(true);
-	SCRIPT_TRIVIAL_NATIVE_CONSTRUCTOR(FVector3f_, "FVector3f");
+	FVector3f_.Constructor("void f(const FVector& Other)", &FAngelscriptFVector3fBinds::ConstructFromVector, "FVector3f", true)
+		.NoDiscard();
+}
 
-});
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector3f_TypeDeclarations(
+	TEXT("FVector3f.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	&BindFVector3fTypeDeclarations);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector3f_TypeInfrastructure(
+	TEXT("FVector3f.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	&BindFVector3fInfrastructure);
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector3f(
+	TEXT("FVector3f.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	&BindFVector3fManual);

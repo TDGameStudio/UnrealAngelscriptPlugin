@@ -41,6 +41,7 @@
 #include "Binds/BlueprintCallableReflectiveFallback.h"
 #include "Binds/Helper_FunctionSignature.h"
 
+#include "GameFramework/PlayerController.h"
 #include "Kismet/BlueprintPathsLibrary.h"
 #include "HAL/IConsoleManager.h"
 
@@ -353,7 +354,7 @@ public:
 	// classifiable by the reflective fallback gate.
 	// ====================================================================
 
-	TEST_METHOD(FuncNetEligibility)
+	TEST_METHOD(BlueprintLibraryFallbackEligibility)
 	{
 		const UFunction* BaseFilenameFunction = UBlueprintPathsLibrary::StaticClass()
 			->FindFunctionByName(TEXT("GetBaseFilename"));
@@ -362,6 +363,20 @@ public:
 			EReflectionFallbackResult::Success,
 			EvaluateReflectionFallback(BaseFilenameFunction),
 			TEXT("BPLib UFUNCTIONs reaching reflective fallback should remain eligible after the cache lands")));
+	}
+
+	TEST_METHOD(NetFallbackEligibility)
+	{
+		const UFunction* ClientSetHUDFunction = APlayerController::StaticClass()
+			->FindFunctionByName(TEXT("ClientSetHUD"));
+		ASSERT_THAT(IsNotNull(ClientSetHUDFunction));
+		ASSERT_THAT(IsTrue(ClientSetHUDFunction->HasAnyFunctionFlags(FUNC_Net)));
+		ASSERT_THAT(IsTrue(ClientSetHUDFunction->HasAnyFunctionFlags(FUNC_NetClient)));
+		ASSERT_THAT(IsTrue(ClientSetHUDFunction->HasAnyFunctionFlags(FUNC_NetReliable)));
+		ASSERT_THAT(AreEqual(
+			EReflectionFallbackResult::Success,
+			EvaluateReflectionFallback(ClientSetHUDFunction),
+			TEXT("RPC UFUNCTIONs must remain eligible for reflective fallback routing")));
 	}
 
 	// ====================================================================
