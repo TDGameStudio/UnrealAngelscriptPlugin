@@ -7,9 +7,19 @@ void FAngelscriptUAssetManagerBinds::ConstructPrimaryAssetType(FPrimaryAssetType
 	new (Address) FPrimaryAssetType(InName);
 }
 
-void FAngelscriptUAssetManagerBinds::ConstructPrimaryAssetId(FPrimaryAssetType* Address, const FString& InString)
+void FAngelscriptUAssetManagerBinds::ConstructPrimaryAssetId(FPrimaryAssetId* Address, const FString& InString)
 {
 	new (Address) FPrimaryAssetId(InString);
+}
+
+void FAngelscriptUAssetManagerBinds::ConstructPrimaryAssetIdFromTypeAndName(FPrimaryAssetId* Address, const FPrimaryAssetType& InType, FName InName)
+{
+	new (Address) FPrimaryAssetId(InType, InName);
+}
+
+FPrimaryAssetId FAngelscriptUAssetManagerBinds::ParsePrimaryAssetId(const FString& InString)
+{
+	return FPrimaryAssetId::ParseTypeAndName(InString);
 }
 
 void FAngelscriptUAssetManagerBinds::AppendPrimaryAssetTypeToString(void* Ptr, FString& Str)

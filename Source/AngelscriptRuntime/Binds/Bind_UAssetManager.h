@@ -9,7 +9,9 @@ struct FPrimaryAssetType;
 struct FAngelscriptUAssetManagerBinds
 {
 	static void ConstructPrimaryAssetType(FPrimaryAssetType* Address, FName InName);
-	static void ConstructPrimaryAssetId(FPrimaryAssetType* Address, const FString& InString);
+	static void ConstructPrimaryAssetId(FPrimaryAssetId* Address, const FString& InString);
+	static void ConstructPrimaryAssetIdFromTypeAndName(FPrimaryAssetId* Address, const FPrimaryAssetType& InType, FName InName);
+	static FPrimaryAssetId ParsePrimaryAssetId(const FString& InString);
 	static void AppendPrimaryAssetTypeToString(void* Ptr, FString& Str);
 	static void AppendPrimaryAssetIdToString(void* Ptr, FString& Str);
 	static void LoadPrimaryAsset(

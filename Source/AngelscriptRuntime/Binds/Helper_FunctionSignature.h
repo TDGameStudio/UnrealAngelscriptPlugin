@@ -531,9 +531,8 @@ struct FAngelscriptFunctionSignature
 
 		if (Function->HasAnyFunctionFlags(FUNC_Static))
 		{
-			extern ANGELSCRIPTRUNTIME_API bool IsEditorOnlyClass(UClass* Class);
 			UClass* Class = Function->GetOuterUClass();
-			if (Class != nullptr && IsEditorOnlyClass(Class))
+			if (Class != nullptr && IsEditorOnlyObject(Class))
 				return true;
 		}
 

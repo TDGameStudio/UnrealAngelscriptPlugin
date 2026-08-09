@@ -81,8 +81,13 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UAssetManager(
 
 		auto FPrimaryAssetId_ = Binds.ExistingClassForTarget("FPrimaryAssetId");
 		FPrimaryAssetId_.Constructor("void f(const FString& InString)", &FAngelscriptUAssetManagerBinds::ConstructPrimaryAssetId, "FPrimaryAssetId", true);
+		FPrimaryAssetId_.Constructor("void f(const FPrimaryAssetType& InType, FName InName)", &FAngelscriptUAssetManagerBinds::ConstructPrimaryAssetIdFromTypeAndName, "FPrimaryAssetId", true);
 		FPrimaryAssetId_.Method("bool IsValid() const", METHOD_TRIVIAL(FPrimaryAssetId, IsValid));
 		FPrimaryAssetId_.Method("bool opEquals(const FPrimaryAssetId& Other) const", METHODPR_TRIVIAL(bool, FPrimaryAssetId, operator==, (const FPrimaryAssetId&) const));
+		{
+			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FPrimaryAssetId");
+			Binds.BindGlobalFunctionForTarget("FPrimaryAssetId ParseTypeAndName(const FString& TypeAndName)", &FAngelscriptUAssetManagerBinds::ParsePrimaryAssetId);
+		}
 
 		auto UAssetManager_ = Binds.ExistingClassForTarget("UAssetManager");
 		UAssetManager_.Method("FPrimaryAssetId GetPrimaryAssetIdForPath(const FSoftObjectPath& ObjectPath) const", METHODPR_TRIVIAL(FPrimaryAssetId, UAssetManager, GetPrimaryAssetIdForPath, (const FSoftObjectPath&) const));
