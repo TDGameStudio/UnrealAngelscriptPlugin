@@ -1,4 +1,10 @@
-#include "Bind_UPoseableMeshComponent.h"
+class UPoseableMeshComponent;
+
+struct FAngelscriptUPoseableMeshComponentBinds
+{
+	static void AllocateTransformData(UPoseableMeshComponent* Component);
+	static void RefreshBoneTransforms(UPoseableMeshComponent* Component);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -22,3 +28,15 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UPoseableMeshComponent(
 		UPoseableMeshComponent_.Method("void AllocateTransformData()", &FAngelscriptUPoseableMeshComponentBinds::AllocateTransformData);
 		UPoseableMeshComponent_.Method("void RefreshBoneTransforms()", &FAngelscriptUPoseableMeshComponentBinds::RefreshBoneTransforms);
 	});
+
+#include "Components/PoseableMeshComponent.h"
+
+void FAngelscriptUPoseableMeshComponentBinds::AllocateTransformData(UPoseableMeshComponent* Component)
+{
+	Component->AllocateTransformData();
+}
+
+void FAngelscriptUPoseableMeshComponentBinds::RefreshBoneTransforms(UPoseableMeshComponent* Component)
+{
+	Component->RefreshBoneTransforms();
+}

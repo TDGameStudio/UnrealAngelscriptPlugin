@@ -1,4 +1,11 @@
-#include "Bind_UCollisionProfile.h"
+#include "Engine/EngineTypes.h"
+
+struct FAngelscriptUCollisionProfileBinds
+{
+	static ECollisionChannel ConvertToCollisionChannel(bool bTraceType, int32 Index);
+	static EObjectTypeQuery ConvertToObjectType(ECollisionChannel CollisionChannel);
+	static ETraceTypeQuery ConvertToTraceType(ECollisionChannel CollisionChannel);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -34,3 +41,20 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UCollisionProfile(
 			"ETraceTypeQuery ConvertToTraceType(ECollisionChannel CollisionChannel)",
 			&FAngelscriptUCollisionProfileBinds::ConvertToTraceType);
 	});
+
+#include "Engine/CollisionProfile.h"
+
+ECollisionChannel FAngelscriptUCollisionProfileBinds::ConvertToCollisionChannel(bool bTraceType, int32 Index)
+{
+	return UCollisionProfile::Get()->ConvertToCollisionChannel(bTraceType, Index);
+}
+
+EObjectTypeQuery FAngelscriptUCollisionProfileBinds::ConvertToObjectType(ECollisionChannel CollisionChannel)
+{
+	return UCollisionProfile::Get()->ConvertToObjectType(CollisionChannel);
+}
+
+ETraceTypeQuery FAngelscriptUCollisionProfileBinds::ConvertToTraceType(ECollisionChannel CollisionChannel)
+{
+	return UCollisionProfile::Get()->ConvertToTraceType(CollisionChannel);
+}

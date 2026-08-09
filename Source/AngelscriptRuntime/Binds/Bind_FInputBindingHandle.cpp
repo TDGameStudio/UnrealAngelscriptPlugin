@@ -1,4 +1,12 @@
-#include "Bind_FInputBindingHandle.h"
+#include "CoreMinimal.h"
+#include "EnhancedInputComponent.h"
+
+struct FAngelscriptFInputBindingHandleBinds
+{
+	static uint32 GetActionEventHandle(const FEnhancedInputActionEventBinding& Binding);
+	static void ConstructActionValueDefault(FEnhancedInputActionValueBinding* Address);
+	static void ConstructActionValueFromAction(FEnhancedInputActionEventBinding* Address, const UInputAction* Action);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -102,3 +110,20 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FInputBindingHandle(
 		FInputDebugKeyBinding_.Method("uint32 GetHandle() const", METHOD_TRIVIAL(FInputDebugKeyBinding, GetHandle));
 		FInputDebugKeyBinding_.Method("void Execute(const FInputActionValue& ActionValue) const", METHODPR_TRIVIAL(void, FEnhancedInputActionEventBinding, Execute, (const FInputActionValue&) const));
 	});
+
+uint32 FAngelscriptFInputBindingHandleBinds::GetActionEventHandle(const FEnhancedInputActionEventBinding& Binding)
+{
+	return Binding.GetHandle();
+}
+
+void FAngelscriptFInputBindingHandleBinds::ConstructActionValueDefault(FEnhancedInputActionValueBinding* Address)
+{
+	new (Address) FEnhancedInputActionValueBinding();
+}
+
+void FAngelscriptFInputBindingHandleBinds::ConstructActionValueFromAction(
+	FEnhancedInputActionEventBinding* Address,
+	const UInputAction* Action)
+{
+	new (Address) FEnhancedInputActionValueBinding(Action);
+}

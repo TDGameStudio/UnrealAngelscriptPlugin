@@ -79,3 +79,13 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions(
 		Binds.BindGlobalFunctionForTarget("const FNumberFormattingOptions& DefaultNoGrouping() no_discard", &FNumberFormattingOptions::DefaultNoGrouping)
 			.NativeFunction("FNumberFormattingOptions::DefaultNoGrouping", true);
 	});
+
+void FAngelscriptFNumberFormattingOptionsBinds::Construct(FNumberFormattingOptions* Address)
+{
+	new (Address) FNumberFormattingOptions();
+}
+
+uint32 FAngelscriptFNumberFormattingOptionsBinds::Hash(const FNumberFormattingOptions& Options)
+{
+	return GetTypeHash(Options);
+}

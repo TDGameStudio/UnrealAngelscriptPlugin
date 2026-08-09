@@ -132,3 +132,13 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionShape(
 		Binds.BindGlobalFunctionForTarget("FCollisionShape MakeCapsule(const float32 CapsuleRadius, const float32 CapsuleHalfHeight) no_discard", FUNCPR_TRIVIAL(FCollisionShape, FCollisionShape::MakeCapsule, (const float, const float)));
 		Binds.BindGlobalFunctionForTarget("FCollisionShape MakeCapsule(const FVector& Extent) no_discard", FUNCPR_TRIVIAL(FCollisionShape, FCollisionShape::MakeCapsule, (const FVector&)));
 	});
+
+void FAngelscriptFCollisionShapeBinds::ConstructDefault(FCollisionShape* Address)
+{
+	new (Address) FCollisionShape();
+}
+
+void FAngelscriptFCollisionShapeBinds::SetBox(FCollisionShape* Shape, const FVector& HalfExtent)
+{
+	Shape->SetBox(FVector3f(HalfExtent));
+}

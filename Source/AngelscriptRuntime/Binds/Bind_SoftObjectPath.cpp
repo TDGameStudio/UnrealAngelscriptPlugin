@@ -1,4 +1,19 @@
-#include "Bind_SoftObjectPath.h"
+#include "CoreMinimal.h"
+#include "UObject/SoftObjectPath.h"
+
+struct FAngelscriptSoftObjectPathBinds
+{
+	static void ConstructObjectPathFromString(void* Memory, const FString& Path);
+	static void ConstructObjectPathFromObject(void* Memory, const UObject* Object);
+	static UObject* TryLoadObject(FSoftObjectPath* Path);
+	static void AppendObjectPathToString(void* Address, FString& String);
+
+	static void ConstructClassPathFromString(void* Memory, const FString& Path);
+	static void ConstructClassPathFromClass(void* Memory, const UClass* Class);
+	static UClass* ResolveClass(const FSoftClassPath& Path);
+	static UClass* TryLoadClass(const FSoftClassPath& Path);
+	static void AppendClassPathToString(void* Address, FString& String);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -100,3 +115,48 @@ AS_FORCE_LINK const FAngelscriptBind Bind_SoftObjectPath_ToStringContributions(
 		FToStringHelper::Register(Binds, TEXT("FSoftObjectPath"), &FAngelscriptSoftObjectPathBinds::AppendObjectPathToString);
 		FToStringHelper::Register(Binds, TEXT("FSoftClassPath"), &FAngelscriptSoftObjectPathBinds::AppendClassPathToString);
 	});
+
+void FAngelscriptSoftObjectPathBinds::ConstructObjectPathFromString(void* Memory, const FString& Path)
+{
+	new (Memory) FSoftObjectPath(Path);
+}
+
+void FAngelscriptSoftObjectPathBinds::ConstructObjectPathFromObject(void* Memory, const UObject* Object)
+{
+	new (Memory) FSoftObjectPath(Object);
+}
+
+UObject* FAngelscriptSoftObjectPathBinds::TryLoadObject(FSoftObjectPath* Path)
+{
+	return Path->TryLoad();
+}
+
+void FAngelscriptSoftObjectPathBinds::AppendObjectPathToString(void* Address, FString& String)
+{
+	String += static_cast<FSoftObjectPath*>(Address)->ToString();
+}
+
+void FAngelscriptSoftObjectPathBinds::ConstructClassPathFromString(void* Memory, const FString& Path)
+{
+	new (Memory) FSoftClassPath(Path);
+}
+
+void FAngelscriptSoftObjectPathBinds::ConstructClassPathFromClass(void* Memory, const UClass* Class)
+{
+	new (Memory) FSoftClassPath(Class);
+}
+
+UClass* FAngelscriptSoftObjectPathBinds::ResolveClass(const FSoftClassPath& Path)
+{
+	return Path.ResolveClass();
+}
+
+UClass* FAngelscriptSoftObjectPathBinds::TryLoadClass(const FSoftClassPath& Path)
+{
+	return Path.TryLoadClass<UObject>();
+}
+
+void FAngelscriptSoftObjectPathBinds::AppendClassPathToString(void* Address, FString& String)
+{
+	String += static_cast<FSoftClassPath*>(Address)->ToString();
+}

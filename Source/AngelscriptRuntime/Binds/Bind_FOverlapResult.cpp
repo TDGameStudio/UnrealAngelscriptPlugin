@@ -1,4 +1,16 @@
-#include "Bind_FOverlapResult.h"
+class AActor;
+class UPrimitiveComponent;
+struct FOverlapResult;
+
+struct FAngelscriptFOverlapResultBinds
+{
+	static void SetComponent(FOverlapResult* OverlapResult, UPrimitiveComponent* Component);
+	static UPrimitiveComponent* GetComponent(FOverlapResult* OverlapResult);
+	static void SetActor(FOverlapResult* OverlapResult, AActor* Actor);
+	static AActor* GetActor(FOverlapResult* OverlapResult);
+	static bool GetBlockingHit(FOverlapResult* OverlapResult);
+	static void SetBlockingHit(FOverlapResult* OverlapResult, bool bIsBlocking);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -39,3 +51,35 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FOverlapResult(
 		FOverlapResult_.Method("bool GetbBlockingHit() const", &FAngelscriptFOverlapResultBinds::GetBlockingHit);
 		FOverlapResult_.Method("void SetBlockingHit(bool bIsBlocking)", &FAngelscriptFOverlapResultBinds::SetBlockingHit);
 	});
+
+#include "Engine/OverlapResult.h"
+
+void FAngelscriptFOverlapResultBinds::SetComponent(FOverlapResult* OverlapResult, UPrimitiveComponent* Component)
+{
+	OverlapResult->Component = Component;
+}
+
+UPrimitiveComponent* FAngelscriptFOverlapResultBinds::GetComponent(FOverlapResult* OverlapResult)
+{
+	return OverlapResult->GetComponent();
+}
+
+void FAngelscriptFOverlapResultBinds::SetActor(FOverlapResult* OverlapResult, AActor* Actor)
+{
+	OverlapResult->OverlapObjectHandle = FActorInstanceHandle(Actor);
+}
+
+AActor* FAngelscriptFOverlapResultBinds::GetActor(FOverlapResult* OverlapResult)
+{
+	return OverlapResult->GetActor();
+}
+
+bool FAngelscriptFOverlapResultBinds::GetBlockingHit(FOverlapResult* OverlapResult)
+{
+	return OverlapResult->bBlockingHit;
+}
+
+void FAngelscriptFOverlapResultBinds::SetBlockingHit(FOverlapResult* OverlapResult, bool bIsBlocking)
+{
+	OverlapResult->bBlockingHit = bIsBlocking;
+}

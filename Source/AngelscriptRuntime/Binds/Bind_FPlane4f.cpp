@@ -1,4 +1,11 @@
-#include "Bind_FPlane4f.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFPlane4fBinds
+{
+	static void ConstructFromLocationAndNormal(FPlane4f* Address, const FVector3f& Location, const FVector3f& Normal);
+	static void ConstructFromPoints(FPlane4f* Address, const FVector3f& PointA, const FVector3f& PointB, const FVector3f& PointC);
+	static void ConstructFromPlane(FPlane4f* Address, const FPlane& Plane);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -44,3 +51,25 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FPlane4f(
 		FPlane4f_.Method("FVector3f GetOrigin() const", METHOD_TRIVIAL(FPlane4f, GetOrigin));
 		FPlane4f_.Method("const FVector3f& GetNormal() const", METHOD_TRIVIAL(FPlane4f, GetNormal));
 	});
+
+void FAngelscriptFPlane4fBinds::ConstructFromLocationAndNormal(
+	FPlane4f* Address,
+	const FVector3f& Location,
+	const FVector3f& Normal)
+{
+	new (Address) FPlane4f(Location, Normal);
+}
+
+void FAngelscriptFPlane4fBinds::ConstructFromPoints(
+	FPlane4f* Address,
+	const FVector3f& PointA,
+	const FVector3f& PointB,
+	const FVector3f& PointC)
+{
+	new (Address) FPlane4f(PointA, PointB, PointC);
+}
+
+void FAngelscriptFPlane4fBinds::ConstructFromPlane(FPlane4f* Address, const FPlane& Plane)
+{
+	new (Address) FPlane4f(Plane);
+}

@@ -1,4 +1,16 @@
-#include "Bind_SystemTimers.h"
+#include "CoreMinimal.h"
+#include "Engine/TimerHandle.h"
+
+class UObject;
+
+struct FAngelscriptSystemTimersBinds
+{
+	static FTimerHandle SetTimer(const UObject* Object, const FName& FunctionName, float Time, bool bLooping);
+	static bool IsTimerPaused(FTimerHandle Handle);
+	static void PauseTimer(FTimerHandle Handle);
+	static void UnpauseTimer(FTimerHandle Handle);
+	static void ClearAndInvalidateTimer(FTimerHandle& Handle);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -40,3 +52,42 @@ AS_FORCE_LINK const FAngelscriptBind Bind_SystemTimers(
 		Binds.BindGlobalFunctionForTarget("void ClearAndInvalidateTimerHandle(FTimerHandle& Handle)", &FAngelscriptSystemTimersBinds::ClearAndInvalidateTimer)
 			.WorldContext();
 	});
+
+#include "AngelscriptEngine.h"
+#include "Kismet/KismetSystemLibrary.h"
+
+FTimerHandle FAngelscriptSystemTimersBinds::SetTimer(
+	const UObject* Object,
+	const FName& FunctionName,
+	float Time,
+	bool bLooping)
+{
+	return UKismetSystemLibrary::K2_SetTimer(
+		const_cast<UObject*>(Object),
+		FunctionName.ToString(),
+		Time,
+		bLooping,
+		false,
+		0.f,
+		0.f);
+}
+
+bool FAngelscriptSystemTimersBinds::IsTimerPaused(FTimerHandle Handle)
+{
+	return UKismetSystemLibrary::K2_IsTimerPausedHandle(FAngelscriptEngine::TryGetCurrentWorldContextObject(), Handle);
+}
+
+void FAngelscriptSystemTimersBinds::PauseTimer(FTimerHandle Handle)
+{
+	UKismetSystemLibrary::K2_PauseTimerHandle(FAngelscriptEngine::TryGetCurrentWorldContextObject(), Handle);
+}
+
+void FAngelscriptSystemTimersBinds::UnpauseTimer(FTimerHandle Handle)
+{
+	UKismetSystemLibrary::K2_UnPauseTimerHandle(FAngelscriptEngine::TryGetCurrentWorldContextObject(), Handle);
+}
+
+void FAngelscriptSystemTimersBinds::ClearAndInvalidateTimer(FTimerHandle& Handle)
+{
+	UKismetSystemLibrary::K2_ClearAndInvalidateTimerHandle(FAngelscriptEngine::TryGetCurrentWorldContextObject(), Handle);
+}

@@ -1,4 +1,11 @@
-#include "Bind_FAngelscriptGameThreadScopeWorldContext.h"
+class UObject;
+struct FAngelscriptGameThreadScopeWorldContext;
+
+struct FAngelscriptFAngelscriptGameThreadScopeWorldContextBinds
+{
+	static void Construct(FAngelscriptGameThreadScopeWorldContext* Address, UObject* WorldContext);
+	static void Destruct(FAngelscriptGameThreadScopeWorldContext& Scope);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -30,3 +37,18 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FAngelscriptGameThreadScopeWorldContex
 			"void f()",
 			&FAngelscriptFAngelscriptGameThreadScopeWorldContextBinds::Destruct);
 	});
+
+#include "AngelscriptEngine.h"
+
+void FAngelscriptFAngelscriptGameThreadScopeWorldContextBinds::Construct(
+	FAngelscriptGameThreadScopeWorldContext* Address,
+	UObject* WorldContext)
+{
+	new (Address) FAngelscriptGameThreadScopeWorldContext(WorldContext);
+}
+
+void FAngelscriptFAngelscriptGameThreadScopeWorldContextBinds::Destruct(
+	FAngelscriptGameThreadScopeWorldContext& Scope)
+{
+	Scope.~FAngelscriptGameThreadScopeWorldContext();
+}

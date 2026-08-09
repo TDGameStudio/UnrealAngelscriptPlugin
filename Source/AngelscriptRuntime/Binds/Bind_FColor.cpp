@@ -1,4 +1,11 @@
-#include "Bind_FColor.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFColorBinds
+{
+	static void ConstructRGBA(FColor* Address, uint8 R, uint8 G, uint8 B, uint8 A);
+	static void ConstructPacked(FColor* Address, uint32 PackedColor);
+	static void AppendToString(void* Address, FString& OutString);
+};
 
 #include "Misc/DefaultValueHelper.h"
 
@@ -145,3 +152,18 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FColor_ToStringContribution(
 	{
 		FToStringHelper::Register(Binds, TEXT("FColor"), &FAngelscriptFColorBinds::AppendToString);
 	});
+
+void FAngelscriptFColorBinds::ConstructRGBA(FColor* Address, uint8 R, uint8 G, uint8 B, uint8 A)
+{
+	new (Address) FColor(R, G, B, A);
+}
+
+void FAngelscriptFColorBinds::ConstructPacked(FColor* Address, uint32 PackedColor)
+{
+	new (Address) FColor(PackedColor);
+}
+
+void FAngelscriptFColorBinds::AppendToString(void* Address, FString& OutString)
+{
+	OutString += static_cast<FColor*>(Address)->ToString();
+}

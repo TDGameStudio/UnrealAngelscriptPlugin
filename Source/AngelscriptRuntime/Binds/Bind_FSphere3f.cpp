@@ -93,3 +93,28 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FSphere3f(
 		FSphere3f_.Method("bool Intersects(const FSphere3f& Other, float32 Tolerance = KINDA_SMALL_NUMBER) const", METHODPR_TRIVIAL(bool, FSphere3f, Intersects, (const FSphere3f&, float) const));
 		FSphere3f_.Method("float32 GetVolume() const", METHOD_TRIVIAL(FSphere3f, GetVolume));
 	});
+
+void FAngelscriptFSphere3fBinds::ConstructDefault(FSphere3f* Address)
+{
+	new (Address) FSphere3f(ForceInit);
+}
+
+void FAngelscriptFSphere3fBinds::ConstructCenterRadius(FSphere3f* Address, const FVector3f Center, const float Radius)
+{
+	new (Address) FSphere3f(Center, Radius);
+}
+
+void FAngelscriptFSphere3fBinds::ConstructCopy(FSphere3f* Address, const FSphere3f& Sphere)
+{
+	new (Address) FSphere3f(Sphere);
+}
+
+void FAngelscriptFSphere3fBinds::ConstructFromSphere(FSphere3f* Address, const FSphere& Sphere)
+{
+	new (Address) FSphere3f(Sphere);
+}
+
+void FAngelscriptFSphere3fBinds::ConstructFromPoints(FSphere3f* Address, TArray<FVector3f>& Points)
+{
+	new (Address) FSphere3f(Points.GetData(), Points.Num());
+}

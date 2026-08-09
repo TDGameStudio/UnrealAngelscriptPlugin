@@ -1,4 +1,11 @@
-#include "Bind_UGameInstance.h"
+class UGameInstance;
+class ULocalPlayer;
+struct FUniqueNetIdRepl;
+
+struct FAngelscriptUGameInstanceBinds
+{
+	static ULocalPlayer* FindLocalPlayerFromUniqueNetId(const UGameInstance* GameInstance, const FUniqueNetIdRepl& UniqueNetId);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -60,3 +67,13 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UGameInstance(
 			&FAngelscriptUGameInstanceBinds::FindLocalPlayerFromUniqueNetId);
 		UGameInstance_.Method("ULocalPlayer GetFirstGamePlayer() const", METHOD_TRIVIAL(UGameInstance, GetFirstGamePlayer));
 	});
+
+#include "Engine/GameInstance.h"
+#include "GameFramework/OnlineReplStructs.h"
+
+ULocalPlayer* FAngelscriptUGameInstanceBinds::FindLocalPlayerFromUniqueNetId(
+	const UGameInstance* GameInstance,
+	const FUniqueNetIdRepl& UniqueNetId)
+{
+	return GameInstance->FindLocalPlayerFromUniqueNetId(*UniqueNetId);
+}

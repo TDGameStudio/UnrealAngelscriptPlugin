@@ -1,4 +1,9 @@
-#include "Bind_FPlatformApplicationMisc.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFPlatformApplicationMiscBinds
+{
+	static void ClipboardCopy(const FString& String);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -26,3 +31,10 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FPlatformApplicationMisc(
 		Binds.BindGlobalFunctionForTarget("void ClipboardPaste(FString&\tDest)", &FPlatformApplicationMisc::ClipboardPaste)
 			.NativeFunction("FPlatformApplicationMisc::ClipboardPaste", true);
 	});
+
+#include "HAL/PlatformApplicationMisc.h"
+
+void FAngelscriptFPlatformApplicationMiscBinds::ClipboardCopy(const FString& String)
+{
+	FPlatformApplicationMisc::ClipboardCopy(*String);
+}

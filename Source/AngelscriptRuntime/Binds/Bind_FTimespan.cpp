@@ -1,4 +1,14 @@
-#include "Bind_FTimespan.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFTimespanBinds
+{
+	static void ConstructTicks(FTimespan* Address, int64 Ticks);
+	static void ConstructTime(FTimespan* Address, int32 Hours, int32 Minutes, int32 Seconds);
+	static void ConstructDays(FTimespan* Address, int32 Days, int32 Hours, int32 Minutes, int32 Seconds);
+	static void ConstructNanoseconds(FTimespan* Address, int32 Days, int32 Hours, int32 Minutes, int32 Seconds, int32 FractionNano);
+	static int32 Compare(const FTimespan& Timespan, const FTimespan& Other);
+	static FString ToStringFormat(FTimespan* Timespan, FString Format);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -189,3 +199,47 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FTimespan(
 		FTimespan_.Method("FString ToString() const", METHODPR_TRIVIAL(FString, FTimespan, ToString, () const));
 		FTimespan_.Method("FString ToString(const FString Format) const", &FAngelscriptFTimespanBinds::ToStringFormat);
 	});
+
+void FAngelscriptFTimespanBinds::ConstructTicks(FTimespan* Address, const int64 Ticks)
+{
+	new (Address) FTimespan(Ticks);
+}
+
+void FAngelscriptFTimespanBinds::ConstructTime(FTimespan* Address, const int32 Hours, const int32 Minutes, const int32 Seconds)
+{
+	new (Address) FTimespan(Hours, Minutes, Seconds);
+}
+
+void FAngelscriptFTimespanBinds::ConstructDays(FTimespan* Address, const int32 Days, const int32 Hours, const int32 Minutes, const int32 Seconds)
+{
+	new (Address) FTimespan(Days, Hours, Minutes, Seconds);
+}
+
+void FAngelscriptFTimespanBinds::ConstructNanoseconds(
+	FTimespan* Address,
+	const int32 Days,
+	const int32 Hours,
+	const int32 Minutes,
+	const int32 Seconds,
+	const int32 FractionNano)
+{
+	new (Address) FTimespan(Days, Hours, Minutes, Seconds, FractionNano);
+}
+
+int32 FAngelscriptFTimespanBinds::Compare(const FTimespan& Timespan, const FTimespan& Other)
+{
+	if (Timespan < Other)
+	{
+		return -1;
+	}
+	if (Timespan > Other)
+	{
+		return 1;
+	}
+	return 0;
+}
+
+FString FAngelscriptFTimespanBinds::ToStringFormat(FTimespan* Timespan, FString Format)
+{
+	return Timespan->ToString(*Format);
+}

@@ -1,4 +1,11 @@
-#include "Bind_FCpuProfilerTraceScoped.h"
+#include "CoreMinimal.h"
+
+struct FCpuProfilerTraceScoped;
+
+struct FAngelscriptFCpuProfilerTraceScopedBinds
+{
+	static void Construct(FCpuProfilerTraceScoped* Address, const FName& EventId);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -24,3 +31,10 @@ AS_FORCE_LINK const FAngelscriptBind Bind_TraceCPUProfilerEventScoped(
 			true)
 			.NoDiscard();
 	});
+
+#include "FCpuProfilerTraceScoped.h"
+
+void FAngelscriptFCpuProfilerTraceScopedBinds::Construct(FCpuProfilerTraceScoped* Address, const FName& EventId)
+{
+	new (Address) FCpuProfilerTraceScoped(EventId);
+}

@@ -1,4 +1,10 @@
-#include "Bind_FCommandLine.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFCommandLineBinds
+{
+	static FString Get();
+	static void Parse(const FString& CommandLine, TArray<FString>& OutTokens, TArray<FString>& OutSwitches);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -25,3 +31,18 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FCommandLine(
 			"void Parse(const FString& CmdLine, TArray<FString>& OutTokens, TArray<FString>& OutSwitches)",
 			&FAngelscriptFCommandLineBinds::Parse);
 	});
+
+#include "Misc/CommandLine.h"
+
+FString FAngelscriptFCommandLineBinds::Get()
+{
+	return FString(FCommandLine::Get());
+}
+
+void FAngelscriptFCommandLineBinds::Parse(
+	const FString& CommandLine,
+	TArray<FString>& OutTokens,
+	TArray<FString>& OutSwitches)
+{
+	FCommandLine::Parse(*CommandLine, OutTokens, OutSwitches);
+}

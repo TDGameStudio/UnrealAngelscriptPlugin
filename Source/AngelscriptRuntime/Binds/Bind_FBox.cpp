@@ -152,3 +152,23 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FBox(
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FBox");
 		Binds.BindGlobalFunctionForTarget("FBox BuildAABB( const FVector& Origin, const FVector& Extent) no_discard", FUNC_TRIVIAL(FBox::BuildAABB));
 	});
+
+void FAngelscriptFBoxBinds::ConstructDefault(FBox* Address)
+{
+	new (Address) FBox(ForceInit);
+}
+
+void FAngelscriptFBoxBinds::ConstructMinMax(FBox* Address, const FVector& Min, const FVector& Max)
+{
+	new (Address) FBox(Min, Max);
+}
+
+void FAngelscriptFBoxBinds::ConstructFromBox3f(FBox* Address, const FBox3f& Box)
+{
+	new (Address) FBox(Box);
+}
+
+void FAngelscriptFBoxBinds::AppendToString(void* Ptr, FString& Str)
+{
+	Str += static_cast<FBox*>(Ptr)->ToString();
+}

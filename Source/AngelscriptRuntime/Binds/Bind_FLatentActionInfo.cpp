@@ -1,4 +1,14 @@
-#include "Bind_FLatentActionInfo.h"
+#include "Engine/LatentActionManager.h"
+
+struct FAngelscriptFLatentActionInfoBinds
+{
+	static void Construct(
+		FLatentActionInfo* Address,
+		int32 Linkage,
+		int32 Uuid,
+		FName FunctionName,
+		UObject* CallbackTarget);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -41,3 +51,17 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FLatentActionInfo(
 		FLatentActionInfo_.Property("FName ExecutionFunction", &FLatentActionInfo::ExecutionFunction);
 		FLatentActionInfo_.Property("UObject unresolved_object CallbackTarget", &FLatentActionInfo::CallbackTarget);
 	});
+
+void FAngelscriptFLatentActionInfoBinds::Construct(
+	FLatentActionInfo* Address,
+	int32 Linkage,
+	int32 Uuid,
+	FName FunctionName,
+	UObject* CallbackTarget)
+{
+	new (Address) FLatentActionInfo();
+	Address->Linkage = Linkage;
+	Address->UUID = Uuid;
+	Address->ExecutionFunction = FunctionName;
+	Address->CallbackTarget = CallbackTarget;
+}

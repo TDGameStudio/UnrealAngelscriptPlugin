@@ -1,4 +1,14 @@
-#include "Bind_FInputActionValue.h"
+#include "InputActionValue.h"
+
+struct FAngelscriptFInputActionValueBinds
+{
+	static void ConstructAxis1D(FInputActionValue* Address, float Value);
+	static void ConstructAxis2D(FInputActionValue* Address, FVector2D Value);
+	static void ConstructAxis3D(FInputActionValue* Address, FVector Value);
+	static void ConstructTyped(FInputActionValue* Address, EInputActionValueType ValueType, FVector Value);
+	static FInputActionValue& ConvertToType(FInputActionValue* Value, EInputActionValueType Type);
+	static FInputActionValue& ConvertToOtherType(FInputActionValue* Value, const FInputActionValue& Other);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -63,3 +73,40 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FInputActionValue(
 		Binds.BindGlobalFunctionForTarget("EInputActionValueType GetValueTypeFromKey(FKey Key)", &FInputActionValue::GetValueTypeFromKey)
 			.NativeFunction("FInputActionValue::GetValueTypeFromKey", true);
 	});
+
+void FAngelscriptFInputActionValueBinds::ConstructAxis1D(FInputActionValue* Address, float Value)
+{
+	new (Address) FInputActionValue(Value);
+}
+
+void FAngelscriptFInputActionValueBinds::ConstructAxis2D(FInputActionValue* Address, FVector2D Value)
+{
+	new (Address) FInputActionValue(Value);
+}
+
+void FAngelscriptFInputActionValueBinds::ConstructAxis3D(FInputActionValue* Address, FVector Value)
+{
+	new (Address) FInputActionValue(Value);
+}
+
+void FAngelscriptFInputActionValueBinds::ConstructTyped(
+	FInputActionValue* Address,
+	EInputActionValueType ValueType,
+	FVector Value)
+{
+	new (Address) FInputActionValue(ValueType, Value);
+}
+
+FInputActionValue& FAngelscriptFInputActionValueBinds::ConvertToType(
+	FInputActionValue* Value,
+	EInputActionValueType Type)
+{
+	return Value->ConvertToType(Type);
+}
+
+FInputActionValue& FAngelscriptFInputActionValueBinds::ConvertToOtherType(
+	FInputActionValue* Value,
+	const FInputActionValue& Other)
+{
+	return Value->ConvertToType(Other);
+}

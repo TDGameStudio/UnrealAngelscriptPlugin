@@ -1,4 +1,18 @@
-#include "Bind_FFileHelper.h"
+#include "Misc/FileHelper.h"
+
+struct FAngelscriptFFileHelperBinds
+{
+	static bool LoadFileToString(
+		FString& Result,
+		const FString& Filename,
+		FFileHelper::EHashOptions HashOptions,
+		uint32 ReadFlags);
+	static bool SaveStringToFile(
+		const FString& String,
+		const FString& Filename,
+		FFileHelper::EEncodingOptions EncodingOptions,
+		uint32 WriteFlags);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -79,3 +93,23 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FFileHelper(
 			"bool SaveStringToFile(const FString& String, const FString& Filename, FFileHelper::EEncodingOptions EncodingOptions = FFileHelper::EEncodingOptions::AutoDetect, uint32 WriteFlags = uint32(EFileWrite::None))",
 			&FAngelscriptFFileHelperBinds::SaveStringToFile);
 	});
+
+#include "HAL/FileManager.h"
+
+bool FAngelscriptFFileHelperBinds::LoadFileToString(
+	FString& Result,
+	const FString& Filename,
+	FFileHelper::EHashOptions HashOptions,
+	uint32 ReadFlags)
+{
+	return FFileHelper::LoadFileToString(Result, *Filename, HashOptions, ReadFlags);
+}
+
+bool FAngelscriptFFileHelperBinds::SaveStringToFile(
+	const FString& String,
+	const FString& Filename,
+	FFileHelper::EEncodingOptions EncodingOptions,
+	uint32 WriteFlags)
+{
+	return FFileHelper::SaveStringToFile(String, *Filename, EncodingOptions, &IFileManager::Get(), WriteFlags);
+}

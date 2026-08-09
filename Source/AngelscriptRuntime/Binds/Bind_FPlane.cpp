@@ -1,4 +1,13 @@
-#include "Bind_FPlane.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFPlaneBinds
+{
+	static void ConstructFromLocationAndNormal(FPlane* Address, const FVector& Location, const FVector& Normal);
+	static void ConstructFromPoints(FPlane* Address, const FVector& PointA, const FVector& PointB, const FVector& PointC);
+	static void ConstructFromPlane4f(FPlane* Address, const FPlane4f& Plane);
+	static FVector RayPlaneIntersection(const FPlane& Plane, const FVector& RayOrigin, const FVector& RayDirection);
+	static bool SegmentPlaneIntersection(const FPlane& Plane, const FVector& StartPoint, const FVector& EndPoint, FVector& OutIntersectionPoint);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -75,3 +84,42 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FPlane(
 				"@param OutIntersectionPoint - the point on the segment that intersects the mesh (if any)"
 				"@return true if intersection occurred"));
 	});
+
+void FAngelscriptFPlaneBinds::ConstructFromLocationAndNormal(
+	FPlane* Address,
+	const FVector& Location,
+	const FVector& Normal)
+{
+	new (Address) FPlane(Location, Normal.GetSafeNormal());
+}
+
+void FAngelscriptFPlaneBinds::ConstructFromPoints(
+	FPlane* Address,
+	const FVector& PointA,
+	const FVector& PointB,
+	const FVector& PointC)
+{
+	new (Address) FPlane(PointA, PointB, PointC);
+}
+
+void FAngelscriptFPlaneBinds::ConstructFromPlane4f(FPlane* Address, const FPlane4f& Plane)
+{
+	new (Address) FPlane(Plane);
+}
+
+FVector FAngelscriptFPlaneBinds::RayPlaneIntersection(
+	const FPlane& Plane,
+	const FVector& RayOrigin,
+	const FVector& RayDirection)
+{
+	return FMath::RayPlaneIntersection(RayOrigin, RayDirection, Plane);
+}
+
+bool FAngelscriptFPlaneBinds::SegmentPlaneIntersection(
+	const FPlane& Plane,
+	const FVector& StartPoint,
+	const FVector& EndPoint,
+	FVector& OutIntersectionPoint)
+{
+	return FMath::SegmentPlaneIntersection(StartPoint, EndPoint, Plane, OutIntersectionPoint);
+}

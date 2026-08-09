@@ -1,4 +1,11 @@
-#include "Bind_LandscapeProxy.h"
+#include "CoreMinimal.h"
+
+class ALandscapeProxy;
+
+struct FAngelscriptLandscapeProxyBinds
+{
+	static bool GetHeightAtLocation(const ALandscapeProxy* LandscapeProxy, FVector Location, float& OutHeight);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -22,3 +29,20 @@ AS_FORCE_LINK const FAngelscriptBind Bind_ALandscapeProxy(
 			"bool GetHeightAtLocation(FVector Location, float32& OutHeight) const",
 			&FAngelscriptLandscapeProxyBinds::GetHeightAtLocation);
 	});
+
+#include "Runtime/Landscape/Classes/LandscapeProxy.h"
+
+bool FAngelscriptLandscapeProxyBinds::GetHeightAtLocation(
+	const ALandscapeProxy* LandscapeProxy,
+	FVector Location,
+	float& OutHeight)
+{
+	const TOptional<float> Height = LandscapeProxy->GetHeightAtLocation(Location);
+	if (!Height.IsSet())
+	{
+		return false;
+	}
+
+	OutHeight = Height.GetValue();
+	return true;
+}

@@ -1,4 +1,16 @@
-#include "Bind_FMargin.h"
+#include "CoreMinimal.h"
+#include "Layout/Margin.h"
+
+struct FAngelscriptFMarginBinds
+{
+	static void ConstructUniform(FMargin* Address, float UniformMargin);
+	static void ConstructHorizontalVertical(FMargin* Address, float Horizontal, float Vertical);
+	static void ConstructFromVector2D(FMargin* Address, const FVector2D& Vector);
+	static void ConstructLTRB(FMargin* Address, float Left, float Top, float Right, float Bottom);
+	static void ConstructFromVector4(FMargin* Address, const FVector4& Vector);
+	static float GetTotalSpaceAlongHorizontal(const FMargin& Margin);
+	static float GetTotalSpaceAlongVertical(const FMargin& Margin);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -85,3 +97,38 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FMargin(
 		FMargin_.Method("float32 GetTotalSpaceAlongHorizontal() const", &FAngelscriptFMarginBinds::GetTotalSpaceAlongHorizontal);
 		FMargin_.Method("float32 GetTotalSpaceAlongVertical() const", &FAngelscriptFMarginBinds::GetTotalSpaceAlongVertical);
 	});
+
+void FAngelscriptFMarginBinds::ConstructUniform(FMargin* Address, float UniformMargin)
+{
+	new (Address) FMargin(UniformMargin);
+}
+
+void FAngelscriptFMarginBinds::ConstructHorizontalVertical(FMargin* Address, float Horizontal, float Vertical)
+{
+	new (Address) FMargin(Horizontal, Vertical);
+}
+
+void FAngelscriptFMarginBinds::ConstructFromVector2D(FMargin* Address, const FVector2D& Vector)
+{
+	new (Address) FMargin(Vector);
+}
+
+void FAngelscriptFMarginBinds::ConstructLTRB(FMargin* Address, float Left, float Top, float Right, float Bottom)
+{
+	new (Address) FMargin(Left, Top, Right, Bottom);
+}
+
+void FAngelscriptFMarginBinds::ConstructFromVector4(FMargin* Address, const FVector4& Vector)
+{
+	new (Address) FMargin(Vector);
+}
+
+float FAngelscriptFMarginBinds::GetTotalSpaceAlongHorizontal(const FMargin& Margin)
+{
+	return Margin.GetTotalSpaceAlong<Orient_Horizontal>();
+}
+
+float FAngelscriptFMarginBinds::GetTotalSpaceAlongVertical(const FMargin& Margin)
+{
+	return Margin.GetTotalSpaceAlong<Orient_Vertical>();
+}

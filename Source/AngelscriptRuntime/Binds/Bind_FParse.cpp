@@ -1,4 +1,12 @@
-#include "Bind_FParse.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFParseBinds
+{
+	static bool ValueString(const FString& Stream, const FString& Match, FString& Value);
+	static bool ValueFloat(const FString& Stream, const FString& Match, float& Value);
+	static bool ValueInt(const FString& Stream, const FString& Match, int& Value);
+	static bool Bool(const FString& Stream, const FString& Match, bool& bValue);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -40,3 +48,25 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FParse(
 			"bool Bool(const FString& Stream, const FString& Match, bool& OnOff)",
 			&FAngelscriptFParseBinds::Bool);
 	});
+
+#include "Misc/Parse.h"
+
+bool FAngelscriptFParseBinds::ValueString(const FString& Stream, const FString& Match, FString& Value)
+{
+	return FParse::Value(*Stream, *Match, Value);
+}
+
+bool FAngelscriptFParseBinds::ValueFloat(const FString& Stream, const FString& Match, float& Value)
+{
+	return FParse::Value(*Stream, *Match, Value);
+}
+
+bool FAngelscriptFParseBinds::ValueInt(const FString& Stream, const FString& Match, int& Value)
+{
+	return FParse::Value(*Stream, *Match, Value);
+}
+
+bool FAngelscriptFParseBinds::Bool(const FString& Stream, const FString& Match, bool& bValue)
+{
+	return FParse::Bool(*Stream, *Match, bValue);
+}

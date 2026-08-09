@@ -1,4 +1,14 @@
-#include "Bind_FMessageDialog.h"
+#include "Misc/MessageDialog.h"
+
+struct FAngelscriptFMessageDialogBinds
+{
+	static EAppReturnType::Type Open(EAppMsgType::Type MessageType, const FText& Message, FText OptionalTitle);
+	static EAppReturnType::Type OpenWithCategory(
+		EAppMsgCategory MessageCategory,
+		EAppMsgType::Type MessageType,
+		const FText& Message,
+		FText OptionalTitle);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -33,3 +43,20 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FMessageDialog(
 			"EAppReturnType Open(EAppMsgCategory MessageCategory, EAppMsgType MessageType, const FText& Message, FText OptionalTitle = FText())",
 			&FAngelscriptFMessageDialogBinds::OpenWithCategory);
 	});
+
+EAppReturnType::Type FAngelscriptFMessageDialogBinds::Open(
+	EAppMsgType::Type MessageType,
+	const FText& Message,
+	FText OptionalTitle)
+{
+	return FMessageDialog::Open(MessageType, Message, OptionalTitle);
+}
+
+EAppReturnType::Type FAngelscriptFMessageDialogBinds::OpenWithCategory(
+	EAppMsgCategory MessageCategory,
+	EAppMsgType::Type MessageType,
+	const FText& Message,
+	FText OptionalTitle)
+{
+	return FMessageDialog::Open(MessageCategory, MessageType, Message, OptionalTitle);
+}

@@ -1,4 +1,19 @@
-#include "Bind_UEnhancedInputComponent.h"
+#include "EnhancedInputComponent.h"
+
+struct FAngelscriptUEnhancedInputComponentBinds
+{
+	static FEnhancedInputActionEventBinding& BindAction(
+		UEnhancedInputComponent& InputComponent,
+		const UInputAction* Action,
+		ETriggerEvent TriggerEvent,
+		FEnhancedInputActionHandlerDynamicSignature Delegate);
+	static FInputDebugKeyBinding& BindDebugKey(
+		UEnhancedInputComponent& InputComponent,
+		FInputChord Chord,
+		EInputEvent KeyEvent,
+		FInputDebugKeyHandlerDynamicSignature Delegate,
+		bool bExecuteWhenPaused);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -97,3 +112,27 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UEnhancedInputComponent(
 			&FAngelscriptUEnhancedInputComponentBinds::BindDebugKey);
 		InputComponent_.Method("FInputActionValue GetBoundActionValue(const UInputAction Action)", METHODPR_TRIVIAL(FInputActionValue, UEnhancedInputComponent, GetBoundActionValue, (const UInputAction*)));
 	});
+
+FEnhancedInputActionEventBinding& FAngelscriptUEnhancedInputComponentBinds::BindAction(
+	UEnhancedInputComponent& InputComponent,
+	const UInputAction* Action,
+	ETriggerEvent TriggerEvent,
+	FEnhancedInputActionHandlerDynamicSignature Delegate)
+{
+	return InputComponent.BindAction(Action, TriggerEvent, Delegate.GetUObject(), Delegate.GetFunctionName());
+}
+
+FInputDebugKeyBinding& FAngelscriptUEnhancedInputComponentBinds::BindDebugKey(
+	UEnhancedInputComponent& InputComponent,
+	FInputChord Chord,
+	EInputEvent KeyEvent,
+	FInputDebugKeyHandlerDynamicSignature Delegate,
+	bool bExecuteWhenPaused)
+{
+	return InputComponent.BindDebugKey(
+		Chord,
+		KeyEvent,
+		Delegate.GetUObject(),
+		Delegate.GetFunctionName(),
+		bExecuteWhenPaused);
+}

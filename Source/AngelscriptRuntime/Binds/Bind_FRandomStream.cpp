@@ -104,3 +104,23 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FRandomStream_ToStringContribution(
 	{
 		FToStringHelper::Register(Binds, TEXT("FRandomStream"), &FAngelscriptFRandomStreamBinds::AppendToString);
 	});
+
+void FAngelscriptFRandomStreamBinds::ConstructDefault(FRandomStream* Address)
+{
+	new (Address) FRandomStream();
+}
+
+void FAngelscriptFRandomStreamBinds::ConstructIntSeed(FRandomStream* Address, int32 Seed)
+{
+	new (Address) FRandomStream(Seed);
+}
+
+void FAngelscriptFRandomStreamBinds::ConstructUIntSeed(FRandomStream* Address, uint32 Seed)
+{
+	new (Address) FRandomStream(static_cast<int32>(Seed));
+}
+
+void FAngelscriptFRandomStreamBinds::AppendToString(void* Address, FString& String)
+{
+	String += static_cast<FRandomStream*>(Address)->ToString();
+}

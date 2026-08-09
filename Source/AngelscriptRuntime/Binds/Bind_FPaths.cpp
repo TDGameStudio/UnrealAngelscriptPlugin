@@ -1,4 +1,16 @@
-#include "Bind_FPaths.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFPathsBinds
+{
+	static FString CombinePaths(const FString& FirstPath, const FString& SecondPath);
+	static FString GetExtension(const FString& Path, bool bIncludeDot);
+	static FString GetCleanFilename(const FString& Path);
+	static FString GetBaseFilename(const FString& Path, bool bRemovePath);
+	static FString GetPath(const FString& Path);
+	static FString GetPathLeaf(const FString& Path);
+	static FString ConvertRelativePathToFull(const FString& Path);
+	static FString ConvertRelativePathToFullFromBase(const FString& BasePath, const FString& Path);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -158,3 +170,45 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FPaths(
 		Binds.BindGlobalFunctionForTarget("FString ConvertRelativePathToFull(const FString& InPath)", &FAngelscriptFPathsBinds::ConvertRelativePathToFull);
 		Binds.BindGlobalFunctionForTarget("FString ConvertRelativePathToFull(const FString& BasePath, const FString& InPath)", &FAngelscriptFPathsBinds::ConvertRelativePathToFullFromBase);
 	});
+
+#include "Misc/Paths.h"
+
+FString FAngelscriptFPathsBinds::CombinePaths(const FString& FirstPath, const FString& SecondPath)
+{
+	return FPaths::Combine(FirstPath, SecondPath);
+}
+
+FString FAngelscriptFPathsBinds::GetExtension(const FString& Path, bool bIncludeDot)
+{
+	return FPaths::GetExtension(Path, bIncludeDot);
+}
+
+FString FAngelscriptFPathsBinds::GetCleanFilename(const FString& Path)
+{
+	return FPaths::GetCleanFilename(Path);
+}
+
+FString FAngelscriptFPathsBinds::GetBaseFilename(const FString& Path, bool bRemovePath)
+{
+	return FPaths::GetBaseFilename(Path, bRemovePath);
+}
+
+FString FAngelscriptFPathsBinds::GetPath(const FString& Path)
+{
+	return FPaths::GetPath(Path);
+}
+
+FString FAngelscriptFPathsBinds::GetPathLeaf(const FString& Path)
+{
+	return FPaths::GetPathLeaf(Path);
+}
+
+FString FAngelscriptFPathsBinds::ConvertRelativePathToFull(const FString& Path)
+{
+	return FPaths::ConvertRelativePathToFull(Path);
+}
+
+FString FAngelscriptFPathsBinds::ConvertRelativePathToFullFromBase(const FString& BasePath, const FString& Path)
+{
+	return FPaths::ConvertRelativePathToFull(BasePath, Path);
+}

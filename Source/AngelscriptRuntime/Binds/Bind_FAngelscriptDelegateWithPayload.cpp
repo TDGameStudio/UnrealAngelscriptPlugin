@@ -1,4 +1,20 @@
-#include "Bind_FAngelscriptDelegateWithPayload.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptDelegateWithPayload;
+
+struct FAngelscriptDelegateWithPayloadBinds
+{
+	static void BindUFunction(
+		FAngelscriptDelegateWithPayload& Delegate,
+		UObject* Object,
+		const FName& FunctionName);
+	static void BindWithPayload(
+		FAngelscriptDelegateWithPayload& Delegate,
+		UObject* Object,
+		const FName& FunctionName,
+		void* Payload,
+		int PayloadScriptTypeId);
+};
 
 #include "AngelscriptDelegateWithPayload.h"
 #include "AngelscriptBinds.h"
@@ -245,4 +261,24 @@ UScriptStruct* FAngelscriptDelegateWithPayload::GetBoxedPrimitiveStructFromTypeI
 	}
 
 	return nullptr;
+}
+
+#include "AngelscriptDelegateWithPayload.h"
+
+void FAngelscriptDelegateWithPayloadBinds::BindUFunction(
+	FAngelscriptDelegateWithPayload& Delegate,
+	UObject* Object,
+	const FName& FunctionName)
+{
+	Delegate.BindUFunction(Object, FunctionName);
+}
+
+void FAngelscriptDelegateWithPayloadBinds::BindWithPayload(
+	FAngelscriptDelegateWithPayload& Delegate,
+	UObject* Object,
+	const FName& FunctionName,
+	void* Payload,
+	int PayloadScriptTypeId)
+{
+	Delegate.BindUFunctionWithPayload(Object, FunctionName, Payload, PayloadScriptTypeId);
 }

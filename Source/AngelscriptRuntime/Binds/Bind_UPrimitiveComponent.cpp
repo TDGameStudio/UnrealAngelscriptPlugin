@@ -1,4 +1,15 @@
-#include "Bind_UPrimitiveComponent.h"
+#include "Components/PrimitiveComponent.h"
+
+struct FAngelscriptUPrimitiveComponentBinds
+{
+	static FVector GetBoundingBoxExtents(const UPrimitiveComponent* Component);
+	static FVector GetBoundsOrigin(const UPrimitiveComponent* Component);
+	static FVector GetBoundsExtent(const UPrimitiveComponent* Component);
+	static double GetBoundsRadius(const UPrimitiveComponent* Component);
+	static bool GetSelectable(const UPrimitiveComponent* Component);
+	static void SetSelectable(UPrimitiveComponent* Component, bool bSelectable);
+	static void SetLightmapType(UPrimitiveComponent* Component, ELightmapType Type);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -37,3 +48,38 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UPrimitiveComponent(
 		PrimitiveComponent_.Method("void SetbSelectable(bool bSelectable)", &FAngelscriptUPrimitiveComponentBinds::SetSelectable);
 		PrimitiveComponent_.Method("void SetLightmapType(ELightmapType Type)", &FAngelscriptUPrimitiveComponentBinds::SetLightmapType);
 	});
+
+FVector FAngelscriptUPrimitiveComponentBinds::GetBoundingBoxExtents(const UPrimitiveComponent* Component)
+{
+	return Component->GetCollisionShape().GetExtent();
+}
+
+FVector FAngelscriptUPrimitiveComponentBinds::GetBoundsOrigin(const UPrimitiveComponent* Component)
+{
+	return Component->Bounds.Origin;
+}
+
+FVector FAngelscriptUPrimitiveComponentBinds::GetBoundsExtent(const UPrimitiveComponent* Component)
+{
+	return Component->Bounds.BoxExtent;
+}
+
+double FAngelscriptUPrimitiveComponentBinds::GetBoundsRadius(const UPrimitiveComponent* Component)
+{
+	return Component->Bounds.SphereRadius;
+}
+
+bool FAngelscriptUPrimitiveComponentBinds::GetSelectable(const UPrimitiveComponent* Component)
+{
+	return Component->bSelectable;
+}
+
+void FAngelscriptUPrimitiveComponentBinds::SetSelectable(UPrimitiveComponent* Component, bool bSelectable)
+{
+	Component->bSelectable = bSelectable;
+}
+
+void FAngelscriptUPrimitiveComponentBinds::SetLightmapType(UPrimitiveComponent* Component, ELightmapType Type)
+{
+	Component->SetLightmapType(Type);
+}

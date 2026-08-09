@@ -118,3 +118,59 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FVector4(
 		FVector4_.Method("const float64& opIndex(int32 Index)", METHODPR_TRIVIAL(double&, FVector4, operator[], (int32)));
 		FVector4_.Method("bool opEquals(const FVector4& Other) const", METHODPR_TRIVIAL(bool, FVector4, operator==, (const FVector4&) const));
 	});
+
+void FAngelscriptFVector4Binds::Construct(FVector4* Address, const double X, const double Y, const double Z, const double W)
+{
+	new (Address) FVector4(X, Y, Z, W);
+}
+
+void FAngelscriptFVector4Binds::ConstructZero(FVector4* Address)
+{
+	new (Address) FVector4(0.f, 0.f, 0.f, 0.f);
+}
+
+void FAngelscriptFVector4Binds::ConstructCopy(FVector4* Address, const FVector4& Other)
+{
+	new (Address) FVector4(Other);
+}
+
+void FAngelscriptFVector4Binds::ConstructFromVector(FVector4* Address, const FVector InVector, const double InW)
+{
+	new (Address) FVector4(InVector, InW);
+}
+
+void FAngelscriptFVector4Binds::ConstructFromVector4f(FVector4* Address, const FVector4f& Other)
+{
+	new (Address) FVector4(Other);
+}
+
+void FAngelscriptFVector4Binds::AppendToString(void* Ptr, FString& Str)
+{
+	Str += static_cast<FVector4*>(Ptr)->ToString();
+}
+
+FString FVector4Type::GetAngelscriptTypeName() const
+{
+	return TEXT("FVector4");
+}
+
+void FVector4Type::ConstructValue(const FAngelscriptTypeUsage& Usage, void* DestinationPtr) const
+{
+	new (DestinationPtr) FVector4(0.f, 0.f, 0.f, 0.f);
+}
+
+bool FVector4Type::NeedConstruct(const FAngelscriptTypeUsage& Usage) const
+{
+	return false;
+}
+
+bool FVector4Type::NeedDestruct(const FAngelscriptTypeUsage& Usage) const
+{
+	return false;
+}
+
+bool FVector4Type::GetCppForm(const FAngelscriptTypeUsage& Usage, FCppForm& OutCppForm) const
+{
+	OutCppForm.CppType = GetAngelscriptTypeName();
+	return true;
+}

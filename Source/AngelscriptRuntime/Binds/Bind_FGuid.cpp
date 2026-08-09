@@ -1,4 +1,14 @@
-#include "Bind_FGuid.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFGuidBinds
+{
+	static void ConstructParts(FGuid* Address, uint32 A, uint32 B, uint32 C, uint32 D);
+	static void ConstructString(FGuid* Address, const FString& GuidString);
+	static bool Equals(const FGuid& Guid, const FGuid& Other);
+	static int Compare(const FGuid& Guid, const FGuid& Other);
+	static FString ToString(const FGuid& Guid);
+	static uint32 Hash(const FGuid& Guid);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -90,3 +100,41 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FGuid(
 		Binds.BindGlobalFunctionForTarget("bool Parse(const FString& GuidString, FGuid& OutGuid)", FUNCPR_TRIVIAL(bool, FGuid::Parse, (const FString&, FGuid&)));
 		Binds.BindGlobalFunctionForTarget("bool ParseExact(const FString& GuidString, EGuidFormats Format, FGuid& OutGuid)", FUNCPR_TRIVIAL(bool, FGuid::ParseExact, (const FString&, EGuidFormats, FGuid&)));
 	});
+
+void FAngelscriptFGuidBinds::ConstructParts(FGuid* Address, uint32 A, uint32 B, uint32 C, uint32 D)
+{
+	new (Address) FGuid(A, B, C, D);
+}
+
+void FAngelscriptFGuidBinds::ConstructString(FGuid* Address, const FString& GuidString)
+{
+	new (Address) FGuid(GuidString);
+}
+
+bool FAngelscriptFGuidBinds::Equals(const FGuid& Guid, const FGuid& Other)
+{
+	return Guid == Other;
+}
+
+int FAngelscriptFGuidBinds::Compare(const FGuid& Guid, const FGuid& Other)
+{
+	if (Guid < Other)
+	{
+		return -1;
+	}
+	if (Other < Guid)
+	{
+		return 1;
+	}
+	return 0;
+}
+
+FString FAngelscriptFGuidBinds::ToString(const FGuid& Guid)
+{
+	return Guid.ToString();
+}
+
+uint32 FAngelscriptFGuidBinds::Hash(const FGuid& Guid)
+{
+	return GetTypeHash(Guid);
+}

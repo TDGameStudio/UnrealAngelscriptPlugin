@@ -1,4 +1,15 @@
-#include "Bind_FGeometry.h"
+#include "CoreMinimal.h"
+
+struct FGeometry;
+
+struct FAngelscriptFGeometryBinds
+{
+	static FVector2D GetLocalSize(FGeometry* Geometry);
+	static FVector2D GetAbsoluteSize(FGeometry* Geometry);
+	static FVector2D AbsoluteToLocal(FGeometry* Geometry, const FVector2D& Position);
+	static FVector2D LocalToAbsolute(FGeometry* Geometry, const FVector2D& Position);
+	static FGeometry MakeChild(FGeometry* Geometry, const FVector2D& Position, const FVector2D& Size);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -32,3 +43,30 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FGeometry(
 		FGeometry_.Method("FVector2D LocalToAbsolute(const FVector2D& Position) const", &FAngelscriptFGeometryBinds::LocalToAbsolute);
 		FGeometry_.Method("FGeometry MakeChild(const FVector2D& Position, const FVector2D& Size) const", &FAngelscriptFGeometryBinds::MakeChild);
 	});
+
+#include "Layout/Geometry.h"
+
+FVector2D FAngelscriptFGeometryBinds::GetLocalSize(FGeometry* Geometry)
+{
+	return FVector2D(Geometry->GetLocalSize());
+}
+
+FVector2D FAngelscriptFGeometryBinds::GetAbsoluteSize(FGeometry* Geometry)
+{
+	return FVector2D(Geometry->GetAbsoluteSize());
+}
+
+FVector2D FAngelscriptFGeometryBinds::AbsoluteToLocal(FGeometry* Geometry, const FVector2D& Position)
+{
+	return FVector2D(Geometry->AbsoluteToLocal(FVector2f(Position)));
+}
+
+FVector2D FAngelscriptFGeometryBinds::LocalToAbsolute(FGeometry* Geometry, const FVector2D& Position)
+{
+	return FVector2D(Geometry->LocalToAbsolute(FVector2f(Position)));
+}
+
+FGeometry FAngelscriptFGeometryBinds::MakeChild(FGeometry* Geometry, const FVector2D& Position, const FVector2D& Size)
+{
+	return Geometry->MakeChild(FVector2f(Size), FSlateLayoutTransform(FVector2f(Position)));
+}

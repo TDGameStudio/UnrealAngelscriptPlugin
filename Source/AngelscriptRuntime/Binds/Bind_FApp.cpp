@@ -1,4 +1,9 @@
-#include "Bind_FApp.h"
+#include "CoreMinimal.h"
+
+struct FAngelscriptFAppBinds
+{
+	static FString GetProjectName();
+};
 
 #include "AngelscriptBinds.h"
 
@@ -25,3 +30,10 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FApp(
 			.NativeFunction("FApp::CanEverRender", true);
 		Binds.BindGlobalFunctionForTarget("FString GetProjectName()", &FAngelscriptFAppBinds::GetProjectName);
 	});
+
+#include "Misc/App.h"
+
+FString FAngelscriptFAppBinds::GetProjectName()
+{
+	return FApp::GetProjectName();
+}

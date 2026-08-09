@@ -1,4 +1,28 @@
-#include "Bind_UWorld.h"
+#include "CoreMinimal.h"
+
+class AActor;
+class AGameStateBase;
+class ALevelScriptActor;
+class UGameInstance;
+class ULevel;
+class UObject;
+class UWorld;
+
+struct FAngelscriptUWorldBinds
+{
+	static UObject* GetWorldContext();
+	static UWorld* GetCurrentWorld();
+	static AGameStateBase* GetGameState(UWorld* World);
+	static bool IsStartingUp(UWorld* World);
+	static bool IsTearingDown(UWorld* World);
+	static UGameInstance* GetGameInstance(UWorld* World);
+	static ALevelScriptActor* GetWorldLevelScriptActor(UWorld* World);
+	static ULevel* GetPersistentLevel(UWorld* World);
+	static ALevelScriptActor* GetLevelScriptActor(ULevel* Level);
+	static bool IsLevelVisible(ULevel* Level);
+	static bool IsLevelBeingRemoved(ULevel* Level);
+	static const TArray<AActor*>& GetLevelActors(ULevel* Level);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -162,3 +186,71 @@ AS_FORCE_LINK const FAngelscriptBind Bind_World(
 		ULevel_.Method("bool IsBeingRemoved() const", &FAngelscriptUWorldBinds::IsLevelBeingRemoved);
 		ULevel_.Method("const TArray<AActor>& GetActors() const", &FAngelscriptUWorldBinds::GetLevelActors);
 	});
+
+#include "Engine/Engine.h"
+#include "Engine/Level.h"
+#include "Engine/World.h"
+
+#include "AngelscriptEngine.h"
+
+UObject* FAngelscriptUWorldBinds::GetWorldContext()
+{
+	return FAngelscriptEngine::TryGetCurrentWorldContextObject();
+}
+
+UWorld* FAngelscriptUWorldBinds::GetCurrentWorld()
+{
+	return GEngine->GetWorldFromContextObject(
+		FAngelscriptEngine::TryGetCurrentWorldContextObject(),
+		EGetWorldErrorMode::ReturnNull);
+}
+
+AGameStateBase* FAngelscriptUWorldBinds::GetGameState(UWorld* World)
+{
+	return World->GetGameState();
+}
+
+bool FAngelscriptUWorldBinds::IsStartingUp(UWorld* World)
+{
+	return World->bStartup;
+}
+
+bool FAngelscriptUWorldBinds::IsTearingDown(UWorld* World)
+{
+	return World->bIsTearingDown;
+}
+
+UGameInstance* FAngelscriptUWorldBinds::GetGameInstance(UWorld* World)
+{
+	return World->GetGameInstance();
+}
+
+ALevelScriptActor* FAngelscriptUWorldBinds::GetWorldLevelScriptActor(UWorld* World)
+{
+	return World->GetLevelScriptActor();
+}
+
+ULevel* FAngelscriptUWorldBinds::GetPersistentLevel(UWorld* World)
+{
+	return World->PersistentLevel;
+}
+
+ALevelScriptActor* FAngelscriptUWorldBinds::GetLevelScriptActor(ULevel* Level)
+{
+	return Level->LevelScriptActor;
+}
+
+bool FAngelscriptUWorldBinds::IsLevelVisible(ULevel* Level)
+{
+	return Level->bIsVisible;
+}
+
+bool FAngelscriptUWorldBinds::IsLevelBeingRemoved(ULevel* Level)
+{
+	return Level->bIsBeingRemoved;
+}
+
+const TArray<AActor*>& FAngelscriptUWorldBinds::GetLevelActors(ULevel* Level)
+{
+	return Level->Actors;
+}

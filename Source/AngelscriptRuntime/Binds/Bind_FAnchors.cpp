@@ -1,4 +1,11 @@
-#include "Bind_FAnchors.h"
+#include "Widgets/Layout/Anchors.h"
+
+struct FAngelscriptFAnchorsBinds
+{
+	static void ConstructUniform(FAnchors* Address, float UniformAnchors);
+	static void ConstructPoint(FAnchors* Address, float Horizontal, float Vertical);
+	static void ConstructRange(FAnchors* Address, float MinX, float MinY, float MaxX, float MaxY);
+};
 
 #include "AngelscriptBinds.h"
 
@@ -56,3 +63,18 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FAnchors(
 		FAnchors_.Method("bool IsStretchedVertical() const", METHOD_TRIVIAL(FAnchors, IsStretchedVertical));
 		FAnchors_.Method("bool IsStretchedHorizontal() const", METHOD_TRIVIAL(FAnchors, IsStretchedHorizontal));
 	});
+
+void FAngelscriptFAnchorsBinds::ConstructUniform(FAnchors* Address, float UniformAnchors)
+{
+	new (Address) FAnchors(UniformAnchors);
+}
+
+void FAngelscriptFAnchorsBinds::ConstructPoint(FAnchors* Address, float Horizontal, float Vertical)
+{
+	new (Address) FAnchors(Horizontal, Vertical);
+}
+
+void FAngelscriptFAnchorsBinds::ConstructRange(FAnchors* Address, float MinX, float MinY, float MaxX, float MaxY)
+{
+	new (Address) FAnchors(MinX, MinY, MaxX, MaxY);
+}
