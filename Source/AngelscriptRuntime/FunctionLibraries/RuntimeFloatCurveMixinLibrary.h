@@ -27,7 +27,7 @@ public:
 		return Target.GetRichCurveConst()->Eval(InTime, DefaultValue);
 	}
 
-	UFUNCTION(BlueprintCallable, Category = "Math|Curves", Meta = (NotInAngelscript = "true"))
+	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
     static void GetTimeRange(const FRuntimeFloatCurve& Target, float& MinTime, float& MaxTime)
 	{
 		Target.GetRichCurveConst()->GetTimeRange(MinTime, MaxTime);
@@ -75,198 +75,62 @@ public:
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void AddDefaultKey(FRuntimeFloatCurve& Target, float InTime, float InValue)
-	{
-		Target.EditorCurveData.AddKey(InTime, InValue);
-	}
+	static void AddDefaultKey(FRuntimeFloatCurve& Target, float InTime, float InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddCurveKey(UCurveFloat* Curve, float InTime, float InValue)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddCurveKey(UCurveFloat* Curve, float InTime, float InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void AutoSetTangents(UCurveFloat* Curve)
-	{
-		Curve->FloatCurve.AutoSetTangents();
-	}
+	static void AutoSetTangents(UCurveFloat* Curve);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void SetDefaultValue(UCurveFloat* Curve, float DefaultValue)
-	{
-		Curve->FloatCurve.SetDefaultValue(DefaultValue);
-	}
+	static void SetDefaultValue(UCurveFloat* Curve, float DefaultValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void SetPreInfinityExtrap(UCurveFloat* Curve, ERichCurveExtrapolation Extrapolation)
-	{
-		Curve->FloatCurve.PreInfinityExtrap = Extrapolation;
-	}
+	static void SetPreInfinityExtrap(UCurveFloat* Curve, ERichCurveExtrapolation Extrapolation);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void SetPostInfinityExtrap(UCurveFloat* Curve, ERichCurveExtrapolation Extrapolation)
-	{
-		Curve->FloatCurve.PostInfinityExtrap = Extrapolation;
-	}
+	static void SetPostInfinityExtrap(UCurveFloat* Curve, ERichCurveExtrapolation Extrapolation);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void SetKeyInterpMode(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, ERichCurveInterpMode NewInterpMode, bool bAutoSetTangents)
-	{
-		Curve->FloatCurve.SetKeyInterpMode(KeyHandle.KeyHandle, NewInterpMode, bAutoSetTangents);
-	}
+	static void SetKeyInterpMode(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, ERichCurveInterpMode NewInterpMode, bool bAutoSetTangents);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void SetKeyTangentMode(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, ERichCurveTangentMode NewTangentMode, bool bAutoSetTangents = true)
-	{
-		Curve->FloatCurve.SetKeyTangentMode(KeyHandle.KeyHandle, NewTangentMode, bAutoSetTangents);
-	}
+	static void SetKeyTangentMode(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, ERichCurveTangentMode NewTangentMode, bool bAutoSetTangents = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void SetKeyTangentWeightMode(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, ERichCurveTangentWeightMode NewTangentWeightMode, bool bAutoSetTangents = true)
-	{
-		Curve->FloatCurve.SetKeyTangentWeightMode(KeyHandle.KeyHandle, NewTangentWeightMode, bAutoSetTangents);
-	}
+	static void SetKeyTangentWeightMode(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, ERichCurveTangentWeightMode NewTangentWeightMode, bool bAutoSetTangents = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void SetKeyUserTangents(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, float ArriveTangent, float LeaveTangent)
-	{
-		if (!Curve->FloatCurve.IsKeyHandleValid(KeyHandle.KeyHandle))
-			return;
-		FRichCurveKey& Key = Curve->FloatCurve.GetKey(KeyHandle.KeyHandle);
-		Key.ArriveTangent = ArriveTangent;
-		Key.LeaveTangent = LeaveTangent;
-	}
+	static void SetKeyUserTangents(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, float ArriveTangent, float LeaveTangent);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static void SetKeyUserTangentWeights(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, float ArriveTangentWeight, float LeaveTangentWeight)
-	{
-		if (!Curve->FloatCurve.IsKeyHandleValid(KeyHandle.KeyHandle))
-			return;
-		FRichCurveKey& Key = Curve->FloatCurve.GetKey(KeyHandle.KeyHandle);
-		Key.ArriveTangentWeight = ArriveTangentWeight;
-		Key.LeaveTangentWeight = LeaveTangentWeight;
-	}
+	static void SetKeyUserTangentWeights(UCurveFloat* Curve, FCurveKeyHandle KeyHandle, float ArriveTangentWeight, float LeaveTangentWeight);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddConstantCurveKey(UCurveFloat* Curve, float InTime, float InValue)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		Curve->FloatCurve.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Constant, false);
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddConstantCurveKey(UCurveFloat* Curve, float InTime, float InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddLinearCurveKey(UCurveFloat* Curve, float InTime, float InValue)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddLinearCurveKey(UCurveFloat* Curve, float InTime, float InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddAutoCurveKey(UCurveFloat* Curve, float InTime, float InValue)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		Curve->FloatCurve.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Cubic, false);
-		Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_Auto, false);
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddAutoCurveKey(UCurveFloat* Curve, float InTime, float InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddSmartAutoCurveKey(UCurveFloat* Curve, float InTime, float InValue)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		Curve->FloatCurve.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Cubic, false);
-		Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_Auto, false);
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddSmartAutoCurveKey(UCurveFloat* Curve, float InTime, float InValue);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddCurveKeyTangent(UCurveFloat* Curve, float InTime, float InValue, float Tangent)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		Curve->FloatCurve.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Cubic, false);
-		Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_User, false);
-
-		FRichCurveKey& Key = Curve->FloatCurve.GetKey(Handle);
-		Key.ArriveTangent = Tangent;
-		Key.LeaveTangent = Tangent;
-
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddCurveKeyTangent(UCurveFloat* Curve, float InTime, float InValue, float Tangent);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddCurveKeyBrokenTangent(UCurveFloat* Curve, float InTime, float InValue, float ArriveTangent, float LeaveTangent)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		Curve->FloatCurve.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Cubic, false);
-		Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_Break, false);
-
-		FRichCurveKey& Key = Curve->FloatCurve.GetKey(Handle);
-		Key.ArriveTangent = ArriveTangent;
-		Key.LeaveTangent = LeaveTangent;
-
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddCurveKeyBrokenTangent(UCurveFloat* Curve, float InTime, float InValue, float ArriveTangent, float LeaveTangent);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddCurveKeyWeightedArriveTangent(UCurveFloat* Curve, float InTime, float InValue, bool bBrokenTangent, float ArriveTangent, float LeaveTangent, float ArriveTangentWeight, float LeaveTangentWeight)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		Curve->FloatCurve.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Cubic, false);
-		if (bBrokenTangent)
-			Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_Break, false);
-		else
-			Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_User, false);
-
-		FRichCurveKey& Key = Curve->FloatCurve.GetKey(Handle);
-		Key.ArriveTangent = ArriveTangent;
-		Key.ArriveTangentWeight = ArriveTangentWeight;
-		Key.LeaveTangent = LeaveTangent;
-		Key.LeaveTangentWeight = LeaveTangentWeight;
-		Key.TangentWeightMode = ERichCurveTangentWeightMode::RCTWM_WeightedArrive;
-
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddCurveKeyWeightedArriveTangent(UCurveFloat* Curve, float InTime, float InValue, bool bBrokenTangent, float ArriveTangent, float LeaveTangent, float ArriveTangentWeight, float LeaveTangentWeight);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddCurveKeyWeightedLeaveTangent(UCurveFloat* Curve, float InTime, float InValue, bool bBrokenTangent, float ArriveTangent, float LeaveTangent, float ArriveTangentWeight, float LeaveTangentWeight)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		Curve->FloatCurve.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Cubic, false);
-		if (bBrokenTangent)
-			Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_Break, false);
-		else
-			Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_User, false);
-
-		FRichCurveKey& Key = Curve->FloatCurve.GetKey(Handle);
-		Key.ArriveTangent = ArriveTangent;
-		Key.ArriveTangentWeight = ArriveTangentWeight;
-		Key.LeaveTangent = LeaveTangent;
-		Key.LeaveTangentWeight = LeaveTangentWeight;
-		Key.TangentWeightMode = ERichCurveTangentWeightMode::RCTWM_WeightedLeave;
-
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddCurveKeyWeightedLeaveTangent(UCurveFloat* Curve, float InTime, float InValue, bool bBrokenTangent, float ArriveTangent, float LeaveTangent, float ArriveTangentWeight, float LeaveTangentWeight);
 
 	UFUNCTION(BlueprintCallable, Category = "Math|Curves")
-	static FCurveKeyHandle AddCurveKeyWeightedBothTangent(UCurveFloat* Curve, float InTime, float InValue, bool bBrokenTangent, float ArriveTangent, float LeaveTangent, float ArriveTangentWeight, float LeaveTangentWeight)
-	{
-		FKeyHandle Handle = Curve->FloatCurve.AddKey(InTime, InValue);
-		Curve->FloatCurve.SetKeyInterpMode(Handle, ERichCurveInterpMode::RCIM_Cubic, false);
-		if (bBrokenTangent)
-			Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_Break, false);
-		else
-			Curve->FloatCurve.SetKeyTangentMode(Handle, ERichCurveTangentMode::RCTM_User, false);
-
-		FRichCurveKey& Key = Curve->FloatCurve.GetKey(Handle);
-		Key.ArriveTangent = ArriveTangent;
-		Key.ArriveTangentWeight = ArriveTangentWeight;
-		Key.LeaveTangent = LeaveTangent;
-		Key.LeaveTangentWeight = LeaveTangentWeight;
-		Key.TangentWeightMode = ERichCurveTangentWeightMode::RCTWM_WeightedBoth;
-
-		return FCurveKeyHandle{Handle};
-	}
+	static FCurveKeyHandle AddCurveKeyWeightedBothTangent(UCurveFloat* Curve, float InTime, float InValue, bool bBrokenTangent, float ArriveTangent, float LeaveTangent, float ArriveTangentWeight, float LeaveTangentWeight);
 };

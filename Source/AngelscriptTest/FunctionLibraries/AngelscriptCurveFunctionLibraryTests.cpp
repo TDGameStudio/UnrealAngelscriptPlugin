@@ -21,6 +21,8 @@
 #include "AngelscriptTestModuleScope.h"
 #include "AngelscriptTestExecute.h"
 
+#include "FunctionLibraries/RuntimeFloatCurveMixinLibrary.h"
+
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveLinearColor.h"
 #include "Curves/RichCurve.h"
@@ -281,6 +283,154 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptCurveFunctionLibraryBindingsTest,
 					TEXT("UCurveFloat.SetKeyInterpMode instance syntax should update the native key interpolation mode")));
 			}
 		}
+	}
+
+	TEST_METHOD(RuntimeFloatCurveTargetsExternalAsset)
+	{
+		UCurveFloat* CurveAsset = NewObject<UCurveFloat>(GetTransientPackage(), NAME_None, RF_Transient);
+		ASSERT_THAT(IsNotNull(CurveAsset));
+
+		int32 UpdateCount = 0;
+#if WITH_EDITOR
+		const FDelegateHandle UpdateHandle = CurveAsset->OnUpdateCurve.AddLambda(
+			[&UpdateCount](UCurveBase*, EPropertyChangeType::Type)
+			{
+				++UpdateCount;
+			});
+		ON_SCOPE_EXIT
+		{
+			CurveAsset->OnUpdateCurve.Remove(UpdateHandle);
+		};
+#endif
+
+		FRuntimeFloatCurve RuntimeCurve;
+		RuntimeCurve.ExternalCurve = CurveAsset;
+		URuntimeFloatCurveMixinLibrary::AddDefaultKey(RuntimeCurve, 2.0f, 8.0f);
+
+		ASSERT_THAT(AreEqual(0, RuntimeCurve.EditorCurveData.GetNumKeys(),
+			TEXT("External runtime curves should not mutate their embedded fallback")));
+		ASSERT_THAT(AreEqual(1, CurveAsset->FloatCurve.GetNumKeys(),
+			TEXT("External runtime curves should mutate the external asset")));
+#if WITH_EDITOR
+		ASSERT_THAT(AreEqual(1, UpdateCount,
+			TEXT("External runtime curve mutation should notify its asset once")));
+#endif
+	}
+
+	TEST_METHOD(AutoAndSmartAutoUseDistinctTangentModes)
+	{
+		UCurveFloat* CurveAsset = NewObject<UCurveFloat>(GetTransientPackage(), NAME_None, RF_Transient);
+		ASSERT_THAT(IsNotNull(CurveAsset));
+
+		const FCurveKeyHandle AutoHandle = URuntimeFloatCurveMixinLibrary::AddAutoCurveKey(CurveAsset, 1.0f, 2.0f);
+		const FCurveKeyHandle SmartAutoHandle = URuntimeFloatCurveMixinLibrary::AddSmartAutoCurveKey(CurveAsset, 2.0f, 3.0f);
+
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(ERichCurveTangentMode::RCTM_Auto),
+			static_cast<int32>(CurveAsset->FloatCurve.GetKey(AutoHandle.KeyHandle).TangentMode)));
+		ASSERT_THAT(AreEqual(
+			static_cast<int32>(ERichCurveTangentMode::RCTM_SmartAuto),
+			static_cast<int32>(CurveAsset->FloatCurve.GetKey(SmartAutoHandle.KeyHandle).TangentMode)));
+	}
+
+	TEST_METHOD(NullMutatorsAreNoOps)
+	{
+		FCurveKeyHandle InvalidHandle;
+		InvalidHandle.KeyHandle = FKeyHandle::Invalid();
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddCurveKey(nullptr, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddConstantCurveKey(nullptr, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddLinearCurveKey(nullptr, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddAutoCurveKey(nullptr, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddSmartAutoCurveKey(nullptr, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddCurveKeyTangent(nullptr, 0.0f, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddCurveKeyBrokenTangent(nullptr, 0.0f, 0.0f, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddCurveKeyWeightedArriveTangent(nullptr, 0.0f, 0.0f, false, 0.0f, 0.0f, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddCurveKeyWeightedLeaveTangent(nullptr, 0.0f, 0.0f, false, 0.0f, 0.0f, 0.0f, 0.0f).KeyHandle.IsValid()));
+		ASSERT_THAT(IsFalse(URuntimeFloatCurveMixinLibrary::AddCurveKeyWeightedBothTangent(nullptr, 0.0f, 0.0f, false, 0.0f, 0.0f, 0.0f, 0.0f).KeyHandle.IsValid()));
+
+		URuntimeFloatCurveMixinLibrary::AutoSetTangents(nullptr);
+		URuntimeFloatCurveMixinLibrary::SetDefaultValue(nullptr, 0.0f);
+		URuntimeFloatCurveMixinLibrary::SetPreInfinityExtrap(nullptr, ERichCurveExtrapolation::RCCE_Constant);
+		URuntimeFloatCurveMixinLibrary::SetPostInfinityExtrap(nullptr, ERichCurveExtrapolation::RCCE_Constant);
+		URuntimeFloatCurveMixinLibrary::SetKeyInterpMode(nullptr, InvalidHandle, ERichCurveInterpMode::RCIM_Linear, false);
+		URuntimeFloatCurveMixinLibrary::SetKeyTangentMode(nullptr, InvalidHandle, ERichCurveTangentMode::RCTM_User, false);
+		URuntimeFloatCurveMixinLibrary::SetKeyTangentWeightMode(nullptr, InvalidHandle, ERichCurveTangentWeightMode::RCTWM_WeightedBoth, false);
+		URuntimeFloatCurveMixinLibrary::SetKeyUserTangents(nullptr, InvalidHandle, 1.0f, 2.0f);
+		URuntimeFloatCurveMixinLibrary::SetKeyUserTangentWeights(nullptr, InvalidHandle, 1.0f, 2.0f);
+		ASSERT_THAT(IsTrue(true, TEXT("Every null UCurveFloat mutator should return without dereferencing")));
+	}
+
+	TEST_METHOD(InvalidHandleDoesNotNotifyOrDirty)
+	{
+		UCurveFloat* CurveAsset = NewObject<UCurveFloat>(GetTransientPackage(), NAME_None, RF_Transient);
+		ASSERT_THAT(IsNotNull(CurveAsset));
+		FCurveKeyHandle InvalidHandle;
+		InvalidHandle.KeyHandle = FKeyHandle::Invalid();
+		int32 UpdateCount = 0;
+#if WITH_EDITOR
+		const FDelegateHandle UpdateHandle = CurveAsset->OnUpdateCurve.AddLambda(
+			[&UpdateCount](UCurveBase*, EPropertyChangeType::Type)
+			{
+				++UpdateCount;
+			});
+		ON_SCOPE_EXIT
+		{
+			CurveAsset->OnUpdateCurve.Remove(UpdateHandle);
+		};
+#endif
+
+		URuntimeFloatCurveMixinLibrary::SetKeyInterpMode(CurveAsset, InvalidHandle, ERichCurveInterpMode::RCIM_Linear, false);
+		URuntimeFloatCurveMixinLibrary::SetKeyTangentMode(CurveAsset, InvalidHandle, ERichCurveTangentMode::RCTM_User, false);
+		URuntimeFloatCurveMixinLibrary::SetKeyTangentWeightMode(CurveAsset, InvalidHandle, ERichCurveTangentWeightMode::RCTWM_WeightedBoth, false);
+		URuntimeFloatCurveMixinLibrary::SetKeyUserTangents(CurveAsset, InvalidHandle, 1.0f, 2.0f);
+		URuntimeFloatCurveMixinLibrary::SetKeyUserTangentWeights(CurveAsset, InvalidHandle, 1.0f, 2.0f);
+
+		ASSERT_THAT(AreEqual(0, CurveAsset->FloatCurve.GetNumKeys()));
+#if WITH_EDITOR
+		ASSERT_THAT(AreEqual(0, UpdateCount,
+			TEXT("Invalid key handles should not emit curve update notifications")));
+#endif
+	}
+
+	TEST_METHOD(AssetMutationNotifiesAndMarksDirty)
+	{
+		const FString PackageName = FString::Printf(
+			TEXT("/Temp/AngelscriptCurveMutation_%s"),
+			*FGuid::NewGuid().ToString(EGuidFormats::Digits));
+		UPackage* Package = CreatePackage(*PackageName);
+		ASSERT_THAT(IsNotNull(Package));
+		UCurveFloat* CurveAsset = NewObject<UCurveFloat>(Package);
+		ASSERT_THAT(IsNotNull(CurveAsset));
+		Package->SetDirtyFlag(false);
+		ON_SCOPE_EXIT
+		{
+			CurveAsset->MarkAsGarbage();
+			Package->SetDirtyFlag(false);
+			Package->MarkAsGarbage();
+		};
+
+		int32 UpdateCount = 0;
+#if WITH_EDITOR
+		const FDelegateHandle UpdateHandle = CurveAsset->OnUpdateCurve.AddLambda(
+			[&UpdateCount](UCurveBase*, EPropertyChangeType::Type)
+			{
+				++UpdateCount;
+			});
+		ON_SCOPE_EXIT
+		{
+			CurveAsset->OnUpdateCurve.Remove(UpdateHandle);
+		};
+#endif
+
+		URuntimeFloatCurveMixinLibrary::AddCurveKey(CurveAsset, 4.0f, 16.0f);
+
+		ASSERT_THAT(AreEqual(1, CurveAsset->FloatCurve.GetNumKeys()));
+#if WITH_EDITOR
+		ASSERT_THAT(AreEqual(1, UpdateCount,
+			TEXT("Successful asset mutation should emit one update notification")));
+		ASSERT_THAT(IsTrue(Package->IsDirty(),
+			TEXT("Successful asset mutation should mark the owning package dirty")));
+#endif
 	}
 };
 

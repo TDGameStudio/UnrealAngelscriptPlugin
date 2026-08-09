@@ -1,7 +1,7 @@
 // ============================================================================
 // AngelscriptWorldCollisionFunctionLibraryComponentTests.cpp
 //
-// World collision component-query function-library binding contract smoke.
+// World collision component-query FunctionLibrary binding contract smoke.
 // Detailed hit/miss parity lives in Coverage (`13-physics-collision`).
 // ============================================================================
 

@@ -1,7 +1,7 @@
 // ============================================================================
 // AngelscriptHitResultFunctionLibraryTests.cpp
 //
-// HitResult function library accessor binding coverage — CQTest refactor.
+// HitResult FunctionLibrary accessor binding coverage — CQTest refactor.
 // Automation IDs:
 //   Angelscript.TestModule.FunctionLibraries.HitResult.FAngelscriptHitResultFunctionLibraryTest.*
 //

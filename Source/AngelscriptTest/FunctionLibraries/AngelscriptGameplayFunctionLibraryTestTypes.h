@@ -1,5 +1,7 @@
 #pragma once
 
+// Reflected fixtures for the flat FunctionLibraries.Gameplay test theme.
+
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
 #include "UObject/Object.h"

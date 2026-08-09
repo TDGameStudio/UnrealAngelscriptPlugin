@@ -1,7 +1,7 @@
 // ============================================================================
 // AngelscriptSoftReferenceFunctionLibraryTests.cpp
 //
-// Soft reference async delegate binding coverage — CQTest refactor. Automation IDs:
+// Soft reference FunctionLibrary async delegate coverage — CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.FunctionLibraries.SoftReference.FAngelscriptSoftReferenceFunctionLibraryTest.*
 //
 // Sections:

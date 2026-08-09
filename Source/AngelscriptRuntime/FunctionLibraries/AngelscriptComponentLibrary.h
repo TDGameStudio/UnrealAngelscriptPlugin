@@ -29,34 +29,10 @@ public:
 		return Component->GetRelativeScale3D();
 	}
 
-	UFUNCTION(BlueprintCallable)
-	static void SetRelativeLocation(USceneComponent* Component, const FVector& NewLocation)
-	{
-		Component->SetRelativeLocation(NewLocation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void SetRelativeRotation(USceneComponent* Component, const FRotator& NewRotation)
-	{
-		Component->SetRelativeRotation(NewRotation);
-	}
-
 	UFUNCTION(BlueprintCallable, Meta = (ScriptName = "SetRelativeRotation", NotAngelscriptProperty))
 	static void SetRelativeRotationQuat(USceneComponent* Component, const FQuat& NewRotation)
 	{
 		Component->SetRelativeRotation(NewRotation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void SetRelativeTransform(USceneComponent* Component, const FTransform& NewTransform)
-	{
-		Component->SetRelativeTransform(NewTransform);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void SetRelativeLocationAndRotation(USceneComponent* Component, const FVector& NewLocation, const FRotator& NewRotation)
-	{
-		Component->SetRelativeLocationAndRotation(NewLocation, NewRotation);
 	}
 
 	UFUNCTION(BlueprintCallable, Meta = (ScriptName = "SetRelativeLocationAndRotation"))
@@ -89,34 +65,10 @@ public:
 		return Component->GetNumChildrenComponents();
 	}
 
-	UFUNCTION(BlueprintCallable)
-	static void AddRelativeLocation(USceneComponent* Component, const FVector& DeltaLocation)
-	{
-		Component->AddRelativeLocation(DeltaLocation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void AddRelativeRotation(USceneComponent* Component, const FRotator& DeltaRotation)
-	{
-		Component->AddRelativeRotation(DeltaRotation);
-	}
-
 	UFUNCTION(BlueprintCallable, Meta = (ScriptName = "AddRelativeRotation"))
 	static void AddRelativeRotationQuat(USceneComponent* Component, const FQuat& DeltaRotation)
 	{
 		Component->AddRelativeRotation(DeltaRotation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void AddLocalOffset(USceneComponent* Component, const FVector& DeltaLocation)
-	{
-		Component->AddLocalOffset(DeltaLocation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void AddLocalRotation(USceneComponent* Component, const FRotator& DeltaRotation)
-	{
-		Component->AddLocalRotation(DeltaRotation);
 	}
 
 	UFUNCTION(BlueprintCallable, Meta = (ScriptName = "AddLocalRotation"))
@@ -125,70 +77,22 @@ public:
 		Component->AddLocalRotation(DeltaRotation);
 	}
 
-	UFUNCTION(BlueprintCallable)
-	static void AddLocalTransform(USceneComponent* Component, const FTransform& DeltaTransform)
-	{
-		Component->AddLocalTransform(DeltaTransform);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void SetWorldLocation(USceneComponent* Component, const FVector& NewLocation)
-	{
-		Component->SetWorldLocation(NewLocation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void SetWorldRotation(USceneComponent* Component, const FRotator& NewRotation)
-	{
-		Component->SetWorldRotation(NewRotation);
-	}
-
 	UFUNCTION(BlueprintCallable, Meta = (ScriptName = "SetWorldRotation", NotAngelscriptProperty))
 	static void SetWorldRotationQuat(USceneComponent* Component, const FQuat& NewRotation)
 	{
 		Component->SetWorldRotation(NewRotation);
 	}
 
-	UFUNCTION(BlueprintCallable)
-	static void SetWorldTransform(USceneComponent* Component, const FTransform& NewTransform)
-	{
-		Component->SetWorldTransform(NewTransform);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void SetWorldLocationAndRotation(USceneComponent* Component, const FVector& NewLocation, const FRotator& NewRotation)
-	{
-		Component->SetWorldLocationAndRotation(NewLocation, NewRotation);
-	}
-
-	UFUNCTION(BlueprintCallable, Meta = (ScriptName = "SetWorldLocationAndRotation"))	
+	UFUNCTION(BlueprintCallable, Meta = (ScriptName = "SetWorldLocationAndRotation"))
 	static void SetWorldLocationAndRotationQuat(USceneComponent* Component, const FVector& NewLocation, const FQuat& NewRotation)
 	{
 		Component->SetWorldLocationAndRotation(NewLocation, NewRotation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void AddWorldOffset(USceneComponent* Component, const FVector& DeltaLocation)
-	{
-		Component->AddWorldOffset(DeltaLocation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void AddWorldRotation(USceneComponent* Component, const FRotator& DeltaRotation)
-	{
-		Component->AddWorldRotation(DeltaRotation);
 	}
 
 	UFUNCTION(BlueprintCallable, Meta = (ScriptName = "AddWorldRotation"))
 	static void AddWorldRotationQuat(USceneComponent* Component, const FQuat& DeltaRotation)
 	{
 		Component->AddWorldRotation(DeltaRotation);
-	}
-
-	UFUNCTION(BlueprintCallable)
-	static void AddWorldTransform(USceneComponent* Component, const FTransform& DeltaTransform)
-	{
-		Component->AddWorldTransform(DeltaTransform);
 	}
 
 	UFUNCTION(BlueprintCallable)

@@ -1,284 +1,187 @@
-#include "CoreMinimal.h"
-#include "Curves/CurveLinearColor.h"
-#include "FunctionLibraries/RuntimeFloatCurveMixinLibrary.h"
-
-class ULevelStreaming;
-class USceneComponent;
-
-struct FAngelscriptFunctionLibraryMixinsBinds
-{
-#if WITH_EDITOR
-	static bool GetShouldBeVisibleInEditor(const ULevelStreaming* LevelStreaming);
-#endif
-	static void SetRelativeRotation(USceneComponent* Component, const FRotator& NewRotation);
-	static bool IsAttachedToComponent(
-		const USceneComponent* Component,
-		const USceneComponent* CheckComponent);
-
-	static void AddRuntimeCurveLinearColorKey(
-		FRuntimeCurveLinearColor* Target,
-		float InTime,
-		const FLinearColor& InColor);
-	static void AddRuntimeFloatCurveKey(FRuntimeFloatCurve* Target, float InTime, float InValue);
-	static int32 GetRuntimeFloatCurveNumKeys(const FRuntimeFloatCurve* Target);
-	static void GetRuntimeFloatCurveTimeRange(
-		const FRuntimeFloatCurve* Target,
-		float& MinTime,
-		float& MaxTime);
-
-	static FCurveKeyHandle AddAutoCurveKey(UCurveFloat* Curve, float InTime, float InValue);
-	static void SetKeyInterpMode(
-		UCurveFloat* Curve,
-		FCurveKeyHandle KeyHandle,
-		ERichCurveInterpMode NewInterpMode,
-		bool bAutoSetTangents);
-
-	static void AddRuntimeCurveLinearColorKeyGlobal(
-		FRuntimeCurveLinearColor& Target,
-		float InTime,
-		const FLinearColor& InColor);
-	static void GetRuntimeFloatCurveTimeRangeGlobal(
-		const FRuntimeFloatCurve& Target,
-		float& MinTime,
-		float& MaxTime);
-};
-
 #include "AngelscriptBinds.h"
-#include "Core/FunctionCallers.h"
+#include "Curves/CurveLinearColor.h"
+#include "Engine/LevelStreaming.h"
 
-#include "FunctionLibraries/AngelscriptComponentLibrary.h"
 #include "FunctionLibraries/AngelscriptLevelStreamingLibrary.h"
+#include "FunctionLibraries/RuntimeCurveLinearColorMixinLibrary.h"
 #include "FunctionLibraries/RuntimeFloatCurveMixinLibrary.h"
 
-/**
- * Post-reflection component, streaming, runtime-curve, and curve-asset mixin surfaces.
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | AngelScript usage signature                                                                          | Purpose / parameter notes                                                                                        |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | bool bVisible = LevelStreaming.GetShouldBeVisibleInEditor() const;                                   | Returns the editor visibility request for a streaming level; available only in editor builds.                    |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | SceneComponent.SetRelativeRotation(FRotator NewRotation);                                            | Sets component rotation relative to its parent without sweep.                                                    |
- * |                                                                                                      | @param NewRotation Relative rotation in degrees.                                                                 |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | bool bAttached = SceneComponent.IsAttachedTo(const USceneComponent CheckComponent) const;            | Reports whether a component appears in this component's attachment ancestry.                                     |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | RuntimeCurveLinearColor.AddDefaultKey(float32 InTime, FLinearColor InColor);                         | Adds a key to the runtime linear-color curve's default rich curves.                                              |
- * |                                                                                                      | @param InTime Curve input time.                                                                                  |
- * |                                                                                                      | @param InColor Color value stored at the key.                                                                    |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | RuntimeFloatCurve.AddDefaultKey(float32 InTime, float32 InValue);                                    | Adds a key to the runtime float curve's default rich curve.                                                      |
- * |                                                                                                      | @param InTime Curve input time.                                                                                  |
- * |                                                                                                      | @param InValue Float value stored at the key.                                                                    |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | int Count = RuntimeFloatCurve.GetNumKeys() const;                                                    | Returns the number of keys in the runtime float curve.                                                           |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | RuntimeFloatCurve.GetTimeRange(float32&out MinTime, float32&out MaxTime) const;                      | Returns the minimum and maximum key times.                                                                       |
- * |                                                                                                      | @param MinTime Receives the earliest key time.                                                                   |
- * |                                                                                                      | @param MaxTime Receives the latest key time.                                                                     |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | FCurveKeyHandle Handle = CurveFloat.AddAutoCurveKey(float32 InTime, float32 InValue);                | Adds an automatically-tangent key and returns its stable handle.                                                 |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | CurveFloat.SetKeyInterpMode(FCurveKeyHandle KeyHandle, ERichCurveInterpMode NewInterpMode,           | Changes interpolation for a curve key.                                                                           |
- * |     bool bAutoSetTangents);                                                                          | @param KeyHandle Key to edit.                                                                                    |
- * |                                                                                                      | @param NewInterpMode New rich-curve interpolation mode.                                                          |
- * |                                                                                                      | @param bAutoSetTangents Recomputes automatic tangents when true.                                                 |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | URuntimeCurveLinearColorMixinLibrary::AddDefaultKey(                                                 | Static form of the runtime linear-color key helper.                                                              |
- * |     FRuntimeCurveLinearColor& Target, float32 InTime, FLinearColor InColor);                         |                                                                                                                  |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- * | URuntimeFloatCurveMixinLibrary::GetTimeRange(const FRuntimeFloatCurve& Target, float32&out MinTime,  | Static form of the runtime float-curve time-range query.                                                         |
- * |     float32&out MaxTime);                                                                            |                                                                                                                  |
- * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
- */
+namespace
+{
+	FString CanonicalizeFunctionDeclaration(
+		const ANSICHAR* Declaration,
+		const bool bFloatIsFloat64)
+	{
+		const FString Source = UTF8_TO_TCHAR(Declaration != nullptr ? Declaration : "");
+		FString Canonical;
+		Canonical.Reserve(Source.Len());
+
+		for (int32 Index = 0; Index < Source.Len();)
+		{
+			const TCHAR Character = Source[Index];
+			if (FChar::IsWhitespace(Character))
+			{
+				++Index;
+				continue;
+			}
+
+			if (FChar::IsAlpha(Character) || Character == TEXT('_'))
+			{
+				const int32 IdentifierStart = Index++;
+				while (Index < Source.Len()
+					&& (FChar::IsAlnum(Source[Index]) || Source[Index] == TEXT('_')))
+				{
+					++Index;
+				}
+
+				const FStringView Identifier(&Source[IdentifierStart], Index - IdentifierStart);
+				if (Identifier.Equals(TEXTVIEW("float")))
+				{
+					Canonical += bFloatIsFloat64 ? TEXT("float64") : TEXT("float32");
+				}
+				else if (Identifier.Equals(TEXTVIEW("double")))
+				{
+					Canonical += TEXT("float64");
+				}
+				else
+				{
+					Canonical.AppendChars(Identifier.GetData(), Identifier.Len());
+				}
+				continue;
+			}
+
+			Canonical.AppendChar(Character);
+			++Index;
+		}
+		return Canonical;
+	}
+
+	bool HasExactMethod(asITypeInfo* TypeInfo, const ANSICHAR* Declaration)
+	{
+		if (TypeInfo == nullptr || Declaration == nullptr)
+		{
+			return false;
+		}
+
+		asIScriptEngine* ScriptEngine = TypeInfo->GetEngine();
+		const bool bFloatIsFloat64 = ScriptEngine != nullptr
+			&& ScriptEngine->GetEngineProperty(asEP_FLOAT_IS_FLOAT64) != 0;
+		const FString Expected = CanonicalizeFunctionDeclaration(
+			Declaration,
+			bFloatIsFloat64);
+		for (asUINT Index = 0; Index < TypeInfo->GetMethodCount(); ++Index)
+		{
+			asIScriptFunction* Method = TypeInfo->GetMethodByIndex(Index);
+			if (Method != nullptr
+				&& CanonicalizeFunctionDeclaration(
+					Method->GetDeclaration(false, false, false, false),
+					bFloatIsFloat64) == Expected)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FunctionLibraryMixins(
 	TEXT("FunctionLibraryMixins.PostReflection"),
 	EAngelscriptBindPhase::PostReflectionBindings,
 	[](FAngelscriptBinds& Binds)
-	{
-		Binds.RegisterFunctionBindingForTarget(
-			URuntimeFloatCurveMixinLibrary::StaticClass(),
-			"GetTimeRange",
-			{ERASE_FUNCTION_PTR(URuntimeFloatCurveMixinLibrary::GetTimeRange, (const FRuntimeFloatCurve&, float&, float&), ERASE_ARGUMENT_PACK(void))});
-
-		auto LevelStreaming_ = Binds.ExistingClassForTarget("ULevelStreaming");
-	#if WITH_EDITOR
-		// ReflectionBindings auto-registers this ScriptMixin UFUNCTION first. Keep
-		// the explicit fallback only when reflection did not produce the method.
-		asITypeInfo* LevelStreamingType = LevelStreaming_.GetTypeInfo();
-		if (LevelStreamingType == nullptr || LevelStreamingType->GetMethodByDecl("bool GetShouldBeVisibleInEditor() const") == nullptr)
-		{
-			LevelStreaming_.Method(
-				"bool GetShouldBeVisibleInEditor() const",
-				&FAngelscriptFunctionLibraryMixinsBinds::GetShouldBeVisibleInEditor);
-		}
-	#endif
-
-		auto SceneComponent_ = Binds.ExistingClassForTarget("USceneComponent");
-		asITypeInfo* SceneComponentType = SceneComponent_.GetTypeInfo();
-		if (SceneComponentType == nullptr || SceneComponentType->GetMethodByDecl("void SetRelativeRotation(FRotator NewRotation)") == nullptr)
-		{
-			SceneComponent_.Method(
-				"void SetRelativeRotation(FRotator NewRotation)",
-				&FAngelscriptFunctionLibraryMixinsBinds::SetRelativeRotation);
-		}
-		if (SceneComponentType == nullptr || SceneComponentType->GetMethodByDecl("bool IsAttachedTo(const USceneComponent CheckComponent) const") == nullptr)
-		{
-			SceneComponent_.Method(
-				"bool IsAttachedTo(const USceneComponent CheckComponent) const",
-				&FAngelscriptFunctionLibraryMixinsBinds::IsAttachedToComponent);
-		}
-
-		auto RuntimeCurveLinearColor_ = Binds.ExistingClassForTarget("FRuntimeCurveLinearColor");
-		if (!RuntimeCurveLinearColor_.HasMethod(TEXT("AddDefaultKey")))
-		{
-			RuntimeCurveLinearColor_.Method(
-				"void AddDefaultKey(float32 InTime, FLinearColor InColor)",
-				&FAngelscriptFunctionLibraryMixinsBinds::AddRuntimeCurveLinearColorKey);
-		}
-
-		auto RuntimeFloatCurve_ = Binds.ExistingClassForTarget("FRuntimeFloatCurve");
-		asITypeInfo* RuntimeFloatCurveType = RuntimeFloatCurve_.GetTypeInfo();
-		if (!RuntimeFloatCurve_.HasMethod(TEXT("AddDefaultKey")))
-		{
-			RuntimeFloatCurve_.Method(
-				"void AddDefaultKey(float32 InTime, float32 InValue)",
-				&FAngelscriptFunctionLibraryMixinsBinds::AddRuntimeFloatCurveKey);
-		}
-		if (RuntimeFloatCurveType == nullptr || RuntimeFloatCurveType->GetMethodByDecl("int GetNumKeys() const") == nullptr)
-		{
-			RuntimeFloatCurve_.Method(
-				"int GetNumKeys() const",
-				&FAngelscriptFunctionLibraryMixinsBinds::GetRuntimeFloatCurveNumKeys);
-		}
-		if (RuntimeFloatCurveType == nullptr || RuntimeFloatCurveType->GetMethodByDecl("void GetTimeRange(float32&out MinTime, float32&out MaxTime) const") == nullptr)
-		{
-			RuntimeFloatCurve_.Method(
-				"void GetTimeRange(float32&out MinTime, float32&out MaxTime) const",
-				&FAngelscriptFunctionLibraryMixinsBinds::GetRuntimeFloatCurveTimeRange);
-		}
-
-		// Reflection-generated ScriptMixin declarations can differ textually from
-		// these hand-written forms, so the UCurveFloat guards intentionally remain
-		// name-based to avoid asALREADY_REGISTERED.
-		auto CurveFloat_ = Binds.ExistingClassForTarget("UCurveFloat");
-		if (!CurveFloat_.HasMethod(TEXT("AddAutoCurveKey")))
-		{
-			CurveFloat_.Method(
-				"FCurveKeyHandle AddAutoCurveKey(float32 InTime, float32 InValue)",
-				&FAngelscriptFunctionLibraryMixinsBinds::AddAutoCurveKey);
-		}
-		if (!CurveFloat_.HasMethod(TEXT("SetKeyInterpMode")))
-		{
-			CurveFloat_.Method(
-				"void SetKeyInterpMode(FCurveKeyHandle KeyHandle, ERichCurveInterpMode NewInterpMode, bool bAutoSetTangents)",
-				&FAngelscriptFunctionLibraryMixinsBinds::SetKeyInterpMode);
-		}
-
-		{
-			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "URuntimeCurveLinearColorMixinLibrary");
-			Binds.BindGlobalFunctionForTarget(
-				"void AddDefaultKey(FRuntimeCurveLinearColor& Target, float32 InTime, FLinearColor InColor)",
-				&FAngelscriptFunctionLibraryMixinsBinds::AddRuntimeCurveLinearColorKeyGlobal);
-		}
-
-		{
-			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "URuntimeFloatCurveMixinLibrary");
-			Binds.BindGlobalFunctionForTarget(
-				"void GetTimeRange(const FRuntimeFloatCurve& Target, float32&out MinTime, float32&out MaxTime)",
-				&FAngelscriptFunctionLibraryMixinsBinds::GetRuntimeFloatCurveTimeRangeGlobal);
-		}
-	});
-
-#include "Components/SceneComponent.h"
-#include "Engine/LevelStreaming.h"
-#include "FunctionLibraries/AngelscriptComponentLibrary.h"
-#include "FunctionLibraries/AngelscriptLevelStreamingLibrary.h"
-#include "FunctionLibraries/RuntimeCurveLinearColorMixinLibrary.h"
-#include "FunctionLibraries/RuntimeFloatCurveMixinLibrary.h"
-
-#if WITH_EDITOR
-bool FAngelscriptFunctionLibraryMixinsBinds::GetShouldBeVisibleInEditor(const ULevelStreaming* LevelStreaming)
 {
-	return UAngelscriptLevelStreamingLibrary::GetShouldBeVisibleInEditor(LevelStreaming);
-}
+	auto LevelStreaming_ = Binds.ExistingClassForTarget("ULevelStreaming");
+#if WITH_EDITOR
+	// Phase 2 of Bind_Defaults (EOrder::Late+100) auto-registers this member via the
+	// UAngelscriptLevelStreamingLibrary ScriptMixin-annotated UFUNCTION. We run at
+	// EOrder::Late+110, so guard against re-registering the same signature — otherwise
+	// AngelScript returns asALREADY_REGISTERED and the asIScriptEngine is left in a
+	// broken state (breaks MultiEngine/DependencyInjection tests that rebind on clone).
+	asITypeInfo* LevelStreamingType = LevelStreaming_.GetTypeInfo();
+	if (!HasExactMethod(LevelStreamingType, "bool GetShouldBeVisibleInEditor() const"))
+	{
+		LevelStreaming_.Method("bool GetShouldBeVisibleInEditor() const", [](const ULevelStreaming* LevelStreaming) -> bool
+		{
+			return UAngelscriptLevelStreamingLibrary::GetShouldBeVisibleInEditor(LevelStreaming);
+		});
+	}
 #endif
 
-void FAngelscriptFunctionLibraryMixinsBinds::SetRelativeRotation(
-	USceneComponent* Component,
-	const FRotator& NewRotation)
-{
-	UAngelscriptComponentLibrary::SetRelativeRotation(Component, NewRotation);
-}
+	auto RuntimeCurveLinearColor_ = Binds.ExistingClassForTarget("FRuntimeCurveLinearColor");
+	asITypeInfo* RuntimeCurveLinearColorType = RuntimeCurveLinearColor_.GetTypeInfo();
+	if (!HasExactMethod(RuntimeCurveLinearColorType, "void AddDefaultKey(float32, FLinearColor)"))
+	{
+		RuntimeCurveLinearColor_.Method(
+			"void AddDefaultKey(float32 InTime, FLinearColor InColor)",
+			[](FRuntimeCurveLinearColor* Target, float InTime, const FLinearColor& InColor)
+			{
+				Target->ColorCurves[0].AddKey(InTime, InColor.R);
+				Target->ColorCurves[1].AddKey(InTime, InColor.G);
+				Target->ColorCurves[2].AddKey(InTime, InColor.B);
+				Target->ColorCurves[3].AddKey(InTime, InColor.A);
+			});
+	}
 
-bool FAngelscriptFunctionLibraryMixinsBinds::IsAttachedToComponent(
-	const USceneComponent* Component,
-	const USceneComponent* CheckComponent)
-{
-	return UAngelscriptComponentLibrary::IsAttachedTo(Component, CheckComponent);
-}
+	auto RuntimeFloatCurve_ = Binds.ExistingClassForTarget("FRuntimeFloatCurve");
+	asITypeInfo* RuntimeFloatCurveType = RuntimeFloatCurve_.GetTypeInfo();
+	if (!HasExactMethod(RuntimeFloatCurveType, "void AddDefaultKey(float32, float32)"))
+	{
+		RuntimeFloatCurve_.Method(
+			"void AddDefaultKey(float32 InTime, float32 InValue)",
+			[](FRuntimeFloatCurve* Target, float InTime, float InValue)
+			{
+				URuntimeFloatCurveMixinLibrary::AddDefaultKey(*Target, InTime, InValue);
+			});
+	}
+	if (!HasExactMethod(RuntimeFloatCurveType, "int GetNumKeys() const"))
+	{
+		RuntimeFloatCurve_.Method(
+			"int GetNumKeys() const",
+			[](const FRuntimeFloatCurve* Target) -> int32
+			{
+				return URuntimeFloatCurveMixinLibrary::GetNumKeys(*Target);
+			});
+	}
+	// Bind_Defaults (EOrder::Late+100) may already have registered these exact
+	// ScriptMixin overloads. Compare the complete declaration so another valid
+	// overload with the same name never suppresses the supplement.
+	auto CurveFloat_ = Binds.ExistingClassForTarget("UCurveFloat");
+	asITypeInfo* CurveFloatType = CurveFloat_.GetTypeInfo();
+	if (!HasExactMethod(CurveFloatType, "FCurveKeyHandle AddAutoCurveKey(float32, float32)"))
+	{
+		CurveFloat_.Method(
+			"FCurveKeyHandle AddAutoCurveKey(float32 InTime, float32 InValue)",
+			[](UCurveFloat* Curve, float InTime, float InValue) -> FCurveKeyHandle
+			{
+				return URuntimeFloatCurveMixinLibrary::AddAutoCurveKey(Curve, InTime, InValue);
+			});
+	}
+	if (!HasExactMethod(CurveFloatType, "void SetKeyInterpMode(FCurveKeyHandle, ERichCurveInterpMode, bool)"))
+	{
+		CurveFloat_.Method(
+			"void SetKeyInterpMode(FCurveKeyHandle KeyHandle, ERichCurveInterpMode NewInterpMode, bool bAutoSetTangents)",
+			[](UCurveFloat* Curve, FCurveKeyHandle KeyHandle, ERichCurveInterpMode NewInterpMode, bool bAutoSetTangents)
+			{
+				URuntimeFloatCurveMixinLibrary::SetKeyInterpMode(Curve, KeyHandle, NewInterpMode, bAutoSetTangents);
+			});
+	}
 
-void FAngelscriptFunctionLibraryMixinsBinds::AddRuntimeCurveLinearColorKey(
-	FRuntimeCurveLinearColor* Target,
-	const float InTime,
-	const FLinearColor& InColor)
-{
-	Target->ColorCurves[0].AddKey(InTime, InColor.R);
-	Target->ColorCurves[1].AddKey(InTime, InColor.G);
-	Target->ColorCurves[2].AddKey(InTime, InColor.B);
-	Target->ColorCurves[3].AddKey(InTime, InColor.A);
-}
+	FAngelscriptBinds::FNamespace RuntimeCurveLinearColorHelperNs(
+		Binds.GetTargetEngine(),
+		"URuntimeCurveLinearColorMixinLibrary");
+	Binds.BindGlobalFunctionForTarget(
+		"void AddDefaultKey(FRuntimeCurveLinearColor& Target, float32 InTime, FLinearColor InColor)",
+		[](FRuntimeCurveLinearColor& Target, float InTime, const FLinearColor& InColor)
+		{
+			URuntimeCurveLinearColorMixinLibrary::AddDefaultKey(Target, InTime, InColor);
+		});
 
-void FAngelscriptFunctionLibraryMixinsBinds::AddRuntimeFloatCurveKey(
-	FRuntimeFloatCurve* Target,
-	const float InTime,
-	const float InValue)
-{
-	URuntimeFloatCurveMixinLibrary::AddDefaultKey(*Target, InTime, InValue);
-}
-
-int32 FAngelscriptFunctionLibraryMixinsBinds::GetRuntimeFloatCurveNumKeys(const FRuntimeFloatCurve* Target)
-{
-	return URuntimeFloatCurveMixinLibrary::GetNumKeys(*Target);
-}
-
-void FAngelscriptFunctionLibraryMixinsBinds::GetRuntimeFloatCurveTimeRange(
-	const FRuntimeFloatCurve* Target,
-	float& MinTime,
-	float& MaxTime)
-{
-	URuntimeFloatCurveMixinLibrary::GetTimeRange(*Target, MinTime, MaxTime);
-}
-
-FCurveKeyHandle FAngelscriptFunctionLibraryMixinsBinds::AddAutoCurveKey(
-	UCurveFloat* Curve,
-	const float InTime,
-	const float InValue)
-{
-	return URuntimeFloatCurveMixinLibrary::AddAutoCurveKey(Curve, InTime, InValue);
-}
-
-void FAngelscriptFunctionLibraryMixinsBinds::SetKeyInterpMode(
-	UCurveFloat* Curve,
-	const FCurveKeyHandle KeyHandle,
-	const ERichCurveInterpMode NewInterpMode,
-	const bool bAutoSetTangents)
-{
-	URuntimeFloatCurveMixinLibrary::SetKeyInterpMode(Curve, KeyHandle, NewInterpMode, bAutoSetTangents);
-}
-
-void FAngelscriptFunctionLibraryMixinsBinds::AddRuntimeCurveLinearColorKeyGlobal(
-	FRuntimeCurveLinearColor& Target,
-	const float InTime,
-	const FLinearColor& InColor)
-{
-	URuntimeCurveLinearColorMixinLibrary::AddDefaultKey(Target, InTime, InColor);
-}
-
-void FAngelscriptFunctionLibraryMixinsBinds::GetRuntimeFloatCurveTimeRangeGlobal(
-	const FRuntimeFloatCurve& Target,
-	float& MinTime,
-	float& MaxTime)
-{
-	URuntimeFloatCurveMixinLibrary::GetTimeRange(Target, MinTime, MaxTime);
-}
+	FAngelscriptBinds::FNamespace RuntimeFloatCurveHelperNs(
+		Binds.GetTargetEngine(),
+		"URuntimeFloatCurveMixinLibrary");
+	Binds.BindGlobalFunctionForTarget(
+		"void GetTimeRange(const FRuntimeFloatCurve& Target, float32&out MinTime, float32&out MaxTime)",
+		[](const FRuntimeFloatCurve& Target, float& MinTime, float& MaxTime)
+		{
+			URuntimeFloatCurveMixinLibrary::GetTimeRange(Target, MinTime, MaxTime);
+		});
+});

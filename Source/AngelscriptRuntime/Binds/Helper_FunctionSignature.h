@@ -7,7 +7,6 @@
 #include "AngelscriptType.h"
 #include "AngelscriptDocs.h"
 #include "AngelscriptBindDatabase.h"
-#include "AngelscriptBinds.h"
 #include "Binds/BlueprintCallableReflectiveFallback.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -53,6 +52,11 @@ struct FAngelscriptFunctionSignature
 
 	bool bStaticInScript = false;
 	bool bStaticInUnreal = false;
+	bool bHasMixinIntent = false;
+	bool bMixinReceiverMatched = false;
+	FString MixinTargets;
+	FString MixinFirstParameterType;
+	FString ValidationError;
 
 	bool bGlobalScope = false;
 	bool bNotAngelscriptProperty = false;
@@ -65,7 +69,7 @@ struct FAngelscriptFunctionSignature
 	FString DeprecationMessage;
 #endif
 
-	UFunction* Function;
+	UFunction* Function = nullptr;
 
 	FAngelscriptFunctionSignature()
 	{
@@ -165,6 +169,16 @@ struct FAngelscriptFunctionSignature
 		InitFromFunction(InType, InFunction, OverrideName);
 	}
 
+	void InitFromFunction(
+		FAngelscriptTypeDatabase& TypeDatabase,
+		TSharedRef<FAngelscriptType> InType,
+		UFunction* InFunction,
+		const TCHAR* OverrideName = nullptr)
+	{
+		(void)TypeDatabase;
+		InitFromFunction(InType, InFunction, OverrideName);
+	}
+
 	static FString GetScriptNamespaceForClass(TSharedRef<FAngelscriptType> InType, UFunction* InFunction)
 	{
 		if (InFunction != nullptr)
@@ -182,24 +196,6 @@ struct FAngelscriptFunctionSignature
 	}
 
 	void InitFromFunction(TSharedRef<FAngelscriptType> InType, UFunction* InFunction, const TCHAR* OverrideName = nullptr)
-	{
-		InitFromFunctionImpl(nullptr, InType, InFunction, OverrideName);
-	}
-
-	void InitFromFunction(
-		FAngelscriptTypeDatabase& TypeDatabase,
-		TSharedRef<FAngelscriptType> InType,
-		UFunction* InFunction,
-		const TCHAR* OverrideName = nullptr)
-	{
-		InitFromFunctionImpl(&TypeDatabase, InType, InFunction, OverrideName);
-	}
-
-	void InitFromFunctionImpl(
-		FAngelscriptTypeDatabase* TypeDatabase,
-		TSharedRef<FAngelscriptType> InType,
-		UFunction* InFunction,
-		const TCHAR* OverrideName)
 	{
 		Function = InFunction;
 
@@ -233,9 +229,7 @@ struct FAngelscriptFunctionSignature
 		for( TFieldIterator<FProperty> It(Function); It && (It->PropertyFlags & CPF_Parm); ++It )
 		{
 			FProperty* Property = *It;
-			FAngelscriptTypeUsage Type = TypeDatabase != nullptr
-				? FAngelscriptTypeUsage::FromProperty(*TypeDatabase, Property)
-				: FAngelscriptTypeUsage::FromProperty(Property);
+			FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromProperty(Property);
 
 			if (!Type.IsValid())
 			{
@@ -331,47 +325,58 @@ struct FAngelscriptFunctionSignature
 			FString Namespace = GetScriptNamespaceForClass(InType, Function);
 			bGlobalScope = HasFuncMeta(NAME_Signature_ScriptGlobalScope);
 
-			// If our class is marked as a 'script mixin', and our argument matches, bind it as a member
+			// If our class is marked as a script mixin, bind matching receivers as
+			// members. A class-level ScriptName is an explicit namespace for static
+			// factory helpers that share the class with receiver-style functions.
 			bool bFoundMixin = false;
+			bool bMixinReceiverValidationFailed = false;
 			const FString& MixinClasses = GetClassMetaRef(NAME_Signature_ScriptMixin);
+			const bool bHasExplicitStaticNamespace = !GetClassMetaRef(NAME_Signature_ScriptName).IsEmpty();
 
 			// UE 5.7+: function-level ScriptMethod metadata is no longer propagated to class-level
 			// ScriptMixin by UHT. When the class has no ScriptMixin but the function itself carries
 			// ScriptMethod, treat the first parameter's type as the mixin target.
-			bool bFunctionLevelScriptMethod = false;
-			if (MixinClasses.Len() == 0 && HasFuncMeta(NAME_Signature_ScriptMethod))
-			{
-				bFunctionLevelScriptMethod = true;
-			}
+			const bool bFunctionLevelScriptMethod = MixinClasses.IsEmpty()
+				&& HasFuncMeta(NAME_Signature_ScriptMethod);
+			bHasMixinIntent = !MixinClasses.IsEmpty() || bFunctionLevelScriptMethod;
+			MixinTargets = !MixinClasses.IsEmpty() ? MixinClasses : TEXT("<ScriptMethod:first-parameter>");
+			MixinFirstParameterType = TEXT("<missing>");
 
-			if ((MixinClasses.Len() != 0 || bFunctionLevelScriptMethod) && ArgumentTypes.Num() > 0
-				&& (ArgumentTypes[0].IsObjectPointer()
-					|| ArgumentTypes[0].Type->IsUnresolvedObjectPointer()
-					|| ArgumentTypes[0].bIsReference))
+			if (bHasMixinIntent)
 			{
 				TArray<FString> MixinList;
 				MixinClasses.ParseIntoArray(MixinList, TEXT(" "));
 
-				// UE 5.7+: when function-level ScriptMethod is set but no class-level
-				// ScriptMixin exists, use the first parameter's type as the mixin target.
-				if (bFunctionLevelScriptMethod && MixinList.Num() == 0)
+				const bool bHasReceiverParameter = ArgumentTypes.Num() > 0
+					&& ArgumentTypes[0].Type.IsValid();
+				if (bHasReceiverParameter)
 				{
-					FString FirstParamType = ArgumentTypes[0].Type->GetAngelscriptTypeName(ArgumentTypes[0]);
-					MixinList.Add(FirstParamType);
+					MixinFirstParameterType = ArgumentTypes[0].Type->GetAngelscriptTypeName(ArgumentTypes[0]);
+					if (bFunctionLevelScriptMethod && MixinList.Num() == 0)
+					{
+						MixinList.Add(MixinFirstParameterType);
+						MixinTargets = MixinFirstParameterType;
+					}
 				}
 
-				FString FirstParamType = ArgumentTypes[0].Type->GetAngelscriptTypeName(ArgumentTypes[0]);
 				FString UnresolvedObjectMixinType;
-				if (MixinList.Num() == 1
+				if (bHasReceiverParameter
 					&& ArgumentTypes[0].Type->IsUnresolvedObjectPointer()
 					&& ArgumentTypes[0].SubTypes.Num() > 0
 					&& ArgumentTypes[0].SubTypes[0].Type.IsValid())
 				{
 					UnresolvedObjectMixinType = ArgumentTypes[0].SubTypes[0].Type->GetAngelscriptTypeName(ArgumentTypes[0].SubTypes[0]);
 				}
+
+				// UE ScriptMethod metadata commonly describes value-type receivers by
+				// value (for example FVector in Kismet libraries). Exact AS type identity,
+				// not the C++ reference qualifier, determines receiver compatibility.
+				const bool bHasReceiverShape = bHasReceiverParameter;
 				for (const FString& Mixin : MixinList)
 				{
-					if (FirstParamType == Mixin || UnresolvedObjectMixinType == Mixin)
+					if (bHasReceiverShape
+						&& FAngelscriptType::GetByAngelscriptTypeName(Mixin).IsValid()
+						&& (MixinFirstParameterType == Mixin || UnresolvedObjectMixinType == Mixin))
 					{
 						if (ArgumentTypes[0].bIsConst)
 							bForceConst = true;
@@ -383,6 +388,7 @@ struct FAngelscriptFunctionSignature
 
 						bStaticInScript = false;
 						bFoundMixin = true;
+						bMixinReceiverMatched = true;
 
 						if (WorldContextArgument >= 0)
 							WorldContextArgument -= 1;
@@ -391,9 +397,20 @@ struct FAngelscriptFunctionSignature
 						break;
 					}
 				}
+
+				// A class ScriptName explicitly supplies the namespace for static factory
+				// helpers. Every other mixin declaration requires a compatible receiver;
+				// silently turning it into a library namespace would change the API shape.
+				bMixinReceiverValidationFailed = !bFoundMixin
+					&& (bFunctionLevelScriptMethod || !bHasExplicitStaticNamespace);
 			}
 
-			if (!bFoundMixin)
+			if (bMixinReceiverValidationFailed)
+			{
+				ClassName.Empty();
+				bStaticInScript = false;
+			}
+			else if (!bFoundMixin)
 			{
 				ClassName = Namespace;
 				bStaticInScript = true;
@@ -407,6 +424,19 @@ struct FAngelscriptFunctionSignature
 		// Build the declaration for the function
 		Declaration = FAngelscriptType::BuildFunctionDeclaration(ReturnType, ScriptName, ArgumentTypes, ArgumentNames, ArgumentDefaults,
 			(Function->HasAnyFunctionFlags(FUNC_Const) && !bStaticInScript) || bForceConst);
+
+		if (bStaticInUnreal && bHasMixinIntent && !bMixinReceiverMatched
+			&& ClassName.IsEmpty())
+		{
+			ValidationError = FString::Printf(
+				TEXT("Invalid ScriptMixin receiver for %s::%s: targets='%s', first parameter='%s', declaration='%s'"),
+				OuterClassForMeta != nullptr ? *OuterClassForMeta->GetName() : TEXT("<unknown-class>"),
+				*Function->GetName(),
+				*MixinTargets,
+				*MixinFirstParameterType,
+				*Declaration);
+			bAllTypesValid = false;
+		}
 
 		// Add no-discard modifier if we want to
 		if (ReturnType.IsValid())
@@ -423,26 +453,6 @@ struct FAngelscriptFunctionSignature
 #endif
 
 	void InitFromDB(TSharedRef<FAngelscriptType> InType, UFunction* InFunction, const FAngelscriptMethodBind& DBBind, bool bInitTypes)
-	{
-		InitFromDBImpl(nullptr, InType, InFunction, DBBind, bInitTypes);
-	}
-
-	void InitFromDB(
-		FAngelscriptTypeDatabase& TypeDatabase,
-		TSharedRef<FAngelscriptType> InType,
-		UFunction* InFunction,
-		const FAngelscriptMethodBind& DBBind,
-		bool bInitTypes)
-	{
-		InitFromDBImpl(&TypeDatabase, InType, InFunction, DBBind, bInitTypes);
-	}
-
-	void InitFromDBImpl(
-		FAngelscriptTypeDatabase* TypeDatabase,
-		TSharedRef<FAngelscriptType> InType,
-		UFunction* InFunction,
-		const FAngelscriptMethodBind& DBBind,
-		bool bInitTypes)
 	{
 		Function = InFunction;
 		Declaration = DBBind.Declaration;
@@ -463,9 +473,7 @@ struct FAngelscriptFunctionSignature
 			for (TFieldIterator<FProperty> It(Function); It && (It->PropertyFlags & CPF_Parm); ++It)
 			{
 				FProperty* Property = *It;
-				FAngelscriptTypeUsage Type = TypeDatabase != nullptr
-					? FAngelscriptTypeUsage::FromProperty(*TypeDatabase, Property)
-					: FAngelscriptTypeUsage::FromProperty(Property);
+				FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromProperty(Property);
 
 				if (!Type.IsValid())
 				{
@@ -487,6 +495,17 @@ struct FAngelscriptFunctionSignature
 		}
 	}
 
+	void InitFromDB(
+		FAngelscriptTypeDatabase& TypeDatabase,
+		TSharedRef<FAngelscriptType> InType,
+		UFunction* InFunction,
+		const FAngelscriptMethodBind& DBBind,
+		bool bInitTypes)
+	{
+		(void)TypeDatabase;
+		InitFromDB(InType, InFunction, DBBind, bInitTypes);
+	}
+
 	void WriteToDB(FAngelscriptMethodBind& DBBind)
 	{
 		DBBind.Declaration = Declaration;
@@ -505,18 +524,16 @@ struct FAngelscriptFunctionSignature
 	}
 
 #if WITH_EDITOR
-	bool IsFunctionEditorOnly(FAngelscriptEngine& TargetEngine) const
+	bool IsFunctionEditorOnly() const
 	{
 		if (Function->HasAnyFunctionFlags(FUNC_EditorOnly))
 			return true;
 
 		if (Function->HasAnyFunctionFlags(FUNC_Static))
 		{
-			extern ANGELSCRIPTRUNTIME_API bool IsEditorOnlyClassForTarget(
-				FAngelscriptEngine& Engine,
-				UClass* Class);
+			extern ANGELSCRIPTRUNTIME_API bool IsEditorOnlyClass(UClass* Class);
 			UClass* Class = Function->GetOuterUClass();
-			if (Class != nullptr && IsEditorOnlyClassForTarget(TargetEngine, Class))
+			if (Class != nullptr && IsEditorOnlyClass(Class))
 				return true;
 		}
 
@@ -524,20 +541,13 @@ struct FAngelscriptFunctionSignature
 	}
 #endif
 
-	void ModifyScriptFunction(FAngelscriptBoundFunction& BoundFunction)
+	void ModifyScriptFunction(int FunctionId)
 	{
-		if (!BoundFunction.IsValid())
-		{
-			return;
-		}
-
-		FAngelscriptEngine& TargetEngine = BoundFunction.GetTargetEngine();
-		const int32 FunctionId = BoundFunction.GetFunctionId();
 #if !WITH_EDITOR
 		if (WorldContextArgument != -1 || bNotAngelscriptProperty || bBlueprintProtected || DeterminesOutputTypeArgument != -1)
 #endif
 		{
-			auto* ScriptFunction = static_cast<asCScriptFunction*>(BoundFunction.GetFunction());
+			auto* ScriptFunction = (asCScriptFunction*)FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(FunctionId);
 			if (ScriptFunction != nullptr)
 			{
 				if (WorldContextArgument != -1)
@@ -572,7 +582,7 @@ struct FAngelscriptFunctionSignature
 					ScriptFunction->deprecationMessage = TCHAR_TO_UTF8(*DeprecationMessage);
 				}
 
-				if (IsFunctionEditorOnly(TargetEngine))
+				if (IsFunctionEditorOnly())
 				{
 					ScriptFunction->traits.SetTrait(asTRAIT_EDITOR_ONLY, true);
 				}
@@ -588,7 +598,6 @@ struct FAngelscriptFunctionSignature
 
 #if WITH_EDITOR
 		FAngelscriptDocs::AddUnrealDocumentation(
-			TargetEngine,
 			FunctionId,
 			Function->GetMetaData(NAME_Signature_ToolTip),
 			Function->GetMetaData(NAME_Signature_Category),
@@ -637,5 +646,4 @@ struct FAngelscriptFunctionSignature
 		Function->SetMetaData(NAME_AS_Tooltip, *ScriptTooltip);
 #endif
 	}
-
 };

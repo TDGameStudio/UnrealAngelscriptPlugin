@@ -1,0 +1,1 @@
+#include "FunctionLibraries/AngelscriptFunctionLibraryContractTestTypes.h"

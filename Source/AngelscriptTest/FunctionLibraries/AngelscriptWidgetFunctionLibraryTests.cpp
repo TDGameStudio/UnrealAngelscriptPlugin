@@ -1,7 +1,7 @@
 // ============================================================================
 // AngelscriptWidgetFunctionLibraryTests.cpp
 //
-// Widget function library binding coverage — CQTest refactor.
+// Widget FunctionLibrary binding coverage — CQTest refactor.
 // Automation ID:
 //   Angelscript.TestModule.FunctionLibraries.Widget.FAngelscriptWidgetFunctionLibraryTest.*
 //

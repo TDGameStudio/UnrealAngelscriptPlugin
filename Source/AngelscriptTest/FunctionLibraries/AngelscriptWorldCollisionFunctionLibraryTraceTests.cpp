@@ -1,7 +1,7 @@
 // ============================================================================
 // AngelscriptWorldCollisionFunctionLibraryTraceTests.cpp
 //
-// World collision trace function-library binding contract smoke. Physics
+// World collision trace FunctionLibrary binding contract smoke. Physics
 // behavior coverage lives in Coverage (`13-physics-collision`).
 // ============================================================================
 

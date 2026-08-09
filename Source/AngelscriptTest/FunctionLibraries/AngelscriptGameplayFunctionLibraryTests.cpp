@@ -1,7 +1,7 @@
 // ============================================================================
 // AngelscriptGameplayFunctionLibraryTests.cpp
 //
-// Gameplay function library async save/load delegate binding coverage — CQTest
+// Gameplay FunctionLibrary async save/load delegate binding coverage — CQTest
 // refactor. Automation IDs:
 //   Angelscript.TestModule.FunctionLibraries.Gameplay.FAngelscriptGameplayFunctionLibraryTest.*
 //
@@ -21,7 +21,7 @@
 #include "AngelscriptTestExecute.h"
 #include "AngelscriptFunctionalTestUtils.h"
 
-#include "Bindings/AngelscriptGameplayFunctionLibraryTestTypes.h"
+#include "FunctionLibraries/AngelscriptGameplayFunctionLibraryTestTypes.h"
 
 #include "Async/TaskGraphInterfaces.h"
 #include "Containers/Ticker.h"

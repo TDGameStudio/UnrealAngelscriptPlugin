@@ -31,7 +31,7 @@ class UAngelscriptWidgetMixinLibrary : public UObject
 
 public:
 
-	UFUNCTION(BlueprintCallable, Meta = (WorldContext = "WorldContextObject"))
+	UFUNCTION(BlueprintCallable)
 	static const FWidgetTransform& GetRenderTransform(UWidget* Widget)
 	{
 		return Widget->GetRenderTransform();

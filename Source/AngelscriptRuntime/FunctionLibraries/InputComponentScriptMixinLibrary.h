@@ -221,13 +221,13 @@ public:
 	}
 
 	UFUNCTION(BlueprintCallable)
-	static const TArray<FInputActionKeyMapping>& GetEngineDefinedActionMappings(UPlayerInput* PlayerInput, const FName ActionName)
+	static const TArray<FInputActionKeyMapping>& GetEngineDefinedActionMappings(UPlayerInput* PlayerInput)
 	{
 		return PlayerInput->GetEngineDefinedActionMappings();
 	}
 
 	UFUNCTION(BlueprintCallable)
-	static const TArray<FInputAxisKeyMapping>& GetEngineDefinedAxisMappings(UPlayerInput* PlayerInput, const FName AxisName)
+	static const TArray<FInputAxisKeyMapping>& GetEngineDefinedAxisMappings(UPlayerInput* PlayerInput)
 	{
 		return PlayerInput->GetEngineDefinedAxisMappings();
 	}

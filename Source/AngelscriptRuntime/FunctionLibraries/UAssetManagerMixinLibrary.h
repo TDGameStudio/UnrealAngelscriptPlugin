@@ -72,44 +72,6 @@ public:
 		return AssetManager->GetPrimaryAssetIdList(PrimaryAssetType, PrimaryAssetIdList);
 	}
 
-	/** Gets metadata for a specific asset type, returns false if not found */
-	UFUNCTION()
-	static bool GetPrimaryAssetTypeInfo(UAssetManager* AssetManager, FPrimaryAssetType PrimaryAssetType, FPrimaryAssetTypeInfo& AssetTypeInfo)
-	{
-		if (AssetManager == nullptr)
-		{
-			AssetTypeInfo = FPrimaryAssetTypeInfo();
-			return false;
-		}
-
-		return AssetManager->GetPrimaryAssetTypeInfo(PrimaryAssetType, AssetTypeInfo);
-	}
-
-	/** Gets list of all primary asset types infos */
-	UFUNCTION()
-	static void GetPrimaryAssetTypeInfoList(UAssetManager* AssetManager, TArray<FPrimaryAssetTypeInfo>& AssetTypeInfoList)
-	{
-		if (AssetManager == nullptr)
-		{
-			AssetTypeInfoList.Reset();
-			return;
-		}
-
-		AssetManager->GetPrimaryAssetTypeInfoList(AssetTypeInfoList);
-	}
-
-	/** Gets the management rules for a specific asset, this will merge the type and individual values */
-	UFUNCTION()
-	static FPrimaryAssetRules GetPrimaryAssetRules(UAssetManager* AssetManager, const FPrimaryAssetId& PrimaryAssetId)
-	{
-		if (AssetManager == nullptr)
-		{
-			return FPrimaryAssetRules();
-		}
-
-		return AssetManager->GetPrimaryAssetRules(PrimaryAssetId);
-	}
-
 	/** Register a function to call when all types are scanned at startup, if this has already happened call immediately */
 	UFUNCTION(BlueprintCallable, Meta = (DelegateObjectParam = "Object", DelegateFunctionParam = "FunctionName", DelegateBindType = "FSimpleDelegate"))
 	static void CallOrRegister_OnCompletedInitialScan(UAssetManager* AssetManager, UObject* Object, const FName& FunctionName)

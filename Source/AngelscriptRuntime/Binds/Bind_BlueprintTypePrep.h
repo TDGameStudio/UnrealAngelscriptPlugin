@@ -23,6 +23,7 @@ struct FUFunctionBindPrep
 	enum class EKind : uint8
 	{
 		Skip = 0,
+		Invalid,
 		Callable,
 		Event,
 	};

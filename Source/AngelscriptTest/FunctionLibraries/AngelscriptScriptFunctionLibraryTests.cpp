@@ -1,12 +1,12 @@
 // ============================================================================
 // AngelscriptScriptFunctionLibraryTests.cpp
 //
-// Script function library binding coverage �?CQTest refactor. Automation IDs:
+// Script function library binding coverage — CQTest refactor. Automation IDs:
 //   Angelscript.TestModule.FunctionLibraries.Script.FAngelscriptScriptFunctionLibraryTest.*
 //
 // Sections:
-//   GlobalInitContextHotReloadName �?hot-reload module name propagation
-//   GlobalInitContext              �?direct module name propagation
+//   GlobalInitContextHotReloadName — hot-reload module name propagation
+//   GlobalInitContext              — direct module name propagation
 //
 // CQTest adaptation notes:
 //   Two legacy automation tests merged into one TEST_CLASS.
@@ -23,6 +23,8 @@
 #include "AngelscriptTestExecute.h"
 
 #include "Misc/ScopeExit.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 
 #if WITH_ANGELSCRIPT_UNITTESTS
 
@@ -379,6 +381,33 @@ public:
 		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitName, TEXT("Outside init global-name helper should be empty")));
 		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitNamespace, TEXT("Outside init namespace helper should be empty")));
 		ASSERT_THAT(AreEqual(FString(TEXT("")), OutsideInitModule, TEXT("Outside init module helper should be empty")));
+	}
+
+	TEST_METHOD(FunctionLibrariesDoNotIncludeVmImplementationHeaders)
+	{
+		const FString FunctionLibrariesDirectory = FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Plugins/Angelscript/Source/AngelscriptRuntime/FunctionLibraries"));
+		TArray<FString> SourceFiles;
+		IFileManager::Get().FindFilesRecursive(SourceFiles, *FunctionLibrariesDirectory, TEXT("*.cpp"), true, false);
+		IFileManager::Get().FindFilesRecursive(SourceFiles, *FunctionLibrariesDirectory, TEXT("*.h"), true, false);
+
+		bool bFoundVmImplementationInclude = false;
+		for (const FString& SourceFile : SourceFiles)
+		{
+			FString Contents;
+			ASSERT_THAT(IsTrue(FFileHelper::LoadFileToString(Contents, *SourceFile),
+				FString::Printf(TEXT("Should read %s"), *SourceFile)));
+			if (Contents.Contains(TEXT("source/as_module.h")))
+			{
+				TestRunner->AddError(FString::Printf(
+					TEXT("FunctionLibrary source should not depend on VM implementation header: %s"),
+					*SourceFile));
+				bFoundVmImplementationInclude = true;
+			}
+		}
+
+		ASSERT_THAT(IsFalse(bFoundVmImplementationInclude));
 	}
 };
 

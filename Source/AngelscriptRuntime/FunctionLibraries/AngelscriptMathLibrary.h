@@ -252,12 +252,14 @@ public:
 		else if (Min > Max)
 			Swap(Min, Max);
 
-		int32 Range = Max - Min;
-		int32 ModValue = (Value - Min) % Range;
-		if (ModValue >= 0)
-			return Min + ModValue;
-		else
-			return Max + ModValue;
+		const int64 WideMin = static_cast<int64>(Min);
+		const int64 Range = static_cast<int64>(Max) - WideMin;
+		int64 ModValue = (static_cast<int64>(Value) - WideMin) % Range;
+		if (ModValue < 0)
+		{
+			ModValue += Range;
+		}
+		return static_cast<int32>(WideMin + ModValue);
 	}
 
 	/**
@@ -276,12 +278,14 @@ public:
 		else if (Min > Max)
 			Swap(Min, Max);
 
-		uint32 Range = Max - Min;
-		uint32 ModValue = (Value - Min) % Range;
-		if (ModValue >= 0)
-			return Min + ModValue;
-		else
-			return Max + ModValue;
+		const int64 WideMin = static_cast<int64>(Min);
+		const int64 Range = static_cast<int64>(Max) - WideMin;
+		int64 ModValue = (static_cast<int64>(Value) - WideMin) % Range;
+		if (ModValue < 0)
+		{
+			ModValue += Range;
+		}
+		return static_cast<uint32>(WideMin + ModValue);
 	}
 };
 
@@ -326,14 +330,22 @@ public:
 	UFUNCTION(Meta = (ScriptCallable))
 	static double AngularDistance(const FVector& A, const FVector& B)
 	{
-		return FMath::Acos(FVector::DotProduct(A, B) / FMath::Sqrt(A.SizeSquared() * B.SizeSquared()));
+		const double SizeSquaredA = A.SizeSquared();
+		const double SizeSquaredB = B.SizeSquared();
+		if (SizeSquaredA == 0.0 || SizeSquaredB == 0.0)
+		{
+			return 0.0;
+		}
+
+		const double Cosine = FVector::DotProduct(A, B) / FMath::Sqrt(SizeSquaredA * SizeSquaredB);
+		return FMath::Acos(FMath::Clamp(Cosine, -1.0, 1.0));
 	}
 
 	// Get the angle in radians between two normal vectors. Both vectors are assumed to be unit length, or a wrong value will be returned.
 	UFUNCTION(Meta = (ScriptCallable))
 	static double AngularDistanceForNormals(const FVector& A, const FVector& B)
 	{
-		return FMath::Acos(FVector::DotProduct(A, B));
+		return FMath::Acos(FMath::Clamp(FVector::DotProduct(A, B), -1.0, 1.0));
 	}
 
 	UFUNCTION(Meta = (ScriptCallable))
@@ -398,27 +410,35 @@ public:
 	UFUNCTION(Meta = (ScriptCallable))
 	static float Dist2D(const FVector3f& Vector, const FVector3f& Other, const FVector3f& UpDirection)
 	{
-		return FMath::Sqrt(FVector3f::DistSquaredXY(FVector3f::VectorPlaneProject(Vector, UpDirection), FVector3f::VectorPlaneProject(Other, UpDirection)));
+		return FMath::Sqrt(FVector3f::DistSquared(FVector3f::VectorPlaneProject(Vector, UpDirection), FVector3f::VectorPlaneProject(Other, UpDirection)));
 	}
 
 	UFUNCTION(Meta = (ScriptCallable))
 	static float DistSquared2D(const FVector3f& Vector, const FVector3f& Other, const FVector3f& UpDirection)
 	{
-		return FVector3f::DistSquaredXY(FVector3f::VectorPlaneProject(Vector, UpDirection), FVector3f::VectorPlaneProject(Other, UpDirection));
+		return FVector3f::DistSquared(FVector3f::VectorPlaneProject(Vector, UpDirection), FVector3f::VectorPlaneProject(Other, UpDirection));
 	}
 
 	// Get the angle in radians between two vectors. Vectors are not assumed to be normalized.
 	UFUNCTION(Meta = (ScriptCallable))
 	static float AngularDistance(const FVector3f& A, const FVector3f& B)
 	{
-		return FMath::Acos(FVector3f::DotProduct(A, B) / FMath::Sqrt(A.SizeSquared() * B.SizeSquared()));
+		const float SizeSquaredA = A.SizeSquared();
+		const float SizeSquaredB = B.SizeSquared();
+		if (SizeSquaredA == 0.0f || SizeSquaredB == 0.0f)
+		{
+			return 0.0f;
+		}
+
+		const float Cosine = FVector3f::DotProduct(A, B) / FMath::Sqrt(SizeSquaredA * SizeSquaredB);
+		return FMath::Acos(FMath::Clamp(Cosine, -1.0f, 1.0f));
 	}
 
 	// Get the angle in radians between two normal vectors. Both vectors are assumed to be unit length, or a wrong value will be returned.
 	UFUNCTION(Meta = (ScriptCallable))
 	static float AngularDistanceForNormals(const FVector3f& A, const FVector3f& B)
 	{
-		return FMath::Acos(FVector3f::DotProduct(A, B));
+		return FMath::Acos(FMath::Clamp(FVector3f::DotProduct(A, B), -1.0f, 1.0f));
 	}
 
 	UFUNCTION(Meta = (ScriptCallable))

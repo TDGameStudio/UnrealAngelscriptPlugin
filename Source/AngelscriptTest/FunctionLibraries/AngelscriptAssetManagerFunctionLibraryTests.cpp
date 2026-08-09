@@ -159,12 +159,6 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptAssetManagerFunctionLibraryTest,
 		AssetDataList.AddDefaulted();
 		TArray<FPrimaryAssetId> PrimaryAssetIdList;
 		PrimaryAssetIdList.Add(DummyPrimaryAssetId);
-		FPrimaryAssetTypeInfo AssetTypeInfo(FName(TEXT("DirtyType")), UObject::StaticClass(), false, false);
-		TArray<FPrimaryAssetTypeInfo> AssetTypeInfoList;
-		AssetTypeInfoList.Add(FPrimaryAssetTypeInfo(FName(TEXT("DirtyListType")), UObject::StaticClass(), false, false));
-		const FPrimaryAssetRules DefaultRules;
-		const FPrimaryAssetTypeInfo DefaultTypeInfo;
-
 		bool bNullGuardResultsValid = true;
 		bNullGuardResultsValid &= this->Assert.IsFalse(
 			UAssetManagerMixinLibrary::GetPrimaryAssetData(nullptr, DummyPrimaryAssetId, AssetData),
@@ -181,29 +175,15 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptAssetManagerFunctionLibraryTest,
 		bNullGuardResultsValid &= this->Assert.IsFalse(
 			UAssetManagerMixinLibrary::GetPrimaryAssetIdList(nullptr, DummyPrimaryAssetType, PrimaryAssetIdList),
 			TEXT("Null asset manager should fail GetPrimaryAssetIdList"));
-		bNullGuardResultsValid &= this->Assert.IsFalse(
-			UAssetManagerMixinLibrary::GetPrimaryAssetTypeInfo(nullptr, DummyPrimaryAssetType, AssetTypeInfo),
-			TEXT("Null asset manager should fail GetPrimaryAssetTypeInfo"));
 		if (!bNullGuardResultsValid)
 		{
 			return;
 		}
 
-		UAssetManagerMixinLibrary::GetPrimaryAssetTypeInfoList(nullptr, AssetTypeInfoList);
-		const FPrimaryAssetRules Rules = UAssetManagerMixinLibrary::GetPrimaryAssetRules(nullptr, DummyPrimaryAssetId);
-
 		bool bNullOutputStateValid = true;
 		bNullOutputStateValid &= this->Assert.IsFalse(AssetData.IsValid(), TEXT("Null asset manager should leave asset data invalid"));
 		bNullOutputStateValid &= this->Assert.AreEqual(0, AssetDataList.Num(), TEXT("Null asset manager should clear the asset data list"));
 		bNullOutputStateValid &= this->Assert.AreEqual(0, PrimaryAssetIdList.Num(), TEXT("Null asset manager should clear the primary asset id list"));
-		bNullOutputStateValid &= this->Assert.AreEqual(DefaultTypeInfo.PrimaryAssetType, AssetTypeInfo.PrimaryAssetType, TEXT("Null asset manager should reset the primary asset type info type"));
-		bNullOutputStateValid &= this->Assert.IsTrue(AssetTypeInfo.AssetBaseClassLoaded.Get() == UObject::StaticClass(), TEXT("Null asset manager should reset the primary asset type info base class to UObject"));
-		bNullOutputStateValid &= this->Assert.AreEqual(DefaultTypeInfo.bIsDynamicAsset, AssetTypeInfo.bIsDynamicAsset, TEXT("Null asset manager should reset the primary asset type info dynamic flag"));
-		bNullOutputStateValid &= this->Assert.AreEqual(DefaultTypeInfo.NumberOfAssets, AssetTypeInfo.NumberOfAssets, TEXT("Null asset manager should reset the primary asset type info asset count"));
-		bNullOutputStateValid &= this->Assert.AreEqual(DefaultTypeInfo.AssetScanPaths.Num(), AssetTypeInfo.AssetScanPaths.Num(), TEXT("Null asset manager should reset the primary asset type info scan paths"));
-		bNullOutputStateValid &= this->Assert.AreEqual(DefaultRules, AssetTypeInfo.Rules, TEXT("Null asset manager should reset the primary asset type info rules"));
-		bNullOutputStateValid &= this->Assert.AreEqual(0, AssetTypeInfoList.Num(), TEXT("Null asset manager should clear the asset type info list"));
-		bNullOutputStateValid &= this->Assert.AreEqual(DefaultRules, Rules, TEXT("Null asset manager should return default primary asset rules"));
 		if (!bNullOutputStateValid)
 		{
 			return;

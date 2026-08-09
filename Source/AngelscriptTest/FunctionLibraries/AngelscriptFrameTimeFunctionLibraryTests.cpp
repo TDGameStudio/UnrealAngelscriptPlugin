@@ -1,14 +1,14 @@
 // ============================================================================
 // AngelscriptFrameTimeFunctionLibraryTests.cpp
 //
-// FQualifiedFrameTime binding coverage �?CQTest pattern. Automation ID:
+// FQualifiedFrameTime FunctionLibrary coverage — CQTest pattern. Automation ID:
 //   Angelscript.TestModule.FunctionLibraries.FrameTime.FAngelscriptFrameTimeBindingsTest.*
 //
 // Sections:
-//   NativeBaselines        �?verify 3 native FQualifiedFrameTime.AsSeconds()
+//   NativeBaselines        — verify 3 native FQualifiedFrameTime.AsSeconds()
 //                            cases using TestTrue + FMath::IsNearlyEqual
 //                            (no AS engine needed)
-//   AsSecondsMixinCompiles �?verify the AsSeconds() mixin binding compiles
+//   AsSecondsMixinCompiles — verify the AsSeconds() mixin binding compiles
 //                            and is callable from script
 // ============================================================================
 
