@@ -23,7 +23,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FParse(
 	TEXT("FParse"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FParse");

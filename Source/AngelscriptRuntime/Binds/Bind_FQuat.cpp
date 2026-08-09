@@ -200,7 +200,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FQuat_Infrastructure(
 
 	});
 AS_FORCE_LINK const FAngelscriptBind Bind_FQuat(
-	TEXT("FQuat.Functions"), EAngelscriptBindPhase::ManualBindings,
+	TEXT("FQuat.Functions"), EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FQuat_ = Binds.ExistingClassForTarget("FQuat");

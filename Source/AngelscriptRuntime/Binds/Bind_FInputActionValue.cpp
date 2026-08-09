@@ -41,7 +41,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FInputActionValue(
 	TEXT("FInputActionValue"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Value_ = Binds.ExistingClassForTarget("FInputActionValue");

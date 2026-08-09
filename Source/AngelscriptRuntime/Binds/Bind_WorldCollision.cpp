@@ -574,8 +574,8 @@ AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_TypeInfrastructure(
 	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_ManualBindings(
-	TEXT("WorldCollision.ManualBindings"),
-	EAngelscriptBindPhase::ManualBindings,
+	TEXT("WorldCollision.ExplicitBindings"),
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		BindTraceHandle(Binds);

@@ -65,7 +65,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FInputBindingHandle_Types(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FInputBindingHandle(
 	TEXT("FInputBindingHandle.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FInputBindingHandle_ = Binds.ExistingClassForTarget("FInputBindingHandle");

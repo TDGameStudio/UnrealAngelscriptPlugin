@@ -38,7 +38,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_USceneComponent(
 	TEXT("USceneComponent.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto USceneComponent_ = Binds.ExistingClassForTarget("USceneComponent");

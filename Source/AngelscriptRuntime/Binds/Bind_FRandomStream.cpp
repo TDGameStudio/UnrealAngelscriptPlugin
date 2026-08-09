@@ -73,7 +73,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FRandomStream_Type(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FRandomStream(
 	TEXT("FRandomStream.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FRandomStream_ = Binds.ExistingClassForTarget("FRandomStream");

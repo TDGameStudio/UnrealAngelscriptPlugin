@@ -22,7 +22,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FMessageDialog(
 	TEXT("FMessageDialog"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FMessageDialog");

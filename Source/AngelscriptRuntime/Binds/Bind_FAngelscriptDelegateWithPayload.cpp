@@ -33,7 +33,7 @@ extern FString GetSignatureStringForFunction(UFunction* Function);
 
 AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptDelegateWithPayload(
 	TEXT("FAngelscriptDelegateWithPayload.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto DelegateType = Binds.ExistingClassForTarget("FAngelscriptDelegateWithPayload");

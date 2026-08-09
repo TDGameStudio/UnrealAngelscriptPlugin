@@ -70,7 +70,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FIntPoint_Type(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FIntPoint(
 	TEXT("FIntPoint.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FIntPoint_ = Binds.ExistingClassForTarget("FIntPoint");

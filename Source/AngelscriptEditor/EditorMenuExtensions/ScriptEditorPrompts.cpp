@@ -430,6 +430,6 @@ namespace
 }
 
 AS_FORCE_LINK const FAngelscriptBind Bind_ScriptEditorPrompts(
-	TEXT("ScriptEditorPrompts.ManualBindings"),
-	EAngelscriptBindPhase::ManualBindings,
+	TEXT("ScriptEditorPrompts.ExplicitBindings"),
+	EAngelscriptBindPhase::ExplicitBindings,
 	&BindScriptEditorPrompts);

@@ -77,7 +77,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FHitResult(
 	TEXT("FHitResult.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FHitResult_ = Binds.ExistingClassForTarget("FHitResult");

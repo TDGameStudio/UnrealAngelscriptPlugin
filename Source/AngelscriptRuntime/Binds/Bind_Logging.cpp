@@ -77,7 +77,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_Logging(
 	TEXT("Logging.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalFunctionForTarget(

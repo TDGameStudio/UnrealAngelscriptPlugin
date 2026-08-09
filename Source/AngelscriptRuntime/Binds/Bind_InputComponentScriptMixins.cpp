@@ -20,7 +20,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_InputComponentScriptMixins(
 	TEXT("InputComponentScriptMixins.GeneratedOverrides"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		// UHT marks these wrappers overloaded-unresolved. Install the exact signatures

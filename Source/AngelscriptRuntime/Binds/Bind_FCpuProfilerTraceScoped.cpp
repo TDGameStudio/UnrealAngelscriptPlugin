@@ -13,7 +13,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_TraceCPUProfilerEventScoped(
 	TEXT("FCpuProfilerTraceScoped"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FCpuProfilerTraceScoped_ = Binds.ExistingClassForTarget("FCpuProfilerTraceScoped");

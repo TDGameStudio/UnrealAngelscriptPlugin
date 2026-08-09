@@ -59,7 +59,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_AController(
 	TEXT("AController.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto AController_ = Binds.ExistingClassForTarget("AController");
@@ -73,7 +73,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_AController(
 	});
 AS_FORCE_LINK const FAngelscriptBind Bind_APlayerController(
 	TEXT("APlayerController.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto APlayerController_ = Binds.ExistingClassForTarget("APlayerController");
@@ -87,7 +87,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_APlayerController(
 	});
 AS_FORCE_LINK const FAngelscriptBind Bind_APawn(
 	TEXT("APawn.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto APawn_ = Binds.ExistingClassForTarget("APawn");

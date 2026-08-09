@@ -148,7 +148,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FRotator_Infrastructure(
 
 	});
 AS_FORCE_LINK const FAngelscriptBind Bind_FRotator(
-	TEXT("FRotator.Functions"), EAngelscriptBindPhase::ManualBindings,
+	TEXT("FRotator.Functions"), EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FRotator_ = Binds.ExistingClassForTarget("FRotator");

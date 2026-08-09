@@ -20,7 +20,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UCollisionProfile(
 	TEXT("UCollisionProfile"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "UCollisionProfile");

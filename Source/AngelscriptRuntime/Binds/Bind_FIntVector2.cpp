@@ -54,7 +54,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector2_ToStringContribution(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector2(
 	TEXT("FIntVector2.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FIntVector2_ = Binds.ExistingClassForTarget("FIntVector2");

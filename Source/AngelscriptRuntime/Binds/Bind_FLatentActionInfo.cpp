@@ -27,7 +27,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FLatentActionInfo(
 	TEXT("FLatentActionInfo"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FLatentActionInfo_ = Binds.ExistingClassForTarget("FLatentActionInfo");

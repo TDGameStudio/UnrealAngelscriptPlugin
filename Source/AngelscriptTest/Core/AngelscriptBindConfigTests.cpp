@@ -160,7 +160,7 @@ public:
 		Collection.Append(
 			MakeDirectBindRecord(
 				TEXT("InitialProvider"),
-				EAngelscriptBindPhase::ManualBindings,
+				EAngelscriptBindPhase::ExplicitBindings,
 				"InitialProvider.cpp",
 				17),
 			Diagnostic);
@@ -196,7 +196,7 @@ public:
 		FString Diagnostic;
 		FAngelscriptBindRecord InvalidRecord = MakeDirectBindRecord(
 			TEXT("InvalidProvider"),
-			EAngelscriptBindPhase::ManualBindings,
+			EAngelscriptBindPhase::ExplicitBindings,
 			"InvalidProvider.cpp",
 			11);
 		InvalidRecord.Callback = nullptr;
@@ -216,7 +216,7 @@ public:
 			EAngelscriptBindPhase::PostReflectionBindings,
 			EAngelscriptBindPhase::ReflectionBindings,
 			EAngelscriptBindPhase::GeneratedBindings,
-			EAngelscriptBindPhase::ManualBindings,
+			EAngelscriptBindPhase::ExplicitBindings,
 			EAngelscriptBindPhase::TypeInfrastructure,
 			EAngelscriptBindPhase::TypeDeclarations,
 		};

@@ -42,7 +42,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FPlatformProcess(
 	TEXT("FPlatformProcess"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FPlatformProcess");

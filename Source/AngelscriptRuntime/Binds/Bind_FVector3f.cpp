@@ -240,7 +240,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FVector3f_TypeInfrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FVector3f(
 	TEXT("FVector3f.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FVector3f_ = Binds.ExistingClassForTarget("FVector3f");

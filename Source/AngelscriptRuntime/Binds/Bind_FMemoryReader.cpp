@@ -56,7 +56,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FMemoryReaderType(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FMemoryReader(
 	TEXT("FMemoryReader.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Reader_ = Binds.ExistingClassForTarget("FMemoryReader");

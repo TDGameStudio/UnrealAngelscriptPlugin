@@ -151,7 +151,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FLinearColor_Infrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FLinearColor(
 	TEXT("FLinearColor.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FLinearColor_ = Binds.ExistingClassForTarget("FLinearColor");

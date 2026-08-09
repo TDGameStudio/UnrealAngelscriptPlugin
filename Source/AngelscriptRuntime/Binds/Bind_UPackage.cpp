@@ -12,7 +12,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UPackage(
 	TEXT("UPackage"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UPackage_ = Binds.ExistingClassForTarget("UPackage");

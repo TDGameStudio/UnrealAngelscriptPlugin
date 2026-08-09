@@ -2647,7 +2647,7 @@ static void RegisterBlueprintTypeReferenceClasses(FAngelscriptBinds& Binds)
 
 AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintType_StaticClasses(
 	TEXT("BlueprintType.StaticClasses"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		for (FAngelscriptClassBind& DBBind : Binds.GetTargetBindDatabase().Classes)
@@ -2712,7 +2712,7 @@ static void RegisterBlueprintTypeReferenceClasses(FAngelscriptBinds& Binds)
 
 AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintType_StaticClasses(
 	TEXT("BlueprintType.StaticClasses"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		for (const TObjectPtr<UClass>& ClassPtr : GetOrCaptureBlueprintTypeClasses(Binds))

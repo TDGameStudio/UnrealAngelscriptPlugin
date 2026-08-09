@@ -94,7 +94,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionShape_Types(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionShape(
 	TEXT("FCollisionShape.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FCollisionShape_ = Binds.ExistingClassForTarget("FCollisionShape");

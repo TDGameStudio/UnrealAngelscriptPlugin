@@ -572,7 +572,7 @@ namespace
 
 AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintEvents(
 	TEXT("BlueprintEvents.HelperGlobals"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		const TArray<TSharedRef<FAngelscriptType>>& Types = Binds.GetTargetTypeDatabase().RegisteredTypes;

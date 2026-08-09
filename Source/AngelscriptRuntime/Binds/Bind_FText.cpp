@@ -150,7 +150,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FText_Infrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FText(
 	TEXT("FText.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Text = Binds.ExistingClassForTarget("FText");

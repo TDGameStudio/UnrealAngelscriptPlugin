@@ -334,7 +334,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_EGetByNameFlags(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UEnum(
 	TEXT("UEnum"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UEnum_ = Binds.ExistingClassForTarget("UEnum");

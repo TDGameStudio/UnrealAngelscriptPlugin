@@ -110,7 +110,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FPaths(
 	TEXT("FPaths"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FPaths");

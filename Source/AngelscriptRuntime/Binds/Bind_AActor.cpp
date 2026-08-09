@@ -99,7 +99,7 @@
  */
 AS_FORCE_LINK const FAngelscriptBind Bind_AActor(
 	TEXT("AActor.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto AActorType = Binds.ExistingClassForTarget("AActor");

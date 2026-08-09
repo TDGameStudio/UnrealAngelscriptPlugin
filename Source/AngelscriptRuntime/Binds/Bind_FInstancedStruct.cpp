@@ -42,7 +42,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FInstancedStruct(
 	TEXT("FInstancedStruct.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FAngelscriptAnyStructParameter_ = Binds.ExistingClassForTarget("FAngelscriptAnyStructParameter");

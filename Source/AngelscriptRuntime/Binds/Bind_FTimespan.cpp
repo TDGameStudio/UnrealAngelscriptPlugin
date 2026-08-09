@@ -112,7 +112,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FTimespan(
 	TEXT("FTimespan.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FTimespan_ = Binds.ExistingClassForTarget("FTimespan");

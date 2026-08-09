@@ -15,7 +15,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FAngelscriptGameThreadScopeWorldContext(
 	TEXT("FAngelscriptGameThreadScopeWorldContext"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Scope_ = Binds.ValueClassForTarget<FAngelscriptGameThreadScopeWorldContext>(

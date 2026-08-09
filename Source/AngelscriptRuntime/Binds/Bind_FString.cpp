@@ -1478,8 +1478,8 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FString_TypeInfrastructure(
 	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FString_ManualBindings(
-	TEXT("FString.ManualBindings"),
-	EAngelscriptBindPhase::ManualBindings,
+	TEXT("FString.ExplicitBindings"),
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		BindFStringCore(Binds);

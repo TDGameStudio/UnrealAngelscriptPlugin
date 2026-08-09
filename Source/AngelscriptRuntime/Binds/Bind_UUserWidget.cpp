@@ -89,7 +89,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UUserWidget(
 	TEXT("UUserWidget.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UserWidget = Binds.ExistingClassForTarget("UUserWidget");

@@ -60,7 +60,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_EGuidFormats(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FGuid(
 	TEXT("FGuid"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FGuid_ = Binds.ExistingClassForTarget("FGuid");

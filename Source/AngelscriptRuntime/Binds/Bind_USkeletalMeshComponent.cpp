@@ -17,7 +17,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_USkeletalMeshComponent(
 	TEXT("USkeletalMeshComponent"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds USkeletalMeshComponent_ = Binds.ExistingClassForTarget("USkeletalMeshComponent");

@@ -783,7 +783,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_Delegate_Declarations(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_Delegates(
 	TEXT("Delegates.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptScopeTimer Timer(TEXT("delegate bindings"));

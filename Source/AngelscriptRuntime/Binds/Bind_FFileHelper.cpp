@@ -68,7 +68,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FFileHelper_Types(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FFileHelper(
 	TEXT("FFileHelper.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FFileHelper");

@@ -105,7 +105,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FBox_ToStringContribution(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FBox(
 	TEXT("FBox.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FBox_ = Binds.ExistingClassForTarget("FBox");

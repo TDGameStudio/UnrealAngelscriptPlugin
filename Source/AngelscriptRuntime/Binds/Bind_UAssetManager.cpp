@@ -70,7 +70,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UAssetManager_ToStringContributions(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UAssetManager(
 	TEXT("UAssetManager.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FPrimaryAssetType_ = Binds.ExistingClassForTarget("FPrimaryAssetType");

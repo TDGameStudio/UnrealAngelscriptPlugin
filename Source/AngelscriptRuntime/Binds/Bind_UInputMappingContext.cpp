@@ -68,7 +68,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UInputAction_Late(
 	TEXT("UInputMappingContext.InputAction"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Action_ = Binds.ExistingClassForTarget("UInputAction");
@@ -84,7 +84,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UInputAction_Late(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FEnhancedActionKeyMapping_Late(
 	TEXT("UInputMappingContext.EnhancedActionKeyMapping"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Mapping_ = Binds.ExistingClassForTarget("FEnhancedActionKeyMapping");
@@ -110,7 +110,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FEnhancedActionKeyMapping_Late(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UInputMappingContext_Late(
 	TEXT("UInputMappingContext.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Context_ = Binds.ExistingClassForTarget("UInputMappingContext");

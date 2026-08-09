@@ -13,7 +13,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FGenericPlatformMisc(
 	TEXT("FGenericPlatformMisc"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FGenericPlatformMisc");

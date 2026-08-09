@@ -24,7 +24,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FPlane4f(
 	TEXT("FPlane4f"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FPlane4f_ = Binds.ExistingClassForTarget("FPlane4f");

@@ -200,7 +200,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FQuat4f_Infrastructure(
 
 	});
 AS_FORCE_LINK const FAngelscriptBind Bind_FQuat4f(
-	TEXT("FQuat4f.Functions"), EAngelscriptBindPhase::ManualBindings,
+	TEXT("FQuat4f.Functions"), EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FQuat4f_ = Binds.ExistingClassForTarget("FQuat4f");

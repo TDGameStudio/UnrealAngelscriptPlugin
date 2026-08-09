@@ -208,7 +208,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_TypeInfrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_Functions(
 	TEXT("SoftReferences.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto TSoftObjectPtr_ = Binds.ExistingClassForTarget("TSoftObjectPtr<T>");

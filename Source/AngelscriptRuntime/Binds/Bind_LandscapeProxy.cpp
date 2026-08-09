@@ -14,7 +14,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_ALandscapeProxy(
 	TEXT("ALandscapeProxy.GetHeightAtLocation"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto ALandscapeProxy_ = Binds.ExistingClassForTarget("ALandscapeProxy");

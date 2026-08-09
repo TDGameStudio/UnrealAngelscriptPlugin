@@ -78,7 +78,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FColor(
 	TEXT("FColor"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FColor_ = Binds.ExistingClassForTarget("FColor");

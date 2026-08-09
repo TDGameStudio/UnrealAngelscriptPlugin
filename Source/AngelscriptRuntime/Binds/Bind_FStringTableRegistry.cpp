@@ -48,7 +48,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FStringTableRegistry_Types(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FStringTableRegistry(
 	TEXT("FStringTableRegistry.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalFunctionForTarget(

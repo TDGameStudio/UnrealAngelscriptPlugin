@@ -88,7 +88,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds3f_ToStringContributio
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds3f(
 	TEXT("FBoxSphereBounds3f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FBoxSphereBounds3f_ = Binds.ExistingClassForTarget("FBoxSphereBounds3f");

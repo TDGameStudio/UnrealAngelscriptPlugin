@@ -28,7 +28,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UInputSettings(
 	TEXT("UInputSettings"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UInputSettings_ = Binds.ExistingClassForTarget("UInputSettings");

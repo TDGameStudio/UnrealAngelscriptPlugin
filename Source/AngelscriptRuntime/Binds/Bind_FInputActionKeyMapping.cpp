@@ -14,7 +14,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FInputActionKeyMapping(
 	TEXT("FInputActionKeyMapping"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FInputActionKeyMapping_ = Binds.ExistingClassForTarget("FInputActionKeyMapping");

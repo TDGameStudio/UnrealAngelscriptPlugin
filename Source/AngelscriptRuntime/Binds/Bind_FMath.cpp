@@ -768,7 +768,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FMath(
 	TEXT("FMath.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		const bool bDeprecateDouble = UAngelscriptSettings::Get().bDeprecateDoubleType;

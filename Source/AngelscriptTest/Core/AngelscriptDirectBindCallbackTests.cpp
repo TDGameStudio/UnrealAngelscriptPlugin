@@ -103,7 +103,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 		FAngelscriptBindCollection Collection;
 		CallbackInvocationCount = 0;
 		const int32 FirstLine = __LINE__ + 1;
-		FAngelscriptBind FirstBind(Collection, TEXT("First"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation);
+		FAngelscriptBind FirstBind(Collection, TEXT("First"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation);
 		const int32 SecondLine = __LINE__ + 1;
 		FAngelscriptBind SecondBind(Collection, TEXT("Second"), EAngelscriptBindPhase::Finalization, &RecordInvocation);
 
@@ -118,7 +118,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 		bPassed &= TestRunner->TestEqual(TEXT("The first logical bind name should be retained"), Records[0].BindName, FName(TEXT("First")));
 		bPassed &= TestRunner->TestEqual(TEXT("The second logical bind name should be retained"), Records[1].BindName, FName(TEXT("Second")));
 		bPassed &= TestRunner->TestEqual(TEXT("The declaring module should be captured automatically"), Records[0].OwnerModule, FName(TEXT("AngelscriptTest")));
-		bPassed &= TestRunner->TestEqual(TEXT("The declared phase should be retained"), Records[0].Phase, EAngelscriptBindPhase::ManualBindings);
+		bPassed &= TestRunner->TestEqual(TEXT("The declared phase should be retained"), Records[0].Phase, EAngelscriptBindPhase::ExplicitBindings);
 		bPassed &= TestRunner->TestTrue(TEXT("The declaring source file should be captured automatically"), FString(ANSI_TO_TCHAR(Records[0].SourceFile)).EndsWith(TEXT("AngelscriptDirectBindCallbackTests.cpp")));
 		bPassed &= TestRunner->TestEqual(TEXT("The first source line should identify its declaration"), Records[0].SourceLine, FirstLine);
 		bPassed &= TestRunner->TestEqual(TEXT("The second source line should identify its declaration"), Records[1].SourceLine, SecondLine);
@@ -130,8 +130,8 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 	TEST_METHOD(FinalizationRejectsMissingRequiredMetadata)
 	{
 		FAngelscriptBindCollection Collection;
-		FAngelscriptBind MissingName(Collection, NAME_None, EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "TestOwner", "MissingName.cpp", 17);
-		FAngelscriptBind MissingCallback(Collection, TEXT("MissingCallback"), EAngelscriptBindPhase::ManualBindings, nullptr, "TestOwner", "MissingCallback.cpp", 29);
+		FAngelscriptBind MissingName(Collection, NAME_None, EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "TestOwner", "MissingName.cpp", 17);
+		FAngelscriptBind MissingCallback(Collection, TEXT("MissingCallback"), EAngelscriptBindPhase::ExplicitBindings, nullptr, "TestOwner", "MissingCallback.cpp", 29);
 		FAngelscriptBind InvalidPhase(Collection, TEXT("InvalidPhase"), static_cast<EAngelscriptBindPhase>(255), &RecordInvocation, "TestOwner", "InvalidPhase.cpp", 41);
 
 		FString Diagnostic;
@@ -148,13 +148,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 	{
 		FAngelscriptBindCollection Collection;
 		FString Diagnostic;
-		Collection.Append(MakeRecord(TEXT("Zulu"), TEXT("Same"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "Z.cpp", 10), Diagnostic);
-		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Zulu"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "A.cpp", 30), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("Zulu"), TEXT("Same"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "Z.cpp", 10), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Zulu"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "A.cpp", 30), Diagnostic);
 		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Alpha"), EAngelscriptBindPhase::Finalization, &RecordInvocation, "A.cpp", 10), Diagnostic);
-		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Charlie"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "B.cpp", 20), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Charlie"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "B.cpp", 20), Diagnostic);
 		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Alpha"), EAngelscriptBindPhase::TypeDeclarations, &RecordInvocation, "C.cpp", 40), Diagnostic);
-		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Bravo"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "A.cpp", 50), Diagnostic);
-		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Alpha"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "A.cpp", 10), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Bravo"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "A.cpp", 50), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("Alpha"), TEXT("Alpha"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "A.cpp", 10), Diagnostic);
 
 		bool bPassed = true;
 		bPassed &= TestRunner->TestTrue(TEXT("A valid collection should finalize"), Collection.Finalize(Diagnostic));
@@ -182,22 +182,22 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 	{
 		FAngelscriptBindCollection DuplicateCollection;
 		FString Diagnostic;
-		DuplicateCollection.Append(MakeRecord(TEXT("Owner"), TEXT("Duplicate"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "Second.cpp", 20), Diagnostic);
-		DuplicateCollection.Append(MakeRecord(TEXT("Owner"), TEXT("Duplicate"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "First.cpp", 20), Diagnostic);
-		DuplicateCollection.Append(MakeRecord(TEXT("Owner"), TEXT("Duplicate"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "First.cpp", 10), Diagnostic);
+		DuplicateCollection.Append(MakeRecord(TEXT("Owner"), TEXT("Duplicate"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "Second.cpp", 20), Diagnostic);
+		DuplicateCollection.Append(MakeRecord(TEXT("Owner"), TEXT("Duplicate"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "First.cpp", 20), Diagnostic);
+		DuplicateCollection.Append(MakeRecord(TEXT("Owner"), TEXT("Duplicate"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "First.cpp", 10), Diagnostic);
 
 		bool bPassed = true;
 		bPassed &= TestRunner->TestFalse(TEXT("Duplicate stable identities must fail finalization"), DuplicateCollection.Finalize(Diagnostic));
 		bPassed &= TestRunner->TestTrue(TEXT("Duplicate diagnostics should identify the owner"), Diagnostic.Contains(TEXT("Owner")));
 		bPassed &= TestRunner->TestTrue(TEXT("Duplicate diagnostics should identify the logical bind name"), Diagnostic.Contains(TEXT("Duplicate")));
-		bPassed &= TestRunner->TestTrue(TEXT("Duplicate diagnostics should identify the phase"), Diagnostic.Contains(TEXT("ManualBindings")));
+		bPassed &= TestRunner->TestTrue(TEXT("Duplicate diagnostics should identify the phase"), Diagnostic.Contains(TEXT("ExplicitBindings")));
 		bPassed &= TestRunner->TestTrue(TEXT("Duplicate diagnostics should include both declaration sites"), Diagnostic.Contains(TEXT("First.cpp:10")) && Diagnostic.Contains(TEXT("First.cpp:20")));
 		const TConstArrayView<FAngelscriptBindRecord> DuplicateRecords = DuplicateCollection.GetRecords();
 		bPassed &= TestRunner->TestTrue(TEXT("Source file and line should deterministically order duplicate diagnostics"), DuplicateRecords.Num() == 3 && FCStringAnsi::Strcmp(DuplicateRecords[0].SourceFile, "First.cpp") == 0 && DuplicateRecords[0].SourceLine == 10 && DuplicateRecords[1].SourceLine == 20 && FCStringAnsi::Strcmp(DuplicateRecords[2].SourceFile, "Second.cpp") == 0);
 		bPassed &= TestRunner->TestFalse(TEXT("A duplicate collection must remain unsealed"), DuplicateCollection.IsSealed());
 
 		FAngelscriptBindCollection SealedCollection;
-		SealedCollection.Append(MakeRecord(TEXT("Owner"), TEXT("Initial"), EAngelscriptBindPhase::ManualBindings, &RecordInvocation, "Initial.cpp", 30), Diagnostic);
+		SealedCollection.Append(MakeRecord(TEXT("Owner"), TEXT("Initial"), EAngelscriptBindPhase::ExplicitBindings, &RecordInvocation, "Initial.cpp", 30), Diagnostic);
 		bPassed &= TestRunner->TestTrue(TEXT("The valid collection should seal"), SealedCollection.Finalize(Diagnostic));
 		const void* const BackingData = SealedCollection.GetRecords().GetData();
 		bPassed &= TestRunner->TestFalse(TEXT("Appending after finalization must fail"), SealedCollection.Append(MakeRecord(TEXT("LateOwner"), TEXT("LateBind"), EAngelscriptBindPhase::GeneratedBindings, &RecordInvocation, "Late.cpp", 40), Diagnostic));
@@ -213,7 +213,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 		FAngelscriptBindCollection Collection;
 		FString Diagnostic;
 		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Gamma"), EAngelscriptBindPhase::Finalization, &RecordGamma, "C.cpp", 30), Diagnostic);
-		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Beta"), EAngelscriptBindPhase::ManualBindings, &RecordBeta, "B.cpp", 20), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Beta"), EAngelscriptBindPhase::ExplicitBindings, &RecordBeta, "B.cpp", 20), Diagnostic);
 		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Alpha"), EAngelscriptBindPhase::TypeDeclarations, &RecordAlpha, "A.cpp", 10), Diagnostic);
 		if (!TestRunner->TestTrue(TEXT("The execution fixture should finalize"), Collection.Finalize(Diagnostic)))
 		{
@@ -241,7 +241,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 			MakeRecord(
 				TEXT("Owner"),
 				TEXT("Initial"),
-				EAngelscriptBindPhase::ManualBindings,
+				EAngelscriptBindPhase::ExplicitBindings,
 				&RecordInvocation,
 				"Initial.cpp",
 				30),
@@ -307,7 +307,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 		FAngelscriptBindCollection Collection;
 		FString Diagnostic;
 		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Gamma"), EAngelscriptBindPhase::Finalization, &RecordGamma, "C.cpp", 30), Diagnostic);
-		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Beta"), EAngelscriptBindPhase::ManualBindings, &RecordBeta, "B.cpp", 20), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Beta"), EAngelscriptBindPhase::ExplicitBindings, &RecordBeta, "B.cpp", 20), Diagnostic);
 		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Alpha"), EAngelscriptBindPhase::TypeDeclarations, &RecordAlpha, "A.cpp", 10), Diagnostic);
 		if (!TestRunner->TestTrue(TEXT("The phase-window fixture should finalize"), Collection.Finalize(Diagnostic)))
 		{
@@ -325,13 +325,13 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 			CallbackSequence == TArray<FName>({TEXT("Alpha")}));
 		bPassed &= TestRunner->TestTrue(
 			TEXT("The late phase window should execute"),
-			Collection.Execute(Binds, EAngelscriptBindPhase::ManualBindings, EAngelscriptBindPhase::Finalization, Diagnostic));
+			Collection.Execute(Binds, EAngelscriptBindPhase::ExplicitBindings, EAngelscriptBindPhase::Finalization, Diagnostic));
 		bPassed &= TestRunner->TestTrue(
 			TEXT("The two non-overlapping windows should execute every callback exactly once and in phase order"),
 			CallbackSequence == TArray<FName>({TEXT("Alpha"), TEXT("Beta"), TEXT("Gamma")}));
 		bPassed &= TestRunner->TestFalse(
 			TEXT("An inverted phase window must fail closed"),
-			Collection.Execute(Binds, EAngelscriptBindPhase::Finalization, EAngelscriptBindPhase::ManualBindings, Diagnostic));
+			Collection.Execute(Binds, EAngelscriptBindPhase::Finalization, EAngelscriptBindPhase::ExplicitBindings, Diagnostic));
 		bPassed &= TestRunner->TestTrue(TEXT("The inverted-window diagnostic should identify the invalid range"), Diagnostic.Contains(TEXT("inverted")));
 		TestRunner->TestTrue(TEXT("Direct bind phase-window replay should support mixed migration"), bPassed);
 	}
@@ -340,7 +340,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 	{
 		FAngelscriptBindCollection Collection;
 		FString Diagnostic;
-		Collection.Append(MakeRecord(TEXT("FailureOwner"), TEXT("FailureProvider"), EAngelscriptBindPhase::ManualBindings, &RegisterDuplicateGlobalFunction, "FailureProvider.cpp", 73), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("FailureOwner"), TEXT("FailureProvider"), EAngelscriptBindPhase::ExplicitBindings, &RegisterDuplicateGlobalFunction, "FailureProvider.cpp", 73), Diagnostic);
 		Collection.Append(MakeRecord(TEXT("LaterOwner"), TEXT("LaterProvider"), EAngelscriptBindPhase::Finalization, &RecordLaterProvider, "LaterProvider.cpp", 91), Diagnostic);
 		if (!TestRunner->TestTrue(TEXT("The failure fixture should finalize"), Collection.Finalize(Diagnostic)))
 		{
@@ -368,7 +368,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 			TEXT("Registrations later in the failing provider must not mutate the engine"),
 			Engine->GetScriptEngine()->GetGlobalFunctionByDecl("int DirectBindPostFailureFixture()") == nullptr);
 		bPassed &= TestRunner->TestTrue(TEXT("The first failure should identify the provider"), Diagnostic.Contains(TEXT("FailureOwner")) && Diagnostic.Contains(TEXT("FailureProvider")));
-		bPassed &= TestRunner->TestTrue(TEXT("The first failure should identify phase and source"), Diagnostic.Contains(TEXT("ManualBindings")) && Diagnostic.Contains(TEXT("FailureProvider.cpp:73")));
+		bPassed &= TestRunner->TestTrue(TEXT("The first failure should identify phase and source"), Diagnostic.Contains(TEXT("ExplicitBindings")) && Diagnostic.Contains(TEXT("FailureProvider.cpp:73")));
 		bPassed &= TestRunner->TestTrue(TEXT("The first failure should retain the rejected declaration"), Diagnostic.Contains(TEXT("DirectBindFailureFixture")));
 		TestRunner->TestTrue(TEXT("Direct bind registration failures should stop execution with actionable context"), bPassed);
 	}
@@ -383,7 +383,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 			EAngelscriptBindPhase::PostReflectionBindings,
 			EAngelscriptBindPhase::ReflectionBindings,
 			EAngelscriptBindPhase::GeneratedBindings,
-			EAngelscriptBindPhase::ManualBindings,
+			EAngelscriptBindPhase::ExplicitBindings,
 			EAngelscriptBindPhase::TypeInfrastructure,
 			EAngelscriptBindPhase::TypeDeclarations,
 		};
@@ -446,7 +446,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 		FAngelscriptBindCollection Collection;
 		FString Diagnostic;
 		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Type"), EAngelscriptBindPhase::TypeDeclarations, &RecordAlpha, "A.cpp", 10), Diagnostic);
-		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Manual"), EAngelscriptBindPhase::ManualBindings, &RecordBeta, "B.cpp", 20), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Manual"), EAngelscriptBindPhase::ExplicitBindings, &RecordBeta, "B.cpp", 20), Diagnostic);
 		Collection.Append(MakeRecord(TEXT("Owner"), TEXT("Final"), EAngelscriptBindPhase::Finalization, &RecordGamma, "C.cpp", 30), Diagnostic);
 		ASSERT_THAT(IsTrue(Collection.Finalize(Diagnostic), TEXT("The per-engine observation fixture should finalize")));
 
@@ -471,7 +471,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 		bPassed &= TestRunner->TestTrue(
 			TEXT("Selected phase totals should exactly match attempted and successful providers"),
 			SnapshotB.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::TypeDeclarations)].AttemptedCount == 1
-				&& SnapshotB.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::ManualBindings)].SucceededCount == 1
+				&& SnapshotB.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::ExplicitBindings)].SucceededCount == 1
 				&& SnapshotB.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::Finalization)].SucceededCount == 1);
 		bPassed &= TestRunner->TestTrue(
 			TEXT("A successful callback pass should be publication-eligible but not claim actual publication"),
@@ -503,7 +503,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 		FAngelscriptBindExecutionObservation::Reset();
 		FAngelscriptBindCollection Collection;
 		FString Diagnostic;
-		Collection.Append(MakeRecord(TEXT("FailureOwner"), TEXT("FailureProvider"), EAngelscriptBindPhase::ManualBindings, &RegisterDuplicateGlobalFunction, "FailureProvider.cpp", 73), Diagnostic);
+		Collection.Append(MakeRecord(TEXT("FailureOwner"), TEXT("FailureProvider"), EAngelscriptBindPhase::ExplicitBindings, &RegisterDuplicateGlobalFunction, "FailureProvider.cpp", 73), Diagnostic);
 		Collection.Append(MakeRecord(TEXT("LaterOwner"), TEXT("LaterProvider"), EAngelscriptBindPhase::Finalization, &RecordLaterProvider, "LaterProvider.cpp", 91), Diagnostic);
 		ASSERT_THAT(IsTrue(Collection.Finalize(Diagnostic), TEXT("The aborted observation fixture should finalize")));
 
@@ -529,9 +529,9 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptDirectBindCallbackCollectionTests,
 				&& Snapshot.FirstFailureDiagnostic.Contains(TEXT("DirectBindFailureFixture")));
 		bPassed &= TestRunner->TestTrue(
 			TEXT("The failure phase should report one attempt, zero successes, and one failure"),
-			Snapshot.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::ManualBindings)].AttemptedCount == 1
-				&& Snapshot.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::ManualBindings)].SucceededCount == 0
-				&& Snapshot.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::ManualBindings)].FailedCount == 1);
+			Snapshot.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::ExplicitBindings)].AttemptedCount == 1
+				&& Snapshot.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::ExplicitBindings)].SucceededCount == 0
+				&& Snapshot.PhaseTotals[static_cast<int32>(EAngelscriptBindPhase::ExplicitBindings)].FailedCount == 1);
 		bPassed &= TestRunner->TestTrue(
 			TEXT("A failed pass should be publication-blocked and record the actual not-published decision"),
 			Snapshot.PublicationEligibility == EAngelscriptBindPublicationEligibility::Blocked

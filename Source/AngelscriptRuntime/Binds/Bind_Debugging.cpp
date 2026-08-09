@@ -40,7 +40,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_Debugging(
 	TEXT("Debugging.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 #if WITH_EDITOR

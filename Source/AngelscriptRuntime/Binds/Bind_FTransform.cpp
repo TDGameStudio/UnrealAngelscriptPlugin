@@ -172,7 +172,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FTransform_Infrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FTransform(
 	TEXT("FTransform.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FTransform_ = Binds.ExistingClassForTarget("FTransform");

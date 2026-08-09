@@ -23,7 +23,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_AVolume(
 	TEXT("AVolume"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto AVolume_ = Binds.ExistingClassForTarget("AVolume");

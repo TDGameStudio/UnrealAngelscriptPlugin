@@ -69,7 +69,7 @@ enum class EAngelscriptBindPhase : uint8
 {
 	TypeDeclarations,
 	TypeInfrastructure,
-	ManualBindings,
+	ExplicitBindings,
 	GeneratedBindings,
 	ReflectionBindings,
 	PostReflectionBindings,
@@ -87,7 +87,7 @@ struct FAngelscriptBindMetadata
 {
 	FName OwnerModule;
 	FName BindName;
-	EAngelscriptBindPhase Phase = EAngelscriptBindPhase::ManualBindings;
+	EAngelscriptBindPhase Phase = EAngelscriptBindPhase::ExplicitBindings;
 	FString SourceFile;
 	int32 SourceLine = 0;
 };

@@ -55,7 +55,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UDataTable(
 	TEXT("UDataTable"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UDataTable_ = Binds.ExistingClassForTarget("UDataTable");

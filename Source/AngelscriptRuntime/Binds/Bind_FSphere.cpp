@@ -58,7 +58,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FSphere_Type(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FSphere(
 	TEXT("FSphere.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FSphere_ = Binds.ExistingClassForTarget("FSphere");

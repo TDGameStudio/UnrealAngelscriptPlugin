@@ -25,7 +25,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UPrimitiveComponent(
 	TEXT("UPrimitiveComponent"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto PrimitiveComponent_ = Binds.ExistingClassForTarget("UPrimitiveComponent");

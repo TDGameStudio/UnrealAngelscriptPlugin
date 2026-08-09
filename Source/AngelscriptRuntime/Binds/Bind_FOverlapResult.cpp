@@ -27,7 +27,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FOverlapResult(
 	TEXT("FOverlapResult"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FOverlapResult_ = Binds.ExistingClassForTarget("FOverlapResult");

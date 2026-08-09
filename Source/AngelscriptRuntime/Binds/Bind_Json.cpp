@@ -171,7 +171,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_Json_TypeDeclarations(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_Json(
 	TEXT("Json.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto JsonValue = Binds.ExistingClassForTarget("FJsonValue");

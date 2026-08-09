@@ -20,7 +20,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_AssetManagerScriptMixins(
 	TEXT("AssetManagerScriptMixins.GeneratedOverrides"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		// UHT cannot direct-bind these signatures. Install their exact entries in the

@@ -161,7 +161,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FVector2f_Infrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FVector2f(
 	TEXT("FVector2f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FVector2f_ = Binds.ExistingClassForTarget("FVector2f");

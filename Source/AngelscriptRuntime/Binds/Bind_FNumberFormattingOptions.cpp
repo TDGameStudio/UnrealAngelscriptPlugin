@@ -53,7 +53,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions_Type(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions(
 	TEXT("FNumberFormattingOptions.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Options_ = Binds.ExistingClassForTarget("FNumberFormattingOptions");

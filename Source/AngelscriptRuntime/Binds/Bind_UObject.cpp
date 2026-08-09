@@ -165,7 +165,7 @@
  */
 AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Base(
 	TEXT("UObject.Base"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UObject_ = Binds.ExistingClassForTarget("UObject");
@@ -240,7 +240,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UObject_ToStringContribution(
  */
 AS_FORCE_LINK const FAngelscriptBind Bind_UClass_Base(
 	TEXT("UClass.Base"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UClass_ = Binds.ExistingClassForTarget("UClass");
@@ -270,7 +270,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_UClass_Base(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UFunction_Base(
 	TEXT("UFunction.Base"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UFunction_ = Binds.ExistingClassForTarget("UFunction");
@@ -357,7 +357,7 @@ static bool IsPlayingPIE()
 static IAssetRegistry* GetBindAssetRegistry();
 AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Operations(
 	TEXT("UObject.Operations"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalVariableForTarget("const UObject null", &GAngelscriptNullObject);

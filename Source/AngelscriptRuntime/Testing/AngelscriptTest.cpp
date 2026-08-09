@@ -386,6 +386,6 @@ namespace
 }
 
 AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptTest(
-	TEXT("AngelscriptTest.ManualBindings"),
-	EAngelscriptBindPhase::ManualBindings,
+	TEXT("AngelscriptTest.ExplicitBindings"),
+	EAngelscriptBindPhase::ExplicitBindings,
 	&BindAngelscriptTest);

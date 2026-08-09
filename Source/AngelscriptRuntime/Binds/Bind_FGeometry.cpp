@@ -22,7 +22,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FGeometry(
 	TEXT("FGeometry"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FGeometry_ = Binds.ExistingClassForTarget("FGeometry");

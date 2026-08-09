@@ -13,7 +13,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UFXSystemComponent(
 	TEXT("UFXSystemComponent"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FXSystemComponent = Binds.ExistingClassForTarget("UFXSystemComponent");

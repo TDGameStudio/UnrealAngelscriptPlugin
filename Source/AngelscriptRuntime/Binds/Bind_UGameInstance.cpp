@@ -42,7 +42,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UGameInstance(
 	TEXT("UGameInstance"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto UGameInstance_ = Binds.ExistingClassForTarget("UGameInstance");

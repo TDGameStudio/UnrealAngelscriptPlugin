@@ -61,7 +61,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_SoftObjectPath(
 	TEXT("SoftObjectPath.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto SoftObjectPath_ = Binds.ExistingClassForTarget("FSoftObjectPath");

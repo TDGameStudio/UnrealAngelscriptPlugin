@@ -56,7 +56,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleTypes(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleVariables(
 	TEXT("Console.Variables"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Variable_ = Binds.ExistingClassForTarget("FConsoleVariable");
@@ -94,7 +94,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleVariables(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleCommands(
 	TEXT("Console.Commands"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Command_ = Binds.ExistingClassForTarget("FConsoleCommand");

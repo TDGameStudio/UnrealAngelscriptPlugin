@@ -30,5 +30,5 @@ namespace
 
 AS_FORCE_LINK const FAngelscriptBind Bind_Skip(
 	TEXT("SkipBinds.Defaults"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	&BindDefaultSkipConfiguration);

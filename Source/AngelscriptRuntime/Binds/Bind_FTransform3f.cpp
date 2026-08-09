@@ -178,7 +178,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f_Infrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f(
 	TEXT("FTransform3f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FTransform3f_ = Binds.ExistingClassForTarget("FTransform3f");

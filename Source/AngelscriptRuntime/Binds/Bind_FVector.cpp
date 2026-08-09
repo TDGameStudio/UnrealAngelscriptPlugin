@@ -275,7 +275,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FVector_TypeInfrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FVector(
 	TEXT("FVector"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FVector_ = Binds.ExistingClassForTarget("FVector");

@@ -20,7 +20,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FBodyInstance(
 	TEXT("FBodyInstance"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FBodyInstance_ = Binds.ExistingClassForTarget("FBodyInstance");

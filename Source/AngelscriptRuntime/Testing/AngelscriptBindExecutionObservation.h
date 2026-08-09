@@ -32,7 +32,7 @@ struct FAngelscriptBindProviderExecutionRecord
 	uint64 ExecutionEpoch = 0;
 	FName OwnerModule;
 	FName BindName;
-	EAngelscriptBindPhase Phase = EAngelscriptBindPhase::ManualBindings;
+	EAngelscriptBindPhase Phase = EAngelscriptBindPhase::ExplicitBindings;
 	FString SourceFile;
 	int32 SourceLine = 0;
 	EAngelscriptBindProviderStatus Status = EAngelscriptBindProviderStatus::Succeeded;

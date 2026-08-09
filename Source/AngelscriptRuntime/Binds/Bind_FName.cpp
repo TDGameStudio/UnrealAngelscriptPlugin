@@ -83,7 +83,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FName_Infrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FName(
 	TEXT("FName.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FName_ = Binds.ExistingClassForTarget("FName");

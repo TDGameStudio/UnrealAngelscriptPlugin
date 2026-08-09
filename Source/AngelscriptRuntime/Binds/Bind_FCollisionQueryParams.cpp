@@ -466,8 +466,8 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_TypeInfrastructu
 	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_ManualBindings(
-	TEXT("FCollisionQueryParams.ManualBindings"),
-	EAngelscriptBindPhase::ManualBindings,
+	TEXT("FCollisionQueryParams.ExplicitBindings"),
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		BindFCollisionQueryParamsEarly(Binds);

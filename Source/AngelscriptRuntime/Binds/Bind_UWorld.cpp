@@ -126,7 +126,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_NetMode(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_World(
 	TEXT("UWorld.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalFunctionForTarget("UObject __WorldContext()", &FAngelscriptUWorldBinds::GetWorldContext);

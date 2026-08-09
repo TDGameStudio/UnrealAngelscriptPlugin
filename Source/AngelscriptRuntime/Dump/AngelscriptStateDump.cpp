@@ -48,8 +48,8 @@ namespace
 			return TEXT("TypeDeclarations");
 		case EAngelscriptBindPhase::TypeInfrastructure:
 			return TEXT("TypeInfrastructure");
-		case EAngelscriptBindPhase::ManualBindings:
-			return TEXT("ManualBindings");
+		case EAngelscriptBindPhase::ExplicitBindings:
+			return TEXT("ExplicitBindings");
 		case EAngelscriptBindPhase::GeneratedBindings:
 			return TEXT("GeneratedBindings");
 		case EAngelscriptBindPhase::ReflectionBindings:

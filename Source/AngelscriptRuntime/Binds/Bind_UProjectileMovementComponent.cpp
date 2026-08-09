@@ -16,7 +16,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UProjectileMovementComponent(
 	TEXT("UProjectileMovementComponent"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto ProjectileMovement_ = Binds.ExistingClassForTarget("UProjectileMovementComponent");

@@ -30,7 +30,7 @@
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FAnchors(
 	TEXT("FAnchors"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FAnchors_ = Binds.ExistingClassForTarget("FAnchors");

@@ -101,7 +101,7 @@ namespace
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UActorComponent(
 	TEXT("UActorComponent.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto ComponentType = Binds.ExistingClassForTarget("UActorComponent");

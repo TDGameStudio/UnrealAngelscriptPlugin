@@ -308,7 +308,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_InputEvents_ToStringContribution(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_InputEvents(
 	TEXT("InputEvents.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FKey_ = Binds.ExistingClassForTarget("FKey");

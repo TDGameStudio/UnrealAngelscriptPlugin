@@ -49,7 +49,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue_Infrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue(
 	TEXT("FFormatArgumentValue.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto Value = Binds.ExistingClassForTarget("FFormatArgumentValue");

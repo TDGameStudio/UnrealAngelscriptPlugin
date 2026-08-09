@@ -78,7 +78,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FVector4f_Infrastructure(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FVector4f(
 	TEXT("FVector4f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto FVector4f_ = Binds.ExistingClassForTarget("FVector4f");

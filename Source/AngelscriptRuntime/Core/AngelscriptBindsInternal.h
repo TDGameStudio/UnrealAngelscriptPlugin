@@ -6,7 +6,7 @@ struct FAngelscriptBindRecord
 {
 	FName OwnerModule;
 	FName BindName;
-	EAngelscriptBindPhase Phase = EAngelscriptBindPhase::ManualBindings;
+	EAngelscriptBindPhase Phase = EAngelscriptBindPhase::ExplicitBindings;
 	const ANSICHAR* SourceFile = nullptr;
 	int32 SourceLine = 0;
 	FAngelscriptBindCallback Callback = nullptr;

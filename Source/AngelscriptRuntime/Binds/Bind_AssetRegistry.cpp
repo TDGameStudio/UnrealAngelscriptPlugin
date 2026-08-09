@@ -103,7 +103,7 @@ AS_FORCE_LINK const FAngelscriptBind Bind_AssetRegistry_ToStringContribution(
 
 AS_FORCE_LINK const FAngelscriptBind Bind_AssetRegistry(
 	TEXT("AssetRegistry.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
+	EAngelscriptBindPhase::ExplicitBindings,
 	[](FAngelscriptBinds& Binds)
 	{
 		auto AssetDataType = Binds.ExistingClassForTarget("FAssetData");
