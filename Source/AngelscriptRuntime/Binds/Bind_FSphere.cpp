@@ -44,18 +44,22 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFSphereType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FSphere_Type(
+	TEXT("FSphere.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FSphere>("FSphere", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FSphereType>());
-	}
+	});
 
-	void BindFSphereFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FSphere(
+	TEXT("FSphere.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FSphere_ = Binds.ExistingClassForTarget("FSphere");
 		FSphere_.Constructor("void f()", &FAngelscriptFSphereBinds::ConstructDefault)
@@ -93,15 +97,4 @@ namespace
 		FSphere_.Method("bool Intersects(const FSphere& Other, float64 Tolerance = KINDA_SMALL_NUMBER) const", METHODPR_TRIVIAL(bool, FSphere, Intersects, (const FSphere&, double) const));
 		FSphere_.Method("FSphere TransformBy( const FTransform& M ) const", METHODPR_TRIVIAL(FSphere, FSphere, TransformBy, (const FTransform&) const));
 		FSphere_.Method("float32 GetVolume() const", METHOD_TRIVIAL(FSphere, GetVolume));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FSphere_Type(
-	TEXT("FSphere.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFSphereType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FSphere(
-	TEXT("FSphere.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFSphereFunctions);
+	});

@@ -11,9 +11,10 @@
  * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFCpuProfilerTraceScoped(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_TraceCPUProfilerEventScoped(
+	TEXT("FCpuProfilerTraceScoped"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FCpuProfilerTraceScoped_ = Binds.ExistingClassForTarget("FCpuProfilerTraceScoped");
 		FCpuProfilerTraceScoped_.Constructor(
@@ -22,10 +23,4 @@ namespace
 			"FCpuProfilerTraceScoped",
 			true)
 			.NoDiscard();
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TraceCPUProfilerEventScoped(
-	TEXT("FCpuProfilerTraceScoped"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFCpuProfilerTraceScoped);
+	});

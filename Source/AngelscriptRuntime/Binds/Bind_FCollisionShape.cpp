@@ -75,9 +75,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindCollisionShapeTypes(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionShape_Types(
+	TEXT("FCollisionShape.Types"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto CollisionShape_ = Binds.EnumForTarget("ECollisionShape");
 		CollisionShape_["Line"] = ECollisionShape::Line;
@@ -89,9 +90,12 @@ namespace
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FCollisionShape>("FCollisionShape", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FCollisionShapeType>());
-	}
+	});
 
-	void BindCollisionShapeFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionShape(
+	TEXT("FCollisionShape.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FCollisionShape_ = Binds.ExistingClassForTarget("FCollisionShape");
 		FCollisionShape_.Constructor(
@@ -127,15 +131,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget("FCollisionShape MakeSphere(const float32 SphereRadius) no_discard", FUNC_TRIVIAL(FCollisionShape::MakeSphere));
 		Binds.BindGlobalFunctionForTarget("FCollisionShape MakeCapsule(const float32 CapsuleRadius, const float32 CapsuleHalfHeight) no_discard", FUNCPR_TRIVIAL(FCollisionShape, FCollisionShape::MakeCapsule, (const float, const float)));
 		Binds.BindGlobalFunctionForTarget("FCollisionShape MakeCapsule(const FVector& Extent) no_discard", FUNCPR_TRIVIAL(FCollisionShape, FCollisionShape::MakeCapsule, (const FVector&)));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionShape_Types(
-	TEXT("FCollisionShape.Types"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindCollisionShapeTypes);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionShape(
-	TEXT("FCollisionShape.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindCollisionShapeFunctions);
+	});

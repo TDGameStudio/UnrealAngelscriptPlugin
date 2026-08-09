@@ -46,14 +46,18 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFMemoryReaderType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FMemoryReaderType(
+	TEXT("FMemoryReader.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.ValueClassForTarget<FMemoryReader>("FMemoryReader", FBindFlags());
-	}
+	});
 
-	void BindFMemoryReaderFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FMemoryReader(
+	TEXT("FMemoryReader.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Reader_ = Binds.ExistingClassForTarget("FMemoryReader");
 		Reader_.Constructor(
@@ -75,15 +79,4 @@ namespace
 		Reader_.Method("float64 ReadDouble()", &FAngelscriptFMemoryReaderBinds::ReadDouble);
 		Reader_.Method("TArray<uint8> ReadBytes(int Count)", &FAngelscriptFMemoryReaderBinds::ReadBytes);
 		Reader_.Method("FString ReadAnsiString(int Count)", &FAngelscriptFMemoryReaderBinds::ReadAnsiString);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FMemoryReaderType(
-	TEXT("FMemoryReader.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFMemoryReaderType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FMemoryReader(
-	TEXT("FMemoryReader.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFMemoryReaderFunctions);
+	});

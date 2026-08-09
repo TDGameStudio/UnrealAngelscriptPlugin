@@ -18,9 +18,10 @@
  * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindCoreGlobals(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_CoreGlobals(
+	TEXT("CoreGlobals"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalFunctionForTarget("bool IsRunningCommandlet() no_discard", &IsRunningCommandlet)
 			.NativeFunction("IsRunningCommandlet", true);
@@ -30,10 +31,4 @@ namespace
 			.NativeFunction("IsRunningDLCCookCommandlet", true);
 		Binds.BindGlobalFunctionForTarget("UClass GetRunningCommandletClass() no_discard", &GetRunningCommandletClass)
 			.NativeFunction("GetRunningCommandletClass", true);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_CoreGlobals(
-	TEXT("CoreGlobals"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindCoreGlobals);
+	});

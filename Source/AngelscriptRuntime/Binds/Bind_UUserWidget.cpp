@@ -87,9 +87,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUserWidget(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UUserWidget(
+	TEXT("UUserWidget.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto UserWidget = Binds.ExistingClassForTarget("UUserWidget");
 		UserWidget.Method("FText GetPaletteCategory() const", &FAngelscriptUUserWidgetBinds::GetPaletteCategory);
@@ -160,13 +161,13 @@ namespace
 			&FAngelscriptUUserWidgetBinds::ConstructSlateColorStyle)
 			.NoDiscard();
 
-#if WITH_EDITOR
+	#if WITH_EDITOR
 		// GetIsVisible() conflicts with IsVisible() when both are interpreted as property accessors.
 		if (UFunction* GetIsVisible = FindObject<UFunction>(nullptr, TEXT("/Script/UMG.UserWidget:GetIsVisible")))
 		{
 			GetIsVisible->SetMetaData(TEXT("NotInAngelscript"), TEXT("true"));
 		}
-#endif
+	#endif
 
 		auto SlateBrush = Binds.ExistingClassForTarget("FSlateBrush");
 		SlateBrush.ImplicitConstructor(
@@ -185,10 +186,4 @@ namespace
 			"void f(UMaterialInterface Material, const FVector2D& ImageSize, const FLinearColor& Tint = FLinearColor::White)",
 			&FAngelscriptUUserWidgetBinds::ConstructSlateBrushMaterial)
 			.NoDiscard();
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UUserWidget(
-	TEXT("UUserWidget.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUserWidget);
+	});

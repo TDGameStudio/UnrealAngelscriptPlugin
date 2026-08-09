@@ -121,7 +121,14 @@ namespace
 #endif
 	}
 
-	void BindPrimitiveTypeInfrastructure(FAngelscriptBinds& Binds)
+
+
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes_TypeInfrastructure(
+	TEXT("PrimitiveTypes.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptTypeDatabase& TypeDatabase = Binds.GetTargetTypeDatabase();
 		const UAngelscriptSettings* ConfigSettings = Binds.GetTargetEngine().ConfigSettings;
@@ -167,9 +174,73 @@ namespace
 			TypeDatabase.TypesByAngelscriptName.Add(TEXT("float64"), DoubleType);
 		else
 			TypeDatabase.TypesByAngelscriptName.Add(TEXT("float32"), FloatType);
-	}
+	});
 
-	void BindPrimitiveConstants(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes_ToStringContribution(
+	TEXT("PrimitiveTypes.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
+	{
+		FToStringHelper::Register(Binds, TEXT("int8"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%d"), *(int8*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("int16"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%d"), *(int16*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("int32"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%d"), *(int32*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("int64"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%lld"), *(int64*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("uint8"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%u"), *(uint8*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("uint16"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%u"), *(uint16*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("uint32"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%u"), *(uint32*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("uint64"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::Printf(TEXT("%llu"), *(uint64*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("float32"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::SanitizeFloat(*(float*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("float64"), [](void* Ptr, FString& Str)
+		{
+			Str += FString::SanitizeFloat(*(double*)Ptr);
+		});
+
+		FToStringHelper::Register(Binds, TEXT("bool"), [](void* Ptr, FString& Str)
+		{
+			Str += *(bool*)Ptr ? TEXT("true") : TEXT("false");
+		});
+	});
+
+AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes(
+	TEXT("PrimitiveTypes.Constants"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		const UAngelscriptSettings* ConfigSettings = Binds.GetTargetEngine().ConfigSettings;
 		check(ConfigSettings != nullptr);
@@ -233,78 +304,4 @@ namespace
 		BindPrimitiveConstant(Binds, "const float32 __THRESH_VECTOR_NORMALIZED_flt", &AS_THRESH_VECTOR_NORMALIZED_flt);
 		BindPrimitiveConstant(Binds, "const float32 __THRESH_NORMALS_ARE_PARALLEL_flt", &AS_THRESH_NORMALS_ARE_PARALLEL_flt);
 		BindPrimitiveConstant(Binds, "const float32 __THRESH_NORMALS_ARE_ORTHOGONAL_flt", &AS_THRESH_NORMALS_ARE_ORTHOGONAL_flt);
-	}
-
-	void BindPrimitiveToStringContribution(FAngelscriptBinds& Binds)
-	{
-		FToStringHelper::Register(Binds, TEXT("int8"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::Printf(TEXT("%d"), *(int8*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("int16"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::Printf(TEXT("%d"), *(int16*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("int32"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::Printf(TEXT("%d"), *(int32*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("int64"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::Printf(TEXT("%lld"), *(int64*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("uint8"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::Printf(TEXT("%u"), *(uint8*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("uint16"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::Printf(TEXT("%u"), *(uint16*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("uint32"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::Printf(TEXT("%u"), *(uint32*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("uint64"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::Printf(TEXT("%llu"), *(uint64*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("float32"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::SanitizeFloat(*(float*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("float64"), [](void* Ptr, FString& Str)
-		{
-			Str += FString::SanitizeFloat(*(double*)Ptr);
-		});
-
-		FToStringHelper::Register(Binds, TEXT("bool"), [](void* Ptr, FString& Str)
-		{
-			Str += *(bool*)Ptr ? TEXT("true") : TEXT("false");
-		});
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes_TypeInfrastructure(
-	TEXT("PrimitiveTypes.TypeInfrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindPrimitiveTypeInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes_ToStringContribution(
-	TEXT("PrimitiveTypes.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindPrimitiveToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_PrimitiveTypes(
-	TEXT("PrimitiveTypes.Constants"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindPrimitiveConstants);
+	});

@@ -317,7 +317,14 @@ namespace
 		}
 	};
 
-	void BindTSetTypeDeclarations(FAngelscriptBinds& Binds)
+
+
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TSet_TypeDeclarations(
+	TEXT("TSet.Declaration"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags SetFlags;
 		SetFlags.bTemplate = true;
@@ -330,9 +337,12 @@ namespace
 		IteratorFlags.TemplateType = "<T>";
 		Binds.ValueClassForTarget<FSetIterator>("TSetIterator<class T>", IteratorFlags);
 		Binds.ValueClassForTarget<FSetIterator>("TSetConstIterator<class T>", IteratorFlags);
-	}
+	});
 
-	void BindTSetMethodSurface(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_TSet_MethodSurface(
+	TEXT("TSet.MethodSurface"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto TSet_ = Binds.ExistingClassForTarget("TSet<T>");
 		TSet_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptSetBinds::Construct));
@@ -387,9 +397,9 @@ namespace
 		auto TSetIterator_ = Binds.ExistingClassForTarget("TSetIterator<T>");
 		TSetIterator_.Constructor("void f(const TSetIterator<T>& Other)", FUNC_TRIVIAL(FSetIterator::CopyConstruct));
 
-#if AS_ITERATOR_DEBUGGING
+	#if AS_ITERATOR_DEBUGGING
 		TSetIterator_.Destructor("void f()", &FSetIterator::Destruct);
-#endif
+	#endif
 
 		TSetIterator_.Method("TSetIterator<T>& opAssign(const TSetIterator<T>& Other)", METHOD_TRIVIAL(FSetIterator, Assignment));
 		TSetIterator_.Property("bool CanProceed", &FSetIterator::bCanProceed);
@@ -398,9 +408,9 @@ namespace
 		auto TSetConstIterator_ = Binds.ExistingClassForTarget("TSetConstIterator<T>");
 		TSetConstIterator_.Constructor("void f(const TSetConstIterator<T>& Other)", FUNC_TRIVIAL(FSetIterator::CopyConstruct));
 
-#if AS_ITERATOR_DEBUGGING
+	#if AS_ITERATOR_DEBUGGING
 		TSetConstIterator_.Destructor("void f()", &FSetIterator::Destruct);
-#endif
+	#endif
 
 		TSetConstIterator_.Method("TSetConstIterator<T>& opAssign(const TSetConstIterator<T>& Other)", METHOD_TRIVIAL(FSetIterator, Assignment));
 		TSetConstIterator_.Property("bool CanProceed", &FSetIterator::bCanProceed);
@@ -425,9 +435,12 @@ namespace
 		TSet_.Method("TSetConstIterator<T> Iterator() const", FUNC_TRIVIAL(FSetIterator::Create))
 			.PassScriptObjectTypeAsFirstParam()
 			.NativeTArrayIteratorCreate();
-	}
+	});
 
-	void BindTSetTypeInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_TSet_TypeInfrastructure(
+	TEXT("TSet.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto SetType = MakeShared<FAngelscriptSetType>();
 		Binds.RegisterTypeForTarget(SetType);
@@ -450,30 +463,14 @@ namespace
 
 		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptSetIteratorType>());
 		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptSetConstIteratorType>());
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TSet_TypeDeclarations(
-	TEXT("TSet.Declaration"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindTSetTypeDeclarations);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TSet_MethodSurface(
-	TEXT("TSet.MethodSurface"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindTSetMethodSurface);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TSet_TypeInfrastructure(
-	TEXT("TSet.TypeInfrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindTSetTypeInfrastructure);
+	});
 
 bool ValidateSetOperations(asITypeInfo* TemplateType, asCString* ErrorMessage)
 {
 	FSetOperations* Ops = (FSetOperations*)TemplateType->GetUserData();
 	if (Ops != nullptr)
 		return Ops->bValid;
-		
+
 	int32 SubTypeId = TemplateType->GetSubTypeId(0);
 	auto Type = FAngelscriptTypeUsage::FromTypeId(SubTypeId);
 

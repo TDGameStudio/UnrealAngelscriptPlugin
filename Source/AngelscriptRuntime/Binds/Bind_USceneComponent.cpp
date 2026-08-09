@@ -36,9 +36,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindSceneComponent(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_USceneComponent(
+	TEXT("USceneComponent.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto USceneComponent_ = Binds.ExistingClassForTarget("USceneComponent");
 		USceneComponent_.Method("int32 GetNumChildrenComponents() const", METHOD_TRIVIAL(USceneComponent, GetNumChildrenComponents));
@@ -76,7 +77,7 @@ namespace
 			"void f()",
 			&FAngelscriptUSceneComponentBinds::DestructScopedMovementUpdate);
 
-#if WITH_EDITOR
+	#if WITH_EDITOR
 		// The Blueprint version is deprecated; suppress its reflective duplicate so
 		// the hand-written script surface remains the only registration.
 		UFunction* Function = FindObject<UFunction>(
@@ -86,11 +87,5 @@ namespace
 		{
 			Function->SetMetaData(TEXT("NotInAngelscript"), TEXT("true"));
 		}
-#endif
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_USceneComponent(
-	TEXT("USceneComponent.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindSceneComponent);
+	#endif
+	});

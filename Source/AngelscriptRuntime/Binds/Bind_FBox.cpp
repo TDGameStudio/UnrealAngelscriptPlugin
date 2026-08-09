@@ -83,23 +83,30 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFBoxType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBox_Type(
+	TEXT("FBox.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FBox>("FBox", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FBoxType>());
-	}
+	});
 
-	void BindFBoxToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBox_ToStringContribution(
+	TEXT("FBox.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FBox"), &FAngelscriptFBoxBinds::AppendToString);
-	}
+	});
 
-	void BindFBoxFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBox(
+	TEXT("FBox.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FBox_ = Binds.ExistingClassForTarget("FBox");
 		FBox_.Constructor("void f()", &FAngelscriptFBoxBinds::ConstructDefault)
@@ -144,20 +151,4 @@ namespace
 
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FBox");
 		Binds.BindGlobalFunctionForTarget("FBox BuildAABB( const FVector& Origin, const FVector& Extent) no_discard", FUNC_TRIVIAL(FBox::BuildAABB));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBox_Type(
-	TEXT("FBox.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFBoxType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBox_ToStringContribution(
-	TEXT("FBox.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFBoxToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBox(
-	TEXT("FBox.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFBoxFunctions);
+	});

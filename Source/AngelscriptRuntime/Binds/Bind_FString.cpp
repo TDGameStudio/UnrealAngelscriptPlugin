@@ -357,18 +357,7 @@ public:
 	}
 };
 
-static void BindFStringTypeDeclarations(FAngelscriptBinds& Binds)
-{
-	Binds.ValueClassForTarget<FString>("FString", FBindFlags());
-}
 
-static void BindFStringInfrastructure(FAngelscriptBinds& Binds)
-{
-	auto FString_ = Binds.ExistingClassForTarget("FString");
-	Binds.RegisterTypeForTarget(MakeShared<FStringType>());
-	TGetStaticTypeInfo<FString>::SetForEngine(&Binds.GetTargetScriptEngine(), FString_.GetTypeInfo());
-	Binds.GetTargetScriptEngine().RegisterStringFactory("FString", new FAngelscriptFStringFactory());
-}
 
 static void BindFStringCore(FAngelscriptBinds& Binds)
 {
@@ -522,7 +511,7 @@ void FToStringHelper::Generic_AppendToString(FString& AppendTo, void* ValuePtr, 
 #if WITH_EDITOR
 			if (AActor* Actor = Cast<AActor>(Object))
 			{
-				
+
 
 				AppendTo += FString::Printf(TEXT("{ %s %s(%s%s) (ID: %s) }"),
 					*Actor->GetActorLabel(),
@@ -1010,7 +999,7 @@ FString FAngelscriptFStringBinds::ApplyFormatValue(void* ValuePtr, int TypeId, c
 	}
 
 	Spec.AlignString(OutStr);
-	
+
 	return OutStr;
 }
 
@@ -1020,7 +1009,7 @@ FString FAngelscriptFStringBinds::ApplyFormatBool(bool Value, const FString& Spe
 
 	FFormatSpecifier Spec(Specifier);
 	Spec.AlignString(OutStr);
-	
+
 	return OutStr;
 }
 
@@ -1468,23 +1457,31 @@ static void BindFStringConversion(FAngelscriptBinds& Binds)
 		&FAngelscriptFStringBinds::ParseIntoArrayWhitespace);
 }
 
-static void BindFStringManualBindings(FAngelscriptBinds& Binds)
-{
-	BindFStringCore(Binds);
-	BindFStringConversion(Binds);
-}
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FString_TypeDeclarations(
 	TEXT("FString.TypeDeclarations"),
 	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFStringTypeDeclarations);
+	[](FAngelscriptBinds& Binds)
+	{
+		Binds.ValueClassForTarget<FString>("FString", FBindFlags());
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FString_TypeInfrastructure(
 	TEXT("FString.TypeInfrastructure"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFStringInfrastructure);
+	[](FAngelscriptBinds& Binds)
+	{
+		auto FString_ = Binds.ExistingClassForTarget("FString");
+		Binds.RegisterTypeForTarget(MakeShared<FStringType>());
+		TGetStaticTypeInfo<FString>::SetForEngine(&Binds.GetTargetScriptEngine(), FString_.GetTypeInfo());
+		Binds.GetTargetScriptEngine().RegisterStringFactory("FString", new FAngelscriptFStringFactory());
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FString_ManualBindings(
 	TEXT("FString.ManualBindings"),
 	EAngelscriptBindPhase::ManualBindings,
-	&BindFStringManualBindings);
+	[](FAngelscriptBinds& Binds)
+	{
+		BindFStringCore(Binds);
+		BindFStringConversion(Binds);
+	});

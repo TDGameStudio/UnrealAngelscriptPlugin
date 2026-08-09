@@ -548,42 +548,39 @@ namespace
 		Binds.BindGlobalFunctionForTarget("bool IsTraceHandleValid(const FTraceHandle& Handle, bool bOverlapTrace) no_discard", &FAngelscriptWorldCollisionBinds::IsTraceHandleValid);
 	}
 
-	void BindWorldCollisionTypeDeclarations(FAngelscriptBinds& Binds)
+
+
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_TypeDeclarations(
+	TEXT("WorldCollision.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		BindAsyncTraceTypeDeclarations(Binds);
 		BindTraceHandleTypeDeclarations(Binds);
 		BindTraceDatumTypeDeclarations(Binds);
 		BindOverlapDatumTypeDeclarations(Binds);
-	}
+	});
 
-	void BindWorldCollisionTypeInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_TypeInfrastructure(
+	TEXT("WorldCollision.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		BindTraceHandleTypeInfrastructure(Binds);
 		BindTraceDatumTypeInfrastructure(Binds);
 		BindOverlapDatumTypeInfrastructure(Binds);
-	}
+	});
 
-	void BindWorldCollisionManualBindings(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_ManualBindings(
+	TEXT("WorldCollision.ManualBindings"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		BindTraceHandle(Binds);
 		BindTraceDatum(Binds);
 		BindOverlapDatum(Binds);
 		BindSyncQueries(Binds);
 		BindAsyncQueries(Binds);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_TypeDeclarations(
-	TEXT("WorldCollision.TypeDeclarations"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindWorldCollisionTypeDeclarations);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_TypeInfrastructure(
-	TEXT("WorldCollision.TypeInfrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindWorldCollisionTypeInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_WorldCollision_ManualBindings(
-	TEXT("WorldCollision.ManualBindings"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindWorldCollisionManualBindings);
+	});

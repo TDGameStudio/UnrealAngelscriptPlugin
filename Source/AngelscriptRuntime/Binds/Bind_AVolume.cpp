@@ -21,9 +21,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindAVolume(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_AVolume(
+	TEXT("AVolume"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto AVolume_ = Binds.ExistingClassForTarget("AVolume");
 		AVolume_.Method("FBoxSphereBounds GetBounds() const", METHOD_TRIVIAL(AVolume, GetBounds));
@@ -34,10 +35,4 @@ namespace
 			"bool EncompassesPoint(const FVector& Point, float32 SphereRadius, float32& OutDistanceToPoint) const",
 			&FAngelscriptAVolumeBinds::EncompassesPointWithDistance);
 		AVolume_.Method("void SetBrushColor(FLinearColor InBrushColor)", &FAngelscriptAVolumeBinds::SetBrushColor);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_AVolume(
-	TEXT("AVolume"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindAVolume);
+	});

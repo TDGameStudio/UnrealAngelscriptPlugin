@@ -108,9 +108,10 @@
  * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFPaths(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FPaths(
+	TEXT("FPaths"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FPaths");
 
@@ -156,10 +157,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget("void MakePlatformFilename(FString& InPath)", &FPaths::MakePlatformFilename);
 		Binds.BindGlobalFunctionForTarget("FString ConvertRelativePathToFull(const FString& InPath)", &FAngelscriptFPathsBinds::ConvertRelativePathToFull);
 		Binds.BindGlobalFunctionForTarget("FString ConvertRelativePathToFull(const FString& BasePath, const FString& InPath)", &FAngelscriptFPathsBinds::ConvertRelativePathToFullFromBase);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FPaths(
-	TEXT("FPaths"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFPaths);
+	});

@@ -29,21 +29,28 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFFormatArgumentValueType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue_Type(
+	TEXT("FFormatArgumentValue.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FFormatArgumentValue>("FFormatArgumentValue", Flags);
-	}
+	});
 
-	void BindFFormatArgumentValueInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue_Infrastructure(
+	TEXT("FFormatArgumentValue.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FFormatArgumentValueType>());
-	}
+	});
 
-	void BindFFormatArgumentValueFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue(
+	TEXT("FFormatArgumentValue.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Value = Binds.ExistingClassForTarget("FFormatArgumentValue");
 
@@ -101,20 +108,4 @@ namespace
 			"FFormatArgumentValue",
 			true)
 			.NoDiscard();
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue_Type(
-	TEXT("FFormatArgumentValue.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFFormatArgumentValueType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue_Infrastructure(
-	TEXT("FFormatArgumentValue.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFFormatArgumentValueInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FFormatArgumentValue(
-	TEXT("FFormatArgumentValue.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFFormatArgumentValueFunctions);
+	});

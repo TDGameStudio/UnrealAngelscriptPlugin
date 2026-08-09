@@ -126,20 +126,33 @@ namespace
 	const FLinearColor Teal(0.f, 0.5019f, 0.5019f);
 	const FLinearColor Purple(0.662f, 0.0274f, 0.89411f);
 
-	void BindFLinearColorType(FAngelscriptBinds& Binds)
+
+
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FLinearColor_Type(
+	TEXT("FLinearColor.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FLinearColor>("FLinearColor", Flags);
-	}
+	});
 
-	void BindFLinearColorInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FLinearColor_Infrastructure(
+	TEXT("FLinearColor.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FLinearColorType>());
 		FToStringHelper::Register(Binds, TEXT("FLinearColor"), &FAngelscriptFLinearColorBinds::AppendToString);
-	}
+	});
 
-	void BindFLinearColorFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FLinearColor(
+	TEXT("FLinearColor.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FLinearColor_ = Binds.ExistingClassForTarget("FLinearColor");
 
@@ -249,20 +262,4 @@ namespace
 			"void f(const FColor& Other)",
 			&FAngelscriptFLinearColorBinds::ConstructFromColor)
 			.NoDiscard();
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FLinearColor_Type(
-	TEXT("FLinearColor.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFLinearColorType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FLinearColor_Infrastructure(
-	TEXT("FLinearColor.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFLinearColorInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FLinearColor(
-	TEXT("FLinearColor.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFLinearColorFunctions);
+	});

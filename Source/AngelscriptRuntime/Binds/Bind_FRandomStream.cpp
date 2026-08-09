@@ -60,17 +60,21 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFRandomStreamType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FRandomStream_Type(
+	TEXT("FRandomStream.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FRandomStream>("FRandomStream", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FRandomStreamType>());
-	}
+	});
 
-	void BindFRandomStreamFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FRandomStream(
+	TEXT("FRandomStream.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FRandomStream_ = Binds.ExistingClassForTarget("FRandomStream");
 		FRandomStream_.Constructor("void f()", &FAngelscriptFRandomStreamBinds::ConstructDefault);
@@ -91,25 +95,12 @@ namespace
 		FRandomStream_.Method("FVector VRand() const", METHOD_TRIVIAL(FRandomStream, VRand));
 		FRandomStream_.Method("FVector VRandCone(const FVector& Dir, float32 ConeHalfAngleRad) const", METHODPR_TRIVIAL(FVector, FRandomStream, VRandCone, (FVector const&, float) const));
 		FRandomStream_.Method("FVector VRandCone(const FVector& Dir, float32 HorizontalConeHalfAngleRad, float32 VerticalConeHalfAngleRad) const", METHODPR_TRIVIAL(FVector, FRandomStream, VRandCone, (FVector const&, float, float) const));
-	}
-
-	void BindFRandomStreamToStringContribution(FAngelscriptBinds& Binds)
-	{
-		FToStringHelper::Register(Binds, TEXT("FRandomStream"), &FAngelscriptFRandomStreamBinds::AppendToString);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FRandomStream_Type(
-	TEXT("FRandomStream.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFRandomStreamType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FRandomStream(
-	TEXT("FRandomStream.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFRandomStreamFunctions);
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FRandomStream_ToStringContribution(
 	TEXT("FRandomStream.ToStringContribution"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFRandomStreamToStringContribution);
+	[](FAngelscriptBinds& Binds)
+	{
+		FToStringHelper::Register(Binds, TEXT("FRandomStream"), &FAngelscriptFRandomStreamBinds::AppendToString);
+	});

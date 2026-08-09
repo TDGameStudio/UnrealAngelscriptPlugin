@@ -239,45 +239,7 @@
 
 namespace
 {
-	void BindCollisionQueryParamsTypeDeclarations(FAngelscriptBinds& Binds)
-	{
-		auto QueryMobilityType = Binds.EnumForTarget("EQueryMobilityType");
-		QueryMobilityType["Any"] = EQueryMobilityType::Any;
-		QueryMobilityType["Static"] = EQueryMobilityType::Static;
-		QueryMobilityType["Dynamic"] = EQueryMobilityType::Dynamic;
 
-		auto CollisionObjectQueryInitType = Binds.EnumForTarget("ECollisionObjectQueryInitType");
-		CollisionObjectQueryInitType["AllObjects"] = FCollisionObjectQueryParams::InitType::AllObjects;
-		CollisionObjectQueryInitType["AllStaticObjects"] = FCollisionObjectQueryParams::InitType::AllStaticObjects;
-		CollisionObjectQueryInitType["AllDynamicObjects"] = FCollisionObjectQueryParams::InitType::AllDynamicObjects;
-
-		FBindFlags QueryParamsFlags;
-		Binds.ValueClassForTarget<FCollisionQueryParams>("FCollisionQueryParams", QueryParamsFlags);
-
-		FBindFlags CollisionEnabledMaskFlags;
-		CollisionEnabledMaskFlags.bPOD = true;
-		Binds.ValueClassForTarget<FCollisionEnabledMask>("FCollisionEnabledMask", CollisionEnabledMaskFlags);
-
-		FBindFlags ComponentQueryParamsFlags;
-		Binds.ValueClassForTarget<FComponentQueryParams>("FComponentQueryParams", ComponentQueryParamsFlags);
-
-		FBindFlags CollisionResponseParamsFlags;
-		CollisionResponseParamsFlags.bPOD = true;
-		Binds.ValueClassForTarget<FCollisionResponseParams>("FCollisionResponseParams", CollisionResponseParamsFlags);
-
-		FBindFlags CollisionObjectQueryParamsFlags;
-		CollisionObjectQueryParamsFlags.bPOD = true;
-		Binds.ValueClassForTarget<FCollisionObjectQueryParams>("FCollisionObjectQueryParams", CollisionObjectQueryParamsFlags);
-	}
-
-	void BindCollisionQueryParamsTypeInfrastructure(FAngelscriptBinds& Binds)
-	{
-		Binds.RegisterTypeForTarget(MakeShared<FCollisionQueryParamsType>());
-		Binds.RegisterTypeForTarget(MakeShared<FCollisionEnabledMaskType>());
-		Binds.RegisterTypeForTarget(MakeShared<FComponentQueryParamsType>());
-		Binds.RegisterTypeForTarget(MakeShared<FCollisionResponseParamsType>());
-		Binds.RegisterTypeForTarget(MakeShared<FCollisionObjectQueryParamsType>());
-	}
 
 	void BindFCollisionQueryParamsEarly(FAngelscriptBinds& Binds)
 	{
@@ -455,7 +417,58 @@ namespace
 			.NativeConstructor("FCollisionResponseParams", true);
 	}
 
-	void BindCollisionQueryParamsManualBindings(FAngelscriptBinds& Binds)
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_TypeDeclarations(
+	TEXT("FCollisionQueryParams.TypeDeclarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
+	{
+		auto QueryMobilityType = Binds.EnumForTarget("EQueryMobilityType");
+		QueryMobilityType["Any"] = EQueryMobilityType::Any;
+		QueryMobilityType["Static"] = EQueryMobilityType::Static;
+		QueryMobilityType["Dynamic"] = EQueryMobilityType::Dynamic;
+
+		auto CollisionObjectQueryInitType = Binds.EnumForTarget("ECollisionObjectQueryInitType");
+		CollisionObjectQueryInitType["AllObjects"] = FCollisionObjectQueryParams::InitType::AllObjects;
+		CollisionObjectQueryInitType["AllStaticObjects"] = FCollisionObjectQueryParams::InitType::AllStaticObjects;
+		CollisionObjectQueryInitType["AllDynamicObjects"] = FCollisionObjectQueryParams::InitType::AllDynamicObjects;
+
+		FBindFlags QueryParamsFlags;
+		Binds.ValueClassForTarget<FCollisionQueryParams>("FCollisionQueryParams", QueryParamsFlags);
+
+		FBindFlags CollisionEnabledMaskFlags;
+		CollisionEnabledMaskFlags.bPOD = true;
+		Binds.ValueClassForTarget<FCollisionEnabledMask>("FCollisionEnabledMask", CollisionEnabledMaskFlags);
+
+		FBindFlags ComponentQueryParamsFlags;
+		Binds.ValueClassForTarget<FComponentQueryParams>("FComponentQueryParams", ComponentQueryParamsFlags);
+
+		FBindFlags CollisionResponseParamsFlags;
+		CollisionResponseParamsFlags.bPOD = true;
+		Binds.ValueClassForTarget<FCollisionResponseParams>("FCollisionResponseParams", CollisionResponseParamsFlags);
+
+		FBindFlags CollisionObjectQueryParamsFlags;
+		CollisionObjectQueryParamsFlags.bPOD = true;
+		Binds.ValueClassForTarget<FCollisionObjectQueryParams>("FCollisionObjectQueryParams", CollisionObjectQueryParamsFlags);
+	});
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_TypeInfrastructure(
+	TEXT("FCollisionQueryParams.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
+	{
+		Binds.RegisterTypeForTarget(MakeShared<FCollisionQueryParamsType>());
+		Binds.RegisterTypeForTarget(MakeShared<FCollisionEnabledMaskType>());
+		Binds.RegisterTypeForTarget(MakeShared<FComponentQueryParamsType>());
+		Binds.RegisterTypeForTarget(MakeShared<FCollisionResponseParamsType>());
+		Binds.RegisterTypeForTarget(MakeShared<FCollisionObjectQueryParamsType>());
+	});
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_ManualBindings(
+	TEXT("FCollisionQueryParams.ManualBindings"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		BindFCollisionQueryParamsEarly(Binds);
 		BindFCollisionEnabledMaskEarly(Binds);
@@ -468,20 +481,4 @@ namespace
 		BindFCollisionObjectQueryParamsLate(Binds);
 		BindFCollisionResponseContainer(Binds);
 		BindFCollisionResponseParamsLate(Binds);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_TypeDeclarations(
-	TEXT("FCollisionQueryParams.TypeDeclarations"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindCollisionQueryParamsTypeDeclarations);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_TypeInfrastructure(
-	TEXT("FCollisionQueryParams.TypeInfrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindCollisionQueryParamsTypeInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FCollisionQueryParams_ManualBindings(
-	TEXT("FCollisionQueryParams.ManualBindings"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindCollisionQueryParamsManualBindings);
+	});

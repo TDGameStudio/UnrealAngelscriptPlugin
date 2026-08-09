@@ -59,9 +59,10 @@
  * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindSoftObjectPathFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_SoftObjectPath(
+	TEXT("SoftObjectPath.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto SoftObjectPath_ = Binds.ExistingClassForTarget("FSoftObjectPath");
 		SoftObjectPath_.Constructor("void f(const FString& Path)", &FAngelscriptSoftObjectPathBinds::ConstructObjectPathFromString);
@@ -89,21 +90,13 @@ namespace
 		SoftClassPath_.Method("bool IsSubobject() const", METHOD_TRIVIAL(FSoftClassPath, IsSubobject));
 		SoftClassPath_.Method("UClass ResolveClass() const", &FAngelscriptSoftObjectPathBinds::ResolveClass);
 		SoftClassPath_.Method("UClass TryLoadClass() const", &FAngelscriptSoftObjectPathBinds::TryLoadClass);
-	}
-
-	void BindSoftObjectPathToStringContributions(FAngelscriptBinds& Binds)
-	{
-		FToStringHelper::Register(Binds, TEXT("FSoftObjectPath"), &FAngelscriptSoftObjectPathBinds::AppendObjectPathToString);
-		FToStringHelper::Register(Binds, TEXT("FSoftClassPath"), &FAngelscriptSoftObjectPathBinds::AppendClassPathToString);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_SoftObjectPath(
-	TEXT("SoftObjectPath.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindSoftObjectPathFunctions);
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_SoftObjectPath_ToStringContributions(
 	TEXT("SoftObjectPath.ToStringContributions"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindSoftObjectPathToStringContributions);
+	[](FAngelscriptBinds& Binds)
+	{
+		FToStringHelper::Register(Binds, TEXT("FSoftObjectPath"), &FAngelscriptSoftObjectPathBinds::AppendObjectPathToString);
+		FToStringHelper::Register(Binds, TEXT("FSoftClassPath"), &FAngelscriptSoftObjectPathBinds::AppendClassPathToString);
+	});

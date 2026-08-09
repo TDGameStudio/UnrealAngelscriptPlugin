@@ -48,9 +48,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFunctionLibraryMixins(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FunctionLibraryMixins(
+	TEXT("FunctionLibraryMixins.PostReflection"),
+	EAngelscriptBindPhase::PostReflectionBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterFunctionBindingForTarget(
 			URuntimeFloatCurveMixinLibrary::StaticClass(),
@@ -58,7 +59,7 @@ namespace
 			{ERASE_FUNCTION_PTR(URuntimeFloatCurveMixinLibrary::GetTimeRange, (const FRuntimeFloatCurve&, float&, float&), ERASE_ARGUMENT_PACK(void))});
 
 		auto LevelStreaming_ = Binds.ExistingClassForTarget("ULevelStreaming");
-#if WITH_EDITOR
+	#if WITH_EDITOR
 		// ReflectionBindings auto-registers this ScriptMixin UFUNCTION first. Keep
 		// the explicit fallback only when reflection did not produce the method.
 		asITypeInfo* LevelStreamingType = LevelStreaming_.GetTypeInfo();
@@ -68,7 +69,7 @@ namespace
 				"bool GetShouldBeVisibleInEditor() const",
 				&FAngelscriptFunctionLibraryMixinsBinds::GetShouldBeVisibleInEditor);
 		}
-#endif
+	#endif
 
 		auto SceneComponent_ = Binds.ExistingClassForTarget("USceneComponent");
 		asITypeInfo* SceneComponentType = SceneComponent_.GetTypeInfo();
@@ -144,10 +145,4 @@ namespace
 				"void GetTimeRange(const FRuntimeFloatCurve& Target, float32&out MinTime, float32&out MaxTime)",
 				&FAngelscriptFunctionLibraryMixinsBinds::GetRuntimeFloatCurveTimeRangeGlobal);
 		}
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FunctionLibraryMixins(
-	TEXT("FunctionLibraryMixins.PostReflection"),
-	EAngelscriptBindPhase::PostReflectionBindings,
-	&BindFunctionLibraryMixins);
+	});

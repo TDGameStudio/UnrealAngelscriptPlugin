@@ -17,9 +17,10 @@
  * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindConfigEnums(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_ConfigEnums(
+	TEXT("ConfigEnums"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto ETraceTypeQuery_ = Binds.EnumForTarget("ETraceTypeQuery");
 		auto ECollisionChannel_ = Binds.EnumForTarget("ECollisionChannel");
@@ -59,10 +60,4 @@ namespace
 		EObjectTypeQuery_["WorldStatic"] = (int32)Collision->ConvertToObjectType(ECC_WorldStatic);
 		EObjectTypeQuery_["WorldDynamic"] = (int32)Collision->ConvertToObjectType(ECC_WorldDynamic);
 		EObjectTypeQuery_["PhysicsBody"] = (int32)Collision->ConvertToObjectType(ECC_PhysicsBody);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_ConfigEnums(
-	TEXT("ConfigEnums"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindConfigEnums);
+	});

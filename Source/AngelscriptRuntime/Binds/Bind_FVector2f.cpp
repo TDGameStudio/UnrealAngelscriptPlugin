@@ -124,17 +124,21 @@
  */
 
 
-namespace
-{
-	void BindFVector2fType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector2f_Type(
+	TEXT("FVector2f.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FVector2f>("FVector2f", Flags);
-	}
+	});
 
-	void BindFVector2fInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector2f_Infrastructure(
+	TEXT("FVector2f.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Vector2fType = MakeShared<FVector2fType>();
 		Binds.RegisterTypeForTarget(Vector2fType);
@@ -153,9 +157,12 @@ namespace
 			return false;
 		});
 		FToStringHelper::Register(Binds, TEXT("FVector2f"), &FAngelscriptFVector2fBinds::AppendToString);
-	}
+	});
 
-	void BindFVector2fFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector2f(
+	TEXT("FVector2f.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FVector2f_ = Binds.ExistingClassForTarget("FVector2f");
 		FVector2f_.Constructor(
@@ -231,20 +238,4 @@ namespace
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FVector2f");
 		Binds.BindGlobalVariableForTarget("const FVector2f ZeroVector", &FVector2f::ZeroVector);
 		Binds.BindGlobalVariableForTarget("const FVector2f UnitVector", &FVector2f::UnitVector);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector2f_Type(
-	TEXT("FVector2f.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFVector2fType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector2f_Infrastructure(
-	TEXT("FVector2f.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFVector2fInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector2f(
-	TEXT("FVector2f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFVector2fFunctions);
+	});

@@ -41,18 +41,22 @@
  */
 
 
-namespace
-{
-	void BindFSphere3fType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FSphere3f_Type(
+	TEXT("FSphere3f.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FSphere3f>("FSphere3f", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FSphere3fType>());
-	}
+	});
 
-	void BindFSphere3fFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FSphere3f(
+	TEXT("FSphere3f.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FSphere3f_ = Binds.ExistingClassForTarget("FSphere3f");
 		FSphere3f_.Constructor("void f()", &FAngelscriptFSphere3fBinds::ConstructDefault)
@@ -88,15 +92,4 @@ namespace
 		FSphere3f_.Method("bool IsInside(const FSphere3f& Other, float32 Tolerance = KINDA_SMALL_NUMBER) const", METHODPR_TRIVIAL(bool, FSphere3f, IsInside, (const FSphere3f&, float) const));
 		FSphere3f_.Method("bool Intersects(const FSphere3f& Other, float32 Tolerance = KINDA_SMALL_NUMBER) const", METHODPR_TRIVIAL(bool, FSphere3f, Intersects, (const FSphere3f&, float) const));
 		FSphere3f_.Method("float32 GetVolume() const", METHOD_TRIVIAL(FSphere3f, GetVolume));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FSphere3f_Type(
-	TEXT("FSphere3f.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFSphere3fType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FSphere3f(
-	TEXT("FSphere3f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFSphere3fFunctions);
+	});

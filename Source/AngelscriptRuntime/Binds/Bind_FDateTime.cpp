@@ -100,14 +100,18 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFDateTimeToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FDateTime_ToStringContribution(
+	TEXT("FDateTime.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FDateTime"), &FAngelscriptFDateTimeBinds::AppendToString);
-	}
+	});
 
-	void BindFDateTimeFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FDateTime(
+	TEXT("FDateTime.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FDateTime_ = Binds.ExistingClassForTarget("FDateTime");
 		FDateTime_.Constructor(
@@ -158,15 +162,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget(
 			"bool ParseIso8601(const FString& DateTimeString, FDateTime& OutDateTime)",
 			&FAngelscriptFDateTimeBinds::ParseIso8601);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FDateTime_ToStringContribution(
-	TEXT("FDateTime.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFDateTimeToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FDateTime(
-	TEXT("FDateTime.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFDateTimeFunctions);
+	});

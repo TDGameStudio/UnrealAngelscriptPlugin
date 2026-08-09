@@ -180,23 +180,28 @@
  */
 
 
-namespace
-{
-	void BindFQuat4fType(FAngelscriptBinds& Binds)
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FQuat4f_Type(
+	TEXT("FQuat4f.Type"), EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FQuat4f>("FQuat4f", Flags);
-	}
 
-	void BindFQuat4fInfrastructure(FAngelscriptBinds& Binds)
+	});
+AS_FORCE_LINK const FAngelscriptBind Bind_FQuat4f_Infrastructure(
+	TEXT("FQuat4f.Infrastructure"), EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FQuat4fType>());
 		FToStringHelper::Register(Binds, TEXT("FQuat4f"), &FAngelscriptFQuat4fBinds::AppendToString);
-	}
 
-	void BindFQuat4fFunctions(FAngelscriptBinds& Binds)
+	});
+AS_FORCE_LINK const FAngelscriptBind Bind_FQuat4f(
+	TEXT("FQuat4f.Functions"), EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FQuat4f_ = Binds.ExistingClassForTarget("FQuat4f");
 		FQuat4f_.Constructor("void f()", &FAngelscriptFQuat4fBinds::ConstructDefault)
@@ -305,9 +310,5 @@ namespace
 		FQuat4f_.Method("void ToSwingTwist(const FVector3f& InTwistAxis, FQuat4f& OutSwing, FQuat4f& OutTwist) const", METHOD_TRIVIAL(FQuat4f, ToSwingTwist));
 		FQuat4f_.Method("float32 GetTwistAngle(const FVector3f& InTwistAxis) const", METHOD_TRIVIAL(FQuat4f, GetTwistAngle));
 		FQuat4f_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FQuat4f, InitFromString));
-	}
-}
 
-AS_FORCE_LINK const FAngelscriptBind Bind_FQuat4f_Type(TEXT("FQuat4f.Type"), EAngelscriptBindPhase::TypeDeclarations, &BindFQuat4fType);
-AS_FORCE_LINK const FAngelscriptBind Bind_FQuat4f_Infrastructure(TEXT("FQuat4f.Infrastructure"), EAngelscriptBindPhase::TypeInfrastructure, &BindFQuat4fInfrastructure);
-AS_FORCE_LINK const FAngelscriptBind Bind_FQuat4f(TEXT("FQuat4f.Functions"), EAngelscriptBindPhase::ManualBindings, &BindFQuat4fFunctions);
+	});

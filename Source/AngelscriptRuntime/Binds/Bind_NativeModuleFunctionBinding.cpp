@@ -630,15 +630,14 @@ namespace
 		}
 	}
 
-	void BindNativeModuleFunctionBindings(FAngelscriptBinds& Binds)
-	{
-		RegisterExistingNativeModuleFunctionBindings(Binds);
-	}
 
 	AS_FORCE_LINK const FAngelscriptBind Bind_AS_NativeModuleFunctionBinding(
 		TEXT("NativeModuleFunctionBinding.GeneratedTransport"),
 		EAngelscriptBindPhase::GeneratedBindings,
-		&BindNativeModuleFunctionBindings);
+		[](FAngelscriptBinds& Binds)
+	{
+		RegisterExistingNativeModuleFunctionBindings(Binds);
+	});
 }
 
 void GAngelscriptNativeModuleFunctionBindingUnregisterEngine(FAngelscriptEngine& Engine)

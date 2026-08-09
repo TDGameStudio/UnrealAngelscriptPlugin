@@ -40,17 +40,21 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFNumberFormattingOptionsType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions_Type(
+	TEXT("FNumberFormattingOptions.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FNumberFormattingOptions>("FNumberFormattingOptions", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FNumberFormattingOptionsType>());
-	}
+	});
 
-	void BindFNumberFormattingOptionsManual(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions(
+	TEXT("FNumberFormattingOptions.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Options_ = Binds.ExistingClassForTarget("FNumberFormattingOptions");
 		Options_.Constructor(
@@ -74,15 +78,4 @@ namespace
 			.NativeFunction("FNumberFormattingOptions::DefaultWithGrouping", true);
 		Binds.BindGlobalFunctionForTarget("const FNumberFormattingOptions& DefaultNoGrouping() no_discard", &FNumberFormattingOptions::DefaultNoGrouping)
 			.NativeFunction("FNumberFormattingOptions::DefaultNoGrouping", true);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions_Type(
-	TEXT("FNumberFormattingOptions.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFNumberFormattingOptionsType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FNumberFormattingOptions(
-	TEXT("FNumberFormattingOptions.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFNumberFormattingOptionsManual);
+	});

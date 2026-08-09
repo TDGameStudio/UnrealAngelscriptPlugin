@@ -57,17 +57,21 @@
  */
 
 
-namespace
-{
-	void BindFIntPointType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntPoint_Type(
+	TEXT("FIntPoint.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FIntPoint>("FIntPoint", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FIntPointType>());
-	}
+	});
 
-	void BindFIntPointFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntPoint(
+	TEXT("FIntPoint.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FIntPoint_ = Binds.ExistingClassForTarget("FIntPoint");
 		FIntPoint_.Constructor(
@@ -108,25 +112,12 @@ namespace
 		FIntPoint_.Method("int32 GetMax() const", METHOD_TRIVIAL(FIntPoint, GetMax));
 		FIntPoint_.Method("int32 GetMin() const", METHOD_TRIVIAL(FIntPoint, GetMin));
 		FIntPoint_.Method("int32 Size() const", METHOD_TRIVIAL(FIntPoint, Size));
-	}
-
-	void BindFIntPointToStringContribution(FAngelscriptBinds& Binds)
-	{
-		FToStringHelper::Register(Binds, TEXT("FIntPoint"), &FAngelscriptFIntPointBinds::AppendToString);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntPoint_Type(
-	TEXT("FIntPoint.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFIntPointType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntPoint(
-	TEXT("FIntPoint.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFIntPointFunctions);
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FIntPoint_ToStringContribution(
 	TEXT("FIntPoint.ToStringContribution"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFIntPointToStringContribution);
+	[](FAngelscriptBinds& Binds)
+	{
+		FToStringHelper::Register(Binds, TEXT("FIntPoint"), &FAngelscriptFIntPointBinds::AppendToString);
+	});

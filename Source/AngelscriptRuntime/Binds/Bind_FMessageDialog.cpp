@@ -20,9 +20,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFMessageDialog(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FMessageDialog(
+	TEXT("FMessageDialog"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FMessageDialog");
 		Binds.BindGlobalFunctionForTarget(
@@ -31,10 +32,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget(
 			"EAppReturnType Open(EAppMsgCategory MessageCategory, EAppMsgType MessageType, const FText& Message, FText OptionalTitle = FText())",
 			&FAngelscriptFMessageDialogBinds::OpenWithCategory);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FMessageDialog(
-	TEXT("FMessageDialog"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFMessageDialog);
+	});

@@ -31,9 +31,10 @@
 
 extern FString GetSignatureStringForFunction(UFunction* Function);
 
-namespace
-{
-	void BindAngelscriptDelegateWithPayload(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptDelegateWithPayload(
+	TEXT("FAngelscriptDelegateWithPayload.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto DelegateType = Binds.ExistingClassForTarget("FAngelscriptDelegateWithPayload");
 		DelegateType.Method("void ExecuteIfBound() const", &FAngelscriptDelegateWithPayload::ExecuteIfBound);
@@ -44,13 +45,7 @@ namespace
 		DelegateType.Method(
 			"void BindWithPayload(UObject Object, const FName& FunctionName, const ?&in Payload)",
 			&FAngelscriptDelegateWithPayloadBinds::BindWithPayload);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_AngelscriptDelegateWithPayload(
-	TEXT("FAngelscriptDelegateWithPayload.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindAngelscriptDelegateWithPayload);
+	});
 
 bool FAngelscriptDelegateWithPayload::IsBound() const
 {

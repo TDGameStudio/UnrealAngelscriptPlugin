@@ -42,9 +42,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindEGuidFormats(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_EGuidFormats(
+	TEXT("EGuidFormats"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto EGuidFormats_ = Binds.EnumForTarget("EGuidFormats");
 		EGuidFormats_["Digits"] = EGuidFormats::Digits;
@@ -55,9 +56,12 @@ namespace
 		EGuidFormats_["UniqueObjectGuid"] = EGuidFormats::UniqueObjectGuid;
 		EGuidFormats_["Short"] = EGuidFormats::Short;
 		EGuidFormats_["Base36Encoded"] = EGuidFormats::Base36Encoded;
-	}
+	});
 
-	void BindFGuid(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FGuid(
+	TEXT("FGuid"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FGuid_ = Binds.ExistingClassForTarget("FGuid");
 
@@ -85,15 +89,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget("FGuid NewGuid()", FUNC_TRIVIAL(FGuid::NewGuid));
 		Binds.BindGlobalFunctionForTarget("bool Parse(const FString& GuidString, FGuid& OutGuid)", FUNCPR_TRIVIAL(bool, FGuid::Parse, (const FString&, FGuid&)));
 		Binds.BindGlobalFunctionForTarget("bool ParseExact(const FString& GuidString, EGuidFormats Format, FGuid& OutGuid)", FUNCPR_TRIVIAL(bool, FGuid::ParseExact, (const FString&, EGuidFormats, FGuid&)));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_EGuidFormats(
-	TEXT("EGuidFormats"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindEGuidFormats);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FGuid(
-	TEXT("FGuid"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFGuid);
+	});

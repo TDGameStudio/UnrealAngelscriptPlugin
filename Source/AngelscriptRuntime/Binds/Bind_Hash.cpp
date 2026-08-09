@@ -25,9 +25,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindHash(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Hash(
+	TEXT("Hash"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "Hash");
 		Binds.BindGlobalFunctionForTarget("uint32 CityHash32(const FString& buf)", &FAngelscriptHashBinds::CityHash32String);
@@ -38,10 +39,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget("uint64 CityHash64WithSeed(const TArray<int8>& buf, uint64 seed)", &FAngelscriptHashBinds::CityHash64BytesWithSeed);
 		Binds.BindGlobalFunctionForTarget("uint64 CityHash64WithSeeds(const FString& buf, uint64 seed0, uint64 seed1)", &FAngelscriptHashBinds::CityHash64StringWithSeeds);
 		Binds.BindGlobalFunctionForTarget("uint64 CityHash64WithSeeds(const TArray<int8>& buf, uint64 seed0, uint64 seed1)", &FAngelscriptHashBinds::CityHash64BytesWithSeeds);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Hash(
-	TEXT("Hash"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindHash);
+	});

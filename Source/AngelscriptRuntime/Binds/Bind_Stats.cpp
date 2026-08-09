@@ -19,18 +19,22 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindStatsTypes(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Stats_Types(
+	TEXT("Stats.Types"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags StatFlags;
 		Binds.ValueClassForTarget<FScriptStatID>("FStatID", StatFlags);
 
 		FBindFlags CounterFlags;
 		Binds.ValueClassForTarget<FScriptScopeCycleCounter>("FScopeCycleCounter", CounterFlags);
-	}
+	});
 
-	void BindStatsFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Stats(
+	TEXT("Stats.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FStatID_ = Binds.ExistingClassForTarget("FStatID");
 		FStatID_.Constructor("void f(const FName& Name)", &FAngelscriptStatsBinds::ConstructStatID).NoDiscard();
@@ -46,15 +50,4 @@ namespace
 			&FAngelscriptStatsBinds::ConstructScopeFromObject)
 			.NoDiscard();
 		FScopeCycleCounter_.Destructor("void f()", &FAngelscriptStatsBinds::DestructScope);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Stats_Types(
-	TEXT("Stats.Types"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindStatsTypes);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Stats(
-	TEXT("Stats.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindStatsFunctions);
+	});

@@ -30,9 +30,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFPlane(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FPlane(
+	TEXT("FPlane"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FPlane_ = Binds.ExistingClassForTarget("FPlane");
 
@@ -73,10 +74,4 @@ namespace
 				"@param EndPoint   - end point of segment"
 				"@param OutIntersectionPoint - the point on the segment that intersects the mesh (if any)"
 				"@return true if intersection occurred"));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FPlane(
-	TEXT("FPlane"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFPlane);
+	});

@@ -21,9 +21,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFParse(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FParse(
+	TEXT("FParse"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FParse");
 		Binds.BindGlobalFunctionForTarget(
@@ -38,10 +39,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget(
 			"bool Bool(const FString& Stream, const FString& Match, bool& OnOff)",
 			&FAngelscriptFParseBinds::Bool);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FParse(
-	TEXT("FParse"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFParse);
+	});

@@ -35,17 +35,21 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFStringTableRegistryTypes(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FStringTableRegistry_Types(
+	TEXT("FStringTableRegistry.Types"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Policy_ = Binds.EnumForTarget("EStringTableLoadingPolicy");
 		Policy_["Find"] = EStringTableLoadingPolicy::Find;
 		Policy_["FindOrLoad"] = EStringTableLoadingPolicy::FindOrLoad;
 		Policy_["FindOrFullyLoad"] = EStringTableLoadingPolicy::FindOrFullyLoad;
-	}
+	});
 
-	void BindFStringTableRegistryManual(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FStringTableRegistry(
+	TEXT("FStringTableRegistry.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalFunctionForTarget(
 			"void LOCTABLE_NEW(const FName TableId, const FString& Namespace)",
@@ -71,15 +75,4 @@ namespace
 			"FText LOCTABLE(const FName TableId, const FString& Key)",
 			&FAngelscriptFStringTableRegistryBinds::FindText)
 			.NoDiscard();
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FStringTableRegistry_Types(
-	TEXT("FStringTableRegistry.Types"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFStringTableRegistryTypes);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FStringTableRegistry(
-	TEXT("FStringTableRegistry.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFStringTableRegistryManual);
+	});

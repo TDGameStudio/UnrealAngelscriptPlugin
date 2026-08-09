@@ -31,9 +31,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindJsonObjectConverterFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_JsonObjectConverter(
+	TEXT("JsonObjectConverter.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FJsonObjectConverter");
 
@@ -61,10 +62,4 @@ namespace
 			"int CheckFlags = 0, "
 			"int SkipFlags = 0)";
 		Binds.BindGlobalFunctionForTarget(StringToStructSignature, &FAngelscriptJsonObjectConverterBinds::JsonObjectStringToUStruct);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_JsonObjectConverter(
-	TEXT("JsonObjectConverter.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindJsonObjectConverterFunctions);
+	});

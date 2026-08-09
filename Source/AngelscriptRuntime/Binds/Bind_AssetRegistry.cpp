@@ -90,17 +90,21 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindAssetRegistryToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_AssetRegistry_ToStringContribution(
+	TEXT("AssetRegistry.TopLevelAssetPathToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(
 			Binds,
 			TEXT("FTopLevelAssetPath"),
 			&FAngelscriptAssetRegistryBinds::AppendTopLevelAssetPathToString);
-	}
+	});
 
-	void BindAssetRegistry(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_AssetRegistry(
+	TEXT("AssetRegistry.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto AssetDataType = Binds.ExistingClassForTarget("FAssetData");
 		AssetDataType.Method("FSoftObjectPath GetSoftObjectPath() const", METHOD_TRIVIAL(FAssetData, GetSoftObjectPath));
@@ -177,15 +181,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget(
 			"void LoadAllBlueprintsUnderPath(FName PathToLoadFrom, FString OptionalFileIncludeRegex = \"\")",
 			&FAngelscriptAssetRegistryBinds::LoadAllBlueprintsUnderPath);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_AssetRegistry_ToStringContribution(
-	TEXT("AssetRegistry.TopLevelAssetPathToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindAssetRegistryToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_AssetRegistry(
-	TEXT("AssetRegistry.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindAssetRegistry);
+	});

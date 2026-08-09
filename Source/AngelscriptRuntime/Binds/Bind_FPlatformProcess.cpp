@@ -40,9 +40,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFPlatformProcess(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FPlatformProcess(
+	TEXT("FPlatformProcess"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FPlatformProcess");
 		Binds.BindGlobalFunctionForTarget("FString UserDir()", &FAngelscriptFPlatformProcessBinds::UserDir);
@@ -62,10 +63,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget("FString ComputerName()", &FAngelscriptFPlatformProcessBinds::ComputerName);
 		Binds.BindGlobalFunctionForTarget("FString UserName()", &FAngelscriptFPlatformProcessBinds::UserName);
 		Binds.BindGlobalFunctionForTarget("FString GameBundleId()", &FAngelscriptFPlatformProcessBinds::GameBundleId);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FPlatformProcess(
-	TEXT("FPlatformProcess"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFPlatformProcess);
+	});

@@ -44,9 +44,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindSubsystems(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Subsystems(
+	TEXT("Subsystems.PostReflection"),
+	EAngelscriptBindPhase::PostReflectionBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		{
 			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "USubsystemLibrary");
@@ -92,7 +93,7 @@ namespace
 			const FString ClassName = Type->GetAngelscriptTypeName();
 			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), ClassName);
 
-#if WITH_EDITOR
+	#if WITH_EDITOR
 			if (Class->IsChildOf(UEditorSubsystem::StaticClass()))
 			{
 				if (Binds.GetTargetEngine().ShouldUseEditorScripts())
@@ -104,7 +105,7 @@ namespace
 				}
 			}
 			else
-#endif
+	#endif
 			if (Class->IsChildOf(UEngineSubsystem::StaticClass()))
 			{
 				Binds.BindGlobalFunctionForTarget(
@@ -138,10 +139,4 @@ namespace
 					Class);
 			}
 		}
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Subsystems(
-	TEXT("Subsystems.PostReflection"),
-	EAngelscriptBindPhase::PostReflectionBindings,
-	&BindSubsystems);
+	});

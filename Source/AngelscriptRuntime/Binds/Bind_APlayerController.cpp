@@ -57,9 +57,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindController(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_AController(
+	TEXT("AController.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto AController_ = Binds.ExistingClassForTarget("AController");
 		AController_.Method("APawn GetPawn() const", &FAngelscriptAPlayerControllerBinds::GetPawn);
@@ -69,9 +70,11 @@ namespace
 		AController_.Method("bool IsLocalPlayerController() const", &FAngelscriptAPlayerControllerBinds::IsLocalPlayerController);
 		AController_.Method("FRotator GetControlRotation() const", &FAngelscriptAPlayerControllerBinds::GetControlRotation);
 		AController_.Method("void SetControlRotation(const FRotator& NewRotation)", &FAngelscriptAPlayerControllerBinds::SetControlRotation);
-	}
-
-	void BindPlayerController(FAngelscriptBinds& Binds)
+	});
+AS_FORCE_LINK const FAngelscriptBind Bind_APlayerController(
+	TEXT("APlayerController.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto APlayerController_ = Binds.ExistingClassForTarget("APlayerController");
 		APlayerController_.Method("void SetPlayer(UPlayer InPlayer)", METHOD_TRIVIAL(APlayerController, SetPlayer));
@@ -81,9 +84,11 @@ namespace
 		APlayerController_.Method(
 			"void SetViewTargetWithBlend(AActor NewViewTarget, float32 BlendTime = 0.0, EViewTargetBlendFunction BlendFunc = EViewTargetBlendFunction::VTBlend_Linear, float32 BlendExp = 0.0, bool bLockOutgoing = false)",
 			&FAngelscriptAPlayerControllerBinds::SetViewTargetWithBlend);
-	}
-
-	void BindPawn(FAngelscriptBinds& Binds)
+	});
+AS_FORCE_LINK const FAngelscriptBind Bind_APawn(
+	TEXT("APawn.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto APawn_ = Binds.ExistingClassForTarget("APawn");
 		APawn_.Method("AController GetController() const", &FAngelscriptAPlayerControllerBinds::GetController);
@@ -97,18 +102,4 @@ namespace
 			&FAngelscriptAPlayerControllerBinds::AddMovementInput);
 		APawn_.Method("void AddControllerYawInput(float32 Val)", &FAngelscriptAPlayerControllerBinds::AddControllerYawInput);
 		APawn_.Method("void AddControllerPitchInput(float32 Val)", &FAngelscriptAPlayerControllerBinds::AddControllerPitchInput);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_AController(
-	TEXT("AController.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindController);
-AS_FORCE_LINK const FAngelscriptBind Bind_APlayerController(
-	TEXT("APlayerController.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindPlayerController);
-AS_FORCE_LINK const FAngelscriptBind Bind_APawn(
-	TEXT("APawn.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindPawn);
+	});

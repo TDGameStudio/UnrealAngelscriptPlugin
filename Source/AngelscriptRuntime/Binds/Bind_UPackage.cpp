@@ -10,17 +10,12 @@
  * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUPackage(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UPackage(
+	TEXT("UPackage"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto UPackage_ = Binds.ExistingClassForTarget("UPackage");
 
 		UPackage_.Method("bool IsDirty() const", METHOD_TRIVIAL(UPackage, IsDirty));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UPackage(
-	TEXT("UPackage"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUPackage);
+	});

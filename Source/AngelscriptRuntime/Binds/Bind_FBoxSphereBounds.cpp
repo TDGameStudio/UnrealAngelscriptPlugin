@@ -59,23 +59,30 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFBoxSphereBoundsType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds_Type(
+	TEXT("FBoxSphereBounds.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FBoxSphereBounds>("FBoxSphereBounds", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FBoxSphereBoundsType>());
-	}
+	});
 
-	void BindFBoxSphereBoundsToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds_ToStringContribution(
+	TEXT("FBoxSphereBounds.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FBoxSphereBounds"), &FAngelscriptFBoxSphereBoundsBinds::AppendToString);
-	}
+	});
 
-	void BindFBoxSphereBoundsFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds(
+	TEXT("FBoxSphereBounds.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FBoxSphereBounds_ = Binds.ExistingClassForTarget("FBoxSphereBounds");
 		FBoxSphereBounds_.Constructor("void f()", &FAngelscriptFBoxSphereBoundsBinds::ConstructDefault)
@@ -130,20 +137,4 @@ namespace
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FBoxSphereBounds");
 		Binds.BindGlobalFunctionForTarget("bool SpheresIntersect(const FBoxSphereBounds& A, const FBoxSphereBounds& B, float64 Tolerance = KINDA_SMALL_NUMBER) no_discard", FUNC_TRIVIAL(FBoxSphereBounds::SpheresIntersect));
 		Binds.BindGlobalFunctionForTarget("bool BoxesIntersect(const FBoxSphereBounds& A, const FBoxSphereBounds& B) no_discard", FUNC_TRIVIAL(FBoxSphereBounds::BoxesIntersect));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds_Type(
-	TEXT("FBoxSphereBounds.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFBoxSphereBoundsType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds_ToStringContribution(
-	TEXT("FBoxSphereBounds.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFBoxSphereBoundsToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds(
-	TEXT("FBoxSphereBounds.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFBoxSphereBoundsFunctions);
+	});

@@ -51,18 +51,22 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindInputBindingHandleTypes(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FInputBindingHandle_Types(
+	TEXT("FInputBindingHandle.Types"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		const FBindFlags Flags;
 		Binds.ValueClassForTarget<FInputBindingHandle>("FInputBindingHandle", Flags);
 		Binds.ValueClassForTarget<FEnhancedInputActionEventBinding>("FEnhancedInputActionEventBinding", Flags);
 		Binds.ValueClassForTarget<FEnhancedInputActionValueBinding>("FEnhancedInputActionValueBinding", Flags);
 		Binds.ValueClassForTarget<FInputDebugKeyBinding>("FInputDebugKeyBinding", Flags);
-	}
+	});
 
-	void BindInputBindingHandleFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FInputBindingHandle(
+	TEXT("FInputBindingHandle.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FInputBindingHandle_ = Binds.ExistingClassForTarget("FInputBindingHandle");
 		FInputBindingHandle_.Method("bool opEquals(const FInputBindingHandle& Other) const", METHODPR_TRIVIAL(bool, FInputBindingHandle, operator==, (const FInputBindingHandle&) const));
@@ -97,15 +101,4 @@ namespace
 		FInputDebugKeyBinding_.Method("bool opEquals(const FInputDebugKeyBinding& Other) const", METHODPR_TRIVIAL(bool, FInputDebugKeyBinding, operator==, (const FInputDebugKeyBinding&) const));
 		FInputDebugKeyBinding_.Method("uint32 GetHandle() const", METHOD_TRIVIAL(FInputDebugKeyBinding, GetHandle));
 		FInputDebugKeyBinding_.Method("void Execute(const FInputActionValue& ActionValue) const", METHODPR_TRIVIAL(void, FEnhancedInputActionEventBinding, Execute, (const FInputActionValue&) const));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FInputBindingHandle_Types(
-	TEXT("FInputBindingHandle.Types"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindInputBindingHandleTypes);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FInputBindingHandle(
-	TEXT("FInputBindingHandle.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindInputBindingHandleFunctions);
+	});

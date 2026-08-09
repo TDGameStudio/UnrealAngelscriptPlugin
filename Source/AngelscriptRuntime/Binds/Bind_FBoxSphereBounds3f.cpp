@@ -66,23 +66,30 @@
  */
 
 
-namespace
-{
-	void BindFBoxSphereBounds3fType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds3f_Type(
+	TEXT("FBoxSphereBounds3f.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FBoxSphereBounds3f>("FBoxSphereBounds3f", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FBoxSphereBounds3fType>());
-	}
+	});
 
-	void BindFBoxSphereBounds3fToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds3f_ToStringContribution(
+	TEXT("FBoxSphereBounds3f.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FBoxSphereBounds3f"), &FAngelscriptFBoxSphereBounds3fBinds::AppendToString);
-	}
+	});
 
-	void BindFBoxSphereBounds3fFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds3f(
+	TEXT("FBoxSphereBounds3f.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FBoxSphereBounds3f_ = Binds.ExistingClassForTarget("FBoxSphereBounds3f");
 		FBoxSphereBounds3f_.Constructor("void f()", &FAngelscriptFBoxSphereBounds3fBinds::ConstructDefault)
@@ -137,20 +144,4 @@ namespace
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FBoxSphereBounds3f");
 		Binds.BindGlobalFunctionForTarget("bool SpheresIntersect(const FBoxSphereBounds3f& A, const FBoxSphereBounds3f& B, float32 Tolerance = KINDA_SMALL_NUMBER) no_discard", FUNC_TRIVIAL(FBoxSphereBounds3f::SpheresIntersect));
 		Binds.BindGlobalFunctionForTarget("bool BoxesIntersect(const FBoxSphereBounds3f& A, const FBoxSphereBounds3f& B) no_discard", FUNC_TRIVIAL(FBoxSphereBounds3f::BoxesIntersect));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds3f_Type(
-	TEXT("FBoxSphereBounds3f.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFBoxSphereBounds3fType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds3f_ToStringContribution(
-	TEXT("FBoxSphereBounds3f.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFBoxSphereBounds3fToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBoxSphereBounds3f(
-	TEXT("FBoxSphereBounds3f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFBoxSphereBounds3fFunctions);
+	});

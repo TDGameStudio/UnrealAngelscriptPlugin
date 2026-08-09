@@ -150,23 +150,30 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFTransformType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform_Type(
+	TEXT("FTransform.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FTransform>("FTransform", Flags);
-	}
+	});
 
-	void BindFTransformInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform_Infrastructure(
+	TEXT("FTransform.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FTransformType>());
 		FToStringHelper::Register(Binds, TEXT("FTransform"), &FAngelscriptFTransformBinds::AppendToString);
-	}
+	});
 
-	void BindFTransformFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform(
+	TEXT("FTransform.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FTransform_ = Binds.ExistingClassForTarget("FTransform");
 
@@ -255,15 +262,15 @@ namespace
 	FTransform_.Method("void RemoveScaling(float64 Tolerance=SMALL_NUMBER)", METHODPR_TRIVIAL(void, FTransform, RemoveScaling, (double)));
 
 	FTransform_.Method("void SetToRelativeTransform(const FTransform& Other)", METHOD_TRIVIAL(FTransform, SetToRelativeTransform));
-	
+
 	FTransform_.Method("void Accumulate(const FTransform& SourceAtom)", METHODPR_TRIVIAL(void, FTransform, Accumulate, (const FTransform&)))
 		.Documentation(TEXT(
 	"Accumulates another transform with this one\n"
-    "Rotation is accumulated multiplicatively (Rotation = SourceAtom.Rotation * Rotation)\n"
-    "Translation is accumulated additively (Translation += SourceAtom.Translation)\n"
-    "Scale3D is accumulated multiplicatively (Scale3D *= SourceAtom.Scale3D)\n"
-    "@param SourceAtom The other transform to accumulate into this one"
-     ));
+	    "Rotation is accumulated multiplicatively (Rotation = SourceAtom.Rotation * Rotation)\n"
+	    "Translation is accumulated additively (Translation += SourceAtom.Translation)\n"
+	    "Scale3D is accumulated multiplicatively (Scale3D *= SourceAtom.Scale3D)\n"
+	    "@param SourceAtom The other transform to accumulate into this one"
+	     ));
 
 	FTransform_.Method("float32 GetMaximumAxisScale() const", METHODPR_TRIVIAL(float, FTransform, GetMaximumAxisScale, () const));
 	FTransform_.Method("float32 GetMinimumAxisScale() const", METHODPR_TRIVIAL(float, FTransform, GetMinimumAxisScale, () const));
@@ -309,7 +316,7 @@ namespace
 	FTransform_.Method("FVector GetTranslation() const", METHOD_TRIVIAL(FTransform, GetTranslation));
 	FTransform_.Method("FVector GetScale3D() const", METHOD_TRIVIAL(FTransform, GetScale3D));
 	FTransform_.Method("FQuat GetRotation() const", METHOD_TRIVIAL(FTransform, GetRotation));
-	
+
 	FTransform_.Method("FMatrix ToMatrixWithScale() const", METHOD_TRIVIAL(FTransform, ToMatrixWithScale));
 	FTransform_.Method("FMatrix ToMatrixNoScale() const", METHOD_TRIVIAL(FTransform, ToMatrixNoScale));
 	FTransform_.Method("FMatrix ToInverseMatrixWithScale() const", METHOD_TRIVIAL(FTransform, ToInverseMatrixWithScale));
@@ -322,28 +329,12 @@ namespace
 	FTransform_.Method("void ConcatenateRotation(const FQuat& DeltaRotation)", METHOD_TRIVIAL(FTransform, ConcatenateRotation))
 		.Documentation(TEXT(
 	"Concatenates another rotation to this transformation\n"
-    "@param DeltaRotation The rotation to concatenate in the following fashion: Rotation = Rotation * DeltaRotation"
-    ));
+	    "@param DeltaRotation The rotation to concatenate in the following fashion: Rotation = Rotation * DeltaRotation"
+	    ));
 
 	FTransform_.Method("void SetRotation(const FQuat& NewRotation)", METHOD_TRIVIAL(FTransform, SetRotation));
-	
+
 	FTransform_.Method("void SetScale3D(const FVector& NewScale3D)", METHOD_TRIVIAL(FTransform, SetScale3D));
 	FTransform_.Method("void SetTranslationAndScale3D(const FVector& NewTranslation, const FVector& NewScale3D)", METHOD_TRIVIAL(FTransform, SetTranslationAndScale3D));
 	FTransform_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FTransform, InitFromString));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FTransform_Type(
-	TEXT("FTransform.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFTransformType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FTransform_Infrastructure(
-	TEXT("FTransform.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFTransformInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FTransform(
-	TEXT("FTransform.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFTransformFunctions);
+	});

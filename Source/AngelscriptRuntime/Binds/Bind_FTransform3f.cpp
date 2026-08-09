@@ -156,23 +156,30 @@
  */
 
 
-namespace
-{
-	void BindFTransform3fType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f_Type(
+	TEXT("FTransform3f.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FTransform3f>("FTransform3f", Flags);
-	}
+	});
 
-	void BindFTransform3fInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f_Infrastructure(
+	TEXT("FTransform3f.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FTransform3fType>());
 		FToStringHelper::Register(Binds, TEXT("FTransform3f"), &FAngelscriptFTransform3fBinds::AppendToString);
-	}
+	});
 
-	void BindFTransform3fFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f(
+	TEXT("FTransform3f.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FTransform3f_ = Binds.ExistingClassForTarget("FTransform3f");
 
@@ -260,15 +267,15 @@ namespace
 	FTransform3f_.Method("void RemoveScaling(float32 Tolerance=__SMALL_NUMBER_flt)", METHODPR_TRIVIAL(void, FTransform3f, RemoveScaling, (float)));
 
 	FTransform3f_.Method("void SetToRelativeTransform(const FTransform3f& Other)", METHOD_TRIVIAL(FTransform3f, SetToRelativeTransform));
-	
+
 	FTransform3f_.Method("void Accumulate(const FTransform3f& SourceAtom)", METHODPR_TRIVIAL(void, FTransform3f, Accumulate, (const FTransform3f&)))
 		.Documentation(TEXT(
 	"Accumulates another transform with this one\n"
-    "Rotation is accumulated multiplicatively (Rotation = SourceAtom.Rotation * Rotation)\n"
-    "Translation is accumulated additively (Translation += SourceAtom.Translation)\n"
-    "Scale3D is accumulated multiplicatively (Scale3D *= SourceAtom.Scale3D)\n"
-    "@param SourceAtom The other transform to accumulate into this one"
-     ));
+	    "Rotation is accumulated multiplicatively (Rotation = SourceAtom.Rotation * Rotation)\n"
+	    "Translation is accumulated additively (Translation += SourceAtom.Translation)\n"
+	    "Scale3D is accumulated multiplicatively (Scale3D *= SourceAtom.Scale3D)\n"
+	    "@param SourceAtom The other transform to accumulate into this one"
+	     ));
 
 	FTransform3f_.Method("float32 GetMaximumAxisScale() const", METHODPR_TRIVIAL(float, FTransform3f, GetMaximumAxisScale, () const));
 	FTransform3f_.Method("float32 GetMinimumAxisScale() const", METHODPR_TRIVIAL(float, FTransform3f, GetMinimumAxisScale, () const));
@@ -323,28 +330,12 @@ namespace
 	FTransform3f_.Method("void ConcatenateRotation(const FQuat4f& DeltaRotation)", METHOD_TRIVIAL(FTransform3f, ConcatenateRotation))
 		.Documentation(TEXT(
 	"Concatenates another rotation to this transformation\n"
-    "@param DeltaRotation The rotation to concatenate in the following fashion: Rotation = Rotation * DeltaRotation"
-    ));
+	    "@param DeltaRotation The rotation to concatenate in the following fashion: Rotation = Rotation * DeltaRotation"
+	    ));
 
 	FTransform3f_.Method("void SetRotation(const FQuat4f& NewRotation)", METHOD_TRIVIAL(FTransform3f, SetRotation));
 	FTransform3f_.Method("void SetScale3D(const FVector3f& NewScale3D)", METHOD_TRIVIAL(FTransform3f, SetScale3D));
 	FTransform3f_.Method("void SetTranslationAndScale3D(const FVector3f& NewTranslation, const FVector3f& NewScale3D)", METHOD_TRIVIAL(FTransform3f, SetTranslationAndScale3D));
 
 	FTransform3f_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FTransform3f, InitFromString));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f_Type(
-	TEXT("FTransform3f.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFTransform3fType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f_Infrastructure(
-	TEXT("FTransform3f.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFTransform3fInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FTransform3f(
-	TEXT("FTransform3f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFTransform3fFunctions);
+	});

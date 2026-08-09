@@ -75,9 +75,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindLoggingFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Logging(
+	TEXT("Logging.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalFunctionForTarget(
 			"void Log(const FString& Text)",
@@ -196,10 +197,4 @@ namespace
 			&FAngelscriptLoggingBinds::PrintError)
 			.CompileOutIfNoLog()
 			.WorldContext();
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Logging(
-	TEXT("Logging.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindLoggingFunctions);
+	});

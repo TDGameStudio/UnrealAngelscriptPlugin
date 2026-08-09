@@ -39,9 +39,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFInputActionValue(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FInputActionValue(
+	TEXT("FInputActionValue"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Value_ = Binds.ExistingClassForTarget("FInputActionValue");
 		Value_.Constructor("void f(float32 InValue)", &FAngelscriptFInputActionValueBinds::ConstructAxis1D, "FInputActionValue", true);
@@ -61,10 +62,4 @@ namespace
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FInputActionValue");
 		Binds.BindGlobalFunctionForTarget("EInputActionValueType GetValueTypeFromKey(FKey Key)", &FInputActionValue::GetValueTypeFromKey)
 			.NativeFunction("FInputActionValue::GetValueTypeFromKey", true);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FInputActionValue(
-	TEXT("FInputActionValue"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFInputActionValue);
+	});

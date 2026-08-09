@@ -53,9 +53,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUDataTableFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UDataTable(
+	TEXT("UDataTable"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto UDataTable_ = Binds.ExistingClassForTarget("UDataTable");
 
@@ -83,10 +84,4 @@ namespace
 		FDataTableCategoryHandle_.Method("TArray<FName> GetRowNames() const", &FAngelscriptUDataTableBinds::GetCategoryRowNames);
 		FDataTableCategoryHandle_.Method("bool GetRow(FName RowName, ?&out OutRow) const", &FAngelscriptUDataTableBinds::GetCategoryRow);
 		FDataTableCategoryHandle_.Method("void GetRows(?& OutArray) const", &FAngelscriptUDataTableBinds::GetCategoryRows);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UDataTable(
-	TEXT("UDataTable"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUDataTableFunctions);
+	});

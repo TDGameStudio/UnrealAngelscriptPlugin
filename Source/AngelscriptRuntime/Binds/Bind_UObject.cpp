@@ -160,9 +160,13 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUObjectBase(FAngelscriptBinds& Binds)
+/*
+ * Binds default methods that all UObjects have
+ */
+AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Base(
+	TEXT("UObject.Base"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto UObject_ = Binds.ExistingClassForTarget("UObject");
 		UObject_.Method("void AddToRoot()", METHOD_TRIVIAL(UObject, AddToRoot));
@@ -220,15 +224,24 @@ namespace
 
 		Binds.BindGlobalFunctionForTarget("bool IsValid(const UObject Object) no_discard", FUNCPR_TRIVIAL(bool, ::IsValid, (UObject*)))
 			.Documentation(TEXT("Returns true if the object is usable: non-null and not pending kill"));
-	}
+	});
 
-	void BindUObjectToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UObject_ToStringContribution(
+	TEXT("UObject.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("UObject"), &FAngelscriptUObjectBinds::AppendToString,
 			/*bImplicitConversion = */false, /*bIsHandleType = */true);
-	}
+	});
 
-	void BindUClassBase(FAngelscriptBinds& Binds)
+/*
+ * Binds default methods that all UClasses have
+ */
+AS_FORCE_LINK const FAngelscriptBind Bind_UClass_Base(
+	TEXT("UClass.Base"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto UClass_ = Binds.ExistingClassForTarget("UClass");
 		UClass_.Method("UObject GetDefaultObject() const", &FAngelscriptUObjectBinds::GetDefaultObject);
@@ -253,42 +266,18 @@ namespace
 				&FAngelscriptUObjectBinds::GetAllSubclassesOf);
 			Binds.BindGlobalFunctionForTarget("UClass __StaticClass(const FString& Name)", &FAngelscriptUObjectBinds::FindClassByScriptName);
 		}
-	}
+	});
 
-	void BindUFunctionBase(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UFunction_Base(
+	TEXT("UFunction.Base"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto UFunction_ = Binds.ExistingClassForTarget("UFunction");
 		UFunction_.Method("FString GetSourceFilePath() const", &FAngelscriptUObjectBinds::GetFunctionSourceFilePath);
 		UFunction_.Method("int GetSourceLineNumber() const", &FAngelscriptUObjectBinds::GetFunctionSourceLineNumber);
 		UFunction_.Method("FString GetScriptFunctionDeclaration() const", &FAngelscriptUObjectBinds::GetScriptFunctionDeclaration);
-	}
-}
-
-/*
- * Binds default methods that all UObjects have
- */
-AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Base(
-	TEXT("UObject.Base"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUObjectBase);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UObject_ToStringContribution(
-	TEXT("UObject.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindUObjectToStringContribution);
-
-/*
- * Binds default methods that all UClasses have
- */
-AS_FORCE_LINK const FAngelscriptBind Bind_UClass_Base(
-	TEXT("UClass.Base"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUClassBase);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UFunction_Base(
-	TEXT("UFunction.Base"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUFunctionBase);
+	});
 
 static UObject* GetASConstructionScriptObject()
 {
@@ -366,9 +355,10 @@ static bool IsPlayingPIE()
  * Bind global operations manipulating or finding UObjects.
  */
 static IAssetRegistry* GetBindAssetRegistry();
-namespace
-{
-	void BindUObjectOperations(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Operations(
+	TEXT("UObject.Operations"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalVariableForTarget("const UObject null", &GAngelscriptNullObject);
 
@@ -402,13 +392,7 @@ namespace
 		Binds.BindGlobalFunctionForTarget(
 			"void __PostLiteralAssetSetup(UObject Asset, const FString& Name)",
 			&FAngelscriptUObjectBinds::PostLiteralAssetSetup);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UObject_Operations(
-	TEXT("UObject.Operations"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUObjectOperations);
+	});
 
 IAssetRegistry* GetBindAssetRegistry()
 {

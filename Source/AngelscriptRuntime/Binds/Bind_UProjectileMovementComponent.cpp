@@ -14,9 +14,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUProjectileMovementComponent(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UProjectileMovementComponent(
+	TEXT("UProjectileMovementComponent"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto ProjectileMovement_ = Binds.ExistingClassForTarget("UProjectileMovementComponent");
 		if (ProjectileMovement_.GetTypeInfo() == nullptr)
@@ -30,10 +31,4 @@ namespace
 		ProjectileMovement_.Method(
 			"void SetHomingTargetComponent(USceneComponent HomingTargetComponent)",
 			&FAngelscriptUProjectileMovementComponentBinds::SetHomingTargetComponent);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UProjectileMovementComponent(
-	TEXT("UProjectileMovementComponent"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUProjectileMovementComponent);
+	});

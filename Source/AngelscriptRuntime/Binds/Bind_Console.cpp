@@ -44,16 +44,20 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindConsoleTypes(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleTypes(
+	TEXT("Console.Types"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		const FBindFlags Flags;
 		Binds.ValueClassForTarget<FScriptConsoleVariable<int32>>("FConsoleVariable", Flags);
 		Binds.ValueClassForTarget<FScriptConsoleCommand>("FConsoleCommand", Flags);
-	}
+	});
 
-	void BindConsoleVariableFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleVariables(
+	TEXT("Console.Variables"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Variable_ = Binds.ExistingClassForTarget("FConsoleVariable");
 		Variable_
@@ -86,9 +90,12 @@ namespace
 		Variable_.Method("void SetFloat(float32 InValue) const", &FScriptConsoleVariable<float>::SetFloat);
 		Variable_.Method("void SetInt(int InValue) const", &FScriptConsoleVariable<int32>::SetInt);
 		Variable_.Method("void SetString(const FString& InValue) const", &FScriptConsoleVariable<FString>::SetString);
-	}
+	});
 
-	void BindConsoleCommandFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleCommands(
+	TEXT("Console.Commands"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Command_ = Binds.ExistingClassForTarget("FConsoleCommand");
 		Command_
@@ -97,20 +104,4 @@ namespace
 				&FAngelscriptConsoleBinds::ConstructCommand)
 			.NoDiscard();
 		Command_.Destructor("void f()", &FAngelscriptConsoleBinds::DestructCommand);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleTypes(
-	TEXT("Console.Types"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindConsoleTypes);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleVariables(
-	TEXT("Console.Variables"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindConsoleVariableFunctions);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_ConsoleCommands(
-	TEXT("Console.Commands"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindConsoleCommandFunctions);
+	});

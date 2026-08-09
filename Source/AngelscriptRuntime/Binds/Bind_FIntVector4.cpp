@@ -57,22 +57,29 @@
  */
 
 
-namespace
-{
-	void BindFIntVector4Type(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4_Type(
+	TEXT("FIntVector4.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FIntVector4>("FIntVector4", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FIntVector4Type>());
-	}
+	});
 
-	void BindFIntVector4ToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4_ToStringContribution(
+	TEXT("FIntVector4.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FIntVector4"), &FAngelscriptFIntVector4Binds::AppendToString);
-	}
+	});
 
-	void BindFIntVector4Functions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4(
+	TEXT("FIntVector4.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FIntVector4_ = Binds.ExistingClassForTarget("FIntVector4");
 		FIntVector4_.Constructor(
@@ -112,20 +119,4 @@ namespace
 		FIntVector4_.Method("FIntVector4 opSubAssign(const FIntVector4& Other)", METHODPR_TRIVIAL(FIntVector4&, FIntVector4, operator-=, (const FIntVector4&)));
 		FIntVector4_.Method("const int32& opIndex(int32 Index)", METHODPR_TRIVIAL(int32&, FIntVector4, operator[], (const int32)));
 		FIntVector4_.Method("bool opEquals(const FIntVector4& Other) const", METHODPR_TRIVIAL(bool, FIntVector4, operator==, (const FIntVector4&) const));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4_Type(
-	TEXT("FIntVector4.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFIntVector4Type);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4_ToStringContribution(
-	TEXT("FIntVector4.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFIntVector4ToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector4(
-	TEXT("FIntVector4.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFIntVector4Functions);
+	});

@@ -118,23 +118,30 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFVector2DType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector2D_Type(
+	TEXT("FVector2D.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FVector2D>("FVector2D", Flags);
-	}
+	});
 
-	void BindFVector2DInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector2D_Infrastructure(
+	TEXT("FVector2D.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FVector2DType>());
 		FToStringHelper::Register(Binds, TEXT("FVector2D"), &FAngelscriptFVector2DBinds::AppendToString);
-	}
+	});
 
-	void BindFVector2DFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector2D(
+	TEXT("FVector2D.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FVector2D_ = Binds.ExistingClassForTarget("FVector2D");
 		FVector2D_.Constructor(
@@ -203,20 +210,4 @@ namespace
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FVector2D");
 		Binds.BindGlobalVariableForTarget("const FVector2D ZeroVector", &FVector2D::ZeroVector);
 		Binds.BindGlobalVariableForTarget("const FVector2D UnitVector", &FVector2D::UnitVector);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector2D_Type(
-	TEXT("FVector2D.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFVector2DType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector2D_Infrastructure(
-	TEXT("FVector2D.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFVector2DInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector2D(
-	TEXT("FVector2D.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFVector2DFunctions);
+	});

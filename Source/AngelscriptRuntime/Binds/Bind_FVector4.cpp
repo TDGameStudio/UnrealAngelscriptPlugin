@@ -51,23 +51,30 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFVector4Type(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector4_Type(
+	TEXT("FVector4.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FVector4>("FVector4", Flags);
-	}
+	});
 
-	void BindFVector4Infrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector4_Infrastructure(
+	TEXT("FVector4.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FVector4Type>());
 		FToStringHelper::Register(Binds, TEXT("FVector4"), &FAngelscriptFVector4Binds::AppendToString);
-	}
+	});
 
-	void BindFVector4Functions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FVector4(
+	TEXT("FVector4.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FVector4_ = Binds.ExistingClassForTarget("FVector4");
 		FVector4_.Constructor(
@@ -110,20 +117,4 @@ namespace
 		FVector4_.Method("FVector4 opMulAssign(float64 S)", METHODPR_TRIVIAL(FVector4, FVector4, operator*=, (double)));
 		FVector4_.Method("const float64& opIndex(int32 Index)", METHODPR_TRIVIAL(double&, FVector4, operator[], (int32)));
 		FVector4_.Method("bool opEquals(const FVector4& Other) const", METHODPR_TRIVIAL(bool, FVector4, operator==, (const FVector4&) const));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector4_Type(
-	TEXT("FVector4.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFVector4Type);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector4_Infrastructure(
-	TEXT("FVector4.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFVector4Infrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FVector4(
-	TEXT("FVector4.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFVector4Functions);
+	});

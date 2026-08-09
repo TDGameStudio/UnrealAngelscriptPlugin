@@ -25,9 +25,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFLatentActionInfo(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FLatentActionInfo(
+	TEXT("FLatentActionInfo"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FLatentActionInfo_ = Binds.ExistingClassForTarget("FLatentActionInfo");
 		FLatentActionInfo_.Constructor(
@@ -39,10 +40,4 @@ namespace
 		FLatentActionInfo_.Property("int32 UUID", &FLatentActionInfo::UUID);
 		FLatentActionInfo_.Property("FName ExecutionFunction", &FLatentActionInfo::ExecutionFunction);
 		FLatentActionInfo_.Property("UObject unresolved_object CallbackTarget", &FLatentActionInfo::CallbackTarget);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FLatentActionInfo(
-	TEXT("FLatentActionInfo"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFLatentActionInfo);
+	});

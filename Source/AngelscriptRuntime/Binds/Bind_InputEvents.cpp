@@ -298,14 +298,18 @@
 
 
 
-namespace
-{
-	void BindInputEventsToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_InputEvents_ToStringContribution(
+	TEXT("InputEvents.FKeyToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FKey"), &FAngelscriptInputEventsBinds::AppendKeyToString);
-	}
+	});
 
-	void BindInputEvents(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_InputEvents(
+	TEXT("InputEvents.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FKey_ = Binds.ExistingClassForTarget("FKey");
 		FKey_.Constructor("void f(const FName& KeyName)", &FAngelscriptInputEventsBinds::ConstructKey);
@@ -488,7 +492,7 @@ namespace
 		{
 			FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "EKeys");
 
-#define BIND_EKEYS(Key) Binds.BindGlobalVariableForTarget("const FKey " #Key, &EKeys::Key);
+	#define BIND_EKEYS(Key) Binds.BindGlobalVariableForTarget("const FKey " #Key, &EKeys::Key);
 
 			BIND_EKEYS(AnyKey);
 
@@ -721,17 +725,6 @@ namespace
 
 			BIND_EKEYS(Invalid);
 
-#undef BIND_EKEYS
+	#undef BIND_EKEYS
 	}
-}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_InputEvents_ToStringContribution(
-	TEXT("InputEvents.FKeyToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindInputEventsToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_InputEvents(
-	TEXT("InputEvents.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindInputEvents);
+	});

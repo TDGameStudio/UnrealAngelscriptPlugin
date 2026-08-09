@@ -379,12 +379,12 @@ void FAngelscriptMapBinds::GetKeys(FScriptMap& Map, asCObjectType* Meta, FScript
 
 			OutKeys.Insert(ArrayIndex, 1, Ops->KeySize, Ops->KeyAlignment);
 			uint8* DestPtr = static_cast<uint8*>(OutKeys.GetData()) + (ArrayIndex * Ops->KeySize);
-			
+
 			if (Ops->bKeyNeedConstruct)
 			{
 				Ops->KeyType.ConstructValue(DestPtr);
 			}
-			
+
 			if (Ops->bKeyNeedCopy)
 			{
 				Ops->KeyType.CopyValue(KeyPtr, DestPtr);
@@ -421,12 +421,12 @@ void FAngelscriptMapBinds::GetValues(FScriptMap& Map, asCObjectType* Meta, FScri
 
 			OutValues.Insert(ArrayIndex, 1, Ops->ValueSize, Ops->ValueAlignment);
 			uint8* DestPtr = static_cast<uint8*>(OutValues.GetData()) + (ArrayIndex * Ops->ValueSize);
-			
+
 			if (Ops->bValueNeedConstruct)
 			{
 				Ops->ValueType.ConstructValue(DestPtr);
 			}
-			
+
 			if (Ops->bValueNeedCopy)
 			{
 				Ops->ValueType.CopyValue(ValuePtr, DestPtr);
@@ -485,7 +485,14 @@ namespace
 		}
 	};
 
-	void BindTMapTypeDeclarations(FAngelscriptBinds& Binds)
+
+
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TMap_TypeDeclarations(
+	TEXT("TMap.Declaration"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bTemplate = true;
@@ -498,9 +505,12 @@ namespace
 		IteratorFlags.TemplateType = "<K,V>";
 		Binds.ValueClassForTarget<FMapIterator>("TMapIterator<class K, class V>", IteratorFlags);
 		Binds.ValueClassForTarget<FMapIterator>("TMapConstIterator<class K, class V>", IteratorFlags);
-	}
+	});
 
-	void BindTMapMethodSurface(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_TMap_MethodSurface(
+	TEXT("TMap.MethodSurface"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto TMap_ = Binds.ExistingClassForTarget("TMap<K,V>");
 		TMap_.Constructor("void f()", FUNC_TRIVIAL(FAngelscriptMapBinds::Construct));
@@ -593,9 +603,9 @@ namespace
 		auto TMapIterator_ = Binds.ExistingClassForTarget("TMapIterator<K,V>");
 		TMapIterator_.Constructor("void f(const TMapIterator<K,V>& Other)", FUNC_TRIVIAL(FMapIterator::CopyConstruct));
 
-#if AS_ITERATOR_DEBUGGING
+	#if AS_ITERATOR_DEBUGGING
 		TMapIterator_.Destructor("void f()", &FMapIterator::Destruct);
-#endif
+	#endif
 
 		TMapIterator_.Method("TMapIterator<K,V>& opAssign(const TMapIterator<K,V>& Other)", METHOD_TRIVIAL(FMapIterator, Assignment));
 		TMapIterator_.Property("bool CanProceed", &FMapIterator::bCanProceed);
@@ -610,9 +620,9 @@ namespace
 		auto TMapConstIterator_ = Binds.ExistingClassForTarget("TMapConstIterator<K,V>");
 		TMapConstIterator_.Constructor("void f(const TMapConstIterator<K,V>& Other)", FUNC_TRIVIAL(FMapIterator::CopyConstruct));
 
-#if AS_ITERATOR_DEBUGGING
+	#if AS_ITERATOR_DEBUGGING
 		TMapConstIterator_.Destructor("void f()", &FMapIterator::Destruct);
-#endif
+	#endif
 
 		TMapConstIterator_.Method("TMapConstIterator<K,V>& opAssign(const TMapConstIterator<K,V>& Other)", METHOD_TRIVIAL(FMapIterator, Assignment));
 		TMapConstIterator_.Property("bool CanProceed", &FMapIterator::bCanProceed);
@@ -645,9 +655,12 @@ namespace
 		TMap_.Method("TMapConstIterator<K,V> Iterator() const", FUNC_TRIVIAL(FMapIterator::Create))
 			.PassScriptObjectTypeAsFirstParam()
 			.NativeTArrayIteratorCreate();
-	}
+	});
 
-	void BindTMapTypeInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_TMap_TypeInfrastructure(
+	TEXT("TMap.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto MapType = MakeShared<FAngelscriptMapType>();
 		Binds.RegisterTypeForTarget(MapType);
@@ -675,30 +688,14 @@ namespace
 
 		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptMapIteratorType>());
 		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptMapConstIteratorType>());
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TMap_TypeDeclarations(
-	TEXT("TMap.Declaration"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindTMapTypeDeclarations);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TMap_MethodSurface(
-	TEXT("TMap.MethodSurface"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindTMapMethodSurface);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TMap_TypeInfrastructure(
-	TEXT("TMap.TypeInfrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindTMapTypeInfrastructure);
+	});
 
 bool ValidateMapOperations(asITypeInfo* TemplateType, asCString* ErrorMessage)
 {
 	FMapOperations* Ops = (FMapOperations*)TemplateType->GetUserData();
 	if (Ops != nullptr)
 		return Ops->bValid;
-		
+
 	int32 KeyTypeId = TemplateType->GetSubTypeId(0);
 	int32 ValueTypeId = TemplateType->GetSubTypeId(1);
 
@@ -729,7 +726,7 @@ bool ValidateMapOperations(asITypeInfo* TemplateType, asCString* ErrorMessage)
 			}
 		}
 	}
-	
+
 	Ops->bValid = KeyType.CanConstruct() && KeyType.CanDestruct() && KeyType.CanCopy() && KeyType.CanCompare() && bCanHash
 		&& ValueType.CanConstruct() && ValueType.CanDestruct() && ValueType.CanCopy();
 

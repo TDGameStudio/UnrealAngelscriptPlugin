@@ -32,9 +32,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFFileHelperTypes(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FFileHelper_Types(
+	TEXT("FFileHelper.Types"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto EFileWrite_ = Binds.EnumForTarget("EFileWrite");
 		EFileWrite_["None"] = FILEWRITE_None;
@@ -63,9 +64,12 @@ namespace
 		EEncodingOptions_["ForceUnicode"] = FFileHelper::EEncodingOptions::ForceUnicode;
 		EEncodingOptions_["ForceUTF8"] = FFileHelper::EEncodingOptions::ForceUTF8;
 		EEncodingOptions_["ForceUTF8WithoutBOM"] = FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM;
-	}
+	});
 
-	void BindFFileHelperFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FFileHelper(
+	TEXT("FFileHelper.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FFileHelper");
 		Binds.BindGlobalFunctionForTarget(
@@ -74,15 +78,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget(
 			"bool SaveStringToFile(const FString& String, const FString& Filename, FFileHelper::EEncodingOptions EncodingOptions = FFileHelper::EEncodingOptions::AutoDetect, uint32 WriteFlags = uint32(EFileWrite::None))",
 			&FAngelscriptFFileHelperBinds::SaveStringToFile);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FFileHelper_Types(
-	TEXT("FFileHelper.Types"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFFileHelperTypes);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FFileHelper(
-	TEXT("FFileHelper.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFFileHelperFunctions);
+	});

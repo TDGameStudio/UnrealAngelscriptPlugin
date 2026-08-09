@@ -18,9 +18,10 @@
  * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindAssetManagerScriptMixins(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_AssetManagerScriptMixins(
+	TEXT("AssetManagerScriptMixins.GeneratedOverrides"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		// UHT cannot direct-bind these signatures. Install their exact entries in the
 		// selected engine before GeneratedBindings installs reflective stubs.
@@ -36,10 +37,4 @@ namespace
 			UAssetManagerMixinLibrary::StaticClass(),
 			"GetPrimaryAssetObject",
 			{ERASE_FUNCTION_PTR(UAssetManagerMixinLibrary::GetPrimaryAssetObject, (UAssetManager*, const FPrimaryAssetId&), ERASE_ARGUMENT_PACK(UObject*))});
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_AssetManagerScriptMixins(
-	TEXT("AssetManagerScriptMixins.GeneratedOverrides"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindAssetManagerScriptMixins);
+	});

@@ -33,22 +33,29 @@
  */
 
 
-namespace
-{
-	void BindFIntVector2Type(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector2_Type(
+	TEXT("FIntVector2.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FIntVector2>("FIntVector2", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FIntVector2Type>());
-	}
+	});
 
-	void BindFIntVector2ToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector2_ToStringContribution(
+	TEXT("FIntVector2.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FIntVector2"), &FAngelscriptFIntVector2Binds::AppendToString);
-	}
+	});
 
-	void BindFIntVector2Functions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector2(
+	TEXT("FIntVector2.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FIntVector2_ = Binds.ExistingClassForTarget("FIntVector2");
 		FIntVector2_.Constructor(
@@ -77,20 +84,4 @@ namespace
 		FIntVector2_.Method("FIntVector2& opAssign(const FIntVector2& Other)", METHODPR_TRIVIAL(FIntVector2&, FIntVector2, operator=, (const FIntVector2&)));
 		FIntVector2_.Method("const int32& opIndex(int32 Index)", METHODPR_TRIVIAL(int32&, FIntVector2, operator[], (const int32)));
 		FIntVector2_.Method("bool opEquals(const FIntVector2& Other) const", METHODPR_TRIVIAL(bool, FIntVector2, operator==, (const FIntVector2&) const));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector2_Type(
-	TEXT("FIntVector2.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFIntVector2Type);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector2_ToStringContribution(
-	TEXT("FIntVector2.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFIntVector2ToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector2(
-	TEXT("FIntVector2.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFIntVector2Functions);
+	});

@@ -118,42 +118,98 @@ bool ShouldBindEngineType(UEnum* Enum)
 	/*if (Enum->GetBoolMetaData(NAME_Enum_BlueprintType))
 		return true;*/
 #endif
-	
+
 	return true;
 }
 
-static void BindEngineEnums(FAngelscriptBinds& Binds)
-{
-	auto& BindDB = Binds.GetTargetBindDatabase();
-	FAngelscriptEngine& TargetEngine = Binds.GetTargetEngine();
-	Binds.GetTargetEngine().GetScriptEnumTypeLookup().Reset();
 
-#if WITH_DEV_AUTOMATION_TESTS
-	// Phase 0 baseline probe: capture filtered candidate enums up-front so the
-	// per-enum-loop segment can be measured cleanly without re-running the
-	// TObjectRange + ShouldBindEngineType filter inside the timing scope.
-	TArray<UEnum*> EligibleEnums;
-	{
-		FAngelscriptEnumTableBaselineSegmentScope SegmentScope(
-			FAngelscriptEnumTableBaselineProbe::EBindEnumsSegment::TObjectRangeFilter);
-		EligibleEnums.Reserve(2048);
-		for (UEnum* Enum : TObjectRange<UEnum>())
-		{
-			if (ShouldBindEngineType(Enum))
-			{
-				EligibleEnums.Add(Enum);
-			}
-		}
-	}
 
-	auto ProcessOneEnum = [&Binds, &BindDB, &TargetEngine](UEnum* Enum)
+
+AS_FORCE_LINK const FAngelscriptBind Bind_Enums(
+	TEXT("Enums"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
-		// PerEnumLoop: GetNameByIndex + ToString + RightChop + RegisterEnumValue (incl. O(N) dedupe)
-		FAngelscriptBinds::FEnumBind EnumBind = Binds.EnumForTarget(Enum->GetName());
-		int32 EnumValueCount = 0;
+		auto& BindDB = Binds.GetTargetBindDatabase();
+		FAngelscriptEngine& TargetEngine = Binds.GetTargetEngine();
+		Binds.GetTargetEngine().GetScriptEnumTypeLookup().Reset();
+
+	#if WITH_DEV_AUTOMATION_TESTS
+		// Phase 0 baseline probe: capture filtered candidate enums up-front so the
+		// per-enum-loop segment can be measured cleanly without re-running the
+		// TObjectRange + ShouldBindEngineType filter inside the timing scope.
+		TArray<UEnum*> EligibleEnums;
 		{
 			FAngelscriptEnumTableBaselineSegmentScope SegmentScope(
-				FAngelscriptEnumTableBaselineProbe::EBindEnumsSegment::PerEnumLoop);
+				FAngelscriptEnumTableBaselineProbe::EBindEnumsSegment::TObjectRangeFilter);
+			EligibleEnums.Reserve(2048);
+			for (UEnum* Enum : TObjectRange<UEnum>())
+			{
+				if (ShouldBindEngineType(Enum))
+				{
+					EligibleEnums.Add(Enum);
+				}
+			}
+		}
+
+		auto ProcessOneEnum = [&Binds, &BindDB, &TargetEngine](UEnum* Enum)
+		{
+			// PerEnumLoop: GetNameByIndex + ToString + RightChop + RegisterEnumValue (incl. O(N) dedupe)
+			FAngelscriptBinds::FEnumBind EnumBind = Binds.EnumForTarget(Enum->GetName());
+			int32 EnumValueCount = 0;
+			{
+				FAngelscriptEnumTableBaselineSegmentScope SegmentScope(
+					FAngelscriptEnumTableBaselineProbe::EBindEnumsSegment::PerEnumLoop);
+				for (int32 Index = 0, Num = Enum->NumEnums(); Index < Num; ++Index)
+				{
+					FString Name = Enum->GetNameByIndex(Index).ToString();
+
+					int32 ColonPos;
+					if (Name.FindLastChar((TCHAR)':', ColonPos))
+						Name = Name.RightChop(ColonPos+1);
+
+					EnumBind[Name] = Enum->GetValueByIndex(Index);
+					++EnumValueCount;
+				}
+			}
+			FAngelscriptEnumTableBaselineProbe::RecordBindEnumsEnumProcessed(EnumValueCount);
+
+			{
+				FAngelscriptEnumTableBaselineSegmentScope SegmentScope(
+					FAngelscriptEnumTableBaselineProbe::EBindEnumsSegment::TypeRegister);
+				Binds.RegisterTypeForTarget(MakeShared<FEnumType>(Enum, Binds.GetTargetBindDatabase()));
+				BindDB.BoundEnums.Add(Enum);
+			}
+
+	#if WITH_EDITOR
+			const FString& Doc = Enum->GetMetaData(TEXT("ToolTip"));
+			if (Doc.Len() != 0)
+				FAngelscriptDocs::AddUnrealDocumentationForType(Binds.GetTargetEngine(), EnumBind.TypeId, Doc);
+	#endif
+
+			{
+				FAngelscriptEnumTableBaselineSegmentScope SegmentScope(
+					FAngelscriptEnumTableBaselineProbe::EBindEnumsSegment::LookupRegister);
+				if (auto* EnumScriptType = EnumBind.GetTypeInfo())
+				{
+					EnumScriptType->SetUserData(Enum);
+					TargetEngine.GetScriptEnumTypeLookup().Add(*Enum->GetName(), EnumScriptType);
+				}
+			}
+		};
+
+		for (UEnum* Enum : EligibleEnums)
+		{
+			ProcessOneEnum(Enum);
+		}
+	#else
+		// Production path: original implementation, untouched.
+		for (UEnum* Enum : TObjectRange<UEnum>())
+		{
+			if (!ShouldBindEngineType(Enum))
+				continue;
+
+			auto EnumBind = Binds.EnumForTarget(Enum->GetName());
 			for (int32 Index = 0, Num = Enum->NumEnums(); Index < Num; ++Index)
 			{
 				FString Name = Enum->GetNameByIndex(Index).ToString();
@@ -163,201 +219,142 @@ static void BindEngineEnums(FAngelscriptBinds& Binds)
 					Name = Name.RightChop(ColonPos+1);
 
 				EnumBind[Name] = Enum->GetValueByIndex(Index);
-				++EnumValueCount;
 			}
-		}
-		FAngelscriptEnumTableBaselineProbe::RecordBindEnumsEnumProcessed(EnumValueCount);
 
-		{
-			FAngelscriptEnumTableBaselineSegmentScope SegmentScope(
-				FAngelscriptEnumTableBaselineProbe::EBindEnumsSegment::TypeRegister);
 			Binds.RegisterTypeForTarget(MakeShared<FEnumType>(Enum, Binds.GetTargetBindDatabase()));
 			BindDB.BoundEnums.Add(Enum);
-		}
 
-#if WITH_EDITOR
-		const FString& Doc = Enum->GetMetaData(TEXT("ToolTip"));
-		if (Doc.Len() != 0)
-			FAngelscriptDocs::AddUnrealDocumentationForType(Binds.GetTargetEngine(), EnumBind.TypeId, Doc);
-#endif
+	#if WITH_EDITOR
+			const FString& Doc = Enum->GetMetaData(TEXT("ToolTip"));
+			if (Doc.Len() != 0)
+				FAngelscriptDocs::AddUnrealDocumentationForType(Binds.GetTargetEngine(), EnumBind.TypeId, Doc);
+	#endif
 
-		{
-			FAngelscriptEnumTableBaselineSegmentScope SegmentScope(
-				FAngelscriptEnumTableBaselineProbe::EBindEnumsSegment::LookupRegister);
 			if (auto* EnumScriptType = EnumBind.GetTypeInfo())
 			{
 				EnumScriptType->SetUserData(Enum);
 				TargetEngine.GetScriptEnumTypeLookup().Add(*Enum->GetName(), EnumScriptType);
 			}
 		}
-	};
+	#endif
 
-	for (UEnum* Enum : EligibleEnums)
-	{
-		ProcessOneEnum(Enum);
-	}
-#else
-	// Production path: original implementation, untouched.
-	for (UEnum* Enum : TObjectRange<UEnum>())
-	{
-		if (!ShouldBindEngineType(Enum))
-			continue;
-
-		auto EnumBind = Binds.EnumForTarget(Enum->GetName());
-		for (int32 Index = 0, Num = Enum->NumEnums(); Index < Num; ++Index)
+		// Register a type finder into the type system that
+		// can look up an EnumProperty's inner angelscript type.
+		FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
+		Binds.RegisterTypeFinderForTarget([TargetEngine = &TargetEngine, TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
 		{
-			FString Name = Enum->GetNameByIndex(Index).ToString();
-
-			int32 ColonPos;
-			if (Name.FindLastChar((TCHAR)':', ColonPos))
-				Name = Name.RightChop(ColonPos+1);
-
-			EnumBind[Name] = Enum->GetValueByIndex(Index);
-		}
-
-		Binds.RegisterTypeForTarget(MakeShared<FEnumType>(Enum, Binds.GetTargetBindDatabase()));
-		BindDB.BoundEnums.Add(Enum);
-
-#if WITH_EDITOR
-		const FString& Doc = Enum->GetMetaData(TEXT("ToolTip"));
-		if (Doc.Len() != 0)
-			FAngelscriptDocs::AddUnrealDocumentationForType(Binds.GetTargetEngine(), EnumBind.TypeId, Doc);
-#endif
-
-		if (auto* EnumScriptType = EnumBind.GetTypeInfo())
-		{
-			EnumScriptType->SetUserData(Enum);
-			TargetEngine.GetScriptEnumTypeLookup().Add(*Enum->GetName(), EnumScriptType);
-		}
-	}
-#endif
-
-	// Register a type finder into the type system that
-	// can look up an EnumProperty's inner angelscript type.
-	FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
-	Binds.RegisterTypeFinderForTarget([TargetEngine = &TargetEngine, TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
-	{
-		FEnumProperty* EnumProperty = CastField<FEnumProperty>(Property);
-		if (EnumProperty != nullptr)
-		{
-			UEnum* Enum = EnumProperty->GetEnum();
-			const TSharedRef<FAngelscriptType>* RegisteredType = TargetTypeDatabase->TypesByData.Find(Enum);
-			Usage.Type = RegisteredType != nullptr ? RegisteredType->ToSharedPtr() : nullptr;
-			if (!Usage.Type.IsValid())
+			FEnumProperty* EnumProperty = CastField<FEnumProperty>(Property);
+			if (EnumProperty != nullptr)
 			{
-				if (Enum != nullptr && Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
+				UEnum* Enum = EnumProperty->GetEnum();
+				const TSharedRef<FAngelscriptType>* RegisteredType = TargetTypeDatabase->TypesByData.Find(Enum);
+				Usage.Type = RegisteredType != nullptr ? RegisteredType->ToSharedPtr() : nullptr;
+				if (!Usage.Type.IsValid())
 				{
-					if (TargetEngine != nullptr)
+					if (Enum != nullptr && Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
 					{
-						auto* ScriptEnum = TargetEngine->GetScriptEnumTypeLookup().FindRef(*Enum->GetName());
-						if (ScriptEnum != nullptr)
+						if (TargetEngine != nullptr)
 						{
-							Usage.Type = TargetTypeDatabase->ScriptEnumType;
-							Usage.ScriptClass = ScriptEnum;
-							return true;
+							auto* ScriptEnum = TargetEngine->GetScriptEnumTypeLookup().FindRef(*Enum->GetName());
+							if (ScriptEnum != nullptr)
+							{
+								Usage.Type = TargetTypeDatabase->ScriptEnumType;
+								Usage.ScriptClass = ScriptEnum;
+								return true;
+							}
 						}
 					}
+
+					return false;
 				}
-
-				return false;
-			}
-			else if (EnumProperty->GetUnderlyingProperty()->IsA<FByteProperty>())
-			{
-				Usage.TypeIndex = 1;
-				return true;
-			}
-			else if (EnumProperty->GetUnderlyingProperty()->IsA<FIntProperty>())
-			{
-				Usage.TypeIndex = 4;
-				return true;
-			}
-			else
-			{
-				return false;
-			}
-		}
-
-		FByteProperty* ByteProperty = CastField<FByteProperty>(Property);
-		if (ByteProperty != nullptr && ByteProperty->Enum != nullptr)
-		{
-			const TSharedRef<FAngelscriptType>* RegisteredType = TargetTypeDatabase->TypesByData.Find(ByteProperty->Enum);
-			Usage.Type = RegisteredType != nullptr ? RegisteredType->ToSharedPtr() : nullptr;
-			if (!Usage.Type.IsValid())
-			{
-				if (ByteProperty->Enum != nullptr && ByteProperty->Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
+				else if (EnumProperty->GetUnderlyingProperty()->IsA<FByteProperty>())
 				{
-					if (TargetEngine != nullptr)
+					Usage.TypeIndex = 1;
+					return true;
+				}
+				else if (EnumProperty->GetUnderlyingProperty()->IsA<FIntProperty>())
+				{
+					Usage.TypeIndex = 4;
+					return true;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			FByteProperty* ByteProperty = CastField<FByteProperty>(Property);
+			if (ByteProperty != nullptr && ByteProperty->Enum != nullptr)
+			{
+				const TSharedRef<FAngelscriptType>* RegisteredType = TargetTypeDatabase->TypesByData.Find(ByteProperty->Enum);
+				Usage.Type = RegisteredType != nullptr ? RegisteredType->ToSharedPtr() : nullptr;
+				if (!Usage.Type.IsValid())
+				{
+					if (ByteProperty->Enum != nullptr && ByteProperty->Enum->GetOutermost() == FAngelscriptEngine::GetPackage())
 					{
-						auto* ScriptEnum = TargetEngine->GetScriptEnumTypeLookup().FindRef(*ByteProperty->Enum->GetName());
-						if (ScriptEnum != nullptr)
+						if (TargetEngine != nullptr)
 						{
-							Usage.Type = TargetTypeDatabase->ScriptEnumType;
-							Usage.ScriptClass = ScriptEnum;
-							return true;
+							auto* ScriptEnum = TargetEngine->GetScriptEnumTypeLookup().FindRef(*ByteProperty->Enum->GetName());
+							if (ScriptEnum != nullptr)
+							{
+								Usage.Type = TargetTypeDatabase->ScriptEnumType;
+								Usage.ScriptClass = ScriptEnum;
+								return true;
+							}
 						}
 					}
-				}
 
-				return false;
+					return false;
+				}
+				else
+				{
+					Usage.TypeIndex = 1;
+					return true;
+				}
 			}
-			else
-			{
-				Usage.TypeIndex = 1;
-				return true;
-			}
-		}
-		return false;
+			return false;
+		});
+
+		// Register a type that handles script enums generically
+		auto ScriptEnumType = MakeShared<FEnumType>(nullptr, Binds.GetTargetBindDatabase());
+		Binds.GetTargetTypeDatabase().ScriptEnumType = ScriptEnumType;
 	});
-
-	// Register a type that handles script enums generically
-	auto ScriptEnumType = MakeShared<FEnumType>(nullptr, Binds.GetTargetBindDatabase());
-	Binds.GetTargetTypeDatabase().ScriptEnumType = ScriptEnumType;
-}
-
-static void BindEGetByNameFlags(FAngelscriptBinds& Binds)
-{
-	auto EGetByNameFlags_ = Binds.EnumForTarget("EGetByNameFlags");
-	EGetByNameFlags_["None"] = EGetByNameFlags::None;
-	EGetByNameFlags_["ErrorIfNotFound"] = EGetByNameFlags::ErrorIfNotFound;
-	EGetByNameFlags_["CaseSensitive"] = EGetByNameFlags::CaseSensitive;
-	EGetByNameFlags_["CheckAuthoredName"] = EGetByNameFlags::CheckAuthoredName;
-}
-
-static void BindUEnumManual(FAngelscriptBinds& Binds)
-{
-	auto UEnum_ = Binds.ExistingClassForTarget("UEnum");
-	UEnum_.Method("FName GetNameByIndex(int32 InIndex) const", METHOD_TRIVIAL(UEnum, GetNameByIndex));
-	UEnum_.Method("int32 GetIndexByName(FName InName, EGetByNameFlags Flags = EGetByNameFlags::None) const", METHOD_TRIVIAL(UEnum, GetIndexByName));
-	UEnum_.Method("FName GetNameByValue(int64 InValue) const", METHOD_TRIVIAL(UEnum, GetNameByValue));
-	UEnum_.Method("int64 GetValueByName(FName InName, EGetByNameFlags Flags = EGetByNameFlags::None) const", METHOD_TRIVIAL(UEnum, GetValueByName));
-	UEnum_.Method("FString GetNameStringByIndex(int32 InIndex) const", METHOD_TRIVIAL(UEnum, GetNameStringByIndex));
-	UEnum_.Method("int32 GetIndexByNameString(const FString& SearchString, EGetByNameFlags Flags = EGetByNameFlags::None) const", METHOD_TRIVIAL(UEnum, GetIndexByNameString));
-	UEnum_.Method("FString GetNameStringByValue(int64 InValue) const", METHOD_TRIVIAL(UEnum, GetNameStringByValue));
-	UEnum_.Method("int64 GetValueByNameString(const FString& SearchString, EGetByNameFlags Flags = EGetByNameFlags::None) const", METHOD_TRIVIAL(UEnum, GetValueByNameString));
-	UEnum_.Method("FText GetDisplayNameTextByIndex(int32 InIndex) const", METHOD_TRIVIAL(UEnum, GetDisplayNameTextByIndex));
-	UEnum_.Method("FText GetDisplayNameTextByValue(int64 InValue) const", METHOD_TRIVIAL(UEnum, GetDisplayNameTextByValue));
-
-	UEnum_.Method("int64 GetMaxEnumValue() const", METHOD_TRIVIAL(UEnum, GetMaxEnumValue));
-	UEnum_.Method("int32 NumEnums() const", METHOD_TRIVIAL(UEnum, NumEnums));
-
-	UEnum_.Method("bool IsValidEnumValue(int64 InValue) const", METHOD_TRIVIAL(UEnum, IsValidEnumValue));
-	UEnum_.Method("bool IsValidEnumName(FName InName) const", METHOD_TRIVIAL(UEnum, IsValidEnumName));
-
-	UEnum_.Method("bool ContainsExistingMax() const", METHOD_TRIVIAL(UEnum, ContainsExistingMax));
-	UEnum_.Method("FString GenerateEnumPrefix() const", METHOD_TRIVIAL(UEnum, GenerateEnumPrefix));
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Enums(
-	TEXT("Enums"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindEngineEnums);
 
 AS_FORCE_LINK const FAngelscriptBind Bind_EGetByNameFlags(
 	TEXT("EGetByNameFlags"),
 	EAngelscriptBindPhase::TypeDeclarations,
-	&BindEGetByNameFlags);
+	[](FAngelscriptBinds& Binds)
+	{
+		auto EGetByNameFlags_ = Binds.EnumForTarget("EGetByNameFlags");
+		EGetByNameFlags_["None"] = EGetByNameFlags::None;
+		EGetByNameFlags_["ErrorIfNotFound"] = EGetByNameFlags::ErrorIfNotFound;
+		EGetByNameFlags_["CaseSensitive"] = EGetByNameFlags::CaseSensitive;
+		EGetByNameFlags_["CheckAuthoredName"] = EGetByNameFlags::CheckAuthoredName;
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UEnum(
 	TEXT("UEnum"),
 	EAngelscriptBindPhase::ManualBindings,
-	&BindUEnumManual);
+	[](FAngelscriptBinds& Binds)
+	{
+		auto UEnum_ = Binds.ExistingClassForTarget("UEnum");
+		UEnum_.Method("FName GetNameByIndex(int32 InIndex) const", METHOD_TRIVIAL(UEnum, GetNameByIndex));
+		UEnum_.Method("int32 GetIndexByName(FName InName, EGetByNameFlags Flags = EGetByNameFlags::None) const", METHOD_TRIVIAL(UEnum, GetIndexByName));
+		UEnum_.Method("FName GetNameByValue(int64 InValue) const", METHOD_TRIVIAL(UEnum, GetNameByValue));
+		UEnum_.Method("int64 GetValueByName(FName InName, EGetByNameFlags Flags = EGetByNameFlags::None) const", METHOD_TRIVIAL(UEnum, GetValueByName));
+		UEnum_.Method("FString GetNameStringByIndex(int32 InIndex) const", METHOD_TRIVIAL(UEnum, GetNameStringByIndex));
+		UEnum_.Method("int32 GetIndexByNameString(const FString& SearchString, EGetByNameFlags Flags = EGetByNameFlags::None) const", METHOD_TRIVIAL(UEnum, GetIndexByNameString));
+		UEnum_.Method("FString GetNameStringByValue(int64 InValue) const", METHOD_TRIVIAL(UEnum, GetNameStringByValue));
+		UEnum_.Method("int64 GetValueByNameString(const FString& SearchString, EGetByNameFlags Flags = EGetByNameFlags::None) const", METHOD_TRIVIAL(UEnum, GetValueByNameString));
+		UEnum_.Method("FText GetDisplayNameTextByIndex(int32 InIndex) const", METHOD_TRIVIAL(UEnum, GetDisplayNameTextByIndex));
+		UEnum_.Method("FText GetDisplayNameTextByValue(int64 InValue) const", METHOD_TRIVIAL(UEnum, GetDisplayNameTextByValue));
+
+		UEnum_.Method("int64 GetMaxEnumValue() const", METHOD_TRIVIAL(UEnum, GetMaxEnumValue));
+		UEnum_.Method("int32 NumEnums() const", METHOD_TRIVIAL(UEnum, NumEnums));
+
+		UEnum_.Method("bool IsValidEnumValue(int64 InValue) const", METHOD_TRIVIAL(UEnum, IsValidEnumValue));
+		UEnum_.Method("bool IsValidEnumName(FName InName) const", METHOD_TRIVIAL(UEnum, IsValidEnumName));
+
+		UEnum_.Method("bool ContainsExistingMax() const", METHOD_TRIVIAL(UEnum, ContainsExistingMax));
+		UEnum_.Method("FString GenerateEnumPrefix() const", METHOD_TRIVIAL(UEnum, GenerateEnumPrefix));
+	});

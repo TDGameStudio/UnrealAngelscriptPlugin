@@ -76,9 +76,10 @@
  * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFColorManual(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FColor(
+	TEXT("FColor"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FColor_ = Binds.ExistingClassForTarget("FColor");
 
@@ -135,20 +136,12 @@ namespace
 
 		auto FLinearColor_ = Binds.ExistingClassForTarget("FLinearColor");
 		FLinearColor_.Method("FColor ToFColor(bool bSRGB) const", METHOD_TRIVIAL(FLinearColor, ToFColor));
-	}
-
-	void BindFColorToStringContribution(FAngelscriptBinds& Binds)
-	{
-		FToStringHelper::Register(Binds, TEXT("FColor"), &FAngelscriptFColorBinds::AppendToString);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FColor(
-	TEXT("FColor"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFColorManual);
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_FColor_ToStringContribution(
 	TEXT("FColor.ToStringContribution"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFColorToStringContribution);
+	[](FAngelscriptBinds& Binds)
+	{
+		FToStringHelper::Register(Binds, TEXT("FColor"), &FAngelscriptFColorBinds::AppendToString);
+	});

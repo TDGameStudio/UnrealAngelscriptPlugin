@@ -232,93 +232,93 @@ static void BindStructTypeLookups(FAngelscriptBinds& Binds)
 }
 
 #if AS_USE_BIND_DB
-static void BindStructDeclarations(FAngelscriptBinds& Binds)
-{
-	for (FAngelscriptStructBind& DBBind : Binds.GetTargetBindDatabase().Structs)
-	{
-		UScriptStruct* Struct = FindObject<UScriptStruct>(nullptr, *DBBind.UnrealPath);
-		if (Struct == nullptr)
-			continue;
 
-		DBBind.ResolvedStruct = Struct;
 
-		FBindFlags BindFlags;
-		if (Struct->StructFlags & STRUCT_IsPlainOldData)
-			BindFlags.ExtraFlags |= asOBJ_POD;
 
-		DeclareStructType(Binds, DBBind.TypeName, Struct, BindFlags);
-	}
-}
 
-static void BindStructTypeInfrastructure(FAngelscriptBinds& Binds)
-{
-	for (FAngelscriptStructBind& DBBind : Binds.GetTargetBindDatabase().Structs)
-	{
-		if (DBBind.ResolvedStruct != nullptr)
-			RegisterStructType(Binds, DBBind.TypeName, DBBind.ResolvedStruct);
-	}
 
-	BindStructTypeLookups(Binds);
-}
-
-static void BindStructReflection(FAngelscriptBinds& TargetBinds)
-{
-	FAngelscriptTypeDatabase& TargetTypeDatabase = TargetBinds.GetTargetTypeDatabase();
-	for (FAngelscriptStructBind& DBBind : TargetBinds.GetTargetBindDatabase().Structs)
-	{
-		UScriptStruct* Struct = DBBind.ResolvedStruct;
-		if (Struct == nullptr)
-			continue;
-
-		const TSharedRef<FAngelscriptType>* Type = TargetTypeDatabase.TypesByData.Find(Struct);
-		if (Type == nullptr)
-			continue;
-
-		auto Binds = TargetBinds.ExistingClassForTarget(DBBind.TypeName);
-		BindStructBehaviors(Binds, DBBind.TypeName, Struct);
-
-		for (auto& DBProp : DBBind.Properties)
-		{
-			FProperty* Property = Struct->FindPropertyByName(*DBProp.UnrealPath);
-			if (Property == nullptr)
-				continue;
-
-			if (DBProp.Declaration.Len() != 0)
-			{
-				Binds.Property(DBProp.Declaration, (SIZE_T)Property->GetOffset_ForUFunction());
-			}
-			else
-			{
-				FAngelscriptTypeUsage Usage =
-					FAngelscriptTypeUsage::FromProperty(TargetTypeDatabase, Property);
-				if (!Usage.IsValid())
-					continue;
-
-				FAngelscriptType::FBindParams Params;
-				Params.BindClass = &Binds;
-				Params.NameOverride = DBProp.UnrealPath;
-				Params.bCanRead = DBProp.bCanRead;
-				Params.bCanWrite = DBProp.bCanWrite;
-				Usage.Type->BindProperty(Usage, Params, Property);
-			}
-		}
-	}
-}
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_TypeDeclarations(
 	TEXT("UStruct.TypeDeclarations"),
 	EAngelscriptBindPhase::TypeDeclarations,
-	&BindStructDeclarations);
+	[](FAngelscriptBinds& Binds)
+	{
+		for (FAngelscriptStructBind& DBBind : Binds.GetTargetBindDatabase().Structs)
+		{
+			UScriptStruct* Struct = FindObject<UScriptStruct>(nullptr, *DBBind.UnrealPath);
+			if (Struct == nullptr)
+				continue;
+
+			DBBind.ResolvedStruct = Struct;
+
+			FBindFlags BindFlags;
+			if (Struct->StructFlags & STRUCT_IsPlainOldData)
+				BindFlags.ExtraFlags |= asOBJ_POD;
+
+			DeclareStructType(Binds, DBBind.TypeName, Struct, BindFlags);
+		}
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_TypeInfrastructure(
 	TEXT("UStruct.TypeInfrastructure"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindStructTypeInfrastructure);
+	[](FAngelscriptBinds& Binds)
+	{
+		for (FAngelscriptStructBind& DBBind : Binds.GetTargetBindDatabase().Structs)
+		{
+			if (DBBind.ResolvedStruct != nullptr)
+				RegisterStructType(Binds, DBBind.TypeName, DBBind.ResolvedStruct);
+		}
+
+		BindStructTypeLookups(Binds);
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_ReflectionBindings(
 	TEXT("UStruct.ReflectionBindings"),
 	EAngelscriptBindPhase::ReflectionBindings,
-	&BindStructReflection);
+	[](FAngelscriptBinds& TargetBinds)
+	{
+		FAngelscriptTypeDatabase& TargetTypeDatabase = TargetBinds.GetTargetTypeDatabase();
+		for (FAngelscriptStructBind& DBBind : TargetBinds.GetTargetBindDatabase().Structs)
+		{
+			UScriptStruct* Struct = DBBind.ResolvedStruct;
+			if (Struct == nullptr)
+				continue;
+
+			const TSharedRef<FAngelscriptType>* Type = TargetTypeDatabase.TypesByData.Find(Struct);
+			if (Type == nullptr)
+				continue;
+
+			auto Binds = TargetBinds.ExistingClassForTarget(DBBind.TypeName);
+			BindStructBehaviors(Binds, DBBind.TypeName, Struct);
+
+			for (auto& DBProp : DBBind.Properties)
+			{
+				FProperty* Property = Struct->FindPropertyByName(*DBProp.UnrealPath);
+				if (Property == nullptr)
+					continue;
+
+				if (DBProp.Declaration.Len() != 0)
+				{
+					Binds.Property(DBProp.Declaration, (SIZE_T)Property->GetOffset_ForUFunction());
+				}
+				else
+				{
+					FAngelscriptTypeUsage Usage =
+						FAngelscriptTypeUsage::FromProperty(TargetTypeDatabase, Property);
+					if (!Usage.IsValid())
+						continue;
+
+					FAngelscriptType::FBindParams Params;
+					Params.BindClass = &Binds;
+					Params.NameOverride = DBProp.UnrealPath;
+					Params.bCanRead = DBProp.bCanRead;
+					Params.bCanWrite = DBProp.bCanWrite;
+					Usage.Type->BindProperty(Usage, Params, Property);
+				}
+			}
+		}
+	});
 #else // if !AS_USE_BIND_DB
 
 static const FName NAME_Meta_ForceAngelscriptBind("ForceAngelscriptBind");
@@ -420,7 +420,7 @@ static bool ShouldBindEngineType(UScriptStruct* Struct)
 		if (!(Struct->StructFlags & STRUCT_Native))
 			return false;
 	}
-	
+
 	// Force binds always gets bound
 	if (Struct->HasMetaData(NAME_Meta_ForceAngelscriptBind))
 		return true;
@@ -481,194 +481,194 @@ static const TArray<TObjectPtr<UScriptStruct>>& GetOrCaptureUStructTypes(FAngels
 	return BindState.UStructTypeSnapshot;
 }
 
-static void BindStructDeclarations(FAngelscriptBinds& Binds)
-{
-	for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(Binds))
-	{
-		UScriptStruct* Struct = StructPtr.Get();
-		const FString TypeName = Struct->GetStructCPPName();
 
-		// Bind into angelscript engine
-		FBindFlags BindFlags;
-		if (Struct->StructFlags & STRUCT_IsPlainOldData)
-			BindFlags.ExtraFlags |= asOBJ_POD;
-		DeclareStructType(Binds, TypeName, Struct, BindFlags);
-	}
-}
 
-static void BindStructTypeInfrastructure(FAngelscriptBinds& Binds)
-{
-	for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(Binds))
-	{
-		UScriptStruct* Struct = StructPtr.Get();
-		RegisterStructType(Binds, Struct->GetStructCPPName(), Struct);
-	}
 
-	BindStructTypeLookups(Binds);
-}
 
 static const FName NAME_Property_Struct_ScriptName("ScriptName");
 static const FName NAME_Property_Struct_DeprecatedProperty("DeprecatedProperty");
 static const FName NAME_Property_Struct_DeprecationMessage("DeprecationMessage");
-static void BindStructReflection(FAngelscriptBinds& TargetBinds)
-{
-	FAngelscriptTypeDatabase& TargetTypeDatabase = TargetBinds.GetTargetTypeDatabase();
-	FAngelscriptBindDatabase& TargetBindDatabase = TargetBinds.GetTargetBindDatabase();
-	FAngelscriptEngine& TargetEngine = TargetBinds.GetTargetEngine();
 
-	for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(TargetBinds))
-	{
-		UScriptStruct* Struct = StructPtr.Get();
-
-		const TSharedRef<FAngelscriptType>* Type = TargetTypeDatabase.TypesByData.Find(Struct);
-		if (Type == nullptr)
-			continue;
-
-		FString TypeName = (*Type)->GetAngelscriptTypeName();
-		auto Binds = TargetBinds.ExistingClassForTarget(TypeName);
-
-		BindStructBehaviors(Binds, TypeName, Struct);
-
-		auto* ScriptType = Binds.GetTypeInfo();
-		if (ScriptType == nullptr)
-			continue;
-
-#if WITH_EDITOR
-		const FString& Tooltip = Struct->GetMetaData(NAME_Struct_Tooltip);
-		if (Tooltip.Len() != 0)
-			FAngelscriptDocs::AddUnrealDocumentationForType(TargetEngine, ScriptType->GetTypeId(), Tooltip);
-#endif
-
-		FAngelscriptStructBind DBBind;
-		DBBind.TypeName = TypeName;
-		DBBind.UnrealPath = Struct->GetPathName();
-
-		// Bind actual properties
-		for (TFieldIterator<FProperty> It(Struct); It; ++It)
-		{
-			FProperty* Property = *It;
-
-			FAngelscriptType::FBindParams Params = GetPropertyBindParams(Property);
-			Params.BindClass = &Binds;
-
-			if (!Params.bCanRead && !Params.bCanWrite && !Params.bCanEdit)
-				continue;
-
-			// Don't bind editor-only stuff in simulate cooked mode
-			if (!TargetEngine.ShouldUseEditorScripts() && Property->HasAnyPropertyFlags(CPF_EditorOnly))
-				continue;
-
-			// Bind using angelscript type system otherwise
-			FAngelscriptTypeUsage Usage =
-				FAngelscriptTypeUsage::FromProperty(TargetTypeDatabase, Property);
-			if (!Usage.IsValid())
-				continue;
-
-			// Don't bind properties that have a Get or Set accessor bound already
-			FString PropertyName = Property->GetName();
-
-#if WITH_EDITOR
-			const FString& ScriptName = Property->GetMetaData(NAME_Property_Struct_ScriptName);
-			if (ScriptName.Len() != 0)
-				PropertyName = ScriptName;
-#endif
-
-			if (Usage.Type->BindProperty(Usage, Params, Property))
-			{
-				// Need to replicate the BindProperty in the database
-				FAngelscriptPropertyBind DBProp;
-				DBProp.UnrealPath = Property->GetName();
-				DBProp.bCanWrite = Params.bCanWrite;
-				DBProp.bCanRead = Params.bCanRead;
-				DBProp.bCanEdit = Params.bCanEdit;
-
-				if (!Property->HasAnyPropertyFlags(CPF_EditorOnly))
-					DBBind.Properties.Add(DBProp);
-				continue;
-			}
-
-#if WITH_EDITOR
-			bool bIsDeprecated = Property->HasMetaData(NAME_Property_Struct_DeprecatedProperty);
-			FString DeprecationMessage;
-			if (bIsDeprecated)
-				DeprecationMessage = Property->GetMetaData(NAME_Property_Struct_DeprecationMessage);
-
-			const FString& PropertyTooltip = Property->GetMetaData(NAME_Struct_Tooltip);
-			if (PropertyTooltip.Len() != 0)
-			{
-				AddPropertyDocumentationForTarget(
-					TargetEngine,
-					ScriptType->GetTypeId(),
-					Property->GetOffset_ForUFunction(),
-					PropertyTooltip);
-			}
-
-			bool bIsEditorOnly = false;
-			if (Property->HasAnyPropertyFlags(CPF_EditorOnly))
-				bIsEditorOnly = true;
-#endif
-
-			FAngelscriptPropertyBind DBProp;
-			DBProp.UnrealPath = Property->GetName();
-
-			FString PropertyType = Usage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable);
-			FString Declaration = FString::Printf(TEXT("%s %s"), *PropertyType, *PropertyName);
-			Binds.Property(Declaration, Property->GetOffset_ForUFunction(), Params);
-
-			// Simple declarations can be stored in the database by declaration
-			DBProp.Declaration = Declaration;
-
-			if (!Property->HasAnyPropertyFlags(CPF_EditorOnly))
-				DBBind.Properties.Add(DBProp);
-
-#if WITH_EDITOR
-			if (bIsDeprecated || bIsEditorOnly)
-			{
-				auto* ObjectType = (asCObjectType*)Binds.GetTypeInfo();
-				if (ObjectType != nullptr)
-				{
-					asCObjectProperty* ScriptProperty = ObjectType->GetFirstProperty(TCHAR_TO_ANSI(*PropertyName));
-					if (ScriptProperty != nullptr)
-					{
-						if (bIsDeprecated)
-						{
-							ScriptProperty->isDeprecated = true;
-							ScriptProperty->DeprecationMessage = TCHAR_TO_ANSI(*DeprecationMessage);
-						}
-
-						if (bIsEditorOnly)
-						{
-							ScriptProperty->isEditorOnly = true;
-						}
-					}
-					else
-					{
-						ensure(false);
-					}
-				}
-			}
-#endif
-		}
-
-		// TODO: We need some way of determining whether this struct
-		// even exists in cooked, but I can't come up with one right now,
-		// so we'll just rely on ignoring it in cooked.
-		TargetBindDatabase.Structs.Add(DBBind);
-	}
-}
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_TypeDeclarations(
 	TEXT("UStruct.TypeDeclarations"),
 	EAngelscriptBindPhase::TypeDeclarations,
-	&BindStructDeclarations);
+	[](FAngelscriptBinds& Binds)
+	{
+		for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(Binds))
+		{
+			UScriptStruct* Struct = StructPtr.Get();
+			const FString TypeName = Struct->GetStructCPPName();
+
+			// Bind into angelscript engine
+			FBindFlags BindFlags;
+			if (Struct->StructFlags & STRUCT_IsPlainOldData)
+				BindFlags.ExtraFlags |= asOBJ_POD;
+			DeclareStructType(Binds, TypeName, Struct, BindFlags);
+		}
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_TypeInfrastructure(
 	TEXT("UStruct.TypeInfrastructure"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindStructTypeInfrastructure);
+	[](FAngelscriptBinds& Binds)
+	{
+		for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(Binds))
+		{
+			UScriptStruct* Struct = StructPtr.Get();
+			RegisterStructType(Binds, Struct->GetStructCPPName(), Struct);
+		}
+
+		BindStructTypeLookups(Binds);
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_UStruct_ReflectionBindings(
 	TEXT("UStruct.ReflectionBindings"),
 	EAngelscriptBindPhase::ReflectionBindings,
-	&BindStructReflection);
+	[](FAngelscriptBinds& TargetBinds)
+	{
+		FAngelscriptTypeDatabase& TargetTypeDatabase = TargetBinds.GetTargetTypeDatabase();
+		FAngelscriptBindDatabase& TargetBindDatabase = TargetBinds.GetTargetBindDatabase();
+		FAngelscriptEngine& TargetEngine = TargetBinds.GetTargetEngine();
+
+		for (const TObjectPtr<UScriptStruct>& StructPtr : GetOrCaptureUStructTypes(TargetBinds))
+		{
+			UScriptStruct* Struct = StructPtr.Get();
+
+			const TSharedRef<FAngelscriptType>* Type = TargetTypeDatabase.TypesByData.Find(Struct);
+			if (Type == nullptr)
+				continue;
+
+			FString TypeName = (*Type)->GetAngelscriptTypeName();
+			auto Binds = TargetBinds.ExistingClassForTarget(TypeName);
+
+			BindStructBehaviors(Binds, TypeName, Struct);
+
+			auto* ScriptType = Binds.GetTypeInfo();
+			if (ScriptType == nullptr)
+				continue;
+
+	#if WITH_EDITOR
+			const FString& Tooltip = Struct->GetMetaData(NAME_Struct_Tooltip);
+			if (Tooltip.Len() != 0)
+				FAngelscriptDocs::AddUnrealDocumentationForType(TargetEngine, ScriptType->GetTypeId(), Tooltip);
+	#endif
+
+			FAngelscriptStructBind DBBind;
+			DBBind.TypeName = TypeName;
+			DBBind.UnrealPath = Struct->GetPathName();
+
+			// Bind actual properties
+			for (TFieldIterator<FProperty> It(Struct); It; ++It)
+			{
+				FProperty* Property = *It;
+
+				FAngelscriptType::FBindParams Params = GetPropertyBindParams(Property);
+				Params.BindClass = &Binds;
+
+				if (!Params.bCanRead && !Params.bCanWrite && !Params.bCanEdit)
+					continue;
+
+				// Don't bind editor-only stuff in simulate cooked mode
+				if (!TargetEngine.ShouldUseEditorScripts() && Property->HasAnyPropertyFlags(CPF_EditorOnly))
+					continue;
+
+				// Bind using angelscript type system otherwise
+				FAngelscriptTypeUsage Usage =
+					FAngelscriptTypeUsage::FromProperty(TargetTypeDatabase, Property);
+				if (!Usage.IsValid())
+					continue;
+
+				// Don't bind properties that have a Get or Set accessor bound already
+				FString PropertyName = Property->GetName();
+
+	#if WITH_EDITOR
+				const FString& ScriptName = Property->GetMetaData(NAME_Property_Struct_ScriptName);
+				if (ScriptName.Len() != 0)
+					PropertyName = ScriptName;
+	#endif
+
+				if (Usage.Type->BindProperty(Usage, Params, Property))
+				{
+					// Need to replicate the BindProperty in the database
+					FAngelscriptPropertyBind DBProp;
+					DBProp.UnrealPath = Property->GetName();
+					DBProp.bCanWrite = Params.bCanWrite;
+					DBProp.bCanRead = Params.bCanRead;
+					DBProp.bCanEdit = Params.bCanEdit;
+
+					if (!Property->HasAnyPropertyFlags(CPF_EditorOnly))
+						DBBind.Properties.Add(DBProp);
+					continue;
+				}
+
+	#if WITH_EDITOR
+				bool bIsDeprecated = Property->HasMetaData(NAME_Property_Struct_DeprecatedProperty);
+				FString DeprecationMessage;
+				if (bIsDeprecated)
+					DeprecationMessage = Property->GetMetaData(NAME_Property_Struct_DeprecationMessage);
+
+				const FString& PropertyTooltip = Property->GetMetaData(NAME_Struct_Tooltip);
+				if (PropertyTooltip.Len() != 0)
+				{
+					AddPropertyDocumentationForTarget(
+						TargetEngine,
+						ScriptType->GetTypeId(),
+						Property->GetOffset_ForUFunction(),
+						PropertyTooltip);
+				}
+
+				bool bIsEditorOnly = false;
+				if (Property->HasAnyPropertyFlags(CPF_EditorOnly))
+					bIsEditorOnly = true;
+	#endif
+
+				FAngelscriptPropertyBind DBProp;
+				DBProp.UnrealPath = Property->GetName();
+
+				FString PropertyType = Usage.GetAngelscriptDeclaration(FAngelscriptType::EAngelscriptDeclarationMode::MemberVariable);
+				FString Declaration = FString::Printf(TEXT("%s %s"), *PropertyType, *PropertyName);
+				Binds.Property(Declaration, Property->GetOffset_ForUFunction(), Params);
+
+				// Simple declarations can be stored in the database by declaration
+				DBProp.Declaration = Declaration;
+
+				if (!Property->HasAnyPropertyFlags(CPF_EditorOnly))
+					DBBind.Properties.Add(DBProp);
+
+	#if WITH_EDITOR
+				if (bIsDeprecated || bIsEditorOnly)
+				{
+					auto* ObjectType = (asCObjectType*)Binds.GetTypeInfo();
+					if (ObjectType != nullptr)
+					{
+						asCObjectProperty* ScriptProperty = ObjectType->GetFirstProperty(TCHAR_TO_ANSI(*PropertyName));
+						if (ScriptProperty != nullptr)
+						{
+							if (bIsDeprecated)
+							{
+								ScriptProperty->isDeprecated = true;
+								ScriptProperty->DeprecationMessage = TCHAR_TO_ANSI(*DeprecationMessage);
+							}
+
+							if (bIsEditorOnly)
+							{
+								ScriptProperty->isEditorOnly = true;
+							}
+						}
+						else
+						{
+							ensure(false);
+						}
+					}
+				}
+	#endif
+			}
+
+			// TODO: We need some way of determining whether this struct
+			// even exists in cooked, but I can't come up with one right now,
+			// so we'll just rely on ignoring it in cooked.
+			TargetBindDatabase.Structs.Add(DBBind);
+		}
+	});
 #endif // AS_USE_BIND_DB

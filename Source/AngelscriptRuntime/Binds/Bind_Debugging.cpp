@@ -38,9 +38,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindDebugging(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Debugging(
+	TEXT("Debugging.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 #if WITH_EDITOR
 		FGameDelegates::Get().GetEndPlayMapDelegate().AddStatic(
@@ -79,10 +80,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget(
 			"FString FormatAngelscriptCallstack()",
 			&FAngelscriptDebuggingBinds::FormatCallstack);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Debugging(
-	TEXT("Debugging.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindDebugging);
+	});

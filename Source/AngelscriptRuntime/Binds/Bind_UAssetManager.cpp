@@ -59,15 +59,19 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindPrimaryAssetToStringContributions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UAssetManager_ToStringContributions(
+	TEXT("UAssetManager.PrimaryAssetToStringContributions"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FPrimaryAssetType"), &FAngelscriptUAssetManagerBinds::AppendPrimaryAssetTypeToString);
 		FToStringHelper::Register(Binds, TEXT("FPrimaryAssetId"), &FAngelscriptUAssetManagerBinds::AppendPrimaryAssetIdToString);
-	}
+	});
 
-	void BindAssetManagerFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UAssetManager(
+	TEXT("UAssetManager.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FPrimaryAssetType_ = Binds.ExistingClassForTarget("FPrimaryAssetType");
 		FPrimaryAssetType_.Constructor("void f(FName InName)", &FAngelscriptUAssetManagerBinds::ConstructPrimaryAssetType, "FPrimaryAssetType", true);
@@ -92,15 +96,4 @@ namespace
 		UAssetManager_.Method(
 			"void LoadPrimaryAssets(const TArray<FPrimaryAssetId>& AssetsToLoad, const TArray<FName>& LoadBundles, int32 Priority = 0, UObject OptionalCallbackObject = nullptr, FName OptionalFinishedCallbackFunctionName = NAME_None, FName OptionalCanceledCallbackName = NAME_None)",
 			&FAngelscriptUAssetManagerBinds::LoadPrimaryAssets);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UAssetManager_ToStringContributions(
-	TEXT("UAssetManager.PrimaryAssetToStringContributions"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindPrimaryAssetToStringContributions);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UAssetManager(
-	TEXT("UAssetManager.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindAssetManagerFunctions);
+	});

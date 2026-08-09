@@ -117,9 +117,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFTextType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FText_Type(
+	TEXT("FText.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto IdenticalMode = Binds.EnumForTarget("ETextIdenticalModeFlags");
 		IdenticalMode["None"] = ETextIdenticalModeFlags::None;
@@ -134,17 +135,23 @@ namespace
 		DateTimeStyle["Full"] = EDateTimeStyle::Full;
 
 		Binds.ValueClassForTarget<FText>("FText", FBindFlags());
-	}
+	});
 
-	void BindFTextInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FText_Infrastructure(
+	TEXT("FText.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FTextType>());
 		auto Text = Binds.ExistingClassForTarget("FText");
 		TGetStaticTypeInfo<FText>::SetForEngine(Binds.GetTargetEngine().GetScriptEngine(), Text.GetTypeInfo());
 		FToStringHelper::Register(Binds, TEXT("FText"), &FAngelscriptFTextBinds::AppendToString);
-	}
+	});
 
-	void BindFTextFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FText(
+	TEXT("FText.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Text = Binds.ExistingClassForTarget("FText");
 		Text.Constructor("void f()", &FAngelscriptFTextBinds::ConstructDefault, "FText", true).NoDiscard();
@@ -203,20 +210,4 @@ namespace
 				"Function for using localization texts in Angelscript. Emulates NSLOCTEXT macro.\n"
 				"Only string literals can be used as input arguments from Angelscript.\n"
 				"Using variables (like FString) will run but will cause errors when strings are gathered for localization."));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FText_Type(
-	TEXT("FText.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFTextType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FText_Infrastructure(
-	TEXT("FText.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFTextInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FText(
-	TEXT("FText.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFTextFunctions);
+	});

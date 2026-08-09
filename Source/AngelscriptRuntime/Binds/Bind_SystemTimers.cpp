@@ -22,9 +22,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindSystemTimers(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_SystemTimers(
+	TEXT("SystemTimers"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "System");
 		Binds.BindGlobalFunctionForTarget(
@@ -38,10 +39,4 @@ namespace
 			.WorldContext();
 		Binds.BindGlobalFunctionForTarget("void ClearAndInvalidateTimerHandle(FTimerHandle& Handle)", &FAngelscriptSystemTimersBinds::ClearAndInvalidateTimer)
 			.WorldContext();
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_SystemTimers(
-	TEXT("SystemTimers"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindSystemTimers);
+	});

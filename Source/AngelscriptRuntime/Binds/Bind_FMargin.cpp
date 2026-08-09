@@ -37,9 +37,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFMargin(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FMargin(
+	TEXT("FMargin"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FMargin_ = Binds.ExistingClassForTarget("FMargin");
 
@@ -83,10 +84,4 @@ namespace
 		FMargin_.Method("FVector2D GetDesiredSize() const", METHOD_TRIVIAL(FMargin, GetDesiredSize));
 		FMargin_.Method("float32 GetTotalSpaceAlongHorizontal() const", &FAngelscriptFMarginBinds::GetTotalSpaceAlongHorizontal);
 		FMargin_.Method("float32 GetTotalSpaceAlongVertical() const", &FAngelscriptFMarginBinds::GetTotalSpaceAlongVertical);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FMargin(
-	TEXT("FMargin"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFMargin);
+	});

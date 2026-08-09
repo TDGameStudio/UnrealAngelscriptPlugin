@@ -23,9 +23,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUPrimitiveComponent(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UPrimitiveComponent(
+	TEXT("UPrimitiveComponent"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto PrimitiveComponent_ = Binds.ExistingClassForTarget("UPrimitiveComponent");
 		PrimitiveComponent_.Method("FVector GetBoundingBoxExtents() const", &FAngelscriptUPrimitiveComponentBinds::GetBoundingBoxExtents);
@@ -35,10 +36,4 @@ namespace
 		PrimitiveComponent_.Method("bool GetbSelectable() const", &FAngelscriptUPrimitiveComponentBinds::GetSelectable);
 		PrimitiveComponent_.Method("void SetbSelectable(bool bSelectable)", &FAngelscriptUPrimitiveComponentBinds::SetSelectable);
 		PrimitiveComponent_.Method("void SetLightmapType(ELightmapType Type)", &FAngelscriptUPrimitiveComponentBinds::SetLightmapType);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UPrimitiveComponent(
-	TEXT("UPrimitiveComponent"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUPrimitiveComponent);
+	});

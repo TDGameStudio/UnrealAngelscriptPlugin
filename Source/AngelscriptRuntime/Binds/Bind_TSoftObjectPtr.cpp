@@ -119,7 +119,30 @@
 
 namespace
 {
-	void BindSoftReferenceTypeDeclarations(FAngelscriptBinds& Binds)
+
+
+	void BindSoftPtrBaseMethods(FAngelscriptBinds& SoftPtr_)
+	{
+		SoftPtr_.Constructor("void f()", &FAngelscriptTSoftObjectPtrBinds::ConstructDefault);
+		SoftPtr_.Constructor("void f(const FSoftObjectPath& Path)", &FAngelscriptTSoftObjectPtrBinds::ConstructFromPath);
+		SoftPtr_.Destructor("void f()", &FAngelscriptTSoftObjectPtrBinds::Destruct);
+		SoftPtr_.Method("FSoftObjectPath ToSoftObjectPath() const", &FAngelscriptTSoftObjectPtrBinds::ToSoftObjectPath);
+		SoftPtr_.Method("FString ToString() const", &FAngelscriptTSoftObjectPtrBinds::ToString);
+		SoftPtr_.Method("FString GetLongPackageName() const", &FAngelscriptTSoftObjectPtrBinds::GetLongPackageName);
+		SoftPtr_.Method("FString GetAssetName() const", &FAngelscriptTSoftObjectPtrBinds::GetAssetName);
+		SoftPtr_.Method("bool IsValid() const", &FAngelscriptTSoftObjectPtrBinds::IsValid);
+		SoftPtr_.Method("bool IsPending() const", &FAngelscriptTSoftObjectPtrBinds::IsPending);
+		SoftPtr_.Method("bool IsNull() const", &FAngelscriptTSoftObjectPtrBinds::IsNull);
+		SoftPtr_.Method("void Reset()", &FAngelscriptTSoftObjectPtrBinds::Reset);
+		SoftPtr_.Method("TSoftObjectPtr<T>& opAssign(const FSoftObjectPath& Path)", &FAngelscriptTSoftObjectPtrBinds::AssignPath);
+	}
+
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_TypeDeclarations(
+	TEXT("SoftReferences.Declarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bTemplate = true;
@@ -128,9 +151,12 @@ namespace
 
 		Binds.ValueClassForTarget<FSoftObjectPtr>("TSoftObjectPtr<class T>", Flags);
 		Binds.ValueClassForTarget<FSoftObjectPtr>("TSoftClassPtr<class T>", Flags);
-	}
+	});
 
-	void BindSoftReferenceTypeInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_TypeInfrastructure(
+	TEXT("SoftReferences.TypeInfrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		TSharedRef<FSoftObjectPtrType> SoftObjectPtrType = MakeShared<FSoftObjectPtrType>(Binds.GetTargetBindDatabase());
 		Binds.RegisterTypeForTarget(SoftObjectPtrType);
@@ -178,25 +204,12 @@ namespace
 			SubType.Type = RegisteredSubType->ToSharedPtr();
 			return true;
 		});
-	}
+	});
 
-	void BindSoftPtrBaseMethods(FAngelscriptBinds& SoftPtr_)
-	{
-		SoftPtr_.Constructor("void f()", &FAngelscriptTSoftObjectPtrBinds::ConstructDefault);
-		SoftPtr_.Constructor("void f(const FSoftObjectPath& Path)", &FAngelscriptTSoftObjectPtrBinds::ConstructFromPath);
-		SoftPtr_.Destructor("void f()", &FAngelscriptTSoftObjectPtrBinds::Destruct);
-		SoftPtr_.Method("FSoftObjectPath ToSoftObjectPath() const", &FAngelscriptTSoftObjectPtrBinds::ToSoftObjectPath);
-		SoftPtr_.Method("FString ToString() const", &FAngelscriptTSoftObjectPtrBinds::ToString);
-		SoftPtr_.Method("FString GetLongPackageName() const", &FAngelscriptTSoftObjectPtrBinds::GetLongPackageName);
-		SoftPtr_.Method("FString GetAssetName() const", &FAngelscriptTSoftObjectPtrBinds::GetAssetName);
-		SoftPtr_.Method("bool IsValid() const", &FAngelscriptTSoftObjectPtrBinds::IsValid);
-		SoftPtr_.Method("bool IsPending() const", &FAngelscriptTSoftObjectPtrBinds::IsPending);
-		SoftPtr_.Method("bool IsNull() const", &FAngelscriptTSoftObjectPtrBinds::IsNull);
-		SoftPtr_.Method("void Reset()", &FAngelscriptTSoftObjectPtrBinds::Reset);
-		SoftPtr_.Method("TSoftObjectPtr<T>& opAssign(const FSoftObjectPath& Path)", &FAngelscriptTSoftObjectPtrBinds::AssignPath);
-	}
-
-	void BindSoftReferenceFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_Functions(
+	TEXT("SoftReferences.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto TSoftObjectPtr_ = Binds.ExistingClassForTarget("TSoftObjectPtr<T>");
 		BindSoftPtrBaseMethods(TSoftObjectPtr_);
@@ -213,11 +226,11 @@ namespace
 		TSoftObjectPtr_.Method("void LoadAsync(FOnSoftObjectLoaded OnLoaded) const", &FAngelscriptTSoftObjectPtrBinds::LoadObjectAsync)
 			.Documentation(TEXT("Asynchronously loads the package that contains the referenced object.\nDelegate may be called immediately if object is already loaded."));
 
-#if WITH_EDITOR
+	#if WITH_EDITOR
 		TSoftObjectPtr_.Method("T handle_only EditorOnlyLoadSynchronous() const", &FAngelscriptTSoftObjectPtrBinds::EditorOnlyLoadSynchronous)
 			.Documentation(TEXT("Synchronously load the asset references by the soft pointer. Only available in editor, because it would cause hitches during gameplay."))
 			.EditorOnly();
-#endif
+	#endif
 
 		auto TSoftClassPtr_ = Binds.ExistingClassForTarget("TSoftClassPtr<T>");
 		BindSoftPtrBaseMethods(TSoftClassPtr_);
@@ -236,20 +249,4 @@ namespace
 
 		TSoftClassPtr_.Method("void LoadAsync(FOnSoftClassLoaded OnLoaded) const", &FAngelscriptTSoftObjectPtrBinds::LoadClassAsync)
 			.Documentation(TEXT("Asynchronously loads the package that contains the referenced class.\nDelegate may be called immediately if class is already loaded."));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_TypeDeclarations(
-	TEXT("SoftReferences.Declarations"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindSoftReferenceTypeDeclarations);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_TypeInfrastructure(
-	TEXT("SoftReferences.TypeInfrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindSoftReferenceTypeInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_TSoftObjectPtr_Functions(
-	TEXT("SoftReferences.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindSoftReferenceFunctions);
+	});

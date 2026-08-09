@@ -180,23 +180,28 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFQuatType(FAngelscriptBinds& Binds)
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FQuat_Type(
+	TEXT("FQuat.Type"), EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FQuat>("FQuat", Flags);
-	}
 
-	void BindFQuatInfrastructure(FAngelscriptBinds& Binds)
+	});
+AS_FORCE_LINK const FAngelscriptBind Bind_FQuat_Infrastructure(
+	TEXT("FQuat.Infrastructure"), EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FQuatType>());
 		FToStringHelper::Register(Binds, TEXT("FQuat"), &FAngelscriptFQuatBinds::AppendToString);
-	}
 
-	void BindFQuatFunctions(FAngelscriptBinds& Binds)
+	});
+AS_FORCE_LINK const FAngelscriptBind Bind_FQuat(
+	TEXT("FQuat.Functions"), EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FQuat_ = Binds.ExistingClassForTarget("FQuat");
 		FQuat_.Constructor("void f()", &FAngelscriptFQuatBinds::ConstructDefault)
@@ -302,9 +307,5 @@ namespace
 		FQuat_.Method("void ToSwingTwist(const FVector& InTwistAxis, FQuat& OutSwing, FQuat& OutTwist) const", METHOD_TRIVIAL(FQuat, ToSwingTwist));
 		FQuat_.Method("float64 GetTwistAngle(const FVector& InTwistAxis) const", METHOD_TRIVIAL(FQuat, GetTwistAngle));
 		FQuat_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FQuat, InitFromString));
-	}
-}
 
-AS_FORCE_LINK const FAngelscriptBind Bind_FQuat_Type(TEXT("FQuat.Type"), EAngelscriptBindPhase::TypeDeclarations, &BindFQuatType);
-AS_FORCE_LINK const FAngelscriptBind Bind_FQuat_Infrastructure(TEXT("FQuat.Infrastructure"), EAngelscriptBindPhase::TypeInfrastructure, &BindFQuatInfrastructure);
-AS_FORCE_LINK const FAngelscriptBind Bind_FQuat(TEXT("FQuat.Functions"), EAngelscriptBindPhase::ManualBindings, &BindFQuatFunctions);
+	});

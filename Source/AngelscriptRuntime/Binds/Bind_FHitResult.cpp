@@ -75,9 +75,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFHitResultFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FHitResult(
+	TEXT("FHitResult.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FHitResult_ = Binds.ExistingClassForTarget("FHitResult");
 
@@ -120,10 +121,4 @@ namespace
 		FHitResult_.Method("void SetbBlockingHit(bool bIsBlocking)", &FAngelscriptFHitResultBinds::SetBlockingHit);
 		FHitResult_.Method("bool GetbStartPenetrating() const", &FAngelscriptFHitResultBinds::GetStartPenetrating);
 		FHitResult_.Method("void SetbStartPenetrating(bool bStartPenetrating)", &FAngelscriptFHitResultBinds::SetStartPenetrating);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FHitResult(
-	TEXT("FHitResult.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFHitResultFunctions);
+	});

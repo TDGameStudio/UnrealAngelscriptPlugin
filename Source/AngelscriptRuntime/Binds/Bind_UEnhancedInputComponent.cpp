@@ -66,9 +66,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUEnhancedInputComponent(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UEnhancedInputComponent(
+	TEXT("UEnhancedInputComponent"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto InputComponent_ = Binds.ExistingClassForTarget("UEnhancedInputComponent");
 		InputComponent_.Method("void SetShouldFireDelegatesInEditor(const bool bInNewValue)", METHODPR_TRIVIAL(void, UEnhancedInputComponent, SetShouldFireDelegatesInEditor, (const bool)));
@@ -95,10 +96,4 @@ namespace
 			"FInputDebugKeyBinding& BindDebugKey(const FInputChord Chord, const EInputEvent KeyEvent, FInputDebugKeyHandlerDynamicSignature Delegate, bool bExecuteWhenPaused = true)",
 			&FAngelscriptUEnhancedInputComponentBinds::BindDebugKey);
 		InputComponent_.Method("FInputActionValue GetBoundActionValue(const UInputAction Action)", METHODPR_TRIVIAL(FInputActionValue, UEnhancedInputComponent, GetBoundActionValue, (const UInputAction*)));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UEnhancedInputComponent(
-	TEXT("UEnhancedInputComponent"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUEnhancedInputComponent);
+	});

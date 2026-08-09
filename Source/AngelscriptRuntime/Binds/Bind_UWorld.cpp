@@ -95,9 +95,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindWorldType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_WorldType(
+	TEXT("UWorld.WorldType"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto WorldType_ = Binds.EnumForTarget("EWorldType");
 		WorldType_["None"] = EWorldType::None;
@@ -108,9 +109,12 @@ namespace
 		WorldType_["GamePreview"] = EWorldType::GamePreview;
 		WorldType_["GameRPC"] = EWorldType::GameRPC;
 		WorldType_["Inactive"] = EWorldType::Inactive;
-	}
+	});
 
-	void BindNetMode(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_NetMode(
+	TEXT("UWorld.NetMode"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto NetMode_ = Binds.EnumForTarget("ENetMode");
 		NetMode_["NM_Client"] = ENetMode::NM_Client;
@@ -118,9 +122,12 @@ namespace
 		NetMode_["NM_ListenServer"] = ENetMode::NM_ListenServer;
 		NetMode_["NM_Standalone"] = ENetMode::NM_Standalone;
 		NetMode_["NM_MAX"] = ENetMode::NM_MAX;
-	}
+	});
 
-	void BindWorldFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_World(
+	TEXT("UWorld.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.BindGlobalFunctionForTarget("UObject __WorldContext()", &FAngelscriptUWorldBinds::GetWorldContext);
 		Binds.BindGlobalFunctionForTarget("UWorld GetCurrentWorld()", &FAngelscriptUWorldBinds::GetCurrentWorld);
@@ -154,20 +161,4 @@ namespace
 		ULevel_.Method("bool IsVisible() const", &FAngelscriptUWorldBinds::IsLevelVisible);
 		ULevel_.Method("bool IsBeingRemoved() const", &FAngelscriptUWorldBinds::IsLevelBeingRemoved);
 		ULevel_.Method("const TArray<AActor>& GetActors() const", &FAngelscriptUWorldBinds::GetLevelActors);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_WorldType(
-	TEXT("UWorld.WorldType"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindWorldType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_NetMode(
-	TEXT("UWorld.NetMode"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindNetMode);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_World(
-	TEXT("UWorld.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindWorldFunctions);
+	});

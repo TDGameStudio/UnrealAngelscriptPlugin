@@ -15,18 +15,13 @@
  * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFApp(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FApp(
+	TEXT("FApp"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FApp");
 		Binds.BindGlobalFunctionForTarget("bool CanEverRender()", &FApp::CanEverRender)
 			.NativeFunction("FApp::CanEverRender", true);
 		Binds.BindGlobalFunctionForTarget("FString GetProjectName()", &FAngelscriptFAppBinds::GetProjectName);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FApp(
-	TEXT("FApp"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFApp);
+	});

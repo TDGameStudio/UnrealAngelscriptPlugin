@@ -13,9 +13,10 @@
  * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFAngelscriptGameThreadScopeWorldContext(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FAngelscriptGameThreadScopeWorldContext(
+	TEXT("FAngelscriptGameThreadScopeWorldContext"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Scope_ = Binds.ValueClassForTarget<FAngelscriptGameThreadScopeWorldContext>(
 			"FAngelscriptGameThreadScopeWorldContext",
@@ -28,10 +29,4 @@ namespace
 		Scope_.Destructor(
 			"void f()",
 			&FAngelscriptFAngelscriptGameThreadScopeWorldContextBinds::Destruct);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FAngelscriptGameThreadScopeWorldContext(
-	TEXT("FAngelscriptGameThreadScopeWorldContext"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFAngelscriptGameThreadScopeWorldContext);
+	});

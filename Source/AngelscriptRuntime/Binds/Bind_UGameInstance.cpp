@@ -40,9 +40,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUGameInstance(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UGameInstance(
+	TEXT("UGameInstance"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto UGameInstance_ = Binds.ExistingClassForTarget("UGameInstance");
 		UGameInstance_.Method("ULocalPlayer CreateInitialPlayer(FString& OutError)", METHOD_TRIVIAL(UGameInstance, CreateInitialPlayer));
@@ -58,10 +59,4 @@ namespace
 			"ULocalPlayer FindLocalPlayerFromUniqueNetId(const FUniqueNetIdRepl& UniqueNetId) const",
 			&FAngelscriptUGameInstanceBinds::FindLocalPlayerFromUniqueNetId);
 		UGameInstance_.Method("ULocalPlayer GetFirstGamePlayer() const", METHOD_TRIVIAL(UGameInstance, GetFirstGamePlayer));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UGameInstance(
-	TEXT("UGameInstance"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUGameInstance);
+	});

@@ -35,9 +35,10 @@ namespace CollisionProfileBind
 	}
 }
 
-namespace
-{
-	void BindCollisionProfile(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_CollisionProfile(
+	TEXT("CollisionProfile"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "CollisionProfile");
 
@@ -80,10 +81,4 @@ namespace
 			}
 #endif
 		}
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_CollisionProfile(
-	TEXT("CollisionProfile"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindCollisionProfile);
+	});

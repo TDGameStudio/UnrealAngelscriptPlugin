@@ -128,23 +128,28 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFRotatorType(FAngelscriptBinds& Binds)
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FRotator_Type(
+	TEXT("FRotator.Type"), EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FRotator>("FRotator", Flags);
-	}
 
-	void BindFRotatorInfrastructure(FAngelscriptBinds& Binds)
+	});
+AS_FORCE_LINK const FAngelscriptBind Bind_FRotator_Infrastructure(
+	TEXT("FRotator.Infrastructure"), EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FRotatorType>());
 		FToStringHelper::Register(Binds, TEXT("FRotator"), &FAngelscriptFRotatorBinds::AppendToString);
-	}
 
-	void BindFRotatorFunctions(FAngelscriptBinds& Binds)
+	});
+AS_FORCE_LINK const FAngelscriptBind Bind_FRotator(
+	TEXT("FRotator.Functions"), EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FRotator_ = Binds.ExistingClassForTarget("FRotator");
 		FRotator_.Constructor(
@@ -215,9 +220,5 @@ namespace
 		FRotator_.Constructor("void f(const FRotator3f& Rotator)", &FAngelscriptFRotatorBinds::ConstructFromRotator3f, "FRotator", true);
 		FRotator_.Method("FString ToColorString() const", &FAngelscriptFRotatorBinds::ToColorString);
 		FRotator_.Method("bool InitFromString(const FString& SourceString)", METHOD_TRIVIAL(FRotator, InitFromString));
-	}
-}
 
-AS_FORCE_LINK const FAngelscriptBind Bind_FRotator_Type(TEXT("FRotator.Type"), EAngelscriptBindPhase::TypeDeclarations, &BindFRotatorType);
-AS_FORCE_LINK const FAngelscriptBind Bind_FRotator_Infrastructure(TEXT("FRotator.Infrastructure"), EAngelscriptBindPhase::TypeInfrastructure, &BindFRotatorInfrastructure);
-AS_FORCE_LINK const FAngelscriptBind Bind_FRotator(TEXT("FRotator.Functions"), EAngelscriptBindPhase::ManualBindings, &BindFRotatorFunctions);
+	});

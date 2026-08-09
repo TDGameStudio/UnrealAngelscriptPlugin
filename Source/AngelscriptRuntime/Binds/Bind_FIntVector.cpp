@@ -68,22 +68,29 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFIntVectorType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector_Type(
+	TEXT("FIntVector.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FIntVector>("FIntVector", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FIntVectorType>());
-	}
+	});
 
-	void BindFIntVectorToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector_ToStringContribution(
+	TEXT("FIntVector.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FIntVector"), &FAngelscriptFIntVectorBinds::AppendToString);
-	}
+	});
 
-	void BindFIntVectorFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector(
+	TEXT("FIntVector.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FIntVector_ = Binds.ExistingClassForTarget("FIntVector");
 		FIntVector_.Constructor(
@@ -126,20 +133,4 @@ namespace
 		FIntVector_.Method("int32 GetMin() const", METHOD_TRIVIAL(FIntVector, GetMin));
 		FIntVector_.Method("int32 Size() const", METHOD_TRIVIAL(FIntVector, Size));
 		FIntVector_.Method("bool IsZero() const", METHOD_TRIVIAL(FIntVector, IsZero));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector_Type(
-	TEXT("FIntVector.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFIntVectorType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector_ToStringContribution(
-	TEXT("FIntVector.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFIntVectorToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FIntVector(
-	TEXT("FIntVector.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFIntVectorFunctions);
+	});

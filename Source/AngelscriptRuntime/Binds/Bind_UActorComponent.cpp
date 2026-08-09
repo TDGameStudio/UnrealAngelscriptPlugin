@@ -96,7 +96,13 @@ namespace
 {
 	const FName NAME_NotAngelscriptSpawnable(TEXT("NotAngelscriptSpawnable"));
 
-	void BindUActorComponent(FAngelscriptBinds& Binds)
+
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_UActorComponent(
+	TEXT("UActorComponent.Manual"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto ComponentType = Binds.ExistingClassForTarget("UActorComponent");
 		ComponentType.Method(
@@ -156,9 +162,12 @@ namespace
 		ActorType.Method(
 			"void GetAllComponents(UClass ComponentClass, TArray<UActorComponent>& OutComponents)",
 			FUNC(FAngelscriptActorBinds::GetAllComponents));
-	}
+	});
 
-	void BindComponentPostReflectionAccessors(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Components(
+	TEXT("UActorComponent.PostReflection"),
+	EAngelscriptBindPhase::PostReflectionBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		for (UClass* Class : TObjectRange<UClass>())
 		{
@@ -196,10 +205,10 @@ namespace
 				.PassScriptFunctionAsFirstParam();
 
 			bool bSpawnable = true;
-#if WITH_EDITOR
+	#if WITH_EDITOR
 			if (Class->HasMetaData(NAME_NotAngelscriptSpawnable))
 				bSpawnable = false;
-#endif
+	#endif
 			if (bSpawnable)
 			{
 				const FString GetOrCreateDeclaration = FString::Printf(
@@ -221,15 +230,4 @@ namespace
 					.PassScriptFunctionAsFirstParam();
 			}
 		}
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UActorComponent(
-	TEXT("UActorComponent.Manual"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUActorComponent);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Components(
-	TEXT("UActorComponent.PostReflection"),
-	EAngelscriptBindPhase::PostReflectionBindings,
-	&BindComponentPostReflectionAccessors);
+	});

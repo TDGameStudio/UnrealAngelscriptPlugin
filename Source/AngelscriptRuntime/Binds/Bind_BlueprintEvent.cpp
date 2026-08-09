@@ -568,7 +568,12 @@ namespace
 		BindPushArgument(Binds, Alias, RegisteredType->ToSharedPtr());
 	}
 
-	void BindBlueprintEventHelpers(FAngelscriptBinds& Binds)
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintEvents(
+	TEXT("BlueprintEvents.HelperGlobals"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		const TArray<TSharedRef<FAngelscriptType>>& Types = Binds.GetTargetTypeDatabase().RegisteredTypes;
 		for (const TSharedRef<FAngelscriptType>& Type : Types)
@@ -623,13 +628,7 @@ namespace
 			"void __Evt_ExecuteDelegate(const _FMulticastScriptDelegate& Delegate)",
 			&FAngelscriptBlueprintEventHelperBinds::ExecuteMulticastDelegate)
 			.NativeMulticastExecute();
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_BlueprintEvents(
-	TEXT("BlueprintEvents.HelperGlobals"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindBlueprintEventHelpers);
+	});
 
 // Called from Bind_BlueprintCallable
 struct FBlueprintEventSignature

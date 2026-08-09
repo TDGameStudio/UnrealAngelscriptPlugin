@@ -18,9 +18,10 @@
  * +------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindInputComponentScriptMixins(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_InputComponentScriptMixins(
+	TEXT("InputComponentScriptMixins.GeneratedOverrides"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		// UHT marks these wrappers overloaded-unresolved. Install the exact signatures
 		// in the selected engine before GeneratedBindings falls back to reflection.
@@ -40,10 +41,4 @@ namespace
 			UPlayerInputScriptMixinLibrary::StaticClass(),
 			"RemoveAxisMapping",
 			{ERASE_FUNCTION_PTR(UPlayerInputScriptMixinLibrary::RemoveAxisMapping, (UPlayerInput*, const FInputAxisKeyMapping&), ERASE_ARGUMENT_PACK(void))});
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_InputComponentScriptMixins(
-	TEXT("InputComponentScriptMixins.GeneratedOverrides"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindInputComponentScriptMixins);
+	});

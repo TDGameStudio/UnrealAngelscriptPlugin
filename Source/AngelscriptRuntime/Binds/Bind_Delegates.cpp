@@ -450,7 +450,7 @@ void DeclareDelegateOperations(FAngelscriptBinds& Binds, UDelegateFunction* Func
 
 	Delegate_.Method("bool IsBound() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::IsBound));
 	Delegate_.Method("UObject GetUObject() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetUObject));
-	Delegate_.Method("FName GetFunctionName() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetFunctionName)); 
+	Delegate_.Method("FName GetFunctionName() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetFunctionName));
 
 	Delegate_.Method("void Clear()", FUNC_TRIVIAL(FAngelscriptDelegateOperations::Clear));
 
@@ -698,9 +698,10 @@ void DeclareSparseDelegateOperations(FAngelscriptBinds& Binds, USparseDelegateFu
 	BindDelegateEvent(Delegate_, Function, true, true);
 }
 
-namespace
-{
-	void BindDelegateDeclarations(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Delegate_Declarations(
+	TEXT("Delegates.Declarations"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptScopeTimer Timer(TEXT("delegate declarations"));
 
@@ -778,9 +779,12 @@ namespace
 
 		MulticastDelegate_.Method("bool IsBound() const", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::IsBound));
 		MulticastDelegate_.Method("void Clear()", FUNC_TRIVIAL(FAngelscriptMulticastDelegateOperations::Clear));
-	}
+	});
 
-	void BindDelegateFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_Delegates(
+	TEXT("Delegates.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		FAngelscriptScopeTimer Timer(TEXT("delegate bindings"));
 
@@ -812,15 +816,4 @@ namespace
 		Delegate_.Constructor("void f(UObject Object, const FName& FunctionName, UDelegateFunction Signature)", FUNC(FAngelscriptDelegateOperations::ConstructFromFunction_Signature));
 		Delegate_.Method("UObject GetUObject() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetUObject));
 		Delegate_.Method("FName GetFunctionName() const", FUNC_TRIVIAL(FAngelscriptDelegateOperations::GetFunctionName));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Delegate_Declarations(
-	TEXT("Delegates.Declarations"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindDelegateDeclarations);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_Delegates(
-	TEXT("Delegates.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindDelegateFunctions);
+	});

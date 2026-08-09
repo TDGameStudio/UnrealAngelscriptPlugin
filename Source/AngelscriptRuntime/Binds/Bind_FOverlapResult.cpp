@@ -25,9 +25,10 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFOverlapResult(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FOverlapResult(
+	TEXT("FOverlapResult"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FOverlapResult_ = Binds.ExistingClassForTarget("FOverlapResult");
 		FOverlapResult_.Property("int ItemIndex", &FOverlapResult::ItemIndex);
@@ -37,10 +38,4 @@ namespace
 		FOverlapResult_.Method("AActor GetActor() const", &FAngelscriptFOverlapResultBinds::GetActor);
 		FOverlapResult_.Method("bool GetbBlockingHit() const", &FAngelscriptFOverlapResultBinds::GetBlockingHit);
 		FOverlapResult_.Method("void SetBlockingHit(bool bIsBlocking)", &FAngelscriptFOverlapResultBinds::SetBlockingHit);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FOverlapResult(
-	TEXT("FOverlapResult"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFOverlapResult);
+	});

@@ -40,9 +40,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFInstancedStructFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FInstancedStruct(
+	TEXT("FInstancedStruct.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FAngelscriptAnyStructParameter_ = Binds.ExistingClassForTarget("FAngelscriptAnyStructParameter");
 		FAngelscriptAnyStructParameter_
@@ -115,10 +116,4 @@ namespace
 			"FInstancedStruct Make(const ?&in Struct) no_discard",
 			FUNC(FAngelscriptFInstancedStructBinds::Make))
 			.Documentation(TEXT("Creates a new FInstancedStruct from struct."));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FInstancedStruct(
-	TEXT("FInstancedStruct.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFInstancedStructFunctions);
+	});

@@ -66,9 +66,10 @@
  * +------------------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindUInputActionFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UInputAction_Late(
+	TEXT("UInputMappingContext.InputAction"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Action_ = Binds.ExistingClassForTarget("UInputAction");
 		Action_.Method("void SetValueType(EInputActionValueType InValueType)", &FAngelscriptUInputMappingContextBinds::SetValueType);
@@ -79,9 +80,12 @@ namespace
 		Action_.Method(
 			"EInputActionAccumulationBehavior GetAccumulationBehavior() const",
 			&FAngelscriptUInputMappingContextBinds::GetAccumulationBehavior);
-	}
+	});
 
-	void BindFEnhancedActionKeyMappingFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FEnhancedActionKeyMapping_Late(
+	TEXT("UInputMappingContext.EnhancedActionKeyMapping"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Mapping_ = Binds.ExistingClassForTarget("FEnhancedActionKeyMapping");
 		Mapping_.Constructor(
@@ -102,9 +106,12 @@ namespace
 		Mapping_.Method("void AddTrigger(UInputTrigger Trigger)", &FAngelscriptUInputMappingContextBinds::AddTrigger);
 		Mapping_.Method("void ClearTriggers()", &FAngelscriptUInputMappingContextBinds::ClearTriggers);
 		Mapping_.Method("int32 GetTriggerCount() const", &FAngelscriptUInputMappingContextBinds::GetTriggerCount);
-	}
+	});
 
-	void BindUInputMappingContextFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_UInputMappingContext_Late(
+	TEXT("UInputMappingContext.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto Context_ = Binds.ExistingClassForTarget("UInputMappingContext");
 		Context_.Method("FEnhancedActionKeyMapping& MapKey(const UInputAction Action, FKey ToKey)", &FAngelscriptUInputMappingContextBinds::MapKey);
@@ -120,20 +127,4 @@ namespace
 			METHODPR_TRIVIAL(bool, UInputMappingContext, HasMappingForInputAction, (const UInputAction*) const));
 		Context_.Method("int32 GetMappingCount() const", &FAngelscriptUInputMappingContextBinds::GetMappingCount);
 		Context_.Method("FEnhancedActionKeyMapping& GetMapping(int32 Index)", &FAngelscriptUInputMappingContextBinds::GetMapping);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UInputAction_Late(
-	TEXT("UInputMappingContext.InputAction"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUInputActionFunctions);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FEnhancedActionKeyMapping_Late(
-	TEXT("UInputMappingContext.EnhancedActionKeyMapping"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFEnhancedActionKeyMappingFunctions);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_UInputMappingContext_Late(
-	TEXT("UInputMappingContext.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindUInputMappingContextFunctions);
+	});

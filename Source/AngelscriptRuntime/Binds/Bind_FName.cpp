@@ -58,20 +58,33 @@ namespace
 {
 	FName ScriptNameNone(NAME_None);
 
-	void BindFNameType(FAngelscriptBinds& Binds)
+
+
+}
+
+AS_FORCE_LINK const FAngelscriptBind Bind_FName_Type(
+	TEXT("FName.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Binds.ValueClassForTarget<FName>("FName", Flags);
-	}
+	});
 
-	void BindFNameInfrastructure(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FName_Infrastructure(
+	TEXT("FName.Infrastructure"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		Binds.RegisterTypeForTarget(MakeShared<FNameType>());
 		FToStringHelper::Register(Binds, TEXT("FName"), &FAngelscriptFNameBinds::AppendToString, true);
-	}
+	});
 
-	void BindFNameFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FName(
+	TEXT("FName.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FName_ = Binds.ExistingClassForTarget("FName");
 
@@ -118,20 +131,4 @@ namespace
 		Binds.BindGlobalFunctionForTarget(
 			"const FName& __STATIC_NAME(int Id) no_discard",
 			FUNC_TRIVIAL(FAngelscriptEngine::GetStaticName));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FName_Type(
-	TEXT("FName.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFNameType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FName_Infrastructure(
-	TEXT("FName.Infrastructure"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFNameInfrastructure);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FName(
-	TEXT("FName.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFNameFunctions);
+	});

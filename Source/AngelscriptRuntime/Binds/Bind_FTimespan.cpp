@@ -110,9 +110,10 @@
  * +------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFTimespanFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FTimespan(
+	TEXT("FTimespan.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FTimespan_ = Binds.ExistingClassForTarget("FTimespan");
 		FTimespan_.Constructor(
@@ -187,10 +188,4 @@ namespace
 
 		FTimespan_.Method("FString ToString() const", METHODPR_TRIVIAL(FString, FTimespan, ToString, () const));
 		FTimespan_.Method("FString ToString(const FString Format) const", &FAngelscriptFTimespanBinds::ToStringFormat);
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FTimespan(
-	TEXT("FTimespan.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFTimespanFunctions);
+	});

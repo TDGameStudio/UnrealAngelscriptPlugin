@@ -224,7 +224,7 @@ struct FScriptArraySorter
 		const int32 DescendingOrderSign = Sorter->bDescendingOrder ? -1.0f : 1.0f;
 		return Sorter->InvokeCompareFunction(const_cast<void*>(A), const_cast<void*>(B)) * DescendingOrderSign;
 	}
-	
+
 	static int DynamicCompareFunction_ObjectPointer(void* Context, void const* A, void const* B)
 	{
 		FScriptArraySorter<>* Sorter = static_cast<FScriptArraySorter<>*>(Context);
@@ -524,7 +524,7 @@ void FArrayOperations::Insert(FScriptArray& Arr, asCObjectType* Meta, void* Valu
 	if (Ops->bNeedCopy)
 		Ops->Type.CopyValue(Value, DestinationAddr);
 	else
-		FMemory::Memcpy(DestinationAddr, Value, Ops->NumBytesPerElement);	
+		FMemory::Memcpy(DestinationAddr, Value, Ops->NumBytesPerElement);
 }
 
 bool FArrayOperations::AddUnique(FScriptArray& Arr, asCObjectType* Meta, void* Value)
@@ -759,7 +759,7 @@ void FArrayOperations::SetNumZeroed(FScriptArray& Arr, asCObjectType* Meta, int3
 	}
 
 	int32 PrevNum = Arr.Num();
-	//Arr.ResizeTo(NewNum, Ops->NumBytesPerElement, Ops->Alignment);	
+	//Arr.ResizeTo(NewNum, Ops->NumBytesPerElement, Ops->Alignment);
 	//Arr.ArrayNum = NewNum;
 	Arr.SetNumUninitialized(NewNum, Ops->NumBytesPerElement, Ops->Alignment);
 
@@ -988,7 +988,7 @@ void FArrayOperations::Sort(FScriptArray& Arr, asCObjectType* Meta, bool bDescen
 		}
 		return;
 	}
-	
+
 	if (!Ops->Type.IsOrdered())
 	{
 		const FString ParamType = Ops->bIsObjectPointer ? TEXT("{0}") : TEXT("const {0}&");
@@ -1078,258 +1078,255 @@ namespace
 	};
 }
 
-static void BindTArrayTypeDeclarations(FAngelscriptBinds& Binds)
-{
-	FBindFlags Flags;
-	Flags.bTemplate = true;
-	Flags.TemplateType = "<T>";
-	Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
-	Binds.ValueClassForTarget<FScriptArray>("TArray<class T>", Flags);
 
-	FBindFlags IteratorFlags;
-	IteratorFlags.bTemplate = true;
-	IteratorFlags.TemplateType = "<T>";
-	Binds.ValueClassForTarget<FArrayIterator>("TArrayIterator<class T>", IteratorFlags);
-	Binds.ValueClassForTarget<FArrayIterator>("TArrayConstIterator<class T>", IteratorFlags);
-}
 
-static void BindTArrayMethodSurface(FAngelscriptBinds& Binds)
-{
-	auto TArray_ = Binds.ExistingClassForTarget("TArray<T>");
-	TArray_.Constructor("void f()", FUNC_TRIVIAL(FArrayOperations::Construct));
-
-	TArray_.Destructor("void f()", &FArrayOperations::Destruct)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Destruct", false, false, false);
-
-	TArray_.TemplateCallback(
-		"bool f(int&in Type, int&out ErrorMessage)",
-		&ValidateArrayTemplate);
-
-	TArray_.Method("T& opIndex(int __any_implicit_integer Index)", &FArrayOperations::OpIndex)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTArrayIndex();
-
-	TArray_.Method("const T& opIndex(int __any_implicit_integer Index) const", &FArrayOperations::OpIndex)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTArrayIndex();
-
-	TArray_.Method("TArray<T>& opAssign(const TArray<T>& Other)", &FArrayOperations::OpAssign)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::OpAssign", false, false, true);
-
-	TArray_.Method("bool opEquals(const TArray<T>& Other) const", &FArrayOperations::OpEquals)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::OpEquals", false, true, false);
-
-	TArray_.Method("void Add(const T&in if_handle_then_const Value)", &FArrayOperations::Add)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Add", false, false, true);
-
-	TArray_.Method("void Append(const TArray<T>& Other)", &FArrayOperations::Append)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Append", false, false, true);
-
-	TArray_.Method("void Shuffle()", FUNC(FArrayOperations::Shuffle)).PassScriptObjectTypeAsFirstParam();
-
-	TArray_.Method(
-		"void Swap(int32 __any_implicit_integer FirstIndexToSwap, int32 __any_implicit_integer SecondIndexToSwap)",
-		&FArrayOperations::Swap)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Swap", true, false, true)
-		.Documentation(TEXT("Swap the element at index FirstIndexToSwap with the element at index SecondIndexToSwap.\n"));
-
-	TArray_.Method("void MoveAssignFrom(TArray<T>& OtherArray)", &FArrayOperations::MoveAssignFrom)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::MoveAssignFrom", true, false, false)
-		.Documentation(TEXT(
-			"Perform a move-assign from the passed in array into this array.\n"
-			"The passed in array will be emptied in the process as its memory is moved over."));
-
-	TArray_.Method("bool IsValidIndex(int32 __any_implicit_integer Index) const", FUNC_TRIVIAL(FArrayOperations::IsValidIndex));
-
-	TArray_.Method("const T& Last(int32 __any_implicit_integer IndexFromEnd = 0) const", &FArrayOperations::Last)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Last", false, false, false);
-
-	TArray_.Method("T& Last(int32 __any_implicit_integer IndexFromEnd = 0)", &FArrayOperations::Last)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Last", false, false, false);
-
-	TArray_.Method("void Insert(const T&in if_handle_then_const Value, int32 __any_implicit_integer Index = 0)", &FArrayOperations::Insert)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Insert", false, false, true);
-	
-	TArray_.Method("bool AddUnique(const T&in if_handle_then_const Value)", &FArrayOperations::AddUnique)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::AddUnique", false, true, true)
-		.Documentation(TEXT(
-			"Will first do a check if the object already is in the array.\n"
-			"Returns 'True' if the object is added.\n"));
-
-	TArray_.Method("void Empty(int32 __any_implicit_integer ReservedSize = 0)", &FArrayOperations::Empty)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Empty", false, false, false);
-
-	TArray_.Method("void Reset(int32 __any_implicit_integer ReservedSize = 0)", &FArrayOperations::Reset)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Reset", false, false, false);
-
-	TArray_.Method("void Reserve(int32 __any_implicit_integer ReservedSize = 0)", &FArrayOperations::Reserve)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Reserve", false, false, false);
-
-	TArray_.Method("void SetNum(int32 __any_implicit_integer NewNum = 0)", FUNC(FArrayOperations::SetNum))
-		.PassScriptObjectTypeAsFirstParam();
-
-	TArray_.Method(
-		"void Copy(const TArray<T>& SourceArray, int32 __any_implicit_integer SourceIndex, int32 __any_implicit_integer Count, int __any_implicit_integer TargetIndex = 0)",
-		FUNC(FArrayOperations::Copy))
-		.PassScriptObjectTypeAsFirstParam();
-
-	TArray_.Method("void SetNumZeroed(int32 __any_implicit_integer NewNum = 0)", FUNC(FArrayOperations::SetNumZeroed))
-		.PassScriptObjectTypeAsFirstParam();
-
-	TArray_.Method("int32 FindIndex(const T&in if_handle_then_const Value) const", &FArrayOperations::FindIndex)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::FindIndex", false, true, false)
-		.Documentation(TEXT(
-			"Find the first index that contains an element with the given value.\n"
-			"If no element matches the value, it will return -1."));
-
-	TArray_.Method("bool Contains(const T&in if_handle_then_const Value) const", &FArrayOperations::Contains)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Contains", false, true, false);
-
-	TArray_.Method("int RemoveSingle(const T&in if_handle_then_const Value)", &FArrayOperations::RemoveSingle)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::RemoveSingle", false, true, false);
-
-	TArray_.Method("int Remove(const T&in if_handle_then_const Value)", &FArrayOperations::Remove)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Remove", false, true, false);
-
-	TArray_.Method("int RemoveSingleSwap(const T&in if_handle_then_const Value)", &FArrayOperations::RemoveSingleSwap)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::RemoveSingleSwap", false, true, false);
-	
-	TArray_.Method("int RemoveSwap(const T&in if_handle_then_const Value)", &FArrayOperations::RemoveSwap)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::RemoveSwap", false, true, false);
-
-	TArray_.Method("void RemoveAt(int32 __any_implicit_integer Index)", &FArrayOperations::RemoveAt)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::RemoveAt", false, false, true);
-
-	TArray_.Method("void RemoveAtSwap(int32 __any_implicit_integer Index)", &FArrayOperations::RemoveAtSwap)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::RemoveAtSwap", false, false, true);
-
-	TArray_.Method("void Sort(bool bDescendingOrder = false)", FUNC(FArrayOperations::Sort))
-		.PassScriptObjectTypeAsFirstParam();
-
-	TArray_.Method("int Num() const", FUNC_TRIVIAL(FArrayOperations::Num));
-	TArray_.Method("int Max() const", FUNC_TRIVIAL(FArrayOperations::Max));
-
-	TArray_.Method("int64 GetAllocatedSize() const", &FArrayOperations::GetAllocatedSize)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::GetAllocatedSize", true, false, false);
-
-	TArray_.Method("bool IsEmpty() const", FUNC_TRIVIAL(FArrayOperations::IsEmpty));
-	TArray_.Method("int GetSlack() const", FUNC_TRIVIAL(FArrayOperations::GetSlack));
-
-	TArray_.Method("int opForBegin()", &FAngelscriptArrayIterationBinds::ForBegin);
-	TArray_.Method("int opForBegin() const", &FAngelscriptArrayIterationBinds::ForBegin);
-	TArray_.Method("bool opForEnd(const int Iterator) const", &FAngelscriptArrayIterationBinds::ForEnd);
-	TArray_.Method("void opForNext(int&inout Iterator)", &FAngelscriptArrayIterationBinds::ForNext);
-	TArray_.Method("void opForNext(int&inout Iterator) const", &FAngelscriptArrayIterationBinds::ForNext);
-	TArray_.Method("T& opForValue(const int Iterator)", &FAngelscriptArrayIterationBinds::ForValue)
-		.PassScriptObjectTypeAsFirstParam();
-	TArray_.Method("const T& opForValue(const int Iterator) const", &FAngelscriptArrayIterationBinds::ForValue)
-		.PassScriptObjectTypeAsFirstParam();
-	TArray_.Method("int opForKey(const int Iterator) const", &FAngelscriptArrayIterationBinds::ForKey);
-
-	TArray_.Method("void Shrink()", &FArrayOperations::Shrink)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTemplateInstantiatedCall("FArrayOperations::Shrink", true, false, false);
-
-	auto TArrayIterator_ = Binds.ExistingClassForTarget("TArrayIterator<T>");
-#if AS_ITERATOR_DEBUGGING
-	TArrayIterator_.Destructor("void f()", &FArrayIterator::Destruct);
-#endif
-
-	TArrayIterator_.Constructor("void f(const TArrayIterator<T>& Other)", &FArrayIterator::CopyConstruct);
-	TArrayIterator_.Method("TArrayIterator<T>& opAssign(const TArrayIterator<T>& Other)", &FArrayIterator::Assignment);
-	TArrayIterator_.Property("bool CanProceed", &FArrayIterator::bCanProceed);
-
-	TArrayIterator_.Method("T& Proceed()", &FArrayIterator::Proceed).NativeTArrayIteratorProceed();
-
-	auto TArrayConstIterator_ = Binds.ExistingClassForTarget("TArrayConstIterator<T>");
-#if AS_ITERATOR_DEBUGGING
-	TArrayConstIterator_.Destructor("void f()", &FArrayIterator::Destruct);
-#endif
-
-	TArrayConstIterator_.Constructor("void f(const TArrayConstIterator<T>& Other)", &FArrayIterator::CopyConstruct);
-	TArrayConstIterator_.Method("TArrayConstIterator<T>& opAssign(const TArrayConstIterator<T>& Other)", &FArrayIterator::Assignment);
-	TArrayConstIterator_.Property("bool CanProceed", &FArrayIterator::bCanProceed);
-
-	TArrayConstIterator_.Method("const T& Proceed()", &FArrayIterator::Proceed).NativeTArrayIteratorProceed();
-
-	TArray_.Method("TArrayIterator<T> Iterator()", &FArrayIterator::Create)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTArrayIteratorCreate();
-
-	TArray_.Method("TArrayConstIterator<T> Iterator() const", &FArrayIterator::Create)
-		.PassScriptObjectTypeAsFirstParam()
-		.NativeTArrayIteratorCreate();
-}
-
-static void BindTArrayTypeInfrastructure(FAngelscriptBinds& Binds)
-{
-	Binds.GetTargetTypeDatabase().ArrayTemplateTypeInfo = Binds.GetTargetScriptEngine().GetTypeInfoByName("TArray");
-	Binds.GetTargetScriptEngine().RegisterDefaultArrayType("TArray<T>");
-
-	auto ArrayType = MakeShared<FAngelscriptArrayType>();
-	Binds.RegisterTypeForTarget(ArrayType);
-
-	FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
-	Binds.RegisterTypeFinderForTarget([ArrayType, TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
-	{
-		FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property);
-		if (ArrayProperty == nullptr)
-		{
-			return false;
-		}
-
-		FAngelscriptTypeUsage InnerUsage = FAngelscriptTypeUsage::FromProperty(*TargetTypeDatabase, ArrayProperty->Inner);
-		if (!InnerUsage.IsValid())
-		{
-			return false;
-		}
-
-		Usage.Type = ArrayType;
-		Usage.SubTypes.Add(InnerUsage);
-		return true;
-	});
-
-	Binds.RegisterTypeForTarget(MakeShared<FAngelscriptArrayIteratorType>());
-	Binds.RegisterTypeForTarget(MakeShared<FAngelscriptArrayConstIteratorType>());
-}
 
 AS_FORCE_LINK const FAngelscriptBind Bind_TArray_TypeDeclarations(
 	TEXT("TArray.Declaration"),
 	EAngelscriptBindPhase::TypeDeclarations,
-	&BindTArrayTypeDeclarations);
+	[](FAngelscriptBinds& Binds)
+	{
+		FBindFlags Flags;
+		Flags.bTemplate = true;
+		Flags.TemplateType = "<T>";
+		Flags.ExtraFlags = asOBJ_TEMPLATE_SUBTYPE_COVARIANT;
+		Binds.ValueClassForTarget<FScriptArray>("TArray<class T>", Flags);
+
+		FBindFlags IteratorFlags;
+		IteratorFlags.bTemplate = true;
+		IteratorFlags.TemplateType = "<T>";
+		Binds.ValueClassForTarget<FArrayIterator>("TArrayIterator<class T>", IteratorFlags);
+		Binds.ValueClassForTarget<FArrayIterator>("TArrayConstIterator<class T>", IteratorFlags);
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_TArray_MethodSurface(
 	TEXT("TArray.MethodSurface"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindTArrayMethodSurface);
+	[](FAngelscriptBinds& Binds)
+	{
+		auto TArray_ = Binds.ExistingClassForTarget("TArray<T>");
+		TArray_.Constructor("void f()", FUNC_TRIVIAL(FArrayOperations::Construct));
+
+		TArray_.Destructor("void f()", &FArrayOperations::Destruct)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Destruct", false, false, false);
+
+		TArray_.TemplateCallback(
+			"bool f(int&in Type, int&out ErrorMessage)",
+			&ValidateArrayTemplate);
+
+		TArray_.Method("T& opIndex(int __any_implicit_integer Index)", &FArrayOperations::OpIndex)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTArrayIndex();
+
+		TArray_.Method("const T& opIndex(int __any_implicit_integer Index) const", &FArrayOperations::OpIndex)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTArrayIndex();
+
+		TArray_.Method("TArray<T>& opAssign(const TArray<T>& Other)", &FArrayOperations::OpAssign)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::OpAssign", false, false, true);
+
+		TArray_.Method("bool opEquals(const TArray<T>& Other) const", &FArrayOperations::OpEquals)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::OpEquals", false, true, false);
+
+		TArray_.Method("void Add(const T&in if_handle_then_const Value)", &FArrayOperations::Add)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Add", false, false, true);
+
+		TArray_.Method("void Append(const TArray<T>& Other)", &FArrayOperations::Append)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Append", false, false, true);
+
+		TArray_.Method("void Shuffle()", FUNC(FArrayOperations::Shuffle)).PassScriptObjectTypeAsFirstParam();
+
+		TArray_.Method(
+			"void Swap(int32 __any_implicit_integer FirstIndexToSwap, int32 __any_implicit_integer SecondIndexToSwap)",
+			&FArrayOperations::Swap)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Swap", true, false, true)
+			.Documentation(TEXT("Swap the element at index FirstIndexToSwap with the element at index SecondIndexToSwap.\n"));
+
+		TArray_.Method("void MoveAssignFrom(TArray<T>& OtherArray)", &FArrayOperations::MoveAssignFrom)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::MoveAssignFrom", true, false, false)
+			.Documentation(TEXT(
+				"Perform a move-assign from the passed in array into this array.\n"
+				"The passed in array will be emptied in the process as its memory is moved over."));
+
+		TArray_.Method("bool IsValidIndex(int32 __any_implicit_integer Index) const", FUNC_TRIVIAL(FArrayOperations::IsValidIndex));
+
+		TArray_.Method("const T& Last(int32 __any_implicit_integer IndexFromEnd = 0) const", &FArrayOperations::Last)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Last", false, false, false);
+
+		TArray_.Method("T& Last(int32 __any_implicit_integer IndexFromEnd = 0)", &FArrayOperations::Last)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Last", false, false, false);
+
+		TArray_.Method("void Insert(const T&in if_handle_then_const Value, int32 __any_implicit_integer Index = 0)", &FArrayOperations::Insert)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Insert", false, false, true);
+
+		TArray_.Method("bool AddUnique(const T&in if_handle_then_const Value)", &FArrayOperations::AddUnique)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::AddUnique", false, true, true)
+			.Documentation(TEXT(
+				"Will first do a check if the object already is in the array.\n"
+				"Returns 'True' if the object is added.\n"));
+
+		TArray_.Method("void Empty(int32 __any_implicit_integer ReservedSize = 0)", &FArrayOperations::Empty)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Empty", false, false, false);
+
+		TArray_.Method("void Reset(int32 __any_implicit_integer ReservedSize = 0)", &FArrayOperations::Reset)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Reset", false, false, false);
+
+		TArray_.Method("void Reserve(int32 __any_implicit_integer ReservedSize = 0)", &FArrayOperations::Reserve)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Reserve", false, false, false);
+
+		TArray_.Method("void SetNum(int32 __any_implicit_integer NewNum = 0)", FUNC(FArrayOperations::SetNum))
+			.PassScriptObjectTypeAsFirstParam();
+
+		TArray_.Method(
+			"void Copy(const TArray<T>& SourceArray, int32 __any_implicit_integer SourceIndex, int32 __any_implicit_integer Count, int __any_implicit_integer TargetIndex = 0)",
+			FUNC(FArrayOperations::Copy))
+			.PassScriptObjectTypeAsFirstParam();
+
+		TArray_.Method("void SetNumZeroed(int32 __any_implicit_integer NewNum = 0)", FUNC(FArrayOperations::SetNumZeroed))
+			.PassScriptObjectTypeAsFirstParam();
+
+		TArray_.Method("int32 FindIndex(const T&in if_handle_then_const Value) const", &FArrayOperations::FindIndex)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::FindIndex", false, true, false)
+			.Documentation(TEXT(
+				"Find the first index that contains an element with the given value.\n"
+				"If no element matches the value, it will return -1."));
+
+		TArray_.Method("bool Contains(const T&in if_handle_then_const Value) const", &FArrayOperations::Contains)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Contains", false, true, false);
+
+		TArray_.Method("int RemoveSingle(const T&in if_handle_then_const Value)", &FArrayOperations::RemoveSingle)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::RemoveSingle", false, true, false);
+
+		TArray_.Method("int Remove(const T&in if_handle_then_const Value)", &FArrayOperations::Remove)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Remove", false, true, false);
+
+		TArray_.Method("int RemoveSingleSwap(const T&in if_handle_then_const Value)", &FArrayOperations::RemoveSingleSwap)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::RemoveSingleSwap", false, true, false);
+
+		TArray_.Method("int RemoveSwap(const T&in if_handle_then_const Value)", &FArrayOperations::RemoveSwap)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::RemoveSwap", false, true, false);
+
+		TArray_.Method("void RemoveAt(int32 __any_implicit_integer Index)", &FArrayOperations::RemoveAt)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::RemoveAt", false, false, true);
+
+		TArray_.Method("void RemoveAtSwap(int32 __any_implicit_integer Index)", &FArrayOperations::RemoveAtSwap)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::RemoveAtSwap", false, false, true);
+
+		TArray_.Method("void Sort(bool bDescendingOrder = false)", FUNC(FArrayOperations::Sort))
+			.PassScriptObjectTypeAsFirstParam();
+
+		TArray_.Method("int Num() const", FUNC_TRIVIAL(FArrayOperations::Num));
+		TArray_.Method("int Max() const", FUNC_TRIVIAL(FArrayOperations::Max));
+
+		TArray_.Method("int64 GetAllocatedSize() const", &FArrayOperations::GetAllocatedSize)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::GetAllocatedSize", true, false, false);
+
+		TArray_.Method("bool IsEmpty() const", FUNC_TRIVIAL(FArrayOperations::IsEmpty));
+		TArray_.Method("int GetSlack() const", FUNC_TRIVIAL(FArrayOperations::GetSlack));
+
+		TArray_.Method("int opForBegin()", &FAngelscriptArrayIterationBinds::ForBegin);
+		TArray_.Method("int opForBegin() const", &FAngelscriptArrayIterationBinds::ForBegin);
+		TArray_.Method("bool opForEnd(const int Iterator) const", &FAngelscriptArrayIterationBinds::ForEnd);
+		TArray_.Method("void opForNext(int&inout Iterator)", &FAngelscriptArrayIterationBinds::ForNext);
+		TArray_.Method("void opForNext(int&inout Iterator) const", &FAngelscriptArrayIterationBinds::ForNext);
+		TArray_.Method("T& opForValue(const int Iterator)", &FAngelscriptArrayIterationBinds::ForValue)
+			.PassScriptObjectTypeAsFirstParam();
+		TArray_.Method("const T& opForValue(const int Iterator) const", &FAngelscriptArrayIterationBinds::ForValue)
+			.PassScriptObjectTypeAsFirstParam();
+		TArray_.Method("int opForKey(const int Iterator) const", &FAngelscriptArrayIterationBinds::ForKey);
+
+		TArray_.Method("void Shrink()", &FArrayOperations::Shrink)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTemplateInstantiatedCall("FArrayOperations::Shrink", true, false, false);
+
+		auto TArrayIterator_ = Binds.ExistingClassForTarget("TArrayIterator<T>");
+	#if AS_ITERATOR_DEBUGGING
+		TArrayIterator_.Destructor("void f()", &FArrayIterator::Destruct);
+	#endif
+
+		TArrayIterator_.Constructor("void f(const TArrayIterator<T>& Other)", &FArrayIterator::CopyConstruct);
+		TArrayIterator_.Method("TArrayIterator<T>& opAssign(const TArrayIterator<T>& Other)", &FArrayIterator::Assignment);
+		TArrayIterator_.Property("bool CanProceed", &FArrayIterator::bCanProceed);
+
+		TArrayIterator_.Method("T& Proceed()", &FArrayIterator::Proceed).NativeTArrayIteratorProceed();
+
+		auto TArrayConstIterator_ = Binds.ExistingClassForTarget("TArrayConstIterator<T>");
+	#if AS_ITERATOR_DEBUGGING
+		TArrayConstIterator_.Destructor("void f()", &FArrayIterator::Destruct);
+	#endif
+
+		TArrayConstIterator_.Constructor("void f(const TArrayConstIterator<T>& Other)", &FArrayIterator::CopyConstruct);
+		TArrayConstIterator_.Method("TArrayConstIterator<T>& opAssign(const TArrayConstIterator<T>& Other)", &FArrayIterator::Assignment);
+		TArrayConstIterator_.Property("bool CanProceed", &FArrayIterator::bCanProceed);
+
+		TArrayConstIterator_.Method("const T& Proceed()", &FArrayIterator::Proceed).NativeTArrayIteratorProceed();
+
+		TArray_.Method("TArrayIterator<T> Iterator()", &FArrayIterator::Create)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTArrayIteratorCreate();
+
+		TArray_.Method("TArrayConstIterator<T> Iterator() const", &FArrayIterator::Create)
+			.PassScriptObjectTypeAsFirstParam()
+			.NativeTArrayIteratorCreate();
+	});
 
 AS_FORCE_LINK const FAngelscriptBind Bind_TArray_TypeInfrastructure(
 	TEXT("TArray.TypeInfrastructure"),
 	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindTArrayTypeInfrastructure);
+	[](FAngelscriptBinds& Binds)
+	{
+		Binds.GetTargetTypeDatabase().ArrayTemplateTypeInfo = Binds.GetTargetScriptEngine().GetTypeInfoByName("TArray");
+		Binds.GetTargetScriptEngine().RegisterDefaultArrayType("TArray<T>");
+
+		auto ArrayType = MakeShared<FAngelscriptArrayType>();
+		Binds.RegisterTypeForTarget(ArrayType);
+
+		FAngelscriptTypeDatabase* TargetTypeDatabase = &Binds.GetTargetTypeDatabase();
+		Binds.RegisterTypeFinderForTarget([ArrayType, TargetTypeDatabase](FProperty* Property, FAngelscriptTypeUsage& Usage) -> bool
+		{
+			FArrayProperty* ArrayProperty = CastField<FArrayProperty>(Property);
+			if (ArrayProperty == nullptr)
+			{
+				return false;
+			}
+
+			FAngelscriptTypeUsage InnerUsage = FAngelscriptTypeUsage::FromProperty(*TargetTypeDatabase, ArrayProperty->Inner);
+			if (!InnerUsage.IsValid())
+			{
+				return false;
+			}
+
+			Usage.Type = ArrayType;
+			Usage.SubTypes.Add(InnerUsage);
+			return true;
+		});
+
+		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptArrayIteratorType>());
+		Binds.RegisterTypeForTarget(MakeShared<FAngelscriptArrayConstIteratorType>());
+	});
 
 void FArrayIterator::CopyConstruct(FArrayIterator& Iterator, const FArrayIterator& Other)
 {
@@ -1475,7 +1472,7 @@ FArrayOperations* ValidateArrayOperations(asITypeInfo* TemplateType, asCString* 
 			*ErrorMessage = "Containers cannot be nested in other containers";
 		return nullptr;
 	}
-		
+
 	Ops = new FArrayOperations();
 	TemplateType->SetUserData(Ops);
 
@@ -1492,7 +1489,7 @@ FArrayOperations* ValidateArrayOperations(asITypeInfo* TemplateType, asCString* 
 			*ErrorMessage = "Subtype cannot be constructed or copied";
 		return nullptr;
 	}
-	
+
 	Ops->NumBytesPerElement = Type.GetValueSize();
 	Ops->Alignment = Type.GetValueAlignment();
 	Ops->Type = Type;
@@ -1509,13 +1506,13 @@ FArrayOperations* ValidateArrayOperations(asITypeInfo* TemplateType, asCString* 
 			*ErrorMessage = "Subtype is an empty struct";
 		return nullptr;
 	}
-	
+
 	if (asITypeInfo* SubType = TemplateType->GetSubType())
 	{
 		Ops->CompareFunction = GetCompareFunction((asCTypeInfo*)SubType, Type.IsObjectPointer());
 		if (Ops->CompareFunction != nullptr)
 			Ops->CompareFunction->isInUse = true;
 	}
-	
+
 	return Ops;
 }

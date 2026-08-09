@@ -65,23 +65,30 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  */
 
-namespace
-{
-	void BindFBox3fType(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBox3f_Type(
+	TEXT("FBox3f.Type"),
+	EAngelscriptBindPhase::TypeDeclarations,
+	[](FAngelscriptBinds& Binds)
 	{
 		FBindFlags Flags;
 		Flags.bPOD = true;
 		Flags.ExtraFlags |= asOBJ_BASICMATHTYPE;
 		Binds.ValueClassForTarget<FBox3f>("FBox3f", Flags);
 		Binds.RegisterTypeForTarget(MakeShared<FBox3fType>());
-	}
+	});
 
-	void BindFBox3fToStringContribution(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBox3f_ToStringContribution(
+	TEXT("FBox3f.ToStringContribution"),
+	EAngelscriptBindPhase::TypeInfrastructure,
+	[](FAngelscriptBinds& Binds)
 	{
 		FToStringHelper::Register(Binds, TEXT("FBox3f"), &FAngelscriptFBox3fBinds::AppendToString);
-	}
+	});
 
-	void BindFBox3fFunctions(FAngelscriptBinds& Binds)
+AS_FORCE_LINK const FAngelscriptBind Bind_FBox3f(
+	TEXT("FBox3f.Functions"),
+	EAngelscriptBindPhase::ManualBindings,
+	[](FAngelscriptBinds& Binds)
 	{
 		auto FBox3f_ = Binds.ExistingClassForTarget("FBox3f");
 		FBox3f_.Constructor("void f()", &FAngelscriptFBox3fBinds::ConstructDefault)
@@ -119,20 +126,4 @@ namespace
 
 		FAngelscriptBinds::FNamespace Namespace(Binds.GetTargetEngine(), "FBox3f");
 		Binds.BindGlobalFunctionForTarget("FBox3f BuildAABB( const FVector3f& Origin, const FVector3f& Extent) no_discard", FUNC_TRIVIAL(FBox3f::BuildAABB));
-	}
-}
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBox3f_Type(
-	TEXT("FBox3f.Type"),
-	EAngelscriptBindPhase::TypeDeclarations,
-	&BindFBox3fType);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBox3f_ToStringContribution(
-	TEXT("FBox3f.ToStringContribution"),
-	EAngelscriptBindPhase::TypeInfrastructure,
-	&BindFBox3fToStringContribution);
-
-AS_FORCE_LINK const FAngelscriptBind Bind_FBox3f(
-	TEXT("FBox3f.Functions"),
-	EAngelscriptBindPhase::ManualBindings,
-	&BindFBox3fFunctions);
+	});
