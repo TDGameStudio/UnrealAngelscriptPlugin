@@ -9,7 +9,9 @@ class APawn;
 class APlayerController;
 class UInputComponent;
 class ULevel;
+class UWorld;
 class asCScriptFunction;
+struct FActorSpawnParameters;
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptActorBinds
 {
@@ -55,8 +57,12 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptActorBinds
 	}
 
 	static AActor* SpawnActorFromMeta(asCScriptFunction* Meta, const FVector& Location, const FRotator& Rotation, const FName& Name, ULevel* Level);
+	static AActor* SpawnActorFromMetaWithParameters(asCScriptFunction* Meta, const FTransform& SpawnTransform, const FActorSpawnParameters& SpawnParameters);
 	static AActor* SpawnActor(const TSubclassOf<AActor>& Class, const FVector& Location, const FRotator& Rotation, const FName& Name, bool bDeferredSpawn, ULevel* Level);
+	static AActor* SpawnActorWithParameters(const TSubclassOf<AActor>& Class, const FTransform& SpawnTransform, const FActorSpawnParameters& SpawnParameters);
 	static AActor* SpawnPersistentActor(const TSubclassOf<AActor>& Class, const FVector& Location, const FRotator& Rotation, const FName& Name, bool bDeferredSpawn);
+	static AActor* SpawnPersistentActorWithParameters(const TSubclassOf<AActor>& Class, const FTransform& SpawnTransform, const FActorSpawnParameters& SpawnParameters);
+	static AActor* SpawnActorInWorld(UWorld* World, const TSubclassOf<AActor>& Class, const FTransform& SpawnTransform, const FActorSpawnParameters& SpawnParameters);
 	static void FinishSpawningActor(AActor* Actor);
 	static void FinishSpawningActor_Transform(AActor* Actor, const FTransform& Transform);
 

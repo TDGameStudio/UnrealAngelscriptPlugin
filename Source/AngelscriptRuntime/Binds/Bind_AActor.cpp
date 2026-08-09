@@ -66,6 +66,21 @@
  * |     FName TagName,                                                                               | @param TagName Entry in AActor::Tags; this is an Actor Tag, not a GameplayTag.               |
  * |     ?& OutActors);                                                                               | @param OutActors Its element type selects the actor class; existing entries are preserved.   |
  * +--------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+
+ * | AActor Actor::SpawnActor(                                                                        | Spawns with an explicit transform and complete spawn parameters.                            |
+ * |     const TSubclassOf<AActor>& Class,                                                            | @param SpawnParameters controls owner, instigator, template, collision, naming, and deferred |
+ * |     const FTransform& SpawnTransform,                                                            | construction. A null OverrideLevel uses normal dynamic/caller level resolution.              |
+ * |     const FActorSpawnParameters& SpawnParameters);                                               |                                                                                              |
+ * +--------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+
+ * | AActor Actor::SpawnPersistentActor(                                                              | Spawns with explicit parameters without inheriting the caller's streaming level.             |
+ * |     const TSubclassOf<AActor>& Class,                                                            | @param SpawnParameters OverrideLevel is passed through unchanged.                            |
+ * |     const FTransform& SpawnTransform,                                                            |                                                                                              |
+ * |     const FActorSpawnParameters& SpawnParameters);                                               |                                                                                              |
+ * +--------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+
+ * | AActor UWorld.SpawnActor(                                                                        | Spawns directly in this World using the supplied complete parameter object.                  |
+ * |     const TSubclassOf<AActor>& Class,                                                            | @param SpawnParameters is passed to Unreal unchanged, including OverrideLevel.               |
+ * |     const FTransform& SpawnTransform,                                                            |                                                                                              |
+ * |     const FActorSpawnParameters& SpawnParameters);                                               |                                                                                              |
+ * +--------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+
  * | AActor Actor::SpawnActor(                                                                        | Spawns an actor class in the current world.                                                  |
  * |     const TSubclassOf<AActor>& Class,                                                            | @param Class Actor subclass to spawn; a null class raises a script exception.                |
  * |     const FVector& Location = FVector::ZeroVector,                                               | @param Name Requested UObject name; NAME_None lets Unreal select the name.                   |
@@ -95,6 +110,10 @@
  * |     const FRotator& Rotation = FRotator::ZeroRotator,                                            | @param Level Uses the same explicit/dynamic/caller/default resolution as SpawnActor.         |
  * |     const FName& Name = NAME_None,                                                               |                                                                                              |
  * |     ULevel Level = nullptr);                                                                     |                                                                                              |
+ * +--------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+
+ * | <ActorType> <ActorType>::Spawn(                                                                  | Spawns the reflected Actor type with explicit transform and parameters.        |
+ * |     const FTransform& SpawnTransform,                                                            |                                                                                              |
+ * |     const FActorSpawnParameters& SpawnParameters);                                               |                                                                                              |
  * +--------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------+
  */
 AS_FORCE_LINK const FAngelscriptBind Bind_AActor(
@@ -142,6 +161,10 @@ AS_FORCE_LINK const FAngelscriptBind Bind_AActor(
 			&FAngelscriptActorBinds::GetAllActorsOfClassWithTag);
 
 		Binds.BindGlobalFunctionForTarget(
+			"AActor SpawnActor(const TSubclassOf<AActor>& Class, const FTransform& SpawnTransform, const FActorSpawnParameters& SpawnParameters)",
+			FUNC(FAngelscriptActorBinds::SpawnActorWithParameters))
+			.DeterminesOutputType(0);
+		Binds.BindGlobalFunctionForTarget(
 			"AActor SpawnActor(const TSubclassOf<AActor>& Class, const FVector& Location = FVector::ZeroVector, const FRotator& Rotation = FRotator::ZeroRotator, const FName& Name = NAME_None, bool bDeferredSpawn = false, ULevel Level = nullptr)",
 			FUNC(FAngelscriptActorBinds::SpawnActor))
 			.DeterminesOutputType(0);
@@ -152,8 +175,18 @@ AS_FORCE_LINK const FAngelscriptBind Bind_AActor(
 			"void FinishSpawningActor(AActor Actor, const FTransform& SpawnTransform)",
 			FUNC(FAngelscriptActorBinds::FinishSpawningActor_Transform));
 		Binds.BindGlobalFunctionForTarget(
+			"AActor SpawnPersistentActor(const TSubclassOf<AActor>& Class, const FTransform& SpawnTransform, const FActorSpawnParameters& SpawnParameters)",
+			FUNC(FAngelscriptActorBinds::SpawnPersistentActorWithParameters))
+			.DeterminesOutputType(0);
+		Binds.BindGlobalFunctionForTarget(
 			"AActor SpawnPersistentActor(const TSubclassOf<AActor>& Class, const FVector& Location = FVector::ZeroVector, const FRotator& Rotation = FRotator::ZeroRotator, const FName& Name = NAME_None, bool bDeferredSpawn = false)",
 			FUNC(FAngelscriptActorBinds::SpawnPersistentActor))
+			.DeterminesOutputType(0);
+
+		auto WorldType = Binds.ExistingClassForTarget("UWorld");
+		WorldType.Method(
+			"AActor SpawnActor(const TSubclassOf<AActor>& Class, const FTransform& SpawnTransform, const FActorSpawnParameters& SpawnParameters)",
+			&FAngelscriptActorBinds::SpawnActorInWorld)
 			.DeterminesOutputType(0);
 	});
 
@@ -182,6 +215,15 @@ AS_FORCE_LINK const FAngelscriptBind Bind_Actors(
 			Binds.BindGlobalFunctionForTarget(
 				FunctionDeclaration,
 				FUNC(FAngelscriptActorBinds::SpawnActorFromMeta),
+				Class)
+				.PassScriptFunctionAsFirstParam();
+
+			const FString SpawnWithParametersDeclaration = FString::Printf(
+				TEXT("%s Spawn(const FTransform& SpawnTransform, const FActorSpawnParameters& SpawnParameters)"),
+				*ClassName);
+			Binds.BindGlobalFunctionForTarget(
+				SpawnWithParametersDeclaration,
+				FUNC(FAngelscriptActorBinds::SpawnActorFromMetaWithParameters),
 				Class)
 				.PassScriptFunctionAsFirstParam();
 		}

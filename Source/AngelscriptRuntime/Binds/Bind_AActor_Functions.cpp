@@ -397,6 +397,31 @@ AActor* FAngelscriptActorBinds::SpawnActorFromMeta(
 	return World->SpawnActor(ActorClass, &Location, &Rotation, Parameters);
 }
 
+AActor* FAngelscriptActorBinds::SpawnActorFromMetaWithParameters(
+	asCScriptFunction* Meta,
+	const FTransform& SpawnTransform,
+	const FActorSpawnParameters& SpawnParameters)
+{
+	UObject* WorldContext = FAngelscriptEngine::TryGetCurrentWorldContextObject();
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::ReturnNull);
+	if (World == nullptr)
+	{
+		FAngelscriptEngine::Throw("Invalid World Context");
+		return nullptr;
+	}
+	UClass* ActorClass = (UClass*)Meta->userData;
+	if (ActorClass == nullptr)
+	{
+		FAngelscriptEngine::Throw("Class was nullptr.");
+		return nullptr;
+	}
+
+	FActorSpawnParameters EffectiveSpawnParameters = SpawnParameters;
+	if (EffectiveSpawnParameters.OverrideLevel == nullptr)
+		EffectiveSpawnParameters.OverrideLevel = ResolveSpawnLevel(WorldContext, World, nullptr);
+	return World->SpawnActor(ActorClass, &SpawnTransform, EffectiveSpawnParameters);
+}
+
 AActor* FAngelscriptActorBinds::SpawnActor(
 	const TSubclassOf<AActor>& Class,
 	const FVector& Location,
@@ -426,6 +451,30 @@ AActor* FAngelscriptActorBinds::SpawnActor(
 	return World->SpawnActor(Class, &Location, &Rotation, Parameters);
 }
 
+AActor* FAngelscriptActorBinds::SpawnActorWithParameters(
+	const TSubclassOf<AActor>& Class,
+	const FTransform& SpawnTransform,
+	const FActorSpawnParameters& SpawnParameters)
+{
+	UObject* WorldContext = FAngelscriptEngine::TryGetCurrentWorldContextObject();
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::ReturnNull);
+	if (World == nullptr)
+	{
+		FAngelscriptEngine::Throw("Invalid World Context");
+		return nullptr;
+	}
+	if (Class == nullptr)
+	{
+		FAngelscriptEngine::Throw("Class was nullptr.");
+		return nullptr;
+	}
+
+	FActorSpawnParameters EffectiveSpawnParameters = SpawnParameters;
+	if (EffectiveSpawnParameters.OverrideLevel == nullptr)
+		EffectiveSpawnParameters.OverrideLevel = ResolveSpawnLevel(WorldContext, World, nullptr);
+	return World->SpawnActor(Class.Get(), &SpawnTransform, EffectiveSpawnParameters);
+}
+
 AActor* FAngelscriptActorBinds::SpawnPersistentActor(
 	const TSubclassOf<AActor>& Class,
 	const FVector& Location,
@@ -451,6 +500,47 @@ AActor* FAngelscriptActorBinds::SpawnPersistentActor(
 	Parameters.NameMode = FActorSpawnParameters::ESpawnActorNameMode::Requested;
 	Parameters.bDeferConstruction = bDeferredSpawn;
 	return World->SpawnActor(Class, &Location, &Rotation, Parameters);
+}
+
+AActor* FAngelscriptActorBinds::SpawnPersistentActorWithParameters(
+	const TSubclassOf<AActor>& Class,
+	const FTransform& SpawnTransform,
+	const FActorSpawnParameters& SpawnParameters)
+{
+	UObject* WorldContext = FAngelscriptEngine::TryGetCurrentWorldContextObject();
+	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::ReturnNull);
+	if (World == nullptr)
+	{
+		FAngelscriptEngine::Throw("Invalid World Context");
+		return nullptr;
+	}
+	if (Class == nullptr)
+	{
+		FAngelscriptEngine::Throw("Class was nullptr.");
+		return nullptr;
+	}
+
+	return World->SpawnActor(Class.Get(), &SpawnTransform, SpawnParameters);
+}
+
+AActor* FAngelscriptActorBinds::SpawnActorInWorld(
+	UWorld* World,
+	const TSubclassOf<AActor>& Class,
+	const FTransform& SpawnTransform,
+	const FActorSpawnParameters& SpawnParameters)
+{
+	if (World == nullptr)
+	{
+		FAngelscriptEngine::Throw("World was nullptr.");
+		return nullptr;
+	}
+	if (Class == nullptr)
+	{
+		FAngelscriptEngine::Throw("Class was nullptr.");
+		return nullptr;
+	}
+
+	return World->SpawnActor(Class.Get(), &SpawnTransform, SpawnParameters);
 }
 
 void FAngelscriptActorBinds::FinishSpawningActor(AActor* Actor)
