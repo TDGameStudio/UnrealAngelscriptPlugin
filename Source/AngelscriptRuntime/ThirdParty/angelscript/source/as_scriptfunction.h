@@ -45,6 +45,7 @@
 #include "as_array.h"
 #include "as_datatype.h"
 #include "as_atomic.h"
+#include "as_buildartifact.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -409,6 +410,16 @@ public:
 		int                             declaredAt;
 		// Store position/index pairs if the bytecode is compiled from multiple script sections
 		asCArray<int>                   sectionIdxs;
+
+		// Canonical token slice retained for stable external artifact identity. This
+		// contains no comments or whitespace and is independent of source line moves.
+		asCString                       artifactCanonicalSource;
+
+		// Raw engine-local dependencies observed by the authoritative compiler for
+		// this successful invocation. Failed and NotCacheable invocations leave this
+		// empty. The Runtime bridge maps these pointers to stable semantic keys before
+		// anything is persisted.
+		asCArray<asSBuildArtifactDependency> artifactDependencies;
 	};
 	ScriptFunctionData          *scriptData;
 
@@ -426,6 +437,13 @@ public:
 	int                          id;
 	asEFuncType                  funcType;
 	asSFunctionTraits            traits;
+	//[UE++]: Current-Engine declaration metadata for Cache V2 stable identity.
+	// The owner pointer is transient and is never serialized; the Runtime maps it
+	// to a stable TypeKey before any artifact is persisted.
+	asEBuildArtifactInvocationKind artifactInvocationKind =
+		asBUILD_ARTIFACT_INVOCATION_INVALID;
+	asCTypeInfo* artifactOwnerType = nullptr;
+	//[UE--]
 	asECompileOutType            compileOutType = asECompileOutType::CompileCalls;
 
 	// Stub functions and delegates don't own the object and parameters

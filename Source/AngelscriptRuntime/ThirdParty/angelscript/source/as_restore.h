@@ -45,14 +45,148 @@
 
 BEGIN_AS_NAMESPACE
 
+//[UE++]: Bounded diagnostics for the detached Cache V2 function-artifact reader.
+enum asEFunctionArtifactValidationStage
+{
+	asFUNCTION_ARTIFACT_STAGE_NONE = 0,
+	asFUNCTION_ARTIFACT_STAGE_HEADER,
+	asFUNCTION_ARTIFACT_STAGE_FUNCTION_MARKER,
+	asFUNCTION_ARTIFACT_STAGE_FUNCTION_SIGNATURE,
+	asFUNCTION_ARTIFACT_STAGE_FUNCTION_BYTECODE,
+	asFUNCTION_ARTIFACT_STAGE_FUNCTION_STATE,
+	asFUNCTION_ARTIFACT_STAGE_FUNCTION_LOCALS,
+	asFUNCTION_ARTIFACT_STAGE_FUNCTION_COMPLETE,
+	asFUNCTION_ARTIFACT_STAGE_EXACT_LENGTH
+};
+
+struct asSFunctionArtifactValidationDiagnostics
+{
+	int result;
+	asUINT expectedSize;
+	asUINT bytesRead;
+	asUINT stage;
+	bool hadError;
+	bool wasNewFunction;
+	// Byte coordinates are diagnostics/test support for the current versioned
+	// function-artifact stream. They are never serialized into Cache V2 and use
+	// asUINT(-1) when the reader did not reach the corresponding field.
+	asUINT rootTraitsOffset;
+	asDWORD rootTraits;
+	asUINT runtimeStateOffset;
+	asUINT stackNeededOffset;
+	asUINT objVariablesOnHeapOffset;
+	asUINT objectVariableCountOffset;
+	asUINT firstObjectVariableTypeOffset;
+	asUINT firstObjectVariablePositionOffset;
+	asUINT objectVariableCount;
+};
+
+// Bounded writer-side diagnostics used to classify a fail-closed function
+// artifact without exposing or persisting any process-local symbol. Counts are
+// observations only; the host still needs a complete stable adapter before a
+// nonempty table may become cacheable.
+enum asEFunctionArtifactWriteStage
+{
+	asFUNCTION_ARTIFACT_WRITE_STAGE_NONE = 0,
+	asFUNCTION_ARTIFACT_WRITE_STAGE_ROOT_FUNCTION,
+	asFUNCTION_ARTIFACT_WRITE_STAGE_ROOT_SYMBOL_TABLES,
+	asFUNCTION_ARTIFACT_WRITE_STAGE_FUNCTION_SIGNATURES,
+	asFUNCTION_ARTIFACT_WRITE_STAGE_COMPLETE
+};
+
+struct asSFunctionArtifactWriteDiagnostics
+{
+	int result;
+	asUINT bytesWritten;
+	asUINT stage;
+	asUINT usedTypeIdCount;
+	asUINT usedTypeCount;
+	asUINT usedFunctionCount;
+	asUINT usedGlobalPropertyCount;
+	asUINT usedStringConstantCount;
+	asUINT usedObjectPropertyCount;
+};
+
+// One instruction operand that was resolved from the artifact's semantic
+// function-signature table into the current engine/module. Cache V2 consumes
+// this read-only summary to bind the VM relocation back to its stable key.
+struct asSFunctionArtifactFunctionRelocation
+{
+	asUINT instructionOrdinal;
+	asUINT operandSlot;
+	asCScriptFunction *function;
+};
+
+// Every current-Engine semantic object used to relocate one opaque function
+// artifact operand. These pointers are read-only observations and are never
+// written to the artifact stream; the host converts them to stable Cache V2
+// identities before the donor can be committed.
+enum asEFunctionArtifactSymbolUseKind
+{
+	asFUNCTION_ARTIFACT_SYMBOL_TYPE_DECLARATION = 1,
+	asFUNCTION_ARTIFACT_SYMBOL_TYPE_VALUE_LAYOUT = 2,
+	asFUNCTION_ARTIFACT_SYMBOL_FUNCTION_SIGNATURE = 3,
+	asFUNCTION_ARTIFACT_SYMBOL_GLOBAL_STORAGE = 4,
+	asFUNCTION_ARTIFACT_SYMBOL_PROPERTY_LAYOUT = 5
+};
+
+struct asSFunctionArtifactSymbolUse
+{
+	asUINT instructionOrdinal;
+	asUINT operandSlot;
+	asEFunctionArtifactSymbolUseKind kind;
+	asCTypeInfo *type;
+	asCScriptFunction *function;
+	asCGlobalProperty *globalProperty;
+	asCTypeInfo *propertyOwnerType;
+	asCObjectProperty *objectProperty;
+};
+//[UE--]
+
 //[UE++]: Export restore reader internals for the AngelscriptTest module.
 class ANGELSCRIPTRUNTIME_API asCReader
 //[UE--]
 {
 public:
 	asCReader(asCModule *module, asIBinaryStream *stream, asCScriptEngine *engine);
+	~asCReader();
 
 	int Read(bool *wasDebugInfoStripped);
+	int ValidateFunctionArtifact(asUINT expectedSize, asSFunctionArtifactValidationDiagnostics *diagnostics = 0);
+	// Reconstructs and relocates a complete function into an unpublished donor.
+	// The caller may validate/apply host-owned debug metadata to the donor before
+	// atomically committing it to the builder's already-declared target.
+	int RestoreFunctionArtifactDetached(asUINT expectedSize,
+		asCScriptFunction **outFunction,
+		asSFunctionArtifactValidationDiagnostics *diagnostics = 0);
+	int CommitFunctionArtifactToExisting(asCScriptFunction *artifact,
+		asCScriptFunction *target);
+	asUINT GetFunctionArtifactFunctionRelocationCount() const
+	{
+		return functionArtifactFunctionRelocations.GetLength();
+	}
+	const asSFunctionArtifactFunctionRelocation *
+		GetFunctionArtifactFunctionRelocation(asUINT index) const
+	{
+		return index < functionArtifactFunctionRelocations.GetLength()
+			? &functionArtifactFunctionRelocations[index] : 0;
+	}
+	asUINT GetFunctionArtifactSymbolUseCount() const
+	{
+		return functionArtifactSymbolUses.GetLength();
+	}
+	const asSFunctionArtifactSymbolUse *GetFunctionArtifactSymbolUse(
+		asUINT index) const
+	{
+		return index < functionArtifactSymbolUses.GetLength()
+			? &functionArtifactSymbolUses[index] : 0;
+	}
+	//[UE++]: Restore one previously validated Cache V2 global-function artifact
+	// into this reader's staging module. The function receives an id owned by the
+	// current engine; no serialized numeric id is accepted.
+	int RestoreGlobalFunctionArtifact(asUINT expectedSize, asCScriptFunction **outFunction,
+		asSFunctionArtifactValidationDiagnostics *diagnostics = 0);
+	//[UE--]
 
 protected:
 	asCModule       *module;
@@ -61,6 +195,8 @@ protected:
 	bool             noDebugInfo;
 	bool             error;
 	asUINT           bytesRead;
+	bool             validatingFunctionArtifact;
+	asUINT           functionArtifactValidationStage;
 
 	int                Error(const char *msg);
 
@@ -90,14 +226,29 @@ protected:
 	void ReadUsedGlobalProps();
 	void ReadUsedStringConstants();
 	void ReadUsedObjectProps();
+	void ReadFunctionArtifactSymbolTables();
+	void ReadFunctionArtifactRuntimeState();
+	void ApplyFunctionArtifactRuntimeState(asCScriptFunction *func);
 
 	asCTypeInfo *      FindType(int idx);
 	int                FindTypeId(int idx);
-	short              FindObjectPropOffset(asWORD index);
+	short              FindObjectPropOffset(asWORD index,
+		asUINT instructionOrdinal, asUINT operandSlot);
 	asCScriptFunction *FindFunction(int idx);
 
 	// After loading, each function needs to be translated to update pointers, function ids, etc
 	void TranslateFunction(asCScriptFunction *func);
+	void RecordFunctionArtifactRelocation(asUINT instructionOrdinal,
+		asUINT operandSlot, asCScriptFunction *function);
+	void RecordFunctionArtifactTypeUse(asUINT instructionOrdinal,
+		asUINT operandSlot, asCTypeInfo *type);
+	void RecordFunctionArtifactTypeIdUse(asUINT instructionOrdinal,
+		asUINT operandSlot, int serializedTypeIdIndex);
+	void RecordFunctionArtifactGlobalUse(asUINT instructionOrdinal,
+		asUINT operandSlot, asUINT globalPropertyIndex);
+	void RecordFunctionArtifactPropertyUse(asUINT instructionOrdinal,
+		asUINT operandSlot, asCTypeInfo *ownerType,
+		asCObjectProperty *property);
 	void CalculateAdjustmentByPos(asCScriptFunction *func);
 	int  AdjustStackPosition(int pos);
 	int  AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD programPos);
@@ -113,6 +264,20 @@ protected:
 	asCArray<asCScriptFunction*>  savedFunctions;
 	asCArray<asCDataType>         savedDataTypes;
 	asCArray<asCString>           savedStrings;
+	asCArray<asSFunctionArtifactFunctionRelocation>
+		functionArtifactFunctionRelocations;
+	asCArray<asSFunctionArtifactSymbolUse> functionArtifactSymbolUses;
+	asCArray<asCGlobalProperty*> functionArtifactGlobalProperties;
+	asUINT                         functionArtifactStackNeeded;
+	asUINT                         functionArtifactObjVariablesOnHeap;
+	asUINT                         functionArtifactRuntimeStateOffset;
+	asUINT                         functionArtifactStackNeededOffset;
+	asUINT                         functionArtifactObjVariablesOnHeapOffset;
+	asUINT                         functionArtifactObjectVariableCountOffset;
+	asUINT                         functionArtifactFirstObjectVariableTypeOffset;
+	asUINT                         functionArtifactFirstObjectVariablePositionOffset;
+	asCArray<asCTypeInfo*>         functionArtifactObjVariableTypes;
+	asCArray<int>                  functionArtifactObjVariablePositions;
 
 	asCArray<int>                 adjustByPos;
 	asCArray<int>                 adjustNegativeStackByPos;
@@ -170,6 +335,8 @@ public:
 	asCWriter(asCModule *module, asIBinaryStream *stream, asCScriptEngine *engine, bool stripDebugInfo);
 
 	int Write();
+	int WriteFunctionArtifact(asCScriptFunction *func,
+		asSFunctionArtifactWriteDiagnostics *diagnostics = 0);
 
 protected:
 	asCModule       *module;

@@ -802,28 +802,28 @@ if (!LocalAssert.IsNotNull(EngineB.Get(), TEXT("Should create engine B with diff
 	return false;
 }
 
-EngineA->bGeneratePrecompiledData = true;
-EngineB->bGeneratePrecompiledData = false;
+EngineA->bCollectStaticJITCompatibilityBinds = true;
+EngineB->bCollectStaticJITCompatibilityBinds = false;
 
 bool bOk = true;
 bOk &= LocalAssert.IsTrue(EngineA->bSimulateCooked, TEXT("Engine A bSimulateCooked should be true"));
 bOk &= LocalAssert.IsTrue(EngineA->bTestErrors, TEXT("Engine A bTestErrors should be true"));
 bOk &= LocalAssert.IsFalse(EngineB->bSimulateCooked, TEXT("Engine B bSimulateCooked should be false"));
 bOk &= LocalAssert.IsFalse(EngineB->bTestErrors, TEXT("Engine B bTestErrors should be false"));
-bOk &= LocalAssert.IsTrue(EngineA->bGeneratePrecompiledData, TEXT("Engine A bGeneratePrecompiledData should be true"));
-bOk &= LocalAssert.IsFalse(EngineB->bGeneratePrecompiledData, TEXT("Engine B bGeneratePrecompiledData should be false"));
+bOk &= LocalAssert.IsTrue(EngineA->bCollectStaticJITCompatibilityBinds, TEXT("Engine A StaticJIT compatibility bind collection should be true"));
+bOk &= LocalAssert.IsFalse(EngineB->bCollectStaticJITCompatibilityBinds, TEXT("Engine B StaticJIT compatibility bind collection should be false"));
 
 {
 	FAngelscriptEngineScope ScopeA(*EngineA);
 	bOk &= LocalAssert.IsTrue(FAngelscriptEngine::IsSimulatingCookedForCurrentContext(), TEXT("IsSimulatingCookedForCurrentContext should reflect engine A"));
 	bOk &= LocalAssert.IsTrue(FAngelscriptEngine::IsTestingErrorsForCurrentContext(), TEXT("IsTestingErrorsForCurrentContext should reflect engine A"));
-	bOk &= LocalAssert.IsTrue(FAngelscriptEngine::IsGeneratingPrecompiledData(), TEXT("IsGeneratingPrecompiledData should reflect engine A"));
+	bOk &= LocalAssert.IsTrue(FAngelscriptEngine::IsCollectingStaticJITCompatibilityBinds(), TEXT("StaticJIT compatibility bind collection should reflect engine A"));
 }
 {
 	FAngelscriptEngineScope ScopeB(*EngineB);
 	bOk &= LocalAssert.IsFalse(FAngelscriptEngine::IsSimulatingCookedForCurrentContext(), TEXT("IsSimulatingCookedForCurrentContext should reflect engine B"));
 	bOk &= LocalAssert.IsFalse(FAngelscriptEngine::IsTestingErrorsForCurrentContext(), TEXT("IsTestingErrorsForCurrentContext should reflect engine B"));
-	bOk &= LocalAssert.IsFalse(FAngelscriptEngine::IsGeneratingPrecompiledData(), TEXT("IsGeneratingPrecompiledData should reflect engine B"));
+	bOk &= LocalAssert.IsFalse(FAngelscriptEngine::IsCollectingStaticJITCompatibilityBinds(), TEXT("StaticJIT compatibility bind collection should reflect engine B"));
 }
 
 return bOk;

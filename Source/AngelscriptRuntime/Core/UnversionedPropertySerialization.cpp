@@ -712,7 +712,9 @@ public:
 
 		FUnversionedPropertySerializer GetSerializer() const
 		{
+#if DO_CHECK || USING_CODE_ANALYSIS
 			check(SchemaIt != SchemaEnd);
+#endif
 			return *SchemaIt;
 		}
 

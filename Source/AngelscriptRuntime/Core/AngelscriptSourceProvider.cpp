@@ -29,6 +29,36 @@ namespace AngelscriptSourceProvider_Private
 	}
 }
 
+bool IAngelscriptSourceProvider::LoadSourceBytes(
+	const FAngelscriptSource& Source,
+	TArray<uint8>& OutSourceBytes)
+{
+	OutSourceBytes.Reset();
+	FString SourceText;
+	if (Source.bHasSourceText)
+	{
+		SourceText = Source.SourceText;
+	}
+	else if (!LoadSourceText(Source, SourceText))
+	{
+		return false;
+	}
+
+	const FTCHARToUTF8 Utf8(*SourceText, SourceText.Len());
+	OutSourceBytes.Append(
+		reinterpret_cast<const uint8*>(Utf8.Get()),
+		Utf8.Length());
+	return true;
+}
+
+bool IAngelscriptSourceProvider::QuerySourceDescriptor(
+	const FAngelscriptSource& Source,
+	FAngelscriptSourceProviderDescriptor& OutDescriptor)
+{
+	OutDescriptor = {};
+	return false;
+}
+
 void FAngelscriptDiskSourceProvider::FindScriptFiles(
 	IFileManager& FileManager,
 	const FAngelscriptSourceRoot& Root,
@@ -116,6 +146,41 @@ bool FAngelscriptDiskSourceProvider::LoadSourceText(const FAngelscriptSource& So
 	}
 
 	return FFileHelper::LoadFileToString(OutSourceText, *Source.AbsoluteFilename);
+}
+
+bool FAngelscriptDiskSourceProvider::LoadSourceBytes(
+	const FAngelscriptSource& Source,
+	TArray<uint8>& OutSourceBytes)
+{
+	OutSourceBytes.Reset();
+	if (Source.AbsoluteFilename.IsEmpty())
+	{
+		return false;
+	}
+	return FFileHelper::LoadFileToArray(
+		OutSourceBytes, *Source.AbsoluteFilename);
+}
+
+bool FAngelscriptDiskSourceProvider::QuerySourceDescriptor(
+	const FAngelscriptSource& Source,
+	FAngelscriptSourceProviderDescriptor& OutDescriptor)
+{
+	OutDescriptor = {};
+	if (Source.SourceKind != EAngelscriptSourceKind::Game
+		&& Source.SourceKind != EAngelscriptSourceKind::Plugin)
+	{
+		return false;
+	}
+
+	OutDescriptor.Kind =
+		EAngelscriptSourceProviderDescriptorKind::BuiltInDisk;
+	OutDescriptor.CanonicalImplementationIdentity =
+		TEXT("Angelscript.BuiltInDiskSourceProvider.V2");
+	OutDescriptor.StableInstanceIdentity = FString(TEXT("built-in-disk"));
+	OutDescriptor.Version = FString(TEXT("2"));
+	OutDescriptor.Configuration = FString(
+		TEXT("recursive-as;typed-roots;development-editor-filters;exact-bytes-v1"));
+	return true;
 }
 
 bool FAngelscriptDiskSourceProvider::QuerySourceState(const FAngelscriptSource& Source, FAngelscriptSourceState& OutState)

@@ -54,6 +54,35 @@ MyProject/
         └── Source/
 ```
 
+## Incremental script cache
+
+Cache V2 is enabled by default for Editor and packaged Runtime. The first
+launch compiles authoritative loose `.as` source normally and publishes a
+content-addressed generation under `Saved/Angelscript/CacheV2`; later launches
+restore an exact matching generation or reuse only still-valid function, type,
+and module-state records. Packages do not require a pre-generated script cache.
+
+Cache V2 never persists process-local FunctionIds. Logical functions use stable
+BLAKE3-256 keys, and each Engine rebuilds the stable-key-to-current-FunctionId
+route. StaticJIT providers consume the same stable identity plus content,
+profile, and ABI coordinates; a missing or stale Native entry falls back to VM
+without changing cache validity.
+
+Project Settings exposes **AngelScript Incremental Cache**, including the
+shutdown flush timeout, Pack target, bounded immutable-preparation workers,
+packaged reload policy, and opt-in decision trace. Production defaults are a
+64 MiB Pack target and at most four preparation workers. Engine mutation,
+declaration/type materialization, ClassGenerator, module swap, and route
+publication remain serialized per Engine.
+
+Runtime diagnostics include `as.Cache.Status`, `as.Cache.Flush`,
+`as.Cache.Verify`, `as.Cache.Compact`, `as.Cache.ForceClean`, `as.Cache.Trace`,
+and `as.Cache.Explain`. Add `-as-cache-report=<absolute-json-path>` to emit a
+pointer-free process report. The read-only offline inspector is documented at
+`Tools/CacheV2Dump/README.md`; it validates and dumps pointer, Manifest, Pack,
+record, generation, and stable-route data without starting Unreal or mutating
+the Store.
+
 ## Class Rename Redirects
 
 AngelScript-generated classes are regular Unreal classes in the `Angelscript` script package. When hot reload can see an unambiguous one-class rename, the plugin writes an official Unreal `[CoreRedirects]` class redirect to project config and registers it for the current editor session:

@@ -5,6 +5,7 @@
 #include "UObject/WeakObjectPtr.h"
 #include "UObject/CoreNetTypes.h"
 #include "ClassGenerator/AngelscriptAdditionalCompileChecks.h"
+#include "Cache/AngelscriptRuntimeReload.h"
 
 #include "AngelscriptSource.h"
 #include "AngelscriptSourceProvider.h"
@@ -53,6 +54,16 @@ class FBlueprintEventSignatureRegistry;
 struct FAngelscriptEngineLifetimeToken;
 struct FAngelscriptEngineContextStack;
 struct FAngelscriptEngineScope;
+struct FAngelscriptCacheRuntimeState;
+class FAngelscriptCacheService;
+class IAngelscriptCacheRestoreFaultInjector;
+struct FAngelscriptCacheCompileCaptureContext;
+class FAngelscriptCacheCompileReuseContext;
+struct FAngelscriptCacheLiveFunctionRoute;
+struct FAngelscriptCacheFunctionRouteSnapshot;
+struct FAngelscriptCachePackPolicy;
+struct FAngelscriptStableFunctionKey;
+struct FAngelscriptFunctionArtifactIdentity;
 
 struct FStaticJITDiagnostics;
 struct FAngelscriptStateSnapshotBuilder;
@@ -136,20 +147,13 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineConfig
 	bool bForcePreprocessEditorCode = false;
 
 	UPROPERTY()
-	bool bGeneratePrecompiledData = false;
-
-	UPROPERTY()
 	bool bDevelopmentMode = false;
 
+	// Temporary sibling-StaticJIT compatibility switch used by isolated tests that
+	// collect native-form bindings. It is not a script-cache generator or Runtime
+	// startup selection flag and never reads/writes PrecompiledScript.Cache.
 	UPROPERTY()
-	bool bIgnorePrecompiledData = false;
-
-	// When generating precompiled data, skip the StaticJIT C++ transpilation pass
-	// (only emit the PrecompiledScript.Cache bytecode archive). Useful for shipping
-	// scripts in a package without StaticJIT, and to avoid transpiler limitations on
-	// certain script constructs.
-	UPROPERTY()
-	bool bSkipStaticJITCodeGen = false;
+	bool bCollectStaticJITCompatibilityBinds = false;
 
 	UPROPERTY()
 	bool bSkipWriteBindDB = false;
@@ -177,9 +181,110 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineConfig
 	// partially initialized engine. Production configuration has no equivalent.
 	bool bInjectDirectBindFailureForTesting = false;
 #endif
+	// Captured once from FApp::IsUnattended() for startup-failure policy. Tests
+	// set this explicitly so the policy can be verified without process globals.
+	UPROPERTY()
+	bool bIsUnattended = false;
+
+	// Host/test override for the Cache V2 base root. Production command lines use
+	// -as-cache-root; an empty value selects Saved/Angelscript/CacheV2.
+	UPROPERTY()
+	FString CacheV2RootOverride;
+
+	// Host/test override for the pointer-free process session report. Production
+	// command lines use -as-cache-report=<absolute-json-path>; an empty value
+	// disables automatic report emission.
+	UPROPERTY()
+	FString CacheV2ReportPathOverride;
+
+	// Explicit package-smoke lifecycle hook parsed from
+	// -as-cache-exit-after-startup. Shipping compiles out ExecCmds, so the
+	// acceptance harness requests a normal Engine shutdown after successful
+	// startup and lets the production shutdown path flush/report the Cache.
+	UPROPERTY()
+	bool bExitAfterStartupForCacheSmoke = false;
+
+	// Explicit diagnostic opt-in parsed from -as-cache-trace. Unlike the console
+	// command, this is applied while the Engine is constructed so startup
+	// selection and exact restore decisions are retained in the bounded journal.
+	UPROPERTY()
+	bool bForceEnableCacheV2DecisionTrace = false;
+
+	// Optional -as-cache-trace-capacity override. Zero keeps the configured
+	// UAngelscriptCacheSettings capacity; the service owns the final 1..65536
+	// clamp and bounded-eviction policy.
+	UPROPERTY()
+	uint32 CacheV2DecisionTraceCapacityOverride = 0;
+
+	// Optional benchmark/host overrides. Zero retains the project setting. These
+	// affect only physical writer preparation and never Compatibility/Profile or
+	// stable semantic identity.
+	UPROPERTY()
+	uint32 CacheV2PackTargetMiBOverride = 0;
+
+	UPROPERTY()
+	uint32 CacheV2PreparationWorkerCountOverride = 0;
+
+	UPROPERTY()
+	bool bForceSerialCacheV2Preparation = false;
+
+	// Test/commandlet isolation switch. Product enablement remains owned by
+	// UAngelscriptCacheSettings rather than this per-Engine construction input.
+	UPROPERTY()
+	bool bDisableCacheV2Persistence = false;
+
+	// Explicit host/test override. Production resolves the project setting.
+	UPROPERTY()
+	bool bOverridePackagedRuntimeReloadMode = false;
+
+	UPROPERTY()
+	EAngelscriptPackagedRuntimeReloadMode PackagedRuntimeReloadMode =
+		EAngelscriptPackagedRuntimeReloadMode::Disabled;
+
+	UPROPERTY()
+	float PackagedRuntimeReloadScanIntervalSeconds = 1.0f;
+
+	UPROPERTY()
+	TSet<FName> DisabledBindNames;
 
 	static FAngelscriptEngineConfig FromCurrentProcess();
 };
+
+ANGELSCRIPTRUNTIME_API FAngelscriptCachePackPolicy
+ResolveAngelscriptCacheWriterPolicy(
+	const FAngelscriptEngineConfig& Config,
+	uint32 ConfiguredPackTargetMiB,
+	bool bConfiguredParallelPreparation,
+	uint32 ConfiguredPreparationWorkerCount);
+
+enum class EAngelscriptStartupCompileFailureResponse : uint8
+{
+	RequestExit,
+	InteractiveRetry,
+};
+
+// Pure startup policy seam. The caller owns diagnostics and the concrete exit or
+// Slate action; unattended/commandlet/explicit-exit hosts never select a modal.
+ANGELSCRIPTRUNTIME_API EAngelscriptStartupCompileFailureResponse
+ResolveAngelscriptStartupCompileFailureResponse(
+	const FAngelscriptEngineConfig& Config,
+	bool bInteractiveRetryAvailable);
+
+ANGELSCRIPTRUNTIME_API bool ShouldRequestAngelscriptCachePackageSmokeExit(
+	const FAngelscriptEngineConfig& Config,
+	bool bInitialCompileSucceeded);
+
+struct FAngelscriptStartupCompileFailureExitRequest
+{
+	bool bForce = true;
+	bool bBeginCacheShutdownBeforeDiagnosticReport = true;
+	bool bWriteRequestedDiagnosticReportBeforeExit = true;
+	uint8 Status = 3;
+};
+
+ANGELSCRIPTRUNTIME_API FAngelscriptStartupCompileFailureExitRequest
+ResolveAngelscriptStartupCompileFailureExitRequest(
+	const FAngelscriptEngineConfig& Config);
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptPluginScriptRoot
 {
@@ -197,6 +302,12 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineDependencies
 	TFunction<TArray<FAngelscriptPluginScriptRoot>()> GetEnabledPluginScriptRootDescriptors;
 	TSharedPtr<IAngelscriptSourceProvider> SourceProvider;
 
+#if WITH_ANGELSCRIPT_UNITTESTS
+	// Per-Engine, caller-owned exact-restore fault seam. Production dependencies
+	// leave this null; it is never copied into persisted or diagnostic state.
+	IAngelscriptCacheRestoreFaultInjector* CacheRestoreFaultInjector = nullptr;
+#endif
+
 	static FAngelscriptEngineDependencies CreateDefault();
 };
 
@@ -205,6 +316,32 @@ enum class ECompileType : uint8
 	Initial,
 	SoftReloadOnly,
 	FullReload,
+};
+
+/**
+ * Controls whether a compile request may consume persisted execution artifacts.
+ * This is intentionally independent of ECompileType, which controls reload and
+ * activation behavior rather than compiler-input authority.
+ */
+enum class EAngelscriptCompileCachePolicy : uint8
+{
+	Default,
+	ForceClean,
+};
+
+struct FAngelscriptCompileOptions
+{
+	EAngelscriptCompileCachePolicy CachePolicy =
+		EAngelscriptCompileCachePolicy::Default;
+
+	// Packaged Runtime cannot safely expose a new AS module while retaining an
+	// old Unreal class layout. Reject even "suggested" full reloads before swap.
+	bool bRejectStructuralChanges = false;
+
+	bool IsForcedClean() const
+	{
+		return CachePolicy == EAngelscriptCompileCachePolicy::ForceClean;
+	}
 };
 
 enum class ECompileResult : uint8
@@ -322,7 +459,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	bool bForcePreprocessEditorCode = false;
 	bool bUseEditorScripts = false;
 	bool bUseAutomaticImportMethod = false;
-	bool bGeneratePrecompiledData = false;
+	bool bCollectStaticJITCompatibilityBinds = false;
 
 	static bool IsSimulatingCookedForCurrentContext();
 	static bool IsTestingErrorsForCurrentContext();
@@ -367,14 +504,37 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 	/* Add the listed set of modules into the angelscript engine. 
 	 * Modules should already be pre-processed.
 	 * Modules array should already be sorted in dependency order. */
-	ECompileResult CompileModules(ECompileType CompileType, const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& Modules, TArray<TSharedRef<struct FAngelscriptModuleDesc>>& OutCompiledModules);
-	void CompileModule_Types_Stage1(ECompileType CompileType, TSharedRef<struct FAngelscriptModuleDesc> Module, const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& ImportedModules);
+	ECompileResult CompileModules(
+		ECompileType CompileType,
+		const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& Modules,
+		TArray<TSharedRef<struct FAngelscriptModuleDesc>>& OutCompiledModules,
+		FAngelscriptCompileOptions CompileOptions = {},
+		const FAngelscriptCacheCompileCaptureContext* CacheCaptureContext = nullptr,
+		FAngelscriptCacheCompileReuseContext* CacheReuseContext = nullptr);
+	void CompileModule_Types_Stage1(
+		ECompileType CompileType,
+		TSharedRef<struct FAngelscriptModuleDesc> Module,
+		const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& ImportedModules,
+		const FAngelscriptCompileOptions& CompileOptions);
 	void CompileModule_Functions_Stage2(ECompileType CompileType, TSharedRef<struct FAngelscriptModuleDesc> Module);
 	void CompileModule_Code_Stage3(ECompileType CompileType, TSharedRef<struct FAngelscriptModuleDesc> Module);
 	void CompileModule_Globals_Stage4(ECompileType CompileType, TSharedRef<struct FAngelscriptModuleDesc> Module);
 
 	/* Perform a hot reload of the specified type if necessary. */
 	void CheckForHotReload(ECompileType CompileType);
+
+	/** Queue a loose-source reload for a non-editor Runtime engine. */
+	EAngelscriptRuntimeReloadRequestStatus RequestPackagedRuntimeReload();
+
+	/** Consume the most recent completed request exactly once. */
+	bool ConsumePackagedRuntimeReloadResult(
+		FAngelscriptRuntimeReloadResult& OutResult);
+
+	/** Recompile selected live modules through the authoritative forced-clean
+	 *  hot-reload transaction. Empty selection means all active modules. */
+	bool ForceCleanCacheModules(
+		TConstArrayView<FString> CanonicalModuleNames,
+		ECompileResult& OutCompileResult);
 
 	/* Verify Unreal Property specifiers in a module. */
 	bool VerifyPropertySpecifiers(const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& Modules);
@@ -521,6 +681,31 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngine
 
 	TSharedPtr<struct FAngelscriptModuleDesc> GetModuleByFilenameOrModuleName(const FString& Filename, const FString& ModuleName);
 
+	/** Resolve a Cache V2 stable key only through this Engine's live route table. */
+	bool ResolveCacheFunctionRoute(
+		const FAngelscriptStableFunctionKey& FunctionKey,
+		FAngelscriptCacheLiveFunctionRoute& OutRoute) const;
+
+	/** Capture the current immutable per-Engine StableFunctionKey route map. */
+	TSharedPtr<const FAngelscriptCacheFunctionRouteSnapshot,
+		ESPMode::ThreadSafe> GetFunctionRouteSnapshot() const;
+
+	/**
+	 * Republish the transient route snapshot after StaticJIT has already
+	 * validated and applied its selected live entries at an Engine safe point.
+	 * This is an isolation/compatibility seam, not a Provider matcher: false
+	 * retains the exact prior route publication, and neither outcome mutates
+	 * Cache lifecycle publications or persisted generations.
+	 */
+	bool RefreshFunctionRouteSnapshotAfterStaticJITChange(
+		bool bValidatedProviderStateWasAppliedAtSafePoint);
+
+	/** The sole Cache V2 lifecycle/mutation owner for this Engine. */
+	FAngelscriptCacheService* GetCacheService() const
+	{
+		return CacheService.Get();
+	}
+
 	// Captured diagnostic messages during compilation
 	struct FDiagnostic
 	{
@@ -583,6 +768,7 @@ private:
 		FDateTime LastChange;
 		uint64 ContentHash = 0;
 		bool bHasContentHash = false;
+		FFilenamePair Filename;
 	};
 
 	bool bUseHotReloadCheckerThread = false;
@@ -605,9 +791,32 @@ private:
 	double NextHotReloadCheck = -1.0;
 
 	void DiscoverTests();
-	bool PerformHotReload(ECompileType CompileType, const TArray<FFilenamePair>& FileList);
+	bool PerformHotReload(
+		ECompileType CompileType,
+		const TArray<FFilenamePair>& FileList,
+		ECompileResult* OutCompileResult = nullptr,
+		bool bRejectStructuralChanges = false);
+	bool ProcessQueuedHotReload(
+		ECompileType CompileType,
+		ECompileResult* OutCompileResult,
+		TArray<FFilenamePair>* OutConsumedFiles,
+		bool bRejectStructuralChanges = false);
 	void CheckForFileChanges();
 	FString MakeSourceStateKey(const FFilenamePair& Filename) const;
+	void PrimePackagedRuntimeReloadState();
+	void TickPackagedRuntimeReload();
+	void CollectChangedModuleNames(
+		const TArray<FFilenamePair>& Files,
+		TArray<FString>& OutModuleNames) const;
+
+	EAngelscriptPackagedRuntimeReloadMode PackagedRuntimeReloadMode =
+		EAngelscriptPackagedRuntimeReloadMode::Disabled;
+	float PackagedRuntimeReloadScanIntervalSeconds = 1.0f;
+	bool bPackagedRuntimeReloadPrimed = false;
+	bool bPackagedRuntimeReloadQueued = false;
+	double NextPackagedRuntimeReloadScan = -1.0;
+	TOptional<FAngelscriptRuntimeReloadResult>
+		CompletedPackagedRuntimeReloadResult;
 
 	void ImportIntoModule(class asIScriptModule* IntoModule, class asIScriptModule* FromModule);
 
@@ -616,6 +825,13 @@ private:
 
 	void ResolveAllDeclaredImports();
 	void ResolveDeclaredImports(class asIScriptModule* Module);
+	void RebuildFunctionRouteSnapshot(
+		TConstArrayView<FAngelscriptCacheLiveFunctionRoute>
+			VerifiedArtifactRoutes = {},
+		TConstArrayView<FAngelscriptFunctionArtifactIdentity>
+			ValidatedArtifactIdentities = {},
+		TConstArrayView<asIScriptModule*> RebuiltModules = {},
+		TConstArrayView<asIScriptModule*> ArtifactInvalidatedModules = {});
 
 #if WITH_EDITOR
 	void CheckUsageRestrictions(const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& Modules);
@@ -643,6 +859,8 @@ private:
 #if AS_CAN_GENERATE_JIT
 	TUniquePtr<FAngelscriptNativeFormState> NativeFormState;
 #endif
+	TUniquePtr<FAngelscriptCacheRuntimeState> CacheRuntimeState;
+	TUniquePtr<FAngelscriptCacheService> CacheService;
 	TArray<FName> StaticNames;
 	TMap<FName, int32> StaticNamesByIndex;
 
@@ -673,7 +891,9 @@ private:
 	friend struct FAngelscriptSubsystemOwnershipTestAccess;
 	friend struct FAngelscriptTickBehaviorTestAccess;
 	friend struct FAngelscriptHotReloadTestAccess;
+	friend struct FAngelscriptCacheChangedModuleTestAccess;
 	friend struct FAngelscriptEngineScope;
+	friend class FAngelscriptCacheModuleRestorer;
 	friend struct FAngelscriptTestEngineScopeAccess;
 	friend struct FStaticJITDiagnostics;
 	friend struct FAngelscriptStateSnapshotBuilder;
@@ -750,11 +970,12 @@ public:
 	friend struct FAngelscriptPrecompiledData;
 	struct FAngelscriptPrecompiledData* PrecompiledData = nullptr;
 	struct FAngelscriptStaticJIT* StaticJIT = nullptr;
-	bool bUsePrecompiledData = false;
-	bool bUsedPrecompiledDataForPreprocessor = false;
+	// Explicit compatibility transport used only by StaticJIT diagnostics while the
+	// sibling provider change still owns its cutover. Production startup never sets it.
+	bool bUseStaticJITCompatibilityData = false;
 	bool bScriptDevelopmentMode = false;
 
-	static bool IsGeneratingPrecompiledData();
+	static bool IsCollectingStaticJITCompatibilityBinds();
 
 	// Argument type specializations that were bound by Bind_BlueprintEvent.cpp,
 	// the preprocessor uses this list to look up what push argument function to call
@@ -793,6 +1014,7 @@ public:
 #endif
 
 	static const FName& GetStaticName(int32 Index);
+	static FName ResolveStaticName(int32 Index, const FString& CanonicalName);
 	static bool TryGetStaticName(int32 Index, FName& OutName);
 	static int32 GetOrAddStaticName(FName Name);
 	static int32 GetStaticNameCount();
@@ -819,9 +1041,27 @@ public:
 		return RuntimeConfig;
 	}
 
+	// Runtime-owned source authority used by Cache V2 startup discovery and
+	// read-only diagnostics. Callers may observe through the interface but do not
+	// own or replace the configured provider.
+	IAngelscriptSourceProvider* GetSourceProvider() const
+	{
+		return Dependencies.SourceProvider.Get();
+	}
+
+#if WITH_ANGELSCRIPT_UNITTESTS
+	IAngelscriptCacheRestoreFaultInjector*
+	GetCacheRestoreFaultInjectorForTests() const
+	{
+		return Dependencies.CacheRestoreFaultInjector;
+	}
+#endif
+
 private:
+	void WriteRequestedCacheV2ProcessReport() const;
 	FAngelscriptEngineConfig RuntimeConfig;
 	FAngelscriptEngineDependencies Dependencies;
+	bool bCacheV2ShutdownFlushAttempted = false;
 
 	// Hook delegate fields. Field order/grouping kept identical to the
 	// previous hooks container for git-blame and diff
@@ -1550,6 +1790,7 @@ struct FAngelscriptModuleDesc
 	const struct FAngelscriptPrecompiledModule* PrecompiledData = nullptr;
 	bool bCompileError = false;
 	bool bLoadedPrecompiledCode = false;
+	bool bLoadedIncrementalCache = false;
 	bool bModuleSwapInError = false;
 
 	// Find the class descriptor by name in this module

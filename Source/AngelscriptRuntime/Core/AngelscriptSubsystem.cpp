@@ -62,6 +62,20 @@ void UAngelscriptSubsystem::Tick(float DeltaTime)
 	{
 		PrimaryEngine->Tick(DeltaTime);
 	}
+
+	FAngelscriptRuntimeReloadResult ReloadResult;
+	if (PrimaryEngine->ConsumePackagedRuntimeReloadResult(ReloadResult))
+	{
+		OnRuntimeReloadCompleted.Broadcast(ReloadResult);
+	}
+}
+
+EAngelscriptRuntimeReloadRequestStatus
+UAngelscriptSubsystem::RequestRuntimeReload()
+{
+	return PrimaryEngine != nullptr
+		? PrimaryEngine->RequestPackagedRuntimeReload()
+		: EAngelscriptRuntimeReloadRequestStatus::ShuttingDown;
 }
 
 TStatId UAngelscriptSubsystem::GetStatId() const

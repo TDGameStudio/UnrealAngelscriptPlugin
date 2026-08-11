@@ -7,12 +7,12 @@
 #include "StaticJIT/StaticJITHeader.h"
 
 
-AS_FORCE_LINK FJitRef_Type TREF_UObject(0x29b998c0c00);
-AS_FORCE_LINK FJitRef_Type TREF_UStaticJITAotFunctionCarrier(0x29ba1094200);
-AS_FORCE_LINK FJitRef_GlobalVar GREF___StaticType_UStaticJITAotFunctionCarrier(0x29b9c4920e0);
-AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR_FAotObjectLastProbe___beh0(0x29b9c484600);
-AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR___WorldContext(0x29b9caf1200);
-AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR_TSubclassOf_UObject__opImplConv(0x29b9c486c00);
+AS_FORCE_LINK FJitRef_Type TREF_UObject(0x2272f9e6600);
+AS_FORCE_LINK FJitRef_Type TREF_UStaticJITAotFunctionCarrier(0x22715b52a00);
+AS_FORCE_LINK FJitRef_GlobalVar GREF___StaticType_UStaticJITAotFunctionCarrier(0x227361f1560);
+AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR_FAotObjectLastProbe___beh0(0x227361ea800);
+AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR___WorldContext(0x22733989200);
+AS_FORCE_LINK FJitRef_SystemFunctionPointer SYSPTR_TSubclassOf_UObject__opImplConv(0x227361ecc00);
 
 extern void AS_UStaticJITAotFunctionCarrier__UStaticJITAotFunctionCarrier(FScriptExecution& Execution, UObject* l_This);
 extern int32 AS_ASStaticJITAotFixture__AddForAOT(FScriptExecution& Execution, asDWORD p_Value);
@@ -29,7 +29,7 @@ constexpr SIZE_T POFFSET_UStaticJITAotFunctionCarrier_StoredValue = Align(sizeof
 constexpr SIZE_T PALIGN_UStaticJITAotFunctionCarrier_StoredValue = AlignmentMax(alignof(UObject), 4);
 constexpr SIZE_T TALIGN_UStaticJITAotFunctionCarrier = PALIGN_UStaticJITAotFunctionCarrier_StoredValue;
 constexpr SIZE_T TSIZE_UStaticJITAotFunctionCarrier = Align(POFFSET_UStaticJITAotFunctionCarrier_StoredValue + 4, TALIGN_UStaticJITAotFunctionCarrier);
-AS_FORCE_LINK FJitVerifyPropertyOffset PVERIFY_UStaticJITAotFunctionCarrier_StoredValue(0x60100076d3, POFFSET_UStaticJITAotFunctionCarrier_StoredValue);
+AS_FORCE_LINK FJitVerifyPropertyOffset PVERIFY_UStaticJITAotFunctionCarrier_StoredValue(0x60100075a7, POFFSET_UStaticJITAotFunctionCarrier_StoredValue);
 void AS_UStaticJITAotFunctionCarrier__StorePrimitiveArg(FScriptExecution& Execution, UObject* l_This, asDWORD p_Value)
 {
 // == Jit at BC 0 ==

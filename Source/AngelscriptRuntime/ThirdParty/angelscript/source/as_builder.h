@@ -48,6 +48,7 @@
 #include "as_scriptnode.h"
 #include "as_datatype.h"
 #include "as_property.h"
+#include "as_buildartifact.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -67,12 +68,16 @@ struct sFunctionDescription
 	asCArray<asCString>  paramNames;
 	int                  funcId;
 	bool                 isExistingShared;
+	asEBuildArtifactInvocationKind artifactInvocationKind;
 };
 
 struct sFactoryDescription
 {
 	asCScriptCode       *script;
+	asCScriptNode       *node;
+	asCObjectType       *objType;
 	int funcId;
+	bool isGenerated;
 };
 
 struct sGlobalVariableDescription
@@ -167,6 +172,17 @@ public:
 	int AddCode(const char *name, const char *code, int codeLength, int lineOffset, int sectionIdx, bool makeCopy);
 
 	int CompileFunction(const char *sectionName, const char *code, int lineOffset, asDWORD compileFlags, asCScriptFunction **outFunc);
+	void SetBuildArtifactInvocationCallback(
+		asBUILDARTIFACTINVOCATIONCALLBACK_t callback,
+		void *userData);
+	void SetBuildArtifactRestoreCallback(
+		asBUILDARTIFACTRESTORECALLBACK_t callback,
+		void *userData);
+	void SetBuildArtifactCompileResultCallback(
+		asBUILDARTIFACTCOMPILERESULTCALLBACK_t callback,
+		void *userData);
+	static void FinalizeBuildArtifactInvocation(
+		asSBuildArtifactInvocation &invocation);
 
 	// First stage of building, generate type information for all classes declared in this module
 	int BuildParallelParseScripts();
@@ -200,7 +216,44 @@ public:
 	bool               DoesGlobalPropertyExist(const char *prop, asSNameSpace *ns, asCGlobalProperty **outProp = 0, sGlobalVariableDescription **outDesc = 0, bool *isAppProp = 0, bool bAllowAnyModule = false);
 	asCGlobalProperty *GetGlobalProperty(const char *prop, asSNameSpace *ns, bool *isCompiled, bool *isPureConstant, asQWORD *constantValue, bool *isAppProp, bool bAllowAnyModule = false);
 	int                ValidateDefaultArgs(asCScriptCode *script, asCScriptNode *node, asCScriptFunction *func);
+	asCString          GetCanonicalTokenString(asCScriptNode *n, asCScriptCode *file);
 	asCString          GetCleanExpressionString(asCScriptNode *n, asCScriptCode *file);
+	asSBuildArtifactInvocation BuildArtifactInvocation(
+		asEBuildArtifactInvocationKind kind,
+		asCScriptCode *script,
+		asCScriptNode *node,
+		asCScriptFunction *function,
+		asCObjectType *ownerType,
+		bool isGenerated);
+	void EmitBuildArtifactInvocation(
+		asEBuildArtifactInvocationKind kind,
+		asCScriptCode *script,
+		asCScriptNode *node,
+		asCScriptFunction *function,
+		asCObjectType *ownerType,
+		bool isGenerated);
+	asSBuildArtifactInvocation BeginBuildArtifactCompile(
+		asEBuildArtifactInvocationKind kind,
+		asCScriptCode *script,
+		asCScriptNode *node,
+		asCScriptFunction *function,
+		asCObjectType *ownerType,
+		bool isGenerated);
+	void PrepareBuildArtifactFunctionAuthorities();
+	asEBuildArtifactRestoreResult TryRestoreBuildArtifact(
+		const asSBuildArtifactInvocation &invocation,
+		asCScriptFunction *function);
+	void CompleteBuildArtifactCompile(
+		const asSBuildArtifactInvocation &invocation,
+		asCScriptFunction *function,
+		int compileResult,
+		asEBuildArtifactRestoreResult restoreResult,
+		bool compilerInvoked);
+	void CaptureBuildArtifactDependency(
+		const asSBuildArtifactDependency &dependency);
+	void CaptureBuildArtifactPropertyDependency(
+		asCTypeInfo *ownerType,
+		asCObjectProperty *property);
 
 	asSNameSpace      *GetNameSpaceFromNode(asCScriptNode *node, asCScriptCode *script, asSNameSpace *implicitNs, asCScriptNode **next, asCObjectType **objType = 0);
 	asSNameSpace      *GetNameSpaceByString(const asCString &nsName, asSNameSpace *implicitNs, asCScriptNode *errNode, asCScriptCode *script, asCTypeInfo **scopeType = 0, bool isRequired = true);
@@ -222,6 +275,13 @@ public:
 
 	asCScriptEngine *engine;
 	asCModule       *module;
+	asBUILDARTIFACTINVOCATIONCALLBACK_t buildArtifactInvocationCallback;
+	void *buildArtifactInvocationUserData;
+	asBUILDARTIFACTRESTORECALLBACK_t buildArtifactRestoreCallback;
+	void *buildArtifactRestoreUserData;
+	asBUILDARTIFACTCOMPILERESULTCALLBACK_t buildArtifactCompileResultCallback;
+	void *buildArtifactCompileResultUserData;
+	asCArray<asCScriptFunction*> buildArtifactDependencyCaptureStack;
 
 #ifndef AS_NO_COMPILER
 //protected:
@@ -288,6 +348,7 @@ public:
 	void MarkDependency(asCTypeInfo* TypeInfo, asCScriptNode* node, asCScriptCode* script);
 	void MarkDependency(asCGlobalProperty* Variable, asCScriptNode* node, asCScriptCode* script);
 	void MarkDependency(asCScriptFunction* Function, asCScriptNode* node, asCScriptCode* script);
+	void MarkPropertyDependency(asCTypeInfo* OwnerType, asCObjectProperty* Property);
 	void MarkStructuralDependency(asCTypeInfo* UserTypeInfo, asCTypeInfo* DependentOnTypeInfo, asCScriptNode* node, asCScriptCode* script);
 	void MarkHardValueDependency(asCModule* DependencyModule, asCScriptNode* node, asCScriptCode* script);
 

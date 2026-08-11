@@ -13,6 +13,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptCompilationModuleSummary
 	int32 ClassCount = 0;
 	int32 FunctionCount = 0;
 	bool bLoadedPrecompiledCode = false;
+	bool bLoadedIncrementalCache = false;
 	TArray<FString> FileNames;
 	TArray<FString> ImportedModuleNames;
 
@@ -21,7 +22,10 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptCompilationModuleSummary
 
 struct ANGELSCRIPTRUNTIME_API FAngelscriptCompilationContext
 {
-	explicit FAngelscriptCompilationContext(ECompileType InCompileType, const TArray<TSharedRef<FAngelscriptModuleDesc>>& InInputModules);
+	explicit FAngelscriptCompilationContext(
+		ECompileType InCompileType,
+		const FAngelscriptCompileOptions& InCompileOptions,
+		const TArray<TSharedRef<FAngelscriptModuleDesc>>& InInputModules);
 
 	uint64 GetRunId() const
 	{
@@ -31,6 +35,11 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptCompilationContext
 	ECompileType GetCompileType() const
 	{
 		return CompileType;
+	}
+
+	EAngelscriptCompileCachePolicy GetCachePolicy() const
+	{
+		return CachePolicy;
 	}
 
 	ECompileResult GetCompileResult() const
@@ -52,6 +61,8 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptCompilationContext
 private:
 	uint64 RunId = 0;
 	ECompileType CompileType = ECompileType::SoftReloadOnly;
+	EAngelscriptCompileCachePolicy CachePolicy =
+		EAngelscriptCompileCachePolicy::Default;
 	ECompileResult CompileResult = ECompileResult::Error;
 	TArray<FAngelscriptCompilationModuleSummary> InputModuleSummaries;
 	TArray<FAngelscriptCompilationModuleSummary> CompiledModuleSummaries;

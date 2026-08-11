@@ -129,8 +129,8 @@ AS_FORCE_LINK const FAngelscriptBind Bind_FName(
 		FName_.Method("bool opEquals(const FString& Other) const", &FAngelscriptFNameBinds::EqualsString);
 
 		Binds.BindGlobalFunctionForTarget(
-			"const FName& __STATIC_NAME(int Id) no_discard",
-			FUNC_TRIVIAL(FAngelscriptEngine::GetStaticName));
+			"FName __STATIC_NAME(int Id, const FString& CanonicalName) no_discard",
+			FUNC_TRIVIAL(FAngelscriptEngine::ResolveStaticName));
 	});
 
 void FAngelscriptFNameBinds::ConstructDefault(FName* Address)

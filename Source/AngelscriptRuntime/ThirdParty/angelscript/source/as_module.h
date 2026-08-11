@@ -47,6 +47,7 @@
 #include "as_datatype.h"
 #include "as_scriptfunction.h"
 #include "as_property.h"
+#include "as_buildartifact.h"
 
 BEGIN_AS_NAMESPACE
 
@@ -123,6 +124,15 @@ public:
 	virtual int         AddScriptSection(const char *name, const char *code, size_t codeLength, int lineOffset);
 	virtual int         Build();
 	virtual int         CompileFunction(const char *sectionName, const char *code, int lineOffset, asDWORD reserved, asIScriptFunction **outFunc);
+	void                SetBuildArtifactInvocationCallback(
+		asBUILDARTIFACTINVOCATIONCALLBACK_t callback,
+		void *callbackUserData);
+	void                SetBuildArtifactRestoreCallback(
+		asBUILDARTIFACTRESTORECALLBACK_t callback,
+		void *callbackUserData);
+	void                SetBuildArtifactCompileResultCallback(
+		asBUILDARTIFACTCOMPILERESULTCALLBACK_t callback,
+		void *callbackUserData);
 	virtual asDWORD     SetAccessMask(asDWORD accessMask);
 	virtual int         SetDefaultNamespace(const char *nameSpace);
 	virtual const char *GetDefaultNamespace() const;
@@ -241,6 +251,12 @@ public:
 
 	asCScriptEngine  *engine;
 	asCBuilder       *builder;
+	asBUILDARTIFACTINVOCATIONCALLBACK_t buildArtifactInvocationCallback;
+	void             *buildArtifactInvocationUserData;
+	asBUILDARTIFACTRESTORECALLBACK_t buildArtifactRestoreCallback;
+	void             *buildArtifactRestoreUserData;
+	asBUILDARTIFACTCOMPILERESULTCALLBACK_t buildArtifactCompileResultCallback;
+	void             *buildArtifactCompileResultUserData;
 	asCArray<asPWORD> userData;
 	asDWORD           accessMask;
 	asSNameSpace     *defaultNamespace;

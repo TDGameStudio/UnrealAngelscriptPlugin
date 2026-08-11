@@ -2155,7 +2155,12 @@ FString FAngelscriptPreprocessor::GenerateStaticName(FFile& File, const FString&
 {
 	FName Name = FName(*InName);
 	const int32 Index = FAngelscriptEngine::GetOrAddStaticName(Name);
-	return FString::Printf(TEXT("__STATIC_NAME(%d)"), Index);
+	const FString EscapedCanonicalName =
+		Name.ToString().ReplaceCharWithEscapedChar();
+	return FString::Printf(
+		TEXT("__STATIC_NAME(%d, \"%s\")"),
+		Index,
+		*EscapedCanonicalName);
 }
 
 FString FAngelscriptPreprocessor::GenerateFormatString(FFile& File, const FString& FormatStr)

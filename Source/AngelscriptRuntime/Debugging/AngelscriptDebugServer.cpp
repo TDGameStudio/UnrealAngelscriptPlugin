@@ -739,7 +739,14 @@ void FAngelscriptDebugServer::ResetClientStateForShutdown()
 	Listener = new FTcpListener(FIPv4Endpoint(FIPv4Address::Any, Port));
 	Listener->OnConnectionAccepted().BindRaw(this, &FAngelscriptDebugServer::HandleConnectionAccepted);
 
-	UE_LOG(Angelscript, Log, TEXT("Angelscript debug server listening on %s"), *Listener->GetLocalEndpoint().ToText().ToString());
+	if (Listener->IsActive())
+	{
+		UE_LOG(Angelscript, Log, TEXT("Angelscript debug server listening on %s"), *Listener->GetLocalEndpoint().ToText().ToString());
+	}
+	else
+	{
+		UE_LOG(Angelscript, Warning, TEXT("Angelscript debug server failed to listen on %s"), *Listener->GetLocalEndpoint().ToText().ToString());
+	}
 #if PLATFORM_WINDOWS && WITH_AS_DEBUGSERVER
 	DataBreakpoint_Windows::GActiveDebugServer.Store(this);
 	if (DataBreakpoint_Windows::DegbugRegisterExceptionHandlerHandle)
@@ -748,6 +755,11 @@ void FAngelscriptDebugServer::ResetClientStateForShutdown()
 	}
 	DataBreakpoint_Windows::DegbugRegisterExceptionHandlerHandle = ::AddVectoredExceptionHandler(0, DataBreakpoint_Windows::DebugRegisterExceptionHandler);
 #endif
+}
+
+bool FAngelscriptDebugServer::IsListening() const
+{
+	return Listener != nullptr && Listener->IsActive();
 }
 
 FAngelscriptDebugServer::~FAngelscriptDebugServer()

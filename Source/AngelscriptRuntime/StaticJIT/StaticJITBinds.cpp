@@ -43,7 +43,7 @@ namespace
 
 	void AddNativeForm(FAngelscriptEngine& Engine, asIScriptFunction* ScriptFunction, FScriptFunctionNativeForm* NativeForm)
 	{
-		if (ScriptFunction == nullptr || NativeForm == nullptr || !Engine.bGeneratePrecompiledData)
+		if (ScriptFunction == nullptr || NativeForm == nullptr || !Engine.bCollectStaticJITCompatibilityBinds)
 		{
 			delete NativeForm;
 			return;
@@ -1038,7 +1038,7 @@ void FScriptFunctionNativeForm::BindTArrayIndex(FAngelscriptEngine& Engine, asIS
 
 const ANSICHAR* FScriptFunctionNativeForm::AllocateAnsiTypeName(const FString& TypeName)
 {
-	if (!FAngelscriptEngine::IsGeneratingPrecompiledData())
+	if (!FAngelscriptEngine::IsCollectingStaticJITCompatibilityBinds())
 		return nullptr;
 
 	auto* Buffer = new TArray<ANSICHAR>();

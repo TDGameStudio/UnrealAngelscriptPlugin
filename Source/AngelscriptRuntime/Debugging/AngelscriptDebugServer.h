@@ -667,6 +667,7 @@ public:
 public:
 	FAngelscriptDebugServer(FAngelscriptEngine* InOwnerEngine, int Port);
 	~FAngelscriptDebugServer();
+	bool IsListening() const;
 
 	void Tick();
 	void ProcessMessages();

@@ -15,6 +15,7 @@ FAngelscriptCompilationModuleSummary FAngelscriptCompilationModuleSummary::FromM
 	Summary.ImportCount = Module->ImportedModules.Num();
 	Summary.ClassCount = Module->Classes.Num();
 	Summary.bLoadedPrecompiledCode = Module->bLoadedPrecompiledCode;
+	Summary.bLoadedIncrementalCache = Module->bLoadedIncrementalCache;
 
 	for (const FAngelscriptModuleDesc::FCodeSection& Section : Module->Code)
 	{
@@ -35,9 +36,13 @@ FAngelscriptCompilationModuleSummary FAngelscriptCompilationModuleSummary::FromM
 	return Summary;
 }
 
-FAngelscriptCompilationContext::FAngelscriptCompilationContext(ECompileType InCompileType, const TArray<TSharedRef<FAngelscriptModuleDesc>>& InInputModules)
+FAngelscriptCompilationContext::FAngelscriptCompilationContext(
+	ECompileType InCompileType,
+	const FAngelscriptCompileOptions& InCompileOptions,
+	const TArray<TSharedRef<FAngelscriptModuleDesc>>& InInputModules)
 	: RunId(AllocateRunId())
 	, CompileType(InCompileType)
+	, CachePolicy(InCompileOptions.CachePolicy)
 {
 	InputModuleSummaries.Reserve(InInputModules.Num());
 	for (const TSharedRef<FAngelscriptModuleDesc>& Module : InInputModules)
@@ -62,11 +67,13 @@ void FAngelscriptCompilationContext::SetResult(ECompileResult InCompileResult)
 
 void FAngelscriptCompilationContext::PopulateInputSummary(FAngelscriptCompilationEvent& Event) const
 {
+	Event.CachePolicy = CachePolicy;
 	PopulateEventSummary(Event, InputModuleSummaries);
 }
 
 void FAngelscriptCompilationContext::PopulateCompiledSummary(FAngelscriptCompilationEvent& Event) const
 {
+	Event.CachePolicy = CachePolicy;
 	PopulateEventSummary(Event, CompiledModuleSummaries);
 }
 
@@ -74,6 +81,7 @@ void FAngelscriptCompilationContext::PopulateResult(FAngelscriptCompilationEvent
 {
 	Event.CompilationRunId = RunId;
 	Event.CompileType = CompileType;
+	Event.CachePolicy = CachePolicy;
 	Event.CompileResult = CompileResult;
 	Event.bSucceeded = CompileResult == ECompileResult::FullyHandled || CompileResult == ECompileResult::PartiallyHandled;
 	Event.bFailed = !Event.bSucceeded;
@@ -105,6 +113,7 @@ void FAngelscriptCompilationContext::PopulateEventSummary(FAngelscriptCompilatio
 		Event.ClassCount += Summary.ClassCount;
 		Event.FunctionCount += Summary.FunctionCount;
 		Event.bLoadedPrecompiledCode |= Summary.bLoadedPrecompiledCode;
+		Event.bLoadedIncrementalCache |= Summary.bLoadedIncrementalCache;
 	}
 
 	Event.ModuleCount = Event.ModuleNames.Num();

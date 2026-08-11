@@ -1,0 +1,4 @@
+# The frozen offline-contract fixtures are wire-format inputs. Their parsers
+# deliberately reject CRLF, so Windows core.autocrlf must not rewrite them.
+Standalone/Tests/Fixtures/OfflineContract/**/*.json text eol=lf
+Standalone/Tests/Fixtures/OfflineContract/**/*.jsonl text eol=lf

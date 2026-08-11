@@ -1,5 +1,13 @@
+#ifndef ANGELSCRIPT_RUNTIME_UNITTEST_POLICY_OWNER
+#error ANGELSCRIPT_RUNTIME_UNITTEST_POLICY_OWNER must be publicly propagated by AngelscriptRuntime.Build.cs.
+#endif
+
+#if ANGELSCRIPT_RUNTIME_UNITTEST_POLICY_OWNER != 1
+#error ANGELSCRIPT_RUNTIME_UNITTEST_POLICY_OWNER must identify AngelscriptRuntime as the unit-test compile-policy owner.
+#endif
+
 #ifndef WITH_ANGELSCRIPT_UNITTESTS
-#error WITH_ANGELSCRIPT_UNITTESTS must be defined by AngelscriptTest.Build.cs.
+#error WITH_ANGELSCRIPT_UNITTESTS must be defined and publicly propagated by AngelscriptRuntime.Build.cs.
 #endif
 
 #ifndef WITH_ANGELSCRIPT_NATIVE_MODULE_FUNCTION_ADDRESS

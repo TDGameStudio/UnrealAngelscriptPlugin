@@ -324,7 +324,7 @@ public:
 
 		FAngelscriptBoundFunction FunctionA = TypeA.Method("int32 GetValue() const", &FDirectFluentValue::GetValue);
 		FAngelscriptBoundFunction FunctionB = TypeB.Method("int32 GetValue() const", &FDirectFluentValue::GetValue);
-		EngineA->bGeneratePrecompiledData = true;
+		EngineA->bCollectStaticJITCompatibilityBinds = true;
 		FunctionA
 			.EditorOnly()
 			.Deprecated("Use Replacement")
@@ -375,7 +375,7 @@ public:
 		bPassed &= TestRunner->TestEqual(TEXT("Script-object metadata injection should target its result"), ObjectMetadataFunction->sysFuncIntf->passFirstParamMetaData, asEFirstParamMetaData::ScriptObjectType);
 		bPassed &= TestRunner->TestEqual(TEXT("CompileOutAsMethodChain should target its result"), ObjectMetadataFunction->compileOutType, asECompileOutType::CompileOutAsMethodChain);
 #if AS_CAN_GENERATE_JIT
-		EngineB->bGeneratePrecompiledData = true;
+		EngineB->bCollectStaticJITCompatibilityBinds = true;
 		FunctionB
 			.NativeMethod("FDirectFluentValue::GetValue", false)
 			.Documentation(TEXT("Engine B documentation"), TEXT("BindingArchitecture"));
@@ -444,7 +444,7 @@ public:
 
 #if AS_CAN_GENERATE_JIT && WITH_DEV_AUTOMATION_TESTS
 		const int32 NativeFormCountBeforeTest = FScriptFunctionNativeForm::NumNativeForms();
-		EngineA->bGeneratePrecompiledData = false;
+		EngineA->bCollectStaticJITCompatibilityBinds = false;
 		AdjacentFunctions[MethodIndex]
 			.NativeMethod("FDirectFluentValue::DisabledGeneration", true);
 		ASSERT_THAT(IsNull(
@@ -455,7 +455,7 @@ public:
 			FScriptFunctionNativeForm::NumNativeForms(),
 			TEXT("Disabled precompiled-data generation must not change the native-form count")));
 #endif
-		EngineA->bGeneratePrecompiledData = true;
+		EngineA->bCollectStaticJITCompatibilityBinds = true;
 		TargetFunctions[ConstructorIndex]
 			.NativeConstructor("FDirectFluentValue", true, "0");
 		TargetFunctions[DestructorIndex]
@@ -625,7 +625,7 @@ public:
 			ReplacedTemplateForm.bTrivial && !ReplacedTemplateForm.bNeedsCompare && ReplacedTemplateForm.bNeedsCopy,
 			TEXT("Replacing a native form must expose the latest copy-only configuration")));
 
-		EngineB->bGeneratePrecompiledData = true;
+		EngineB->bCollectStaticJITCompatibilityBinds = true;
 		OtherEngineFunctions[FunctionHeaderIndex]
 			.NativeFunctionHeader("FDirectFluentValue::EngineBFunctionHeader", "EngineBFluentFunctionHeader.h", false);
 		FScriptFunctionNativeForm* EngineBForm = FScriptFunctionNativeForm::GetNativeForm(OtherEngineFunctions[FunctionHeaderIndex].GetFunction());
@@ -708,7 +708,7 @@ public:
 			1);
 		FAngelscriptBoundFunction Invalid = Type.Method("int32 Duplicate() const", &FDirectFluentValue::GetValue);
 		const FString FirstDiagnostic = Binds.GetRegistrationFailureDiagnostic();
-		Engine->bGeneratePrecompiledData = true;
+		Engine->bCollectStaticJITCompatibilityBinds = true;
 		Invalid
 			.EditorOnly()
 			.NoDiscard()

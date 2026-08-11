@@ -1,0 +1,243 @@
+{
+  "format": "AngelscriptCacheV2Dump",
+  "format_version": 1,
+  "generation": {
+    "generation_id": "3565eddce0b285be62ba14ef747d0048cb58567f279dcd0ba6eca20c8a20d876",
+    "module_roots": [
+      {
+        "content_hash": "6626ae411064cf8fa87d87c6edceed1b8f8e93c60c0f11101d5d872736c1782c",
+        "module_key": "1111111111111111111111111111111111111111111111111111111111111111",
+        "record_id": "076626ae411064cf8fa87d87c6edceed1b8f8e93c60c0f11101d5d872736c1782c",
+        "record_kind": "ModuleSnapshot",
+        "record_kind_value": 7
+      }
+    ],
+    "packs": [
+      {
+        "data_offset": 608,
+        "header_size": 32,
+        "index_entry_size": 96,
+        "integrity": {
+          "pack_id_matches": true
+        },
+        "magic": "UEASCV2P",
+        "pack_id": "519abe53376681c099034f12b809cc63bc6c23719cb273aa4f0d96e6f65dff45",
+        "record_count": 6,
+        "schema_version": 1,
+        "size": 1464
+      }
+    ],
+    "profile": "7777777777777777777777777777777777777777777777777777777777777777",
+    "record_count": 6,
+    "records": [
+      {
+        "codec": "None",
+        "content_hash": "d0f4947e204c076d74f6e057fd0e13e9c8594b01062f2573b577faaf1d3b2170",
+        "pack_offset": 608,
+        "raw_size": 48,
+        "stable_keys": [],
+        "stored_size": 48,
+        "summary": {
+          "decoder_scope": "common-header-v1",
+          "payload_schema_version": 1,
+          "source_snapshot": "8888888888888888888888888888888888888888888888888888888888888888"
+        },
+        "record_kind": "SourceIndex"
+      },
+      {
+        "codec": "None",
+        "content_hash": "14396e51fe62dc82d1b85794788b0ff7d1d622c7a70e35e997b8cbd92ed0fe09",
+        "pack_offset": 656,
+        "raw_size": 104,
+        "stable_keys": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "stored_size": 104,
+        "summary": {
+          "canonical_module_name": "Gameplay",
+          "canonical_namespaces": [
+            "Game"
+          ],
+          "declaration_count": 0,
+          "declarations": [],
+          "decoder_scope": "module-interface-v1",
+          "dependencies": [],
+          "imports": [],
+          "interface_abi": "2222222222222222222222222222222222222222222222222222222222222222",
+          "module_key": "1111111111111111111111111111111111111111111111111111111111111111",
+          "payload_schema_version": 1
+        },
+        "record_kind": "ModuleInterface"
+      },
+      {
+        "codec": "None",
+        "content_hash": "309e58ff7f22bfb9208336a0d9cddffb76a354ae0e2cb3948a1e88ef78f5de1c",
+        "pack_offset": 760,
+        "raw_size": 214,
+        "stable_keys": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "stored_size": 214,
+        "summary": {
+          "canonical_declaration": "class Game::PlayerState",
+          "canonical_name": "PlayerState",
+          "canonical_namespace": "Game",
+          "decoder_scope": "type-schema-v1",
+          "dependencies": [],
+          "layout": {
+            "base_property_boundary": 0,
+            "semantic_alignment": 1,
+            "semantic_size": 0,
+            "type_layout_hash": "abababababababababababababababababababababababababababababababab"
+          },
+          "layout_inputs": [],
+          "metadata": [],
+          "module_key": "1111111111111111111111111111111111111111111111111111111111111111",
+          "ordered_behavior_slots": [],
+          "ordered_methods": [],
+          "ordered_properties": [],
+          "payload_schema_version": 1,
+          "reflection": {
+            "class_reflection_flags": 0,
+            "config_name": null,
+            "kind": 1,
+            "kind_name": "None",
+            "ordered_ufunction_members": [],
+            "static_class_global_name": null
+          },
+          "relations": [],
+          "type_key": "3333333333333333333333333333333333333333333333333333333333333333",
+          "type_kind": 1,
+          "type_kind_name": "Class",
+          "type_semantic_flags": 5,
+          "virtual_function_table": []
+        },
+        "record_kind": "TypeSchema"
+      },
+      {
+        "codec": "None",
+        "content_hash": "7d413fc3dba29e951e165282037b986fae566779a7bd0cadb509984b0625d2e9",
+        "pack_offset": 974,
+        "raw_size": 124,
+        "stable_keys": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "stored_size": 124,
+        "summary": {
+          "decoder_scope": "common-header-v1",
+          "initializer_payload_policy": "opaque",
+          "module_key": "1111111111111111111111111111111111111111111111111111111111111111",
+          "ordered_global_count": 0,
+          "payload_schema_version": 1,
+          "profile": "7777777777777777777777777777777777777777777777777777777777777777",
+          "state_input_hash": "9999999999999999999999999999999999999999999999999999999999999999"
+        },
+        "record_kind": "ModuleState"
+      },
+      {
+        "codec": "Zlib",
+        "content_hash": "defa3a6862f562debbaa63e966045eb8ced5d6d829f467c463f2fef810e67d10",
+        "pack_offset": 1098,
+        "raw_size": 296,
+        "stable_keys": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "4444444444444444444444444444444444444444444444444444444444444444"
+        ],
+        "stored_size": 62,
+        "summary": {
+          "actual_dependencies": [],
+          "debug_hash": "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+          "decoder_scope": "function-body-v1",
+          "execution_hash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "execution_payload": {
+            "blake3": "51f62bb47e6d5b4737d9ea66728dfd16d74b71ba3a2b864022bc28076c616c5a",
+            "codec_version": 17,
+            "representation": "opaque",
+            "size": 18
+          },
+          "expected_declaration_abi": "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+          "function_input_digest": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+          "function_key": "4444444444444444444444444444444444444444444444444444444444444444",
+          "function_source_digest": "a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4",
+          "invocation_kind": 2,
+          "module_key": "1111111111111111111111111111111111111111111111111111111111111111",
+          "payload_schema_version": 1,
+          "profile": "7777777777777777777777777777777777777777777777777777777777777777"
+        },
+        "record_kind": "FunctionBody"
+      },
+      {
+        "codec": "None",
+        "content_hash": "6626ae411064cf8fa87d87c6edceed1b8f8e93c60c0f11101d5d872736c1782c",
+        "pack_offset": 1160,
+        "raw_size": 304,
+        "stable_keys": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333",
+          "4444444444444444444444444444444444444444444444444444444444444444"
+        ],
+        "stored_size": 304,
+        "summary": {
+          "decoder_scope": "module-snapshot-v1",
+          "function_bodies": [
+            {
+              "content_hash": "defa3a6862f562debbaa63e966045eb8ced5d6d829f467c463f2fef810e67d10",
+              "function_key": "4444444444444444444444444444444444444444444444444444444444444444",
+              "record_id": "05defa3a6862f562debbaa63e966045eb8ced5d6d829f467c463f2fef810e67d10",
+              "record_kind": "FunctionBody",
+              "record_kind_value": 5
+            }
+          ],
+          "module_interface": {
+            "content_hash": "14396e51fe62dc82d1b85794788b0ff7d1d622c7a70e35e997b8cbd92ed0fe09",
+            "module_key": "1111111111111111111111111111111111111111111111111111111111111111",
+            "record_id": "0214396e51fe62dc82d1b85794788b0ff7d1d622c7a70e35e997b8cbd92ed0fe09",
+            "record_kind": "ModuleInterface",
+            "record_kind_value": 2
+          },
+          "module_key": "1111111111111111111111111111111111111111111111111111111111111111",
+          "module_state": {
+            "content_hash": "7d413fc3dba29e951e165282037b986fae566779a7bd0cadb509984b0625d2e9",
+            "module_key": "1111111111111111111111111111111111111111111111111111111111111111",
+            "record_id": "047d413fc3dba29e951e165282037b986fae566779a7bd0cadb509984b0625d2e9",
+            "record_kind": "ModuleState",
+            "record_kind_value": 4
+          },
+          "payload_schema_version": 1,
+          "type_schemas": [
+            {
+              "content_hash": "309e58ff7f22bfb9208336a0d9cddffb76a354ae0e2cb3948a1e88ef78f5de1c",
+              "record_id": "03309e58ff7f22bfb9208336a0d9cddffb76a354ae0e2cb3948a1e88ef78f5de1c",
+              "record_kind": "TypeSchema",
+              "record_kind_value": 3,
+              "type_key": "3333333333333333333333333333333333333333333333333333333333333333"
+            }
+          ]
+        },
+        "record_kind": "ModuleSnapshot"
+      }
+    ],
+    "selected_record_count": 6,
+    "size": 982,
+    "source_snapshot": "8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "input_kind": "cache-root",
+  "namespace": {
+    "compatibility": "5555555555555555555555555555555555555555555555555555555555555555",
+    "context": "6666666666666666666666666666666666666666666666666666666666666666",
+    "pointers": [
+      {
+        "checksum": "5b45d0f70eee2d6f0d96ac7ddce3b16bd86950622f216dd6690479720d3c9b6b",
+        "checksum_matches": true,
+        "generation_id": "3565eddce0b285be62ba14ef747d0048cb58567f279dcd0ba6eca20c8a20d876",
+        "magic": "UEASCV2C",
+        "pointer_kind_value": 1,
+        "schema_version": 1,
+        "size": 80,
+        "slot": "Current"
+      }
+    ]
+  },
+  "ok": true
+}

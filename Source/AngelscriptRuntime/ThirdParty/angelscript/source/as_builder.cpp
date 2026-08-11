@@ -89,11 +89,364 @@ private:
 
 #endif
 
+//[UE++]: Stable Cache V2 function identity is declaration metadata, not compile
+// order state. Publish it as soon as the script function exists so an earlier
+// Factory or function artifact can resolve forward references before the target
+// function reaches its own compiler/restore callback.
+static void SetBuildArtifactFunctionIdentity(
+	asCScriptFunction *function,
+	asEBuildArtifactInvocationKind kind,
+	asCObjectType *ownerType)
+{
+	if( function == 0 )
+		return;
+	function->artifactInvocationKind = kind;
+	function->artifactOwnerType = ownerType ? ownerType : function->objectType;
+}
+
+// Freeze the exact invocation metadata that the later compiler callback will
+// observe without starting compilation or dependency capture. Generated
+// constructors/destructors/factories derive their canonical slice from the
+// owning class node, so hosts that install restore callbacks after layout can
+// build complete current semantic authority before stage 3.
+static void RetainBuildArtifactFunctionAuthority(
+	asCScriptFunction *function,
+	asEBuildArtifactInvocationKind kind,
+	asCObjectType *ownerType,
+	const asSBuildArtifactInvocation &invocation)
+{
+	if( function == 0 )
+		return;
+	SetBuildArtifactFunctionIdentity(function, kind, ownerType);
+	if( invocation.IsCacheable() && function->scriptData )
+		function->scriptData->artifactCanonicalSource =
+			invocation.canonicalSource;
+}
+//[UE--]
+
 asCBuilder::asCBuilder(asCScriptEngine *_engine, asCModule *_module)
 {
 	this->engine = _engine;
 	this->module = _module;
+	buildArtifactInvocationCallback = _module
+		? _module->buildArtifactInvocationCallback : 0;
+	buildArtifactInvocationUserData = _module
+		? _module->buildArtifactInvocationUserData : 0;
+	buildArtifactRestoreCallback = _module
+		? _module->buildArtifactRestoreCallback : 0;
+	buildArtifactRestoreUserData = _module
+		? _module->buildArtifactRestoreUserData : 0;
+	buildArtifactCompileResultCallback = _module
+		? _module->buildArtifactCompileResultCallback : 0;
+	buildArtifactCompileResultUserData = _module
+		? _module->buildArtifactCompileResultUserData : 0;
 	silent = false;
+}
+
+void asCBuilder::SetBuildArtifactCompileResultCallback(
+	asBUILDARTIFACTCOMPILERESULTCALLBACK_t callback,
+	void *userData)
+{
+	buildArtifactCompileResultCallback = callback;
+	buildArtifactCompileResultUserData = userData;
+}
+
+void asCBuilder::SetBuildArtifactInvocationCallback(
+	asBUILDARTIFACTINVOCATIONCALLBACK_t callback,
+	void *userData)
+{
+	buildArtifactInvocationCallback = callback;
+	buildArtifactInvocationUserData = userData;
+}
+
+void asCBuilder::SetBuildArtifactRestoreCallback(
+	asBUILDARTIFACTRESTORECALLBACK_t callback,
+	void *userData)
+{
+	buildArtifactRestoreCallback = callback;
+	buildArtifactRestoreUserData = userData;
+}
+
+void asCBuilder::FinalizeBuildArtifactInvocation(
+	asSBuildArtifactInvocation &invocation)
+{
+	if( invocation.kind == asBUILD_ARTIFACT_INVOCATION_PUBLIC_SINGLE_FUNCTION )
+	{
+		invocation.ineligibleReason =
+			asBUILD_ARTIFACT_INELIGIBLE_PUBLIC_SINGLE_UNSTABLE_COORDINATE;
+		return;
+	}
+	if( invocation.kind == asBUILD_ARTIFACT_INVOCATION_LAMBDA )
+	{
+		invocation.ineligibleReason =
+			asBUILD_ARTIFACT_INELIGIBLE_LAMBDA_UNSTABLE_COORDINATE;
+		return;
+	}
+	if( invocation.kind <= asBUILD_ARTIFACT_INVOCATION_INVALID ||
+		invocation.kind > asBUILD_ARTIFACT_INVOCATION_LAMBDA )
+	{
+		invocation.ineligibleReason =
+			asBUILD_ARTIFACT_INELIGIBLE_INVALID_INVOCATION_KIND;
+		return;
+	}
+	if( invocation.moduleName.GetLength() == 0 )
+	{
+		invocation.ineligibleReason =
+			asBUILD_ARTIFACT_INELIGIBLE_MISSING_MODULE;
+		return;
+	}
+	if( invocation.ownerName.GetLength() == 0 )
+	{
+		invocation.ineligibleReason =
+			asBUILD_ARTIFACT_INELIGIBLE_MISSING_OWNER;
+		return;
+	}
+	if( invocation.declaration.GetLength() == 0 )
+	{
+		invocation.ineligibleReason =
+			asBUILD_ARTIFACT_INELIGIBLE_MISSING_DECLARATION;
+		return;
+	}
+	if( invocation.canonicalSource.GetLength() == 0 )
+	{
+		invocation.ineligibleReason =
+			asBUILD_ARTIFACT_INELIGIBLE_MISSING_CANONICAL_SOURCE;
+		return;
+	}
+	if( invocation.sourceSection.GetLength() == 0 )
+	{
+		invocation.ineligibleReason =
+			asBUILD_ARTIFACT_INELIGIBLE_MISSING_SOURCE_SECTION;
+		return;
+	}
+	invocation.ineligibleReason = asBUILD_ARTIFACT_INELIGIBLE_NONE;
+}
+
+asSBuildArtifactInvocation asCBuilder::BuildArtifactInvocation(
+	asEBuildArtifactInvocationKind kind,
+	asCScriptCode *script,
+	asCScriptNode *node,
+	asCScriptFunction *function,
+	asCObjectType *ownerType,
+	bool isGenerated)
+{
+	asSBuildArtifactInvocation invocation;
+	invocation.kind = kind;
+	invocation.moduleName = module ? module->name : asCString();
+	invocation.nameSpace = function && function->GetNamespace()
+		? function->GetNamespace() : "";
+	invocation.functionName = function && function->GetName()
+		? function->GetName() : "";
+	invocation.declaration = function
+		? function->GetDeclarationStr(true, true, false, false) : asCString();
+	invocation.sourceSection = script ? script->name : asCString();
+	invocation.sourceTokenPos = node ? asUINT(node->tokenPos) : 0;
+	invocation.sourceTokenLength = node ? asUINT(node->tokenLength) : 0;
+	invocation.traits = function ? function->traits.traits : 0;
+	invocation.isGenerated = isGenerated;
+	invocation.hasNode = node != 0;
+
+	if( ownerType )
+	{
+		if( ownerType->nameSpace && ownerType->nameSpace->name.GetLength() )
+		{
+			invocation.ownerName = ownerType->nameSpace->name;
+			invocation.ownerName += "::";
+		}
+		invocation.ownerName += ownerType->name;
+	}
+	else if( function && function->objectType )
+	{
+		asCObjectType *functionOwner = CastToObjectType(function->objectType);
+		if( functionOwner && functionOwner->nameSpace &&
+			functionOwner->nameSpace->name.GetLength() )
+		{
+			invocation.ownerName = functionOwner->nameSpace->name;
+			invocation.ownerName += "::";
+		}
+		if( functionOwner )
+			invocation.ownerName += functionOwner->name;
+	}
+	else
+	{
+		invocation.ownerName = invocation.moduleName;
+	}
+
+	if( function && function->scriptData &&
+		function->scriptData->artifactCanonicalSource.GetLength() )
+	{
+		invocation.canonicalSource =
+			function->scriptData->artifactCanonicalSource;
+	}
+	else if( node && script )
+	{
+		invocation.canonicalSource = GetCanonicalTokenString(node, script);
+	}
+
+	FinalizeBuildArtifactInvocation(invocation);
+	return invocation;
+}
+
+void asCBuilder::EmitBuildArtifactInvocation(
+	asEBuildArtifactInvocationKind kind,
+	asCScriptCode *script,
+	asCScriptNode *node,
+	asCScriptFunction *function,
+	asCObjectType *ownerType,
+	bool isGenerated)
+{
+	if( buildArtifactInvocationCallback == 0 )
+		return;
+	asSBuildArtifactInvocation invocation = BuildArtifactInvocation(
+		kind, script, node, function, ownerType, isGenerated);
+	buildArtifactInvocationCallback(
+		&invocation, buildArtifactInvocationUserData);
+}
+
+asSBuildArtifactInvocation asCBuilder::BeginBuildArtifactCompile(
+	asEBuildArtifactInvocationKind kind,
+	asCScriptCode *script,
+	asCScriptNode *node,
+	asCScriptFunction *function,
+	asCObjectType *ownerType,
+	bool isGenerated)
+{
+	asSBuildArtifactInvocation invocation = BuildArtifactInvocation(
+		kind, script, node, function, ownerType, isGenerated);
+	if( function )
+	{
+		asASSERT(function->artifactInvocationKind ==
+			asBUILD_ARTIFACT_INVOCATION_INVALID ||
+			function->artifactInvocationKind == kind);
+		asASSERT(function->artifactOwnerType == 0 ||
+			function->artifactOwnerType ==
+				(ownerType ? ownerType : function->objectType));
+		RetainBuildArtifactFunctionAuthority(
+			function, kind, ownerType, invocation);
+		// Authored functions retain their own node slice when registered, but
+		// generated constructors/destructors/factories/default initializers only
+		// acquire a canonical source slice when the builder creates this exact
+		// invocation. Keep the finalized authority on the function so a later
+		// clean-capture transaction derives the same FunctionSourceDigest as the
+		// pre-compiler restore callback without retokenizing source in the host.
+	}
+	if( buildArtifactInvocationCallback )
+		buildArtifactInvocationCallback(
+			&invocation, buildArtifactInvocationUserData);
+
+	buildArtifactDependencyCaptureStack.PushLast(function);
+	if( function && function->scriptData )
+		function->scriptData->artifactDependencies.SetLength(0);
+	return invocation;
+}
+
+asEBuildArtifactRestoreResult asCBuilder::TryRestoreBuildArtifact(
+	const asSBuildArtifactInvocation &invocation,
+	asCScriptFunction *function)
+{
+	if( !invocation.IsCacheable() )
+		return asBUILD_ARTIFACT_RESTORE_NOT_CACHEABLE;
+	if( buildArtifactRestoreCallback == 0 )
+		return asBUILD_ARTIFACT_RESTORE_MISS;
+
+	const asEBuildArtifactRestoreResult result =
+		buildArtifactRestoreCallback(
+			&invocation, function, buildArtifactRestoreUserData);
+	if( result != asBUILD_ARTIFACT_RESTORE_RESTORED )
+	{
+		if( result == asBUILD_ARTIFACT_RESTORE_MISS ||
+			result == asBUILD_ARTIFACT_RESTORE_REJECTED_CORRUPT ||
+			result == asBUILD_ARTIFACT_RESTORE_NOT_CACHEABLE )
+			return result;
+		return asBUILD_ARTIFACT_RESTORE_REJECTED_CORRUPT;
+	}
+
+	// A host cannot suppress the authoritative compiler with a status-only hit.
+	// The lower-level restore adapter must have committed complete executable
+	// state to the exact function object already declared by this builder.
+	if( function == 0 || function->scriptData == 0 ||
+		function->scriptData->byteCode.GetLength() == 0 )
+		return asBUILD_ARTIFACT_RESTORE_REJECTED_CORRUPT;
+	return asBUILD_ARTIFACT_RESTORE_RESTORED;
+}
+
+void asCBuilder::CompleteBuildArtifactCompile(
+	const asSBuildArtifactInvocation &invocation,
+	asCScriptFunction *function,
+	int compileResult,
+	asEBuildArtifactRestoreResult restoreResult,
+	bool compilerInvoked)
+{
+	asASSERT(buildArtifactDependencyCaptureStack.GetLength() != 0);
+	asASSERT(buildArtifactDependencyCaptureStack[
+		buildArtifactDependencyCaptureStack.GetLength() - 1] == function);
+
+	const bool succeeded = compileResult >= 0 && invocation.IsCacheable()
+		&& function != 0 && function->scriptData != 0;
+	if( !succeeded && function && function->scriptData )
+		function->scriptData->artifactDependencies.SetLength(0);
+
+	if( buildArtifactCompileResultCallback )
+	{
+		asSBuildArtifactCompileResult result;
+		result.compileResult = compileResult;
+		result.function = function;
+		result.restoreResult = restoreResult;
+		result.compilerInvoked = compilerInvoked;
+		result.succeeded = compileResult >= 0;
+		if( succeeded && function->scriptData->artifactDependencies.GetLength() )
+		{
+			result.dependencies =
+				function->scriptData->artifactDependencies.AddressOf();
+			result.dependencyCount =
+				function->scriptData->artifactDependencies.GetLength();
+		}
+		buildArtifactCompileResultCallback(
+			&invocation, &result, buildArtifactCompileResultUserData);
+	}
+
+	buildArtifactDependencyCaptureStack.PopLast();
+}
+
+void asCBuilder::CaptureBuildArtifactDependency(
+	const asSBuildArtifactDependency &dependency)
+{
+	if( buildArtifactDependencyCaptureStack.GetLength() == 0 )
+		return;
+	asCScriptFunction *function = buildArtifactDependencyCaptureStack[
+		buildArtifactDependencyCaptureStack.GetLength() - 1];
+	if( function == 0 || function->scriptData == 0 )
+		return;
+
+	asCArray<asSBuildArtifactDependency> &dependencies =
+		function->scriptData->artifactDependencies;
+	for( asUINT n = 0; n < dependencies.GetLength(); ++n )
+	{
+		const asSBuildArtifactDependency &existing = dependencies[n];
+		if( existing.kind == dependency.kind
+			&& existing.referenceKind == dependency.referenceKind
+			&& existing.type == dependency.type
+			&& existing.function == dependency.function
+			&& existing.globalProperty == dependency.globalProperty
+			&& existing.propertyOwnerType == dependency.propertyOwnerType
+			&& existing.objectProperty == dependency.objectProperty )
+			return;
+	}
+	dependencies.PushLast(dependency);
+}
+
+void asCBuilder::CaptureBuildArtifactPropertyDependency(
+	asCTypeInfo *ownerType,
+	asCObjectProperty *property)
+{
+	if( ownerType == 0 || property == 0 )
+		return;
+	asSBuildArtifactDependency dependency;
+	dependency.kind = asBUILD_ARTIFACT_DEPENDENCY_PROPERTY_LAYOUT;
+	dependency.referenceKind = asBUILD_ARTIFACT_REFERENCE_PROPERTY;
+	dependency.propertyOwnerType = ownerType;
+	dependency.objectProperty = property;
+	CaptureBuildArtifactDependency(dependency);
 }
 
 asCBuilder::~asCBuilder()
@@ -358,10 +711,93 @@ int asCBuilder::BuildLayoutFunctions()
 	// will be resolved, so they can be accessed properly in the functions
 	CompileGlobalVariables();
 
+	if( numErrors == 0 )
+		PrepareBuildArtifactFunctionAuthorities();
+
 	if( numErrors > 0 )
 		return asERROR;
 
 	return asSUCCESS;
+}
+
+void asCBuilder::PrepareBuildArtifactFunctionAuthorities()
+{
+	for( asUINT n = 0; n < factories.GetLength(); n++ )
+	{
+		const sFactoryDescription &factoryDesc = factories[n];
+		asCScriptFunction *function =
+			engine->scriptFunctions[factoryDesc.funcId];
+		if( function == 0 )
+			continue;
+		const asSBuildArtifactInvocation invocation = BuildArtifactInvocation(
+			asBUILD_ARTIFACT_INVOCATION_FACTORY,
+			factoryDesc.script,
+			factoryDesc.node,
+			function,
+			factoryDesc.objType,
+			factoryDesc.isGenerated);
+		RetainBuildArtifactFunctionAuthority(
+			function,
+			asBUILD_ARTIFACT_INVOCATION_FACTORY,
+			factoryDesc.objType,
+			invocation);
+	}
+
+	for( asUINT n = 0; n < functions.GetLength(); n++ )
+	{
+		sFunctionDescription *current = functions[n];
+		if( current == 0 || current->isExistingShared )
+			continue;
+		if( current->node &&
+			!(current->node->nodeType == snStatementBlock ||
+			  current->node->lastChild->nodeType == snStatementBlock) )
+			continue;
+
+		asCScriptFunction *function =
+			engine->scriptFunctions[current->funcId];
+		if( function == 0 )
+			continue;
+
+		sClassDeclaration *classDecl = 0;
+		if( current->objType &&
+			(current->name == current->objType->name ||
+			 current->name[0] == '~' ||
+			 current->name == "__InitDefaults") )
+		{
+			for( asUINT c = 0; c < classDeclarations.GetLength(); c++ )
+			{
+				if( classDeclarations[c]->typeInfo == current->objType )
+				{
+					classDecl = classDeclarations[c];
+					break;
+				}
+			}
+			asASSERT(classDecl);
+		}
+
+		asCScriptNode *artifactNode = current->node;
+		if( artifactNode == 0 && classDecl )
+			artifactNode = classDecl->node;
+		const bool isGenerated =
+			current->artifactInvocationKind ==
+				asBUILD_ARTIFACT_INVOCATION_GENERATED_DEFAULT_CONSTRUCTOR ||
+			current->artifactInvocationKind ==
+				asBUILD_ARTIFACT_INVOCATION_GENERATED_DEFAULT_DESTRUCTOR ||
+			current->artifactInvocationKind ==
+				asBUILD_ARTIFACT_INVOCATION_INIT_DEFAULTS;
+		const asSBuildArtifactInvocation invocation = BuildArtifactInvocation(
+			current->artifactInvocationKind,
+			current->script,
+			artifactNode,
+			function,
+			current->objType,
+			isGenerated);
+		RetainBuildArtifactFunctionAuthority(
+			function,
+			current->artifactInvocationKind,
+			current->objType,
+			invocation);
+	}
 }
 
 int asCBuilder::BuildCompileCode()
@@ -373,8 +809,26 @@ int asCBuilder::BuildCompileCode()
 		asCScriptFunction* func = engine->scriptFunctions[factoryDesc.funcId];
 		if (func != nullptr)
 		{
-			asCCompiler compiler(this);
-			compiler.CompileFactory(this, factoryDesc.script, func);
+			asSBuildArtifactInvocation invocation = BeginBuildArtifactCompile(
+				asBUILD_ARTIFACT_INVOCATION_FACTORY,
+				factoryDesc.script,
+				factoryDesc.node,
+				func,
+				factoryDesc.objType,
+				factoryDesc.isGenerated);
+			const asEBuildArtifactRestoreResult restoreResult =
+				TryRestoreBuildArtifact(invocation, func);
+			int compileResult = asSUCCESS;
+			bool compilerInvoked = false;
+			if( restoreResult != asBUILD_ARTIFACT_RESTORE_RESTORED )
+			{
+				asCCompiler compiler(this);
+				compilerInvoked = true;
+				compileResult =
+					compiler.CompileFactory(this, factoryDesc.script, func);
+			}
+			CompleteBuildArtifactCompile(
+				invocation, func, compileResult, restoreResult, compilerInvoked);
 		}
 	}
 
@@ -586,16 +1040,40 @@ int asCBuilder::CompileFunction(const char *sectionName, const char *code, int l
 	funcDesc->script            = scripts[0];
 	funcDesc->node              = node;
 	funcDesc->name              = func->name;
+	funcDesc->objType           = 0;
 	funcDesc->funcId            = func->id;
 	funcDesc->paramNames        = func->parameterNames;
 	funcDesc->isExistingShared  = false;
+	funcDesc->artifactInvocationKind =
+		asBUILD_ARTIFACT_INVOCATION_PUBLIC_SINGLE_FUNCTION;
+	SetBuildArtifactFunctionIdentity(func,
+		asBUILD_ARTIFACT_INVOCATION_PUBLIC_SINGLE_FUNCTION, 0);
 
 	// This must be done in a loop, as it is possible that additional functions get declared as lambda's in the code
 	for( asUINT n = 0; n < functions.GetLength(); n++ )
 	{
-		asCCompiler compiler(this);
 		asCScriptFunction *f = engine->scriptFunctions[functions[n]->funcId];
-		r = compiler.CompileFunction(this, functions[n]->script, f->parameterNames, functions[n]->node, f, 0);
+		asSBuildArtifactInvocation invocation = BeginBuildArtifactCompile(
+			functions[n]->artifactInvocationKind,
+			functions[n]->script,
+			functions[n]->node,
+			f,
+			functions[n]->objType,
+			false);
+		const asEBuildArtifactRestoreResult restoreResult =
+			TryRestoreBuildArtifact(invocation, f);
+		bool compilerInvoked = false;
+		if( restoreResult == asBUILD_ARTIFACT_RESTORE_RESTORED )
+			r = asSUCCESS;
+		else
+		{
+			asCCompiler compiler(this);
+			compilerInvoked = true;
+			r = compiler.CompileFunction(this, functions[n]->script,
+				f->parameterNames, functions[n]->node, f, 0);
+		}
+		CompleteBuildArtifactCompile(
+			invocation, f, r, restoreResult, compilerInvoked);
 		if( r < 0 )
 			break;
 	}
@@ -977,7 +1455,6 @@ void asCBuilder::CompileFunctions()
 		if (current->node && !(current->node->nodeType == snStatementBlock || current->node->lastChild->nodeType == snStatementBlock))
 			continue;
 
-		asCCompiler compiler(this);
 		asCScriptFunction *func = engine->scriptFunctions[current->funcId];
 
 		// Find the class declaration for constructors
@@ -996,8 +1473,33 @@ void asCBuilder::CompileFunctions()
 			asASSERT( classDecl );
 		}
 
-		if( current->node )
+		asCScriptNode *artifactNode = current->node;
+		if( artifactNode == 0 && classDecl )
+			artifactNode = classDecl->node;
+		asSBuildArtifactInvocation invocation = BeginBuildArtifactCompile(
+			current->artifactInvocationKind,
+			current->script,
+			artifactNode,
+			func,
+			current->objType,
+			current->artifactInvocationKind ==
+				asBUILD_ARTIFACT_INVOCATION_GENERATED_DEFAULT_CONSTRUCTOR ||
+			current->artifactInvocationKind ==
+				asBUILD_ARTIFACT_INVOCATION_GENERATED_DEFAULT_DESTRUCTOR ||
+			current->artifactInvocationKind ==
+				asBUILD_ARTIFACT_INVOCATION_INIT_DEFAULTS);
+
+		const asEBuildArtifactRestoreResult restoreResult =
+			TryRestoreBuildArtifact(invocation, func);
+		int compileResult = asSUCCESS;
+		bool compilerInvoked = false;
+		if( restoreResult != asBUILD_ARTIFACT_RESTORE_RESTORED )
 		{
+			asCCompiler compiler(this);
+			compilerInvoked = true;
+			compileResult = asERROR;
+			if( current->node )
+			{
 			int r, c;
 			current->script->ConvertPosToRowCol(current->node->tokenPos, &r, &c);
 
@@ -1006,12 +1508,13 @@ void asCBuilder::CompileFunctions()
 			WriteInfo(current->script->name, str, r, c, true);
 
 			// When compiling a constructor need to pass the class declaration for member initializations
-			compiler.CompileFunction(this, current->script, current->paramNames, current->node, func, classDecl);
+			compileResult = compiler.CompileFunction(this, current->script,
+				current->paramNames, current->node, func, classDecl);
 
 			engine->preMessage.isSet = false;
-		}
-		else if( current->objType && current->name == current->objType->name )
-		{
+			}
+			else if( current->objType && current->name == current->objType->name )
+			{
 			asCScriptNode *node = classDecl->node;
 
 			int r = 0, c = 0;
@@ -1024,12 +1527,13 @@ void asCBuilder::CompileFunctions()
 
 			// This is the default constructor that is generated
 			// automatically if not implemented by the user.
-			compiler.CompileDefaultConstructor(this, current->script, node, func, classDecl);
+			compileResult = compiler.CompileDefaultConstructor(
+				this, current->script, node, func, classDecl);
 
 			engine->preMessage.isSet = false;
-		}
-		else if( current->objType && current->name[0] == '~' )
-		{
+			}
+			else if( current->objType && current->name[0] == '~' )
+			{
 			asCScriptNode *node = classDecl->node;
 
 			int r = 0, c = 0;
@@ -1042,12 +1546,13 @@ void asCBuilder::CompileFunctions()
 
 			// This is the default constructor that is generated
 			// automatically if not implemented by the user.
-			compiler.CompileDefaultDestructor(this, current->script, node, func, classDecl);
+			compileResult = compiler.CompileDefaultDestructor(
+				this, current->script, node, func, classDecl);
 
 			engine->preMessage.isSet = false;
-		}
-		else if( current->objType && current->name == "__InitDefaults" )
-		{
+			}
+			else if( current->objType && current->name == "__InitDefaults" )
+			{
 			asCScriptNode *node = classDecl->node;
 
 			int r = 0, c = 0;
@@ -1059,14 +1564,18 @@ void asCBuilder::CompileFunctions()
 			WriteInfo(current->script->name, str, r, c, true);
 
 			// When compiling a constructor need to pass the class declaration for member initializations
-			compiler.CompileFunction(this, current->script, current->paramNames, node, func, classDecl);
+			compileResult = compiler.CompileFunction(this, current->script,
+				current->paramNames, node, func, classDecl);
 
 			engine->preMessage.isSet = false;
+			}
+			else
+			{
+				asASSERT( false );
+			}
 		}
-		else
-		{
-			asASSERT( false );
-		}
+		CompleteBuildArtifactCompile(
+			invocation, func, compileResult, restoreResult, compilerInvoked);
 	}
 }
 #endif
@@ -4173,8 +4682,12 @@ void asCBuilder::AddDefaultConstructor(asCObjectType *objType, asCScriptCode *fi
 	func->objType           = objType;
 	func->funcId            = funcId;
 	func->isExistingShared  = false;
+	func->artifactInvocationKind =
+		asBUILD_ARTIFACT_INVOCATION_GENERATED_DEFAULT_CONSTRUCTOR;
 
 	auto* scriptFunction = engine->scriptFunctions[funcId];
+	SetBuildArtifactFunctionIdentity(scriptFunction,
+		asBUILD_ARTIFACT_INVOCATION_GENERATED_DEFAULT_CONSTRUCTOR, objType);
 	scriptFunction->traits.SetTrait(asTRAIT_CONSTRUCTOR, true);
 
 	// Add a default factory as well
@@ -4188,11 +4701,18 @@ void asCBuilder::AddDefaultConstructor(asCObjectType *objType, asCScriptCode *fi
 		returnType = asCDataType::CreateObjectHandle(objType, false);
 		// TODO: should be the same as the constructor
 		module->AddScriptFunction(file->idx, 0, funcId, objType->name, returnType, parameterTypes, parameterNames, inOutFlags, defaultArgs, false);
+		asCScriptFunction *factoryFunction = engine->scriptFunctions[funcId];
+		SetBuildArtifactFunctionIdentity(factoryFunction,
+			asBUILD_ARTIFACT_INVOCATION_FACTORY, objType);
 		functions.PushLast(0);
 
 		sFactoryDescription factoryDesc;
 		factoryDesc.script = file;
+		factoryDesc.node = objType->compilingDeclaration
+			? objType->compilingDeclaration->node : 0;
+		factoryDesc.objType = objType;
 		factoryDesc.funcId = funcId;
+		factoryDesc.isGenerated = true;
 		factories.PushLast(factoryDesc);
 
 		scriptFunction->traits.SetTrait(asTRAIT_UNSAFE_DURING_CONSTRUCTION, true);
@@ -4240,10 +4760,14 @@ void asCBuilder::AddInitDefaultsFunction(asCObjectType *objType, asCScriptCode *
 	func->objType           = objType;
 	func->funcId            = funcId;
 	func->isExistingShared  = false;
+	func->artifactInvocationKind =
+		asBUILD_ARTIFACT_INVOCATION_INIT_DEFAULTS;
 
 	objType->methods.PushLast(funcId);
 
 	asCScriptFunction *f = engine->scriptFunctions[funcId];
+	SetBuildArtifactFunctionIdentity(f,
+		asBUILD_ARTIFACT_INVOCATION_INIT_DEFAULTS, objType);
 	objType->methodTable.Add(f);
 }
 
@@ -4285,8 +4809,12 @@ void asCBuilder::AddDefaultDestructor(asCObjectType *objType, asCScriptCode *fil
 	func->objType           = objType;
 	func->funcId            = funcId;
 	func->isExistingShared  = false;
+	func->artifactInvocationKind =
+		asBUILD_ARTIFACT_INVOCATION_GENERATED_DEFAULT_DESTRUCTOR;
 
 	auto* scriptFunction = engine->scriptFunctions[funcId];
+	SetBuildArtifactFunctionIdentity(scriptFunction,
+		asBUILD_ARTIFACT_INVOCATION_GENERATED_DEFAULT_DESTRUCTOR, objType);
 	scriptFunction->traits.SetTrait(asTRAIT_DESTRUCTOR, true);
 
 	// If the object is shared, then the factory must also be marked as shared
@@ -4800,9 +5328,9 @@ void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *fi
 }
 #endif
 
-asCString asCBuilder::GetCleanExpressionString(asCScriptNode *node, asCScriptCode *file)
+asCString asCBuilder::GetCanonicalTokenString(asCScriptNode *node, asCScriptCode *file)
 {
-	asASSERT(node && node->nodeType == snExpression);
+	asASSERT(node);
 
 	asCString str;
 	str.Assign(file->code + node->tokenPos, node->tokenLength);
@@ -4821,6 +5349,12 @@ asCString asCBuilder::GetCleanExpressionString(asCScriptNode *node, asCScriptCod
 	}
 
 	return cleanStr;
+}
+
+asCString asCBuilder::GetCleanExpressionString(asCScriptNode *node, asCScriptCode *file)
+{
+	asASSERT(node && node->nodeType == snExpression);
+	return GetCanonicalTokenString(node, file);
 }
 
 #ifndef AS_NO_COMPILER
@@ -4877,6 +5411,14 @@ asCScriptFunction *asCBuilder::RegisterLambda(asCScriptNode *node, asCScriptCode
 	int r = RegisterScriptFunction(args, file, 0, 0, true, ns, false, false, funcName, funcDef->returnType, parameterNames, funcDef->parameterTypes, funcDef->inOutFlags, defaultArgs, asSFunctionTraits());
 	if( r < 0 )
 		return 0;
+	if( functions.GetLength() != 0 && functions[functions.GetLength()-1] )
+	{
+		functions[functions.GetLength()-1]->artifactInvocationKind =
+			asBUILD_ARTIFACT_INVOCATION_LAMBDA;
+		SetBuildArtifactFunctionIdentity(
+			engine->scriptFunctions[functions[functions.GetLength()-1]->funcId],
+			asBUILD_ARTIFACT_INVOCATION_LAMBDA, 0);
+	}
 
 	// Return the function that was just created (but that will be compiled later)
 	return engine->scriptFunctions[functions[functions.GetLength()-1]->funcId];
@@ -5001,6 +5543,14 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 
 	isExistingShared = false;
 	int funcId = engine->GetNextScriptFunctionId();
+	const asEBuildArtifactInvocationKind registeredArtifactInvocationKind =
+		funcTraits.GetTrait(asTRAIT_CONSTRUCTOR)
+			? asBUILD_ARTIFACT_INVOCATION_CONSTRUCTOR
+			: funcTraits.GetTrait(asTRAIT_DESTRUCTOR)
+				? asBUILD_ARTIFACT_INVOCATION_DESTRUCTOR
+				: objType
+					? asBUILD_ARTIFACT_INVOCATION_METHOD
+					: asBUILD_ARTIFACT_INVOCATION_GLOBAL_FUNCTION;
 	if( !isInterface )
 	{
 		sFunctionDescription *func = asNEW(sFunctionDescription);
@@ -5020,9 +5570,10 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		func->node              = node;
 		func->name              = name;
 		func->objType           = objType;
-		func->funcId            = funcId;
-		func->isExistingShared  = false;
-		func->paramNames        = parameterNames;
+	func->funcId            = funcId;
+	func->isExistingShared  = false;
+	func->paramNames        = parameterNames;
+	func->artifactInvocationKind = registeredArtifactInvocationKind;
 
 		if(funcTraits.GetTrait(asTRAIT_SHARED))
 		{
@@ -5188,6 +5739,11 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		if( node )
 			file->ConvertPosToRowCol(node->tokenPos, &row, &col);
 		module->AddScriptFunction(file->idx, (row&0xFFFFF)|((col&0xFFF)<<20), funcId, name, returnType, parameterTypes, parameterNames, inOutFlags, defaultArgs, isInterface, objType, isGlobalFunction, funcTraits, ns);
+		asCScriptFunction *registeredFunction = engine->scriptFunctions[funcId];
+		SetBuildArtifactFunctionIdentity(registeredFunction,
+			registeredArtifactInvocationKind, objType);
+		if (node && registeredFunction && registeredFunction->scriptData)
+			registeredFunction->scriptData->artifactCanonicalSource = GetCanonicalTokenString(node, file);
 	}
 
 	// Make sure the default args are declared correctly
@@ -5250,6 +5806,9 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 
 				asCDataType dt = asCDataType::CreateObjectHandle(objType, false);
 				module->AddScriptFunction(file->idx, engine->scriptFunctions[funcId]->scriptData->declaredAt, factoryId, name, dt, parameterTypes, parameterNames, inOutFlags, defaultArgs, false, 0, false, funcTraits);
+				SetBuildArtifactFunctionIdentity(
+					engine->scriptFunctions[factoryId],
+					asBUILD_ARTIFACT_INVOCATION_FACTORY, objType);
 
 				// If the object is shared, then the factory must also be marked as shared
 				if (objType->flags & asOBJ_SHARED)
@@ -5260,7 +5819,10 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 
 				sFactoryDescription factoryDesc;
 				factoryDesc.script = file;
+				factoryDesc.node = node;
+				factoryDesc.objType = objType;
 				factoryDesc.funcId = factoryId;
+				factoryDesc.isGenerated = true;
 				factories.PushLast(factoryDesc);
 
 				// Compile the factory immediately
@@ -6861,6 +7423,15 @@ void asCBuilder::MarkDependency(asCTypeInfo* TypeInfo, asCScriptNode* node, asCS
 		return;
 	if (TypeInfo == nullptr)
 		return;
+
+	asSBuildArtifactDependency dependency;
+	dependency.kind = (TypeInfo->flags & (asOBJ_VALUE | asOBJ_ENUM))
+		? asBUILD_ARTIFACT_DEPENDENCY_VALUE_LAYOUT
+		: asBUILD_ARTIFACT_DEPENDENCY_DECLARATION;
+	dependency.referenceKind = asBUILD_ARTIFACT_REFERENCE_TYPE;
+	dependency.type = TypeInfo;
+	CaptureBuildArtifactDependency(dependency);
+
 	if (TypeInfo->module == nullptr)
 		return;
 
@@ -6880,6 +7451,16 @@ void asCBuilder::MarkDependency(asCTypeInfo* TypeInfo, asCScriptNode* node, asCS
 
 void asCBuilder::MarkDependency(asCGlobalProperty* Variable, asCScriptNode* node, asCScriptCode* script)
 {
+	if (Variable == nullptr)
+		return;
+	asSBuildArtifactDependency dependency;
+	dependency.kind = Variable->isPureConstant
+		? asBUILD_ARTIFACT_DEPENDENCY_HARD_VALUE
+		: asBUILD_ARTIFACT_DEPENDENCY_GLOBAL_STORAGE;
+	dependency.referenceKind = asBUILD_ARTIFACT_REFERENCE_GLOBAL;
+	dependency.globalProperty = Variable;
+	CaptureBuildArtifactDependency(dependency);
+
 	if (bValueDependenciesAreHard && !Variable->name.StartsWith("__StaticType_"))
 		MarkHardValueDependency(Variable->module, node, script);
 	else
@@ -6888,6 +7469,36 @@ void asCBuilder::MarkDependency(asCGlobalProperty* Variable, asCScriptNode* node
 
 void asCBuilder::MarkDependency(asCScriptFunction* Function, asCScriptNode* node, asCScriptCode* script)
 {
+	if (Function == nullptr)
+		return;
+	asSBuildArtifactDependency dependency;
+	dependency.referenceKind = asBUILD_ARTIFACT_REFERENCE_FUNCTION;
+	dependency.function = Function;
+	// Every callable use is relocated through its stable signature. A hard
+	// value dependency additionally invalidates on implementation content; it
+	// must not replace the signature edge or the detached artifact would have
+	// no declared authority for its function relocation.
+	dependency.kind = asBUILD_ARTIFACT_DEPENDENCY_SIGNATURE;
+	CaptureBuildArtifactDependency(dependency);
+	if (bValueDependenciesAreHard
+		&& (Function->name != "StaticClass"
+			|| !Function->traits.GetTrait(asTRAIT_GENERATED_FUNCTION)))
+	{
+		dependency.kind = asBUILD_ARTIFACT_DEPENDENCY_FUNCTION_CONTENT;
+		CaptureBuildArtifactDependency(dependency);
+	}
+
+	// A callable's stable signature depends on every non-primitive return and
+	// parameter type. Record these explicitly even when the callable itself is a
+	// generated helper in the current module; the function artifact writer must
+	// later relocate the same current-Engine type objects without persisting
+	// numeric TypeIds or pointers.
+	if( Function->returnType.GetTypeInfo() != nullptr )
+		MarkDependency(Function->returnType.GetTypeInfo(), node, script);
+	for( asUINT n = 0; n < Function->parameterTypes.GetLength(); ++n )
+		if( Function->parameterTypes[n].GetTypeInfo() != nullptr )
+			MarkDependency(Function->parameterTypes[n].GetTypeInfo(), node, script);
+
 	if (Function->module != nullptr)
 	{
 		if (bValueDependenciesAreHard && (Function->name != "StaticClass" || !Function->traits.GetTrait(asTRAIT_GENERATED_FUNCTION)))
@@ -6899,6 +7510,13 @@ void asCBuilder::MarkDependency(asCScriptFunction* Function, asCScriptNode* node
 	{
 		MarkDependency(Function->objectType, node, script);
 	}
+}
+
+void asCBuilder::MarkPropertyDependency(
+	asCTypeInfo* OwnerType,
+	asCObjectProperty* Property)
+{
+	CaptureBuildArtifactPropertyDependency(OwnerType, Property);
 }
 
 #if WITH_EDITOR
