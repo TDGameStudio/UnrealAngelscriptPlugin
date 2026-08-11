@@ -1,5 +1,7 @@
 #include "AngelscriptSubsystem.h"
 
+#include "AngelscriptBinds.h"
+
 #include "Engine/Engine.h"
 
 UAngelscriptSubsystem::~UAngelscriptSubsystem() = default;
