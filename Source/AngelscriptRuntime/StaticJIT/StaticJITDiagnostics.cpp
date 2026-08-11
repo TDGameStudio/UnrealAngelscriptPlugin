@@ -207,7 +207,8 @@ bool FStaticJITDiagnostics::CompileLoadedPrecompiledData(FAngelscriptEngine& Eng
 	}
 
 	TArray<TSharedRef<FAngelscriptModuleDesc>> CompiledModules;
-	TGuardValue<bool> UsePrecompiledDataGuard(Engine.bUsePrecompiledData, true);
+	TGuardValue<bool> UseCompatibilityDataGuard(
+		Engine.bUseStaticJITCompatibilityData, true);
 	TGuardValue<bool> ScriptDevelopmentModeGuard(Engine.bScriptDevelopmentMode, false);
 	const ECompileResult CompileResult = Engine.CompileModules(CompileType, ModulesToCompile, CompiledModules);
 	if (CompileResult != ECompileResult::FullyHandled && CompileResult != ECompileResult::PartiallyHandled)

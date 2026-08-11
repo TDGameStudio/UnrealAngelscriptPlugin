@@ -26,6 +26,8 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptCompilationEvent
 	EAngelscriptCompilationEventType Type = EAngelscriptCompilationEventType::Unknown;
 	FName Phase;
 	ECompileType CompileType = ECompileType::SoftReloadOnly;
+	EAngelscriptCompileCachePolicy CachePolicy =
+		EAngelscriptCompileCachePolicy::Default;
 	ECompileResult CompileResult = ECompileResult::Error;
 	uint64 CompilationRunId = 0;
 	bool bSucceeded = false;
@@ -40,6 +42,7 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptCompilationEvent
 	uint32 ThreadId = 0;
 	bool bOnGameThread = false;
 	bool bLoadedPrecompiledCode = false;
+	bool bLoadedIncrementalCache = false;
 	bool bJitAvailable = false;
 	bool bJitHandoff = false;
 	TArray<FString> ModuleNames;

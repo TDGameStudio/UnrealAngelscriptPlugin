@@ -89,7 +89,7 @@ public:
 	// `bAllowEmptyBaseline` controls cycle-2 behaviour. The default (false)
 	// asserts the bind path produced *something* -the failure mode we want
 	// is "the test wired a probe at the wrong global". Containers gated by
-	// `IsGeneratingPrecompiledData()` (StaticJIT NativeForms) are empty
+	// `IsCollectingStaticJITCompatibilityBinds()` (StaticJIT NativeForms) are empty
 	// under normal headless test runs, so callers for those probes pass
 	// `bAllowEmptyBaseline=true`.
 	template <typename FnSampleSize>
@@ -175,7 +175,7 @@ RunBoundedCycleProbe(
 	}
 
 	// Regression for the `GScriptNativeForms` map. Only meaningful when JIT
-	// is on AND `IsGeneratingPrecompiledData()` is true (binds are gated by
+	// is on AND `IsCollectingStaticJITCompatibilityBinds()` is true (binds are gated by
 	// that). Under regular headless test runs the table is empty -we still
 	// assert it stays stable across cycles, so a future bind-path change
 	// that *does* populate it cannot regress silently.

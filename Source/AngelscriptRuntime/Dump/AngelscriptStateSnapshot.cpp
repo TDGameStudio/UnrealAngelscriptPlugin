@@ -380,9 +380,8 @@ FAngelscriptStateSnapshot FAngelscriptStateSnapshotBuilder::Capture(FAngelscript
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Mode"), TEXT("bIsHotReloading"), Engine.bIsHotReloading, EngineSource);
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Mode"), TEXT("bUseEditorScripts"), Engine.bUseEditorScripts, EngineSource);
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Mode"), TEXT("bUseAutomaticImportMethod"), Engine.bUseAutomaticImportMethod, EngineSource);
-	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Mode"), TEXT("bGeneratePrecompiledData"), Engine.bGeneratePrecompiledData, EngineSource);
-	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Mode"), TEXT("bUsePrecompiledData"), Engine.bUsePrecompiledData, EngineSource);
-	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Mode"), TEXT("bUsedPrecompiledDataForPreprocessor"), Engine.bUsedPrecompiledDataForPreprocessor, EngineSource);
+	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("StaticJITCompatibility"), TEXT("bCollectStaticJITCompatibilityBinds"), Engine.bCollectStaticJITCompatibilityBinds, EngineSource);
+	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("StaticJITCompatibility"), TEXT("bUseStaticJITCompatibilityData"), Engine.bUseStaticJITCompatibilityData, EngineSource);
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Mode"), TEXT("bScriptDevelopmentMode"), Engine.bScriptDevelopmentMode, EngineSource);
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Mode"), TEXT("bHotReloadThreadStarted"), Engine.bHotReloadThreadStarted, EngineSource);
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("Diagnostics"), TEXT("bDiagnosticsDirty"), Engine.bDiagnosticsDirty, EngineSource);
@@ -413,7 +412,7 @@ FAngelscriptStateSnapshot FAngelscriptStateSnapshotBuilder::Capture(FAngelscript
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("RuntimeConfig"), TEXT("bForceThreadedInitialize"), Config.bForceThreadedInitialize, EngineSource);
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("RuntimeConfig"), TEXT("bSkipThreadedInitialize"), Config.bSkipThreadedInitialize, EngineSource);
 	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("RuntimeConfig"), TEXT("bSkipInitialCompile"), Config.bSkipInitialCompile, EngineSource);
-	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("RuntimeConfig"), TEXT("bSkipStaticJITCodeGen"), Config.bSkipStaticJITCodeGen, EngineSource);
+	AddBoolRow(Snapshot, TEXT("EngineMember"), TEXT("RuntimeConfig"), TEXT("bCollectStaticJITCompatibilityBinds"), Config.bCollectStaticJITCompatibilityBinds, EngineSource);
 
 	const TArray<TSharedRef<FAngelscriptModuleDesc>> ActiveModules = Engine.GetActiveModules();
 	AddCountRow(Snapshot, TEXT("EngineCollection"), TEXT("ActiveModules"), TEXT("Count"), ActiveModules.Num(), EngineSource);

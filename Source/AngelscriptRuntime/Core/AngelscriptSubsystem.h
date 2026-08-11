@@ -7,6 +7,11 @@
 
 #include "AngelscriptSubsystem.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+	FAngelscriptRuntimeReloadCompleted,
+	const FAngelscriptRuntimeReloadResult&,
+	Result);
+
 UCLASS()
 class ANGELSCRIPTRUNTIME_API UAngelscriptSubsystem : public UEngineSubsystem, public FTickableGameObject
 {
@@ -29,6 +34,12 @@ public:
 	{
 		return PrimaryEngine;
 	}
+
+	UFUNCTION(BlueprintCallable, Category="AngelScript|Runtime Reload")
+	EAngelscriptRuntimeReloadRequestStatus RequestRuntimeReload();
+
+	UPROPERTY(BlueprintAssignable, Category="AngelScript|Runtime Reload")
+	FAngelscriptRuntimeReloadCompleted OnRuntimeReloadCompleted;
 
 	void EnsurePrimaryEngineInitialized();
 

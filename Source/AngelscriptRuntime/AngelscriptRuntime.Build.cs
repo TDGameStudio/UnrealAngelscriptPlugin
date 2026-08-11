@@ -6,6 +6,65 @@ using UnrealBuildTool;
 
 namespace UnrealBuildTool.Rules
 {
+	internal static class AngelscriptBuildSettings
+	{
+		internal static bool ShouldCompileUnitTests(ReadOnlyTargetRules Target, ModuleRules Rules)
+		{
+			if (!Target.bBuildEditor || Target.ProjectFile == null)
+			{
+				return false;
+			}
+
+			string? ProjectDirectory = Path.GetDirectoryName(Target.ProjectFile.FullName);
+			if (string.IsNullOrEmpty(ProjectDirectory))
+			{
+				return false;
+			}
+
+			string ConfigPath = Path.Combine(ProjectDirectory, "Config", "DefaultAngelscriptCompileOptions.ini");
+			Rules.ExternalDependencies.Add(ConfigPath);
+			if (!File.Exists(ConfigPath))
+			{
+				return false;
+			}
+
+			const string SettingSection = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
+			const string SettingName = "bCompileAngelscriptUnitTests";
+			bool bInSection = false;
+			foreach (string RawLine in File.ReadAllLines(ConfigPath))
+			{
+				string Line = RawLine.Trim();
+				if (Line.Length == 0 || Line.StartsWith(";") || Line.StartsWith("#"))
+				{
+					continue;
+				}
+				if (Line.StartsWith("[") && Line.EndsWith("]"))
+				{
+					bInSection = string.Equals(
+						Line.Substring(1, Line.Length - 2), SettingSection, StringComparison.Ordinal);
+					continue;
+				}
+				if (!bInSection)
+				{
+					continue;
+				}
+
+				int SeparatorIndex = Line.IndexOf('=');
+				if (SeparatorIndex <= 0
+					|| !string.Equals(Line.Substring(0, SeparatorIndex).Trim(),
+						SettingName, StringComparison.OrdinalIgnoreCase))
+				{
+					continue;
+				}
+				string Value = Line.Substring(SeparatorIndex + 1).Trim();
+				return Value.Equals("true", StringComparison.OrdinalIgnoreCase)
+					|| Value.Equals("1", StringComparison.OrdinalIgnoreCase)
+					|| Value.Equals("yes", StringComparison.OrdinalIgnoreCase);
+			}
+			return false;
+		}
+	}
+
 	public class AngelscriptRuntime : ModuleRules
 	{
 		private const string FunctionBindingSettingsSection = "/Script/AngelscriptRuntime.AngelscriptCompileOptions";
@@ -20,6 +79,9 @@ namespace UnrealBuildTool.Rules
 			FunctionBindingSettings BindingSettings = ReadFunctionBindingSettings(Target);
 			PrivateDefinitions.Add("ANGELSCRIPT_EXPORT=1");
 			PublicDefinitions.Add("WITH_ANGELSCRIPT=1");
+			PublicDefinitions.Add("ANGELSCRIPT_RUNTIME_UNITTEST_POLICY_OWNER=1");
+			PublicDefinitions.Add("WITH_ANGELSCRIPT_UNITTESTS=" + (
+				AngelscriptBuildSettings.ShouldCompileUnitTests(Target, this) ? "1" : "0"));
 			PublicDefinitions.Add("AS_REFERENCE_DEBUGGING=" + (Target.bBuildEditor ? "1" : "0"));
 			PublicDefinitions.Add("WITH_AS_DEBUGSERVER=" + (
 				Target.Configuration != UnrealTargetConfiguration.Test

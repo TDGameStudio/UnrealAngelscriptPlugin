@@ -102,8 +102,12 @@ namespace AngelscriptOfflineContract
 
 		bool IsBlueprintGenerated(const UObject& Object)
 		{
+		#if WITH_EDITORONLY_DATA
 			const UClass* Class = Cast<UClass>(&Object);
 			return Class != nullptr && Class->ClassGeneratedBy != nullptr;
+		#else
+			return false;
+		#endif
 		}
 
 		void ApplyScopeOrigin(
@@ -403,8 +407,10 @@ namespace AngelscriptOfflineContract
 			const UFunction& Function,
 			const FProperty& Parameter)
 		{
-			FString Mark =
-				Parameter.GetMetaData(TEXT("AngelscriptResourceContext"));
+			FString Mark;
+		#if WITH_EDITORONLY_DATA
+			Mark = Parameter.GetMetaData(
+				TEXT("AngelscriptResourceContext"));
 			if (Mark.IsEmpty())
 			{
 				Mark = Function.GetMetaData(
@@ -412,6 +418,7 @@ namespace AngelscriptOfflineContract
 						TEXT("AngelscriptResourceContext_%s"),
 						*Parameter.GetName())));
 			}
+		#endif
 			Mark = NormalizeResourceKind(MoveTemp(Mark));
 			if (!Mark.IsEmpty())
 			{
@@ -592,12 +599,14 @@ namespace AngelscriptOfflineContract
 					{
 						AddUniqueFlag(Symbol.Type.Flags, TEXT("ue-deprecated"));
 					}
+				#if WITH_EDITORONLY_DATA
 					if (Class->ClassGeneratedBy != nullptr)
 					{
 						AddUniqueFlag(
 							Symbol.Type.Flags,
 							TEXT("ue-blueprint-generated"));
 					}
+				#endif
 					for (const FImplementedInterface& Interface :
 						Class->Interfaces)
 					{

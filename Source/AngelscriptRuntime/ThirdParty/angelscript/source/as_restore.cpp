@@ -323,10 +323,479 @@ static bool IsExplicitTrait(const asCScriptFunction *func)
 static const asBYTE AS_BYTECODE_STREAM_MAGIC = 0xE3;
 static const asBYTE AS_BYTECODE_STREAM_VERSION = 2;
 
+//[UE++]: The detached function-artifact envelope is intentionally independent
+// from the full module bytecode version. Version four adds the complete root
+// function trait word; the historical function-signature codec only carries a
+// subset and therefore cannot reproduce constructor/destructor/generated traits.
+static const asBYTE AS_FUNCTION_ARTIFACT_STREAM_VERSION = 4;
+static const asUINT AS_FUNCTION_ARTIFACT_MINIMUM_SIZE = 13;
+static const asDWORD AS_FUNCTION_ARTIFACT_KNOWN_TRAITS = 0x07FFFFFFu;
+//[UE--]
+
 asCReader::asCReader(asCModule* _module, asIBinaryStream* _stream, asCScriptEngine* _engine)
-	: module(_module), stream(_stream), engine(_engine), error(false), bytesRead(0), lastCompositeProp(0)
+	: module(_module), stream(_stream), engine(_engine), error(false), bytesRead(0),
+	  validatingFunctionArtifact(false), functionArtifactValidationStage(asFUNCTION_ARTIFACT_STAGE_NONE),
+	  functionArtifactStackNeeded(0), functionArtifactObjVariablesOnHeap(0),
+	  functionArtifactRuntimeStateOffset(asUINT(-1)),
+	  functionArtifactStackNeededOffset(asUINT(-1)),
+	  functionArtifactObjVariablesOnHeapOffset(asUINT(-1)),
+	  functionArtifactObjectVariableCountOffset(asUINT(-1)),
+	  functionArtifactFirstObjectVariableTypeOffset(asUINT(-1)),
+	  functionArtifactFirstObjectVariablePositionOffset(asUINT(-1)),
+	  lastCompositeProp(0)
 {
 }
+
+asCReader::~asCReader()
+{
+	// Function-artifact reads may acquire engine string constants before a
+	// detached donor is committed or rejected. At destruction the successful
+	// live function has already AddReferences()'d them; on failure no function
+	// owns them. Release the reader's temporary holds in both cases.
+	if( engine != 0 && engine->stringFactory != 0 )
+		for( asUINT n = 0; n < usedStringConstants.GetLength(); ++n )
+			engine->stringFactory->ReleaseStringConstant(usedStringConstants[n]);
+	usedStringConstants.SetLength(0);
+}
+
+int asCReader::ValidateFunctionArtifact(asUINT expectedSize, asSFunctionArtifactValidationDiagnostics *diagnostics)
+{
+	functionArtifactFunctionRelocations.SetLength(0);
+	functionArtifactSymbolUses.SetLength(0);
+	functionArtifactGlobalProperties.SetLength(0);
+	functionArtifactRuntimeStateOffset = asUINT(-1);
+	functionArtifactStackNeededOffset = asUINT(-1);
+	functionArtifactObjVariablesOnHeapOffset = asUINT(-1);
+	functionArtifactObjectVariableCountOffset = asUINT(-1);
+	functionArtifactFirstObjectVariableTypeOffset = asUINT(-1);
+	functionArtifactFirstObjectVariablePositionOffset = asUINT(-1);
+	if( diagnostics )
+	{
+		diagnostics->result = asERROR;
+		diagnostics->expectedSize = expectedSize;
+		diagnostics->bytesRead = 0;
+		diagnostics->stage = asFUNCTION_ARTIFACT_STAGE_NONE;
+		diagnostics->hadError = false;
+		diagnostics->wasNewFunction = false;
+		diagnostics->rootTraitsOffset = asUINT(-1);
+		diagnostics->rootTraits = 0;
+		diagnostics->runtimeStateOffset = asUINT(-1);
+		diagnostics->stackNeededOffset = asUINT(-1);
+		diagnostics->objVariablesOnHeapOffset = asUINT(-1);
+		diagnostics->objectVariableCountOffset = asUINT(-1);
+		diagnostics->firstObjectVariableTypeOffset = asUINT(-1);
+		diagnostics->firstObjectVariablePositionOffset = asUINT(-1);
+		diagnostics->objectVariableCount = 0;
+	}
+	if( module == 0 || stream == 0 || engine == 0 ||
+		expectedSize < AS_FUNCTION_ARTIFACT_MINIMUM_SIZE )
+	{
+		if( diagnostics )
+			diagnostics->result = asINVALID_ARG;
+		return asINVALID_ARG;
+	}
+
+	validatingFunctionArtifact = true;
+	functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_HEADER;
+	const char expectedMagic[] = {'U', 'E', 'A', 'S', 'F', 'N', 'V', '1'};
+	for( asUINT n = 0; n < sizeof(expectedMagic) && !error; ++n )
+	{
+		char value = 0;
+		ReadData(&value, 1);
+		if( value != expectedMagic[n] )
+			Error(TXT_INVALID_BYTECODE_d);
+	}
+	asBYTE version = 0;
+	if( !error )
+		ReadData(&version, 1);
+	if( !error && version != AS_FUNCTION_ARTIFACT_STREAM_VERSION )
+		Error(TXT_INVALID_BYTECODE_d);
+	asDWORD rootTraits = 0;
+	if( !error )
+	{
+		if( diagnostics ) diagnostics->rootTraitsOffset = bytesRead;
+		ReadData(&rootTraits, 4);
+		if( diagnostics ) diagnostics->rootTraits = rootTraits;
+	}
+	if( !error && (rootTraits & ~AS_FUNCTION_ARTIFACT_KNOWN_TRAITS) != 0 )
+		Error(TXT_INVALID_BYTECODE_d);
+
+	// WriteFunctionArtifact strips the engine debug tables and accepts only a
+	// self-contained root. Read it detached from the module/engine registries so
+	// validation cannot publish a function id or module entry.
+	noDebugInfo = true;
+	bool isNew = false;
+	functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_MARKER;
+	asCScriptFunction *func = error
+		? 0 : ReadFunction(isNew, false, false, false);
+	if( !error && func != 0 )
+		func->traits.traits = rootTraits;
+	if( !error )
+		ReadFunctionArtifactSymbolTables();
+	if( !error )
+		ReadFunctionArtifactRuntimeState();
+	if( !error && func != 0 && isNew )
+	{
+		TranslateFunction(func);
+		if( !error )
+			RebuildLegacyObjectVariableMetadata(func);
+		if( !error )
+			ApplyFunctionArtifactRuntimeState(func);
+	}
+	validatingFunctionArtifact = false;
+	if( !error && func != 0 && isNew )
+		functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_EXACT_LENGTH;
+	const int result = func == 0 || !isNew || error || bytesRead != expectedSize
+		? asERROR : asSUCCESS;
+	if( diagnostics )
+	{
+		diagnostics->result = result;
+		diagnostics->expectedSize = expectedSize;
+		diagnostics->bytesRead = bytesRead;
+		diagnostics->stage = functionArtifactValidationStage;
+		diagnostics->hadError = error;
+		diagnostics->wasNewFunction = isNew;
+		diagnostics->runtimeStateOffset = functionArtifactRuntimeStateOffset;
+		diagnostics->stackNeededOffset = functionArtifactStackNeededOffset;
+		diagnostics->objVariablesOnHeapOffset = functionArtifactObjVariablesOnHeapOffset;
+		diagnostics->objectVariableCountOffset = functionArtifactObjectVariableCountOffset;
+		diagnostics->firstObjectVariableTypeOffset = functionArtifactFirstObjectVariableTypeOffset;
+		diagnostics->firstObjectVariablePositionOffset = functionArtifactFirstObjectVariablePositionOffset;
+		diagnostics->objectVariableCount = functionArtifactObjVariableTypes.GetLength();
+	}
+	if( result < 0 )
+	{
+		if( func )
+			func->DestroyHalfCreated();
+		savedFunctions.SetLength(0);
+		return asERROR;
+	}
+
+	func->DestroyHalfCreated();
+	savedFunctions.SetLength(0);
+	return asSUCCESS;
+}
+
+//[UE++]: The builder restore hook must not mutate its live function until both
+// execution and host-owned debug payloads have been validated. Reconstruct and
+// relocate into a detached donor first; CommitFunctionArtifactToExisting is the
+// sole publication step for this path.
+int asCReader::RestoreFunctionArtifactDetached(asUINT expectedSize,
+	asCScriptFunction **outFunction,
+	asSFunctionArtifactValidationDiagnostics *diagnostics)
+{
+	functionArtifactFunctionRelocations.SetLength(0);
+	functionArtifactSymbolUses.SetLength(0);
+	functionArtifactGlobalProperties.SetLength(0);
+	functionArtifactRuntimeStateOffset = asUINT(-1);
+	functionArtifactStackNeededOffset = asUINT(-1);
+	functionArtifactObjVariablesOnHeapOffset = asUINT(-1);
+	functionArtifactObjectVariableCountOffset = asUINT(-1);
+	functionArtifactFirstObjectVariableTypeOffset = asUINT(-1);
+	functionArtifactFirstObjectVariablePositionOffset = asUINT(-1);
+	if( outFunction )
+		*outFunction = 0;
+	if( diagnostics )
+	{
+		diagnostics->result = asERROR;
+		diagnostics->expectedSize = expectedSize;
+		diagnostics->bytesRead = 0;
+		diagnostics->stage = asFUNCTION_ARTIFACT_STAGE_NONE;
+		diagnostics->hadError = false;
+		diagnostics->wasNewFunction = false;
+		diagnostics->rootTraitsOffset = asUINT(-1);
+		diagnostics->rootTraits = 0;
+		diagnostics->runtimeStateOffset = asUINT(-1);
+		diagnostics->stackNeededOffset = asUINT(-1);
+		diagnostics->objVariablesOnHeapOffset = asUINT(-1);
+		diagnostics->objectVariableCountOffset = asUINT(-1);
+		diagnostics->firstObjectVariableTypeOffset = asUINT(-1);
+		diagnostics->firstObjectVariablePositionOffset = asUINT(-1);
+		diagnostics->objectVariableCount = 0;
+	}
+	if( module == 0 || stream == 0 || engine == 0 || outFunction == 0 ||
+		expectedSize < AS_FUNCTION_ARTIFACT_MINIMUM_SIZE )
+	{
+		if( diagnostics )
+			diagnostics->result = asINVALID_ARG;
+		return asINVALID_ARG;
+	}
+
+	validatingFunctionArtifact = true;
+	functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_HEADER;
+	const char expectedMagic[] = {'U', 'E', 'A', 'S', 'F', 'N', 'V', '1'};
+	for( asUINT n = 0; n < sizeof(expectedMagic) && !error; ++n )
+	{
+		char value = 0;
+		ReadData(&value, 1);
+		if( value != expectedMagic[n] )
+			Error(TXT_INVALID_BYTECODE_d);
+	}
+	asBYTE version = 0;
+	if( !error )
+		ReadData(&version, 1);
+	if( !error && version != AS_FUNCTION_ARTIFACT_STREAM_VERSION )
+		Error(TXT_INVALID_BYTECODE_d);
+	asDWORD rootTraits = 0;
+	if( !error )
+	{
+		if( diagnostics ) diagnostics->rootTraitsOffset = bytesRead;
+		ReadData(&rootTraits, 4);
+		if( diagnostics ) diagnostics->rootTraits = rootTraits;
+	}
+	if( !error && (rootTraits & ~AS_FUNCTION_ARTIFACT_KNOWN_TRAITS) != 0 )
+		Error(TXT_INVALID_BYTECODE_d);
+
+	noDebugInfo = true;
+	bool isNew = false;
+	functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_MARKER;
+	asCScriptFunction *func = error
+		? 0 : ReadFunction(isNew, false, false, false);
+	if( !error && func != 0 )
+		func->traits.traits = rootTraits;
+	if( !error )
+		ReadFunctionArtifactSymbolTables();
+	if( !error )
+		ReadFunctionArtifactRuntimeState();
+	if( !error && func != 0 && isNew )
+		functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_EXACT_LENGTH;
+	if( func == 0 || !isNew || error || bytesRead != expectedSize ||
+		func->funcType != asFUNC_SCRIPT || func->scriptData == 0 )
+	{
+		error = true;
+	}
+
+	if( !error )
+	{
+		TranslateFunction(func);
+		if( !error )
+			RebuildLegacyObjectVariableMetadata(func);
+		if( !error )
+			ApplyFunctionArtifactRuntimeState(func);
+	}
+
+	validatingFunctionArtifact = false;
+	if( diagnostics )
+	{
+		diagnostics->result = error ? asERROR : asSUCCESS;
+		diagnostics->expectedSize = expectedSize;
+		diagnostics->bytesRead = bytesRead;
+		diagnostics->stage = functionArtifactValidationStage;
+		diagnostics->hadError = error;
+		diagnostics->wasNewFunction = isNew;
+		diagnostics->runtimeStateOffset = functionArtifactRuntimeStateOffset;
+		diagnostics->stackNeededOffset = functionArtifactStackNeededOffset;
+		diagnostics->objVariablesOnHeapOffset = functionArtifactObjVariablesOnHeapOffset;
+		diagnostics->objectVariableCountOffset = functionArtifactObjectVariableCountOffset;
+		diagnostics->firstObjectVariableTypeOffset = functionArtifactFirstObjectVariableTypeOffset;
+		diagnostics->firstObjectVariablePositionOffset = functionArtifactFirstObjectVariablePositionOffset;
+		diagnostics->objectVariableCount = functionArtifactObjVariableTypes.GetLength();
+	}
+	if( error )
+	{
+		if( func )
+			func->DestroyHalfCreated();
+		savedFunctions.SetLength(0);
+		return asERROR;
+	}
+
+	functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_COMPLETE;
+	if( diagnostics )
+		diagnostics->stage = functionArtifactValidationStage;
+	// ReadFunction(addToModule=false) intentionally leaves module null. The donor
+	// remains unpublished, but it must carry the staging/current module identity
+	// so the final commit can reject cross-module attachment exactly.
+	func->module = module;
+	savedFunctions.SetLength(0);
+	*outFunction = func;
+	return asSUCCESS;
+}
+
+int asCReader::CommitFunctionArtifactToExisting(
+	asCScriptFunction *artifact,
+	asCScriptFunction *target)
+{
+	if( artifact == 0 || target == 0 || artifact == target ||
+		artifact->engine != engine || target->engine != engine ||
+		artifact->module != module || target->module != module ||
+		artifact->funcType != asFUNC_SCRIPT ||
+		target->funcType != asFUNC_SCRIPT ||
+		artifact->scriptData == 0 || target->scriptData == 0 ||
+		artifact->scriptData->byteCode.GetLength() == 0 ||
+		target->scriptData->byteCode.GetLength() != 0 ||
+		artifact->objectType != target->objectType ||
+		artifact->nameSpace != target->nameSpace ||
+		artifact->traits.traits != target->traits.traits ||
+		!artifact->IsSignatureEqual(target) )
+	{
+		return asINVALID_ARG;
+	}
+
+	// Preserve the current invocation's canonical source coordinate. The VM
+	// stream intentionally owns execution state, not the host's current-source
+	// or stable-dependency observations.
+	artifact->scriptData->artifactCanonicalSource =
+		target->scriptData->artifactCanonicalSource;
+	artifact->scriptData->artifactDependencies.SetLength(0);
+
+	// From this point no validation can fail. Swap complete private state and
+	// debug parameter names, add the normal compiled-function references, then
+	// destroy the donor together with the target's previous empty state.
+	asCScriptFunction::ScriptFunctionData *emptyData = target->scriptData;
+	target->scriptData = artifact->scriptData;
+	artifact->scriptData = emptyData;
+	target->parameterNames.SwapWith(artifact->parameterNames);
+	target->dontCleanUpOnException = artifact->dontCleanUpOnException;
+	target->AddReferences();
+	artifact->DestroyHalfCreated();
+	return asSUCCESS;
+}
+//[UE--]
+
+//[UE++]: Cache V2 live attachment uses the same private reader as detached
+// validation so ScriptFunctionData cannot drift into an outer raw-bytecode
+// imitation. Function-artifact semantic symbol tables resolve every admitted
+// dependency against current module/engine objects before bytecode translation.
+int asCReader::RestoreGlobalFunctionArtifact(asUINT expectedSize,
+	asCScriptFunction **outFunction,
+	asSFunctionArtifactValidationDiagnostics *diagnostics)
+{
+	functionArtifactFunctionRelocations.SetLength(0);
+	functionArtifactSymbolUses.SetLength(0);
+	functionArtifactGlobalProperties.SetLength(0);
+	functionArtifactRuntimeStateOffset = asUINT(-1);
+	functionArtifactStackNeededOffset = asUINT(-1);
+	functionArtifactObjVariablesOnHeapOffset = asUINT(-1);
+	functionArtifactObjectVariableCountOffset = asUINT(-1);
+	functionArtifactFirstObjectVariableTypeOffset = asUINT(-1);
+	functionArtifactFirstObjectVariablePositionOffset = asUINT(-1);
+	if( outFunction )
+		*outFunction = 0;
+	if( diagnostics )
+	{
+		diagnostics->result = asERROR;
+		diagnostics->expectedSize = expectedSize;
+		diagnostics->bytesRead = 0;
+		diagnostics->stage = asFUNCTION_ARTIFACT_STAGE_NONE;
+		diagnostics->hadError = false;
+		diagnostics->wasNewFunction = false;
+		diagnostics->rootTraitsOffset = asUINT(-1);
+		diagnostics->rootTraits = 0;
+		diagnostics->runtimeStateOffset = asUINT(-1);
+		diagnostics->stackNeededOffset = asUINT(-1);
+		diagnostics->objVariablesOnHeapOffset = asUINT(-1);
+		diagnostics->objectVariableCountOffset = asUINT(-1);
+		diagnostics->firstObjectVariableTypeOffset = asUINT(-1);
+		diagnostics->firstObjectVariablePositionOffset = asUINT(-1);
+		diagnostics->objectVariableCount = 0;
+	}
+	if( module == 0 || stream == 0 || engine == 0 || outFunction == 0 ||
+		expectedSize < AS_FUNCTION_ARTIFACT_MINIMUM_SIZE )
+	{
+		if( diagnostics )
+			diagnostics->result = asINVALID_ARG;
+		return asINVALID_ARG;
+	}
+
+	validatingFunctionArtifact = true;
+	functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_HEADER;
+	const char expectedMagic[] = {'U', 'E', 'A', 'S', 'F', 'N', 'V', '1'};
+	for( asUINT n = 0; n < sizeof(expectedMagic) && !error; ++n )
+	{
+		char value = 0;
+		ReadData(&value, 1);
+		if( value != expectedMagic[n] )
+			Error(TXT_INVALID_BYTECODE_d);
+	}
+	asBYTE version = 0;
+	if( !error )
+		ReadData(&version, 1);
+	if( !error && version != AS_FUNCTION_ARTIFACT_STREAM_VERSION )
+		Error(TXT_INVALID_BYTECODE_d);
+	asDWORD rootTraits = 0;
+	if( !error )
+	{
+		if( diagnostics ) diagnostics->rootTraitsOffset = bytesRead;
+		ReadData(&rootTraits, 4);
+		if( diagnostics ) diagnostics->rootTraits = rootTraits;
+	}
+	if( !error && (rootTraits & ~AS_FUNCTION_ARTIFACT_KNOWN_TRAITS) != 0 )
+		Error(TXT_INVALID_BYTECODE_d);
+
+	noDebugInfo = true;
+	bool isNew = false;
+	functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_MARKER;
+	asCScriptFunction *func = error
+		? 0 : ReadFunction(isNew, false, false, false);
+	if( !error && func != 0 )
+		func->traits.traits = rootTraits;
+	if( !error )
+		ReadFunctionArtifactSymbolTables();
+	if( !error )
+		ReadFunctionArtifactRuntimeState();
+	if( !error && func != 0 && isNew )
+		functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_EXACT_LENGTH;
+	if( func == 0 || !isNew || error || bytesRead != expectedSize ||
+		func->funcType != asFUNC_SCRIPT || func->objectType != 0 ||
+		func->scriptData == 0 )
+	{
+		error = true;
+	}
+
+	if( !error )
+	{
+		// Translate serialized instruction operands before the function becomes
+		// visible through either the module or engine registries.
+		TranslateFunction(func);
+		if( !error )
+			RebuildLegacyObjectVariableMetadata(func);
+		if( !error )
+			ApplyFunctionArtifactRuntimeState(func);
+	}
+
+	if( diagnostics )
+	{
+		diagnostics->result = error ? asERROR : asSUCCESS;
+		diagnostics->expectedSize = expectedSize;
+		diagnostics->bytesRead = bytesRead;
+		diagnostics->stage = functionArtifactValidationStage;
+		diagnostics->hadError = error;
+		diagnostics->wasNewFunction = isNew;
+		diagnostics->runtimeStateOffset = functionArtifactRuntimeStateOffset;
+		diagnostics->stackNeededOffset = functionArtifactStackNeededOffset;
+		diagnostics->objVariablesOnHeapOffset = functionArtifactObjVariablesOnHeapOffset;
+		diagnostics->objectVariableCountOffset = functionArtifactObjectVariableCountOffset;
+		diagnostics->firstObjectVariableTypeOffset = functionArtifactFirstObjectVariableTypeOffset;
+		diagnostics->firstObjectVariablePositionOffset = functionArtifactFirstObjectVariablePositionOffset;
+		diagnostics->objectVariableCount = functionArtifactObjVariableTypes.GetLength();
+	}
+
+	if( error )
+	{
+		validatingFunctionArtifact = false;
+		if( func )
+			func->DestroyHalfCreated();
+		savedFunctions.SetLength(0);
+		return asERROR;
+	}
+
+	func->module = module;
+	func->id = engine->GetNextScriptFunctionId();
+	func->AddReferences();
+	module->m_scriptFunctions.PushLast(func);
+	module->m_globalFunctions.Add(func);
+	module->globalFunctionList.PushLast(func);
+	engine->AddScriptFunction(func);
+
+	validatingFunctionArtifact = false;
+	functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_COMPLETE;
+	if( diagnostics )
+		diagnostics->stage = functionArtifactValidationStage;
+	savedFunctions.SetLength(0);
+	*outFunction = func;
+	return asSUCCESS;
+}
+//[UE--]
 
 int asCReader::ReadData(void *data, asUINT size)
 {
@@ -413,9 +882,17 @@ int asCReader::Error(const char *msg)
 	// Don't write if it has already been reported an error earlier
 	if( !error )
 	{
-		asCString str;
-		str.Format(msg, bytesRead);
-		engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
+		//[UE++]: Detached Cache V2 validation returns malformed-input details to
+		// the caller and must not publish an expected eligibility failure through
+		// the engine's global diagnostic channel. Ordinary module restore keeps
+		// the original message behavior.
+		if( !validatingFunctionArtifact )
+		{
+			asCString str;
+			str.Format(msg, bytesRead);
+			engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.AddressOf());
+		}
+		//[UE--]
 		error = true;
 	}
 
@@ -967,6 +1444,113 @@ void asCReader::ReadUsedStringConstants()
 	}
 }
 
+void asCReader::ReadFunctionArtifactSymbolTables()
+{
+	// Function-artifact v4 keeps every table semantic and pointer-free. Read all
+	// tables before TranslateFunction so instruction operands resolve only to
+	// current module/engine objects.
+	ReadUsedFunctions();
+	if( error ) return;
+
+	asUINT count = SanityCheck(ReadEncodedUInt(), 1000000);
+	usedTypes.Allocate(count, false);
+	for( asUINT n = 0; n < count && !error; ++n )
+		usedTypes.PushLast(ReadTypeInfo());
+	if( error ) return;
+
+	ReadUsedTypeIds();
+	if( error ) return;
+	ReadUsedGlobalProps();
+	if( error ) return;
+	ReadUsedStringConstants();
+	if( error ) return;
+	ReadUsedObjectProps();
+}
+
+void asCReader::ReadFunctionArtifactRuntimeState()
+{
+	functionArtifactRuntimeStateOffset = bytesRead;
+	functionArtifactStackNeededOffset = bytesRead;
+	functionArtifactStackNeeded =
+		SanityCheck(ReadEncodedUInt(), 1000000);
+	functionArtifactObjVariablesOnHeapOffset = bytesRead;
+	functionArtifactObjVariablesOnHeap =
+		SanityCheck(ReadEncodedUInt(), 1000000);
+	functionArtifactObjectVariableCountOffset = bytesRead;
+	const asUINT count = SanityCheck(ReadEncodedUInt(), 1000000);
+	if( error )
+		return;
+	if( functionArtifactObjVariablesOnHeap > count )
+	{
+		Error(TXT_INVALID_BYTECODE_d);
+		return;
+	}
+
+	functionArtifactObjVariableTypes.SetLength(0);
+	functionArtifactObjVariablePositions.SetLength(0);
+	functionArtifactObjVariableTypes.Allocate(count, false);
+	functionArtifactObjVariablePositions.Allocate(count, false);
+	for( asUINT n = 0; n < count && !error; ++n )
+	{
+		if( n == 0 )
+			functionArtifactFirstObjectVariableTypeOffset = bytesRead;
+		asCTypeInfo *type = ReadTypeInfo();
+		if( n == 0 )
+			functionArtifactFirstObjectVariablePositionOffset = bytesRead;
+		const int position = ReadEncodedInt();
+		if( error )
+			return;
+		if( position <= 0 || asUINT(position) > functionArtifactStackNeeded ||
+			functionArtifactObjVariablePositions.IndexOf(position) >= 0 )
+		{
+			Error(TXT_INVALID_BYTECODE_d);
+			return;
+		}
+		functionArtifactObjVariableTypes.PushLast(type);
+		functionArtifactObjVariablePositions.PushLast(position);
+		RecordFunctionArtifactTypeUse(asUINT(-1), 0, type);
+	}
+}
+
+void asCReader::ApplyFunctionArtifactRuntimeState(asCScriptFunction *func)
+{
+	if( error || func == 0 || func->scriptData == 0 ||
+		functionArtifactObjVariableTypes.GetLength() !=
+			functionArtifactObjVariablePositions.GetLength() )
+	{
+		Error(TXT_INVALID_BYTECODE_d);
+		return;
+	}
+
+	const int stackNeeded = AdjustStackPosition(
+		static_cast<int>(functionArtifactStackNeeded));
+	if( error || stackNeeded < 0 )
+	{
+		Error(TXT_INVALID_BYTECODE_d);
+		return;
+	}
+
+	func->scriptData->stackNeeded = stackNeeded;
+	func->scriptData->objVariablesOnHeap =
+		functionArtifactObjVariablesOnHeap;
+	func->scriptData->objVariableTypes.SetLength(0);
+	func->scriptData->objVariablePos.SetLength(0);
+	for( asUINT n = 0;
+		n < functionArtifactObjVariableTypes.GetLength(); ++n )
+	{
+		const int position = AdjustStackPosition(
+			functionArtifactObjVariablePositions[n]);
+		if( error || position <= 0 || position > stackNeeded )
+		{
+			Error(TXT_INVALID_BYTECODE_d);
+			return;
+		}
+		func->scriptData->objVariableTypes.PushLast(
+			functionArtifactObjVariableTypes[n]);
+		func->scriptData->objVariablePos.PushLast(position);
+	}
+}
+
 void asCReader::ReadUsedFunctions()
 {
 	TimeIt("asCReader::ReadUsedFunctions");
@@ -1473,6 +2057,8 @@ asCScriptFunction *asCReader::ReadFunction(bool &isNew, bool addToModule, bool a
 	if (isExternal) *isExternal = false;
 	if( error ) return 0;
 
+	if( validatingFunctionArtifact )
+		functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_MARKER;
 	char c;
 	ReadData(&c, 1);
 
@@ -1510,6 +2096,8 @@ asCScriptFunction *asCReader::ReadFunction(bool &isNew, bool addToModule, bool a
 	asCDataType dt;
 
 	asCObjectType *parentClass = 0;
+	if( validatingFunctionArtifact )
+		functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_SIGNATURE;
 	ReadFunctionSignature(func, &parentClass);
 	asASSERT(func->templateSubTypes.GetLength() == 0);
 	if( error )
@@ -1577,8 +2165,12 @@ asCScriptFunction *asCReader::ReadFunction(bool &isNew, bool addToModule, bool a
 				if (addToGC && !addToModule)
 					engine->gc.AddScriptObjectToGC(func, &engine->functionBehaviours);
 
+				if( validatingFunctionArtifact )
+					functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_BYTECODE;
 				ReadByteCode(func);
 
+				if( validatingFunctionArtifact )
+					functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_STATE;
 				func->scriptData->variableSpace = SanityCheck(ReadEncodedUInt(), 1000000);
 
 				if (bits & 8)
@@ -1658,6 +2250,8 @@ asCScriptFunction *asCReader::ReadFunction(bool &isNew, bool addToModule, bool a
 				}
 
 				// Read the variable information
+				if( validatingFunctionArtifact )
+					functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_LOCALS;
 				int length = SanityCheck(ReadEncodedUInt(), 1000000);
 				func->scriptData->variables.Allocate(length, false);
 				for (i = 0; i < length; i++)
@@ -1850,6 +2444,8 @@ asCScriptFunction *asCReader::ReadFunction(bool &isNew, bool addToModule, bool a
 	}
 	if( func->objectType )
 		func->ComputeSignatureId();
+	if( validatingFunctionArtifact )
+		functionArtifactValidationStage = asFUNCTION_ARTIFACT_STAGE_FUNCTION_COMPLETE;
 
 	return func;
 }
@@ -2480,6 +3076,7 @@ void asCReader::ReadString(asCString* str)
 		int r = stream->Read(str->AddressOf(), len);
 		if (r < 0)
 			Error(TXT_UNEXPECTED_END_OF_FILE);
+		bytesRead += len;
 
 		savedStrings.PushLast(*str);
 	}
@@ -2926,11 +3523,18 @@ asCTypeInfo* asCReader::ReadTypeInfo()
 			return 0;
 		}
 	}
-	else
+	else if( ch == '\0' )
 	{
 		// No object type
-		asASSERT( ch == '\0' || error );
 		ot = 0;
+	}
+	else
+	{
+		// A corrupt discriminator must be a recoverable load failure. An assert
+		// here would turn untrusted Cache V2 bytes into a process crash, while
+		// silently treating it as null would let later state drift unpredictably.
+		Error(TXT_INVALID_BYTECODE_d);
+		return 0;
 	}
 
 	return ot;
@@ -3202,6 +3806,7 @@ void asCReader::ReadUsedGlobalProps()
 	int c = SanityCheck(ReadEncodedUInt(), 1000000);
 
 	usedGlobalProperties.Allocate(c, false);
+	functionArtifactGlobalProperties.Allocate(c, false);
 
 	for( int n = 0; n < c; n++ )
 	{
@@ -3228,6 +3833,7 @@ void asCReader::ReadUsedGlobalProps()
 			prop = globProp->GetAddressOfValue();
 
 		usedGlobalProperties.PushLast(prop);
+		functionArtifactGlobalProperties.PushLast(globProp);
 
 		if( prop == 0 )
 		{
@@ -3276,7 +3882,8 @@ void asCReader::ReadUsedObjectProps()
 	}
 }
 
-short asCReader::FindObjectPropOffset(asWORD index)
+short asCReader::FindObjectPropOffset(asWORD index,
+	asUINT instructionOrdinal, asUINT operandSlot)
 {
 	if (lastCompositeProp)
 	{
@@ -3296,6 +3903,10 @@ short asCReader::FindObjectPropOffset(asWORD index)
 		Error(TXT_INVALID_BYTECODE_d);
 		return 0;
 	}
+
+	RecordFunctionArtifactPropertyUse(instructionOrdinal, operandSlot,
+		usedObjectProperties[index].objType,
+		usedObjectProperties[index].prop);
 
 	if (usedObjectProperties[index].prop->compositeOffset || usedObjectProperties[index].prop->isCompositeIndirect)
 	{
@@ -3356,13 +3967,16 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 		{
 			// Translate the index to the true object type
 			asPWORD *ot = (asPWORD*)&bc[n+1];
-			*(asCObjectType**)ot = CastToObjectType(FindType(int(*ot)));
+			asCTypeInfo *type = FindType(int(*ot));
+			RecordFunctionArtifactTypeUse(bcNum, 0, type);
+			*(asCObjectType**)ot = CastToObjectType(type);
 		}
 		else if( c == asBC_TYPEID ||
 			     c == asBC_Cast )
 		{
 			// Translate the index to the type id
 			int *tid = (int*)&bc[n+1];
+			RecordFunctionArtifactTypeIdUse(bcNum, 0, *tid);
 			*tid = FindTypeId(*tid);
 		}
 		else if( c == asBC_ADDSi ||
@@ -3370,16 +3984,19 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 		{
 			// Translate the index to the type id
 			int *tid = (int*)&bc[n+1];
+			RecordFunctionArtifactTypeIdUse(bcNum, 0, *tid);
 			*tid = FindTypeId(*tid);
 
 			// Translate the prop index into the property offset
-			*(((short*)&bc[n])+1) = FindObjectPropOffset(*(((short*)&bc[n])+1));
+			*(((short*)&bc[n])+1) = FindObjectPropOffset(
+				*(((short*)&bc[n])+1), bcNum, 1);
 		}
 		else if( c == asBC_LoadRObjR ||
 			     c == asBC_LoadVObjR )
 		{
 			// Translate the index to the type id
 			int *tid = (int*)&bc[n+2];
+			RecordFunctionArtifactTypeIdUse(bcNum, 0, *tid);
 			*tid = FindTypeId(*tid);
 
 			asCObjectType *ot = engine->GetObjectTypeFromTypeId(*tid);
@@ -3392,13 +4009,15 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 			else
 			{
 				// Translate the prop index into the property offset
-				*(((short*)&bc[n])+2) = FindObjectPropOffset(*(((short*)&bc[n])+2));
+				*(((short*)&bc[n])+2) = FindObjectPropOffset(
+					*(((short*)&bc[n])+2), bcNum, 1);
 			}
 		}
 		else if( c == asBC_COPY )
 		{
 			// Translate the index to the type id
 			int *tid = (int*)&bc[n+1];
+			RecordFunctionArtifactTypeIdUse(bcNum, 0, *tid);
 			*tid = FindTypeId(*tid);
 
 			// COPY is used to copy POD types that don't have the opAssign method. It is
@@ -3435,7 +4054,10 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 			int *fid = (int*)&bc[n+1];
 			asCScriptFunction *f = FindFunction(*fid);
 			if( f )
+			{
+				RecordFunctionArtifactRelocation(bcNum, 0, f);
 				*fid = f->id;
+			}
 			else
 			{
 				Error(TXT_INVALID_BYTECODE_d);
@@ -3449,7 +4071,10 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 			asPWORD *fid = (asPWORD*)&bc[n+1];
 			asCScriptFunction *f = FindFunction(int(*fid));
 			if( f )
+			{
+				RecordFunctionArtifactRelocation(bcNum, 0, f);
 				*fid = (asPWORD)f;
+			}
 			else
 			{
 				Error(TXT_INVALID_BYTECODE_d);
@@ -3460,13 +4085,25 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 		{
 			// Translate the index to the func pointer
 			asPWORD *fid = (asPWORD*)&bc[n+1];
-			*fid = (asPWORD)FindFunction(int(*fid));
+			asCScriptFunction *f = FindFunction(int(*fid));
+			if( f )
+			{
+				RecordFunctionArtifactRelocation(bcNum, 0, f);
+				*fid = (asPWORD)f;
+			}
+			else
+			{
+				Error(TXT_INVALID_BYTECODE_d);
+				return;
+			}
 		}
 		else if( c == asBC_ALLOC )
 		{
 			// Translate the index to the true object type
 			asPWORD *arg = (asPWORD*)&bc[n+1];
-			*(asCObjectType**)arg = CastToObjectType(FindType(int(*arg)));
+			asCTypeInfo *type = FindType(int(*arg));
+			RecordFunctionArtifactTypeUse(bcNum, 0, type);
+			*(asCObjectType**)arg = CastToObjectType(type);
 
 			// The constructor function id must be translated, unless it is zero
 			int *fid = (int*)&bc[n+1+AS_PTR_SIZE];
@@ -3475,7 +4112,10 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 				// Subtract 1 from the id, as it was incremented during the writing
 				asCScriptFunction *f = FindFunction(*fid-1);
 				if( f )
+				{
+					RecordFunctionArtifactRelocation(bcNum, 1, f);
 					*fid = f->id;
+				}
 				else
 				{
 					Error(TXT_INVALID_BYTECODE_d);
@@ -3523,7 +4163,11 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 			if ((*index & 1))
 			{
 				if ((asUINT(*index)>>1) < usedGlobalProperties.GetLength())
-					*(void**)index = usedGlobalProperties[asUINT(*index)>>1];
+				{
+					const asUINT globalIndex = asUINT(*index)>>1;
+					RecordFunctionArtifactGlobalUse(bcNum, 0, globalIndex);
+					*(void**)index = usedGlobalProperties[globalIndex];
+				}
 				else
 				{
 					Error(TXT_INVALID_BYTECODE_d);
@@ -3590,7 +4234,9 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 		{
 			// Translate the index to the true object type
 			asPWORD *pot = (asPWORD*)&bc[n+1];
-			*(asCObjectType**)pot = CastToObjectType(FindType(int(*pot)));
+			asCTypeInfo *type = FindType(int(*pot));
+			RecordFunctionArtifactTypeUse(bcNum, 0, type);
+			*(asCObjectType**)pot = CastToObjectType(type);
 
 			asCObjectType *ot = *(asCObjectType**)pot;
 			if( ot && (ot->flags & asOBJ_LIST_PATTERN) )
@@ -3629,6 +4275,7 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 			bc[n+1] = listAdj->AdjustOffset(bc[n+1]);
 
 			// Translate the type id
+			RecordFunctionArtifactTypeIdUse(bcNum, 0, bc[n+2]);
 			bc[n+2] = FindTypeId(bc[n+2]);
 
 			// Inform the list adjuster the type id of the next element
@@ -3748,6 +4395,96 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 		func->scriptData->sectionIdxs[n] = instructionNbrToPos[func->scriptData->sectionIdxs[n]];
 
 	CalculateStackNeeded(func);
+}
+
+void asCReader::RecordFunctionArtifactRelocation(asUINT instructionOrdinal,
+	asUINT operandSlot, asCScriptFunction *function)
+{
+	if( !validatingFunctionArtifact || function == 0 )
+		return;
+
+	asSFunctionArtifactFunctionRelocation relocation;
+	relocation.instructionOrdinal = instructionOrdinal;
+	relocation.operandSlot = operandSlot;
+	relocation.function = function;
+	functionArtifactFunctionRelocations.PushLast(relocation);
+
+	asSFunctionArtifactSymbolUse use = {};
+	use.instructionOrdinal = instructionOrdinal;
+	use.operandSlot = operandSlot;
+	use.kind = asFUNCTION_ARTIFACT_SYMBOL_FUNCTION_SIGNATURE;
+	use.function = function;
+	functionArtifactSymbolUses.PushLast(use);
+}
+
+void asCReader::RecordFunctionArtifactTypeUse(asUINT instructionOrdinal,
+	asUINT operandSlot, asCTypeInfo *type)
+{
+	if( !validatingFunctionArtifact || type == 0 )
+		return;
+
+	asSFunctionArtifactSymbolUse use = {};
+	use.instructionOrdinal = instructionOrdinal;
+	use.operandSlot = operandSlot;
+	use.kind = (type->flags & (asOBJ_VALUE | asOBJ_ENUM)) != 0
+		? asFUNCTION_ARTIFACT_SYMBOL_TYPE_VALUE_LAYOUT
+		: asFUNCTION_ARTIFACT_SYMBOL_TYPE_DECLARATION;
+	use.type = type;
+	functionArtifactSymbolUses.PushLast(use);
+}
+
+void asCReader::RecordFunctionArtifactTypeIdUse(asUINT instructionOrdinal,
+	asUINT operandSlot, int serializedTypeIdIndex)
+{
+	if( !validatingFunctionArtifact )
+		return;
+	if( serializedTypeIdIndex < 0 ||
+		asUINT(serializedTypeIdIndex) >= usedTypeIds.GetLength() )
+	{
+		Error(TXT_INVALID_BYTECODE_d);
+		return;
+	}
+
+	const asCDataType type = engine->GetDataTypeFromTypeId(
+		usedTypeIds[serializedTypeIdIndex]);
+	RecordFunctionArtifactTypeUse(instructionOrdinal, operandSlot,
+		type.GetTypeInfo());
+}
+
+void asCReader::RecordFunctionArtifactGlobalUse(asUINT instructionOrdinal,
+	asUINT operandSlot, asUINT globalPropertyIndex)
+{
+	if( !validatingFunctionArtifact )
+		return;
+	if( globalPropertyIndex >= functionArtifactGlobalProperties.GetLength() ||
+		functionArtifactGlobalProperties[globalPropertyIndex] == 0 )
+	{
+		Error(TXT_INVALID_BYTECODE_d);
+		return;
+	}
+
+	asSFunctionArtifactSymbolUse use = {};
+	use.instructionOrdinal = instructionOrdinal;
+	use.operandSlot = operandSlot;
+	use.kind = asFUNCTION_ARTIFACT_SYMBOL_GLOBAL_STORAGE;
+	use.globalProperty = functionArtifactGlobalProperties[globalPropertyIndex];
+	functionArtifactSymbolUses.PushLast(use);
+}
+
+void asCReader::RecordFunctionArtifactPropertyUse(asUINT instructionOrdinal,
+	asUINT operandSlot, asCTypeInfo *ownerType,
+	asCObjectProperty *property)
+{
+	if( !validatingFunctionArtifact || ownerType == 0 || property == 0 )
+		return;
+
+	asSFunctionArtifactSymbolUse use = {};
+	use.instructionOrdinal = instructionOrdinal;
+	use.operandSlot = operandSlot;
+	use.kind = asFUNCTION_ARTIFACT_SYMBOL_PROPERTY_LAYOUT;
+	use.propertyOwnerType = ownerType;
+	use.objectProperty = property;
+	functionArtifactSymbolUses.PushLast(use);
 }
 
 asCReader::SListAdjuster::SListAdjuster(asCReader* rd, asDWORD* bc, asCObjectType* listType) :
@@ -4588,6 +5325,158 @@ int asCWriter::Write()
 	WriteUsedObjectProps();
 
 	return error ? asERROR : asSUCCESS;
+}
+
+int asCWriter::WriteFunctionArtifact(asCScriptFunction *func,
+	asSFunctionArtifactWriteDiagnostics *diagnostics)
+{
+	auto UpdateDiagnostics = [this, diagnostics](int result, asUINT stage)
+	{
+		if( diagnostics == 0 )
+			return;
+		diagnostics->result = result;
+		diagnostics->bytesWritten = bytesWritten;
+		diagnostics->stage = stage;
+		diagnostics->usedTypeIdCount = usedTypeIds.GetLength();
+		diagnostics->usedTypeCount = usedTypes.GetLength();
+		diagnostics->usedFunctionCount = usedFunctions.GetLength();
+		diagnostics->usedGlobalPropertyCount = usedGlobalProperties.GetLength();
+		diagnostics->usedStringConstantCount = usedStringConstants.GetLength();
+		diagnostics->usedObjectPropertyCount = usedObjectProperties.GetLength();
+	};
+	UpdateDiagnostics(asERROR, asFUNCTION_ARTIFACT_WRITE_STAGE_NONE);
+	if (module == 0 || stream == 0 || engine == 0 || func == 0 ||
+		func->module != module || func->funcType != asFUNC_SCRIPT ||
+		func->scriptData == 0)
+	{
+		UpdateDiagnostics(asINVALID_ARG, asFUNCTION_ARTIFACT_WRITE_STAGE_NONE);
+		return asINVALID_ARG;
+	}
+
+	// This is a distinct, versioned stream rather than a truncated module stream.
+	// WriteData is byte-order aware, so emit the textual magic one byte at a time.
+	const char magic[] = {'U', 'E', 'A', 'S', 'F', 'N', 'V', '1'};
+	for (asUINT n = 0; n < sizeof(magic); ++n)
+		WriteData(&magic[n], 1);
+	const asBYTE version = AS_FUNCTION_ARTIFACT_STREAM_VERSION;
+	WriteData(&version, 1);
+	if( (func->traits.traits & ~AS_FUNCTION_ARTIFACT_KNOWN_TRAITS) != 0 )
+	{
+		UpdateDiagnostics(asNOT_SUPPORTED,
+			asFUNCTION_ARTIFACT_WRITE_STAGE_ROOT_FUNCTION);
+		return asNOT_SUPPORTED;
+	}
+	const asDWORD rootTraits = func->traits.traits;
+	WriteData(&rootTraits, 4);
+
+	WriteFunction(func);
+	if (error)
+	{
+		UpdateDiagnostics(asERROR,
+			asFUNCTION_ARTIFACT_WRITE_STAGE_ROOT_FUNCTION);
+		return asERROR;
+	}
+
+	// Numeric ids, pointers and property offsets in the root bytecode have now
+	// been replaced by table indices. Serialize semantic table coordinates only;
+	// the reader resolves them against the current module/engine before VM
+	// translation, and the host validates the resolved symbols against stable
+	// persisted dependencies.
+	WriteUsedFunctions();
+	if (error)
+	{
+		UpdateDiagnostics(asERROR,
+			asFUNCTION_ARTIFACT_WRITE_STAGE_FUNCTION_SIGNATURES);
+		return asERROR;
+	}
+
+	// The generic module bytecode stream reconstructs these APV2 frame fields
+	// heuristically. A function artifact must retain the compiler's exact ordered
+	// object-temporary metadata so restoring a Factory/constructor cannot change
+	// frame cleanup behavior. Pre-register every semantic type before freezing the
+	// symbol-table counts; the values themselves are written after the tables.
+	const asUINT objectVariableCount =
+		func->scriptData->objVariableTypes.GetLength();
+	if( objectVariableCount != func->scriptData->objVariablePos.GetLength() ||
+		objectVariableCount > 1000000 ||
+		func->scriptData->objVariablesOnHeap > objectVariableCount ||
+		func->scriptData->stackNeeded < 0 ||
+		func->scriptData->stackNeeded > 1000000 )
+	{
+		UpdateDiagnostics(asNOT_SUPPORTED,
+			asFUNCTION_ARTIFACT_WRITE_STAGE_ROOT_FUNCTION);
+		return asNOT_SUPPORTED;
+	}
+	for( asUINT n = 0; n < objectVariableCount; ++n )
+	{
+		const int position = func->scriptData->objVariablePos[n];
+		if( position <= 0 || position > func->scriptData->stackNeeded )
+		{
+			UpdateDiagnostics(asNOT_SUPPORTED,
+				asFUNCTION_ARTIFACT_WRITE_STAGE_ROOT_FUNCTION);
+			return asNOT_SUPPORTED;
+		}
+		for( asUINT previous = 0; previous < n; ++previous )
+		{
+			if( func->scriptData->objVariablePos[previous] == position )
+			{
+				UpdateDiagnostics(asNOT_SUPPORTED,
+					asFUNCTION_ARTIFACT_WRITE_STAGE_ROOT_FUNCTION);
+				return asNOT_SUPPORTED;
+			}
+		}
+		if( func->scriptData->objVariableTypes[n] != 0 )
+			FindTypeInfoIdx(func->scriptData->objVariableTypes[n]);
+	}
+
+	// Function signatures may expose types not seen in the root bytecode. Emit
+	// usedTypes only after the signature table has reached its fixed point.
+	const asUINT functionCount = usedFunctions.GetLength();
+	const asUINT typeCount = usedTypes.GetLength();
+	const asUINT typeIdCount = usedTypeIds.GetLength();
+	const asUINT globalCount = usedGlobalProperties.GetLength();
+	const asUINT stringCount = usedStringConstants.GetLength();
+	const asUINT propertyCount = usedObjectProperties.GetLength();
+	WriteEncodedInt64(typeCount);
+	for( asUINT n = 0; n < typeCount; ++n )
+		WriteTypeInfo(usedTypes[n]);
+	WriteUsedTypeIds();
+	WriteUsedGlobalProps();
+	WriteUsedStringConstants();
+	WriteUsedObjectProps();
+	WriteEncodedInt64(AdjustStackPosition(func->scriptData->stackNeeded));
+	WriteEncodedInt64(func->scriptData->objVariablesOnHeap);
+	WriteEncodedInt64(objectVariableCount);
+	for( asUINT n = 0; n < objectVariableCount; ++n )
+	{
+		WriteTypeInfo(func->scriptData->objVariableTypes[n]);
+		WriteEncodedInt64(AdjustStackPosition(
+			func->scriptData->objVariablePos[n]));
+	}
+	if( error )
+	{
+		UpdateDiagnostics(asERROR,
+			asFUNCTION_ARTIFACT_WRITE_STAGE_FUNCTION_SIGNATURES);
+		return asERROR;
+	}
+
+	// No table writer may discover another table entry after its count has been
+	// emitted. Fail closed if a future AngelScript opcode/serializer violates
+	// this fixed-point assumption.
+	if( functionCount != usedFunctions.GetLength()
+		|| typeCount != usedTypes.GetLength()
+		|| typeIdCount != usedTypeIds.GetLength()
+		|| globalCount != usedGlobalProperties.GetLength()
+		|| stringCount != usedStringConstants.GetLength()
+		|| propertyCount != usedObjectProperties.GetLength() )
+	{
+		UpdateDiagnostics(asNOT_SUPPORTED,
+			asFUNCTION_ARTIFACT_WRITE_STAGE_FUNCTION_SIGNATURES);
+		return asNOT_SUPPORTED;
+	}
+
+	UpdateDiagnostics(asSUCCESS, asFUNCTION_ARTIFACT_WRITE_STAGE_COMPLETE);
+	return asSUCCESS;
 }
 
 int asCWriter::FindStringConstantIndex(void *str)

@@ -469,8 +469,8 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpEngineOverview(FA
 		TEXT("bTestErrors"),
 		TEXT("bIsHotReloading"),
 		TEXT("bScriptDevelopmentMode"),
-		TEXT("bGeneratePrecompiledData"),
-		TEXT("bUsePrecompiledData"),
+		TEXT("bCollectStaticJITCompatibilityBinds"),
+		TEXT("bUseStaticJITCompatibilityData"),
 		TEXT("bCompletedAssetScan"),
 		TEXT("ActiveModuleCount"),
 		TEXT("TotalClassCount"),
@@ -494,8 +494,8 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpEngineOverview(FA
 		BoolToString(Engine.bTestErrors),
 		BoolToString(Engine.bIsHotReloading),
 		BoolToString(Engine.bScriptDevelopmentMode),
-		BoolToString(Engine.bGeneratePrecompiledData),
-		BoolToString(Engine.bUsePrecompiledData),
+		BoolToString(Engine.bCollectStaticJITCompatibilityBinds),
+		BoolToString(Engine.bUseStaticJITCompatibilityData),
 		BoolToString(Engine.bCompletedAssetScan),
 		LexToString(ActiveModules.Num()),
 		LexToString(TotalClassCount),
@@ -535,10 +535,8 @@ FAngelscriptStateDump::FTableResult FAngelscriptStateDump::DumpRuntimeConfig(FAn
 	AddConfigValue(TEXT("bSimulateCooked"), BoolToString(Config.bSimulateCooked));
 	AddConfigValue(TEXT("bTestErrors"), BoolToString(Config.bTestErrors));
 	AddConfigValue(TEXT("bForcePreprocessEditorCode"), BoolToString(Config.bForcePreprocessEditorCode));
-	AddConfigValue(TEXT("bGeneratePrecompiledData"), BoolToString(Config.bGeneratePrecompiledData));
 	AddConfigValue(TEXT("bDevelopmentMode"), BoolToString(Config.bDevelopmentMode));
-	AddConfigValue(TEXT("bIgnorePrecompiledData"), BoolToString(Config.bIgnorePrecompiledData));
-	AddConfigValue(TEXT("bSkipStaticJITCodeGen"), BoolToString(Config.bSkipStaticJITCodeGen));
+	AddConfigValue(TEXT("bCollectStaticJITCompatibilityBinds"), BoolToString(Config.bCollectStaticJITCompatibilityBinds));
 	AddConfigValue(TEXT("bSkipWriteBindDB"), BoolToString(Config.bSkipWriteBindDB));
 	AddConfigValue(TEXT("bWriteBindDB"), BoolToString(Config.bWriteBindDB));
 	AddConfigValue(TEXT("bExitOnError"), BoolToString(Config.bExitOnError));

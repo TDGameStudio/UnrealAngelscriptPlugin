@@ -26,6 +26,11 @@ TUniquePtr<FAngelscriptEngine> FAngelscriptTestEngine::Create(
 	// wrapper so test call sites never set it manually.
 	FAngelscriptEngineConfig LocalConfig = Config;
 	LocalConfig.bSkipInitialCompile = true;
+	// Unit-test Engines must not populate the project's real Saved cache during
+	// destructor shutdown. Tests that provide an explicit isolated root opt into
+	// the production shutdown publication path.
+	LocalConfig.bDisableCacheV2Persistence =
+		LocalConfig.CacheV2RootOverride.IsEmpty();
 	TUniquePtr<FAngelscriptEngine> Engine = FAngelscriptEngine::Create(LocalConfig, Dependencies);
 	UE_LOG(Angelscript, Verbose, TEXT("[TestEngine] FAngelscriptTestEngine::Create produced engine %p"), Engine.Get());
 	return Engine;

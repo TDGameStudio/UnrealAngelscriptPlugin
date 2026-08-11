@@ -133,7 +133,7 @@ public:
 bool FAngelscriptStaticJITNativeFormTests::RunEnhancedInputGetHandleNoJit(FAutomationTestBase& Test)
 {
 	FAngelscriptEngineConfig Config;
-	Config.bGeneratePrecompiledData = true;
+	Config.bCollectStaticJITCompatibilityBinds = true;
 
 	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 	TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);
@@ -186,7 +186,7 @@ bool FAngelscriptStaticJITNativeFormTests::RunTArrayIndexCustomCall(FAutomationT
 {
 	bool bPassed = false;
 	FAngelscriptEngineConfig Config;
-	Config.bGeneratePrecompiledData = true;
+	Config.bCollectStaticJITCompatibilityBinds = true;
 
 	FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
 	TUniquePtr<FAngelscriptEngine> OwnedEngine = CreateScriptScanFreeFullEngineForTesting(Config, Dependencies);

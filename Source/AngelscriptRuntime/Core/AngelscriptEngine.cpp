@@ -12,14 +12,27 @@
 #include "ClassGenerator/AngelscriptClassGenerator.h"
 #include "ClassGenerator/ASClass.h"
 #include "ClassGenerator/ASStruct.h"
+#include "Cache/AngelscriptCacheDiagnostics.h"
+#include "Cache/AngelscriptCacheCompileReuse.h"
+#include "Cache/AngelscriptCacheExactStartup.h"
+#include "Cache/Private/AngelscriptCacheRuntimeState.h"
+#include "Cache/AngelscriptCacheEnvironmentProfile.h"
+#include "Cache/AngelscriptCacheLegacyCutover.h"
+#include "Cache/AngelscriptCacheManifestPack.h"
+#include "Cache/AngelscriptCacheService.h"
+#include "Cache/AngelscriptCacheSettings.h"
 #include "Debugging/AngelscriptDebugServer.h"
 #include "Compilation/AngelscriptCompilationContext.h"
 #include "Compilation/AngelscriptCompilationEvents.h"
 #include "Core/AngelscriptEngineExtensionRegistry.h"
 
 #include "HAL/FileManager.h"
+#include "HAL/PlatformProcess.h"
+#include "HAL/PlatformTime.h"
 #include "Misc/Paths.h"
+#include "Misc/App.h"
 #include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Misc/MessageDialog.h"
 #include "Misc/ScopeExit.h"
@@ -170,6 +183,7 @@ namespace AngelscriptEngineCompilationEvents_Private
 		}
 
 		Event.bLoadedPrecompiledCode |= Module->bLoadedPrecompiledCode;
+		Event.bLoadedIncrementalCache |= Module->bLoadedIncrementalCache;
 	}
 
 	void FinalizeModuleCounts(FAngelscriptCompilationEvent& Event)
@@ -204,6 +218,7 @@ namespace AngelscriptEngineCompilationEvents_Private
 		FName Phase,
 		uint64 CompilationRunId,
 		ECompileType CompileType,
+		EAngelscriptCompileCachePolicy CachePolicy,
 		const TArray<TSharedRef<FAngelscriptModuleDesc>>& Modules)
 	{
 		if (!FAngelscriptCompilationEvents::HasListeners())
@@ -216,6 +231,7 @@ namespace AngelscriptEngineCompilationEvents_Private
 		Event.Phase = Phase;
 		Event.CompilationRunId = CompilationRunId;
 		Event.CompileType = CompileType;
+		Event.CachePolicy = CachePolicy;
 		AddModulesSummary(Event, Modules);
 		FAngelscriptCompilationEvents::Broadcast(Event);
 	}
@@ -225,6 +241,7 @@ namespace AngelscriptEngineCompilationEvents_Private
 		FName Phase,
 		uint64 CompilationRunId,
 		ECompileType CompileType,
+		EAngelscriptCompileCachePolicy CachePolicy,
 		const TSharedRef<FAngelscriptModuleDesc>& Module,
 		bool bSucceeded,
 		bool bJitAvailable = false,
@@ -240,6 +257,7 @@ namespace AngelscriptEngineCompilationEvents_Private
 		Event.Phase = Phase;
 		Event.CompilationRunId = CompilationRunId;
 		Event.CompileType = CompileType;
+		Event.CachePolicy = CachePolicy;
 		Event.bSucceeded = bSucceeded;
 		Event.bFailed = !bSucceeded;
 		Event.bJitAvailable = bJitAvailable;
@@ -632,6 +650,35 @@ void FAngelscriptEngineScope::Reset()
 	bChangedWorldContext = false;
 }
 
+FAngelscriptCachePackPolicy ResolveAngelscriptCacheWriterPolicy(
+	const FAngelscriptEngineConfig& Config,
+	const uint32 ConfiguredPackTargetMiB,
+	const bool bConfiguredParallelPreparation,
+	const uint32 ConfiguredPreparationWorkerCount)
+{
+	FAngelscriptCachePackPolicy Policy;
+	const uint32 TargetMiB = FMath::Clamp<uint32>(
+		Config.CacheV2PackTargetMiBOverride > 0
+			? Config.CacheV2PackTargetMiBOverride
+			: ConfiguredPackTargetMiB,
+		1, 256);
+	Policy.TargetRawBytesPerPack =
+		static_cast<uint64>(TargetMiB) * 1024 * 1024;
+	const bool bUseParallel = bConfiguredParallelPreparation
+		&& !Config.bForceSerialCacheV2Preparation;
+	Policy.ExecutionMode = bUseParallel
+		? EAngelscriptCachePreparationExecutionMode::BoundedParallel
+		: EAngelscriptCachePreparationExecutionMode::ForcedSerial;
+	Policy.MaxWorkerCount = bUseParallel
+		? FMath::Clamp<uint32>(
+			Config.CacheV2PreparationWorkerCountOverride > 0
+				? Config.CacheV2PreparationWorkerCountOverride
+				: ConfiguredPreparationWorkerCount,
+			1, 64)
+		: 1;
+	return Policy;
+}
+
 FAngelscriptEngineConfig FAngelscriptEngineConfig::FromCurrentProcess()
 {
 	FAngelscriptEngineConfig Config;
@@ -640,22 +687,78 @@ FAngelscriptEngineConfig FAngelscriptEngineConfig::FromCurrentProcess()
 	Config.bSimulateCooked = FParse::Param(FCommandLine::Get(), TEXT("as-simulate-cooked"));
 	Config.bTestErrors = FParse::Param(FCommandLine::Get(), TEXT("as-test-errors"));
 	Config.bForcePreprocessEditorCode = FParse::Param(FCommandLine::Get(), TEXT("as-force-preprocess-editor-code"));
-	Config.bGeneratePrecompiledData = FParse::Param(FCommandLine::Get(), TEXT("as-generate-precompiled-data"));
 	Config.bDevelopmentMode = FParse::Param(FCommandLine::Get(), TEXT("as-development-mode"));
-	Config.bIgnorePrecompiledData = FParse::Param(FCommandLine::Get(), TEXT("as-ignore-precompiled-data"));
-	Config.bSkipStaticJITCodeGen = FParse::Param(FCommandLine::Get(), TEXT("as-skip-static-jit-codegen"));
 	Config.bSkipWriteBindDB = FParse::Param(FCommandLine::Get(), TEXT("as-skip-write-bind-db"));
 	Config.bWriteBindDB = FParse::Param(FCommandLine::Get(), TEXT("as-write-bind-db"));
 	Config.bExitOnError = FParse::Param(FCommandLine::Get(), TEXT("as-exit-on-error"));
 	Config.bDumpDocumentation = FParse::Param(FCommandLine::Get(), TEXT("dump-as-doc"));
 	FParse::Value(FCommandLine::Get(), TEXT("-asdebugport="), Config.DebugServerPort);
+	FParse::Value(
+		FCommandLine::Get(),
+		TEXT("-as-cache-report="),
+		Config.CacheV2ReportPathOverride);
+	Config.bExitAfterStartupForCacheSmoke =
+		FParse::Param(FCommandLine::Get(), TEXT("as-cache-exit-after-startup"));
+	Config.bForceEnableCacheV2DecisionTrace =
+		FParse::Param(FCommandLine::Get(), TEXT("as-cache-trace"));
+	FParse::Value(
+		FCommandLine::Get(),
+		TEXT("-as-cache-trace-capacity="),
+		Config.CacheV2DecisionTraceCapacityOverride);
+	FParse::Value(
+		FCommandLine::Get(),
+		TEXT("-as-cache-pack-target-mib="),
+		Config.CacheV2PackTargetMiBOverride);
+	FParse::Value(
+		FCommandLine::Get(),
+		TEXT("-as-cache-preparation-workers="),
+		Config.CacheV2PreparationWorkerCountOverride);
+	Config.bForceSerialCacheV2Preparation = FParse::Param(
+		FCommandLine::Get(), TEXT("as-cache-force-serial-preparation"));
 #if WITH_EDITOR
 	Config.bIsEditor = GIsEditor;
 #else
 	Config.bIsEditor = false;
 #endif
 	Config.bRunningCommandlet = IsRunningCommandlet();
+	Config.bIsUnattended = FApp::IsUnattended();
 	return Config;
+}
+
+EAngelscriptStartupCompileFailureResponse
+ResolveAngelscriptStartupCompileFailureResponse(
+	const FAngelscriptEngineConfig& Config,
+	bool bInteractiveRetryAvailable)
+{
+	if (Config.bRunningCommandlet
+		|| Config.bExitOnError
+		|| Config.bIsUnattended
+		|| !bInteractiveRetryAvailable)
+	{
+		return EAngelscriptStartupCompileFailureResponse::RequestExit;
+	}
+
+	return EAngelscriptStartupCompileFailureResponse::InteractiveRetry;
+}
+
+bool ShouldRequestAngelscriptCachePackageSmokeExit(
+	const FAngelscriptEngineConfig& Config,
+	bool bInitialCompileSucceeded)
+{
+	return Config.bExitAfterStartupForCacheSmoke && bInitialCompileSucceeded;
+}
+
+FAngelscriptStartupCompileFailureExitRequest
+ResolveAngelscriptStartupCompileFailureExitRequest(
+	const FAngelscriptEngineConfig& Config)
+{
+	(void)Config;
+	FAngelscriptStartupCompileFailureExitRequest Request;
+	Request.bForce = true;
+	Request.bBeginCacheShutdownBeforeDiagnosticReport = true;
+	Request.bWriteRequestedDiagnosticReportBeforeExit = true;
+	Request.Status = 3;
+	return Request;
 }
 
 FAngelscriptEngineDependencies FAngelscriptEngineDependencies::CreateDefault()
@@ -711,6 +814,62 @@ FAngelscriptEngine::FAngelscriptEngine(const FAngelscriptEngineConfig& InConfig,
 	, RuntimeConfig(InConfig)
 	, Dependencies(InDependencies)
 {
+	CacheService = MakeUnique<FAngelscriptCacheService>();
+	const UAngelscriptCacheSettings* CacheSettings =
+		GetDefault<UAngelscriptCacheSettings>();
+	bool bEnableDecisionTrace =
+		RuntimeConfig.bForceEnableCacheV2DecisionTrace;
+	uint32 DecisionTraceCapacity =
+		RuntimeConfig.CacheV2DecisionTraceCapacityOverride > 0
+		? RuntimeConfig.CacheV2DecisionTraceCapacityOverride
+		: 1024;
+	if (CacheSettings != nullptr)
+	{
+		bEnableDecisionTrace = bEnableDecisionTrace
+			|| CacheSettings->bEnableDecisionTrace;
+		if (RuntimeConfig.CacheV2DecisionTraceCapacityOverride == 0)
+		{
+			DecisionTraceCapacity = CacheSettings->DecisionTraceCapacity;
+		}
+	}
+	CacheService->ConfigureDecisionTrace(
+		bEnableDecisionTrace, DecisionTraceCapacity);
+	CacheService->ConfigureWriterPolicy(ResolveAngelscriptCacheWriterPolicy(
+		RuntimeConfig,
+		CacheSettings != nullptr ? CacheSettings->PackTargetMiB : 64,
+		CacheSettings == nullptr || CacheSettings->bEnableParallelPreparation,
+		CacheSettings != nullptr
+			? CacheSettings->MaxPreparationWorkerCount
+			: 4));
+
+	if (CacheSettings != nullptr)
+	{
+		PackagedRuntimeReloadMode =
+			RuntimeConfig.bOverridePackagedRuntimeReloadMode
+			? RuntimeConfig.PackagedRuntimeReloadMode
+			: CacheSettings->PackagedRuntimeReloadMode;
+		PackagedRuntimeReloadScanIntervalSeconds = FMath::Max(
+			0.1f,
+			RuntimeConfig.bOverridePackagedRuntimeReloadMode
+			? RuntimeConfig.PackagedRuntimeReloadScanIntervalSeconds
+			: CacheSettings->RuntimeReloadScanIntervalSeconds);
+	}
+	else if (RuntimeConfig.bOverridePackagedRuntimeReloadMode)
+	{
+		PackagedRuntimeReloadMode = RuntimeConfig.PackagedRuntimeReloadMode;
+		PackagedRuntimeReloadScanIntervalSeconds = FMath::Max(
+			0.1f,
+			RuntimeConfig.PackagedRuntimeReloadScanIntervalSeconds);
+	}
+
+	// Editor source changes remain owned by AngelscriptEditor's directory
+	// watcher and class-reinstancing path. This policy only governs a
+	// non-editor Runtime engine, including packaged Development/Shipping.
+	if (RuntimeConfig.bIsEditor)
+	{
+		PackagedRuntimeReloadMode =
+			EAngelscriptPackagedRuntimeReloadMode::Disabled;
+	}
 	if (!Dependencies.SourceProvider.IsValid())
 	{
 		Dependencies.SourceProvider = MakeShared<FAngelscriptDiskSourceProvider>();
@@ -992,9 +1151,10 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 	bUseEditorScripts = WITH_EDITOR
 		&& ((RuntimeConfig.bIsEditor && !RuntimeConfig.bRunningCommandlet) || bForcePreprocessEditorCode)
 		&& !bSimulateCooked;
-	bGeneratePrecompiledData = RuntimeConfig.bGeneratePrecompiledData;
+	bCollectStaticJITCompatibilityBinds =
+		RuntimeConfig.bCollectStaticJITCompatibilityBinds;
 	bScriptDevelopmentMode = RuntimeConfig.bIsEditor || RuntimeConfig.bDevelopmentMode;
-	bUsePrecompiledData = false;
+	bUseStaticJITCompatibilityData = false;
 
 	PreInitialize_GameThread();
 
@@ -1069,6 +1229,8 @@ void FAngelscriptEngine::InitializeWithoutInitialCompile()
 	FAngelscriptCodeCoverageExtension::EnsureAttached(*this);
 #endif
 
+	check(CacheService.IsValid());
+	CacheService->TransitionToRuntimeGameThread();
 	FAngelscriptEngineExtensionRegistry::Get().AttachEngine(*this);
 }
 
@@ -1142,21 +1304,6 @@ void FAngelscriptEngine::ReleaseProcessPackages()
 	AssetsPackage = nullptr;
 }
 
-#if WITH_DEV_AUTOMATION_TESTS
-int32 FAngelscriptEngine::GetLocalPooledContextCountForTesting(asIScriptEngine* ScriptEngine)
-{
-	int32 MatchCount = 0;
-	for (asCContext* Context : GAngelscriptContextPool.FreeContexts)
-	{
-		if (Context != nullptr && (ScriptEngine == nullptr || Context->GetEngine() == ScriptEngine))
-		{
-			++MatchCount;
-		}
-	}
-
-	return MatchCount;
-}
-
 FAngelscriptTypeDatabase* FAngelscriptEngine::GetTypeDatabase() const
 {
 	// TUniquePtr<>::Get() returns nullptr when empty, preserving the
@@ -1183,6 +1330,21 @@ TArray<FToStringType>* FAngelscriptEngine::GetToStringList() const
 FAngelscriptBindDatabase* FAngelscriptEngine::GetBindDatabase() const
 {
 	return BindDatabase.Get();
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+int32 FAngelscriptEngine::GetLocalPooledContextCountForTesting(asIScriptEngine* ScriptEngine)
+{
+	int32 MatchCount = 0;
+	for (asCContext* Context : GAngelscriptContextPool.FreeContexts)
+	{
+		if (Context != nullptr && (ScriptEngine == nullptr || Context->GetEngine() == ScriptEngine))
+		{
+			++MatchCount;
+		}
+	}
+
+	return MatchCount;
 }
 
 int32 FAngelscriptEngine::GetToStringEntryCountForTesting() const
@@ -1213,6 +1375,23 @@ void FAngelscriptEngine::SetAutomaticImportMethodForTesting(bool bEnabled)
 const FName& FAngelscriptEngine::GetStaticName(int32 Index)
 {
 	return GetStaticNames()[Index];
+}
+
+FName FAngelscriptEngine::ResolveStaticName(
+	const int32 Index,
+	const FString& CanonicalName)
+{
+	const FName ExpectedName(*CanonicalName);
+	const TArray<FName>& Names = GetStaticNames();
+	if (Names.IsValidIndex(Index) && Names[Index] == ExpectedName)
+	{
+		return Names[Index];
+	}
+
+	// Cache V2 may execute this bytecode in a fresh Engine whose static-name
+	// registration order differs from the producer. The index is only a hot-path
+	// hint; canonical text is the cross-Engine authority and needs no table write.
+	return ExpectedName;
 }
 
 bool FAngelscriptEngine::TryGetStaticName(int32 Index, FName& OutName)
@@ -1418,6 +1597,7 @@ bool FAngelscriptEngine::DiscardModule(const TCHAR* ModuleName)
 
 	//[UE++]: Remove module record from ActiveModules so GetModuleByModuleName returns null after discard
 	ActiveModules.Remove(InternalModuleName);
+	RebuildFunctionRouteSnapshot();
 	//[UE--]
 	return true;
 }
@@ -1442,9 +1622,116 @@ void FAngelscriptEngine::EnsureScriptTestHotReloadRunnerForTesting()
 }
 #endif
 
+void FAngelscriptEngine::WriteRequestedCacheV2ProcessReport() const
+{
+	if (Engine == nullptr
+		|| RuntimeConfig.CacheV2ReportPathOverride.IsEmpty())
+	{
+		return;
+	}
+
+	const FAngelscriptCacheReportWriteResult Report =
+		WriteAngelscriptCacheDiagnosticJsonReport(
+			this, RuntimeConfig.CacheV2ReportPathOverride);
+	if (Report.IsSuccess())
+	{
+		UE_LOG(Angelscript, Display,
+			TEXT("[CacheV2][ProcessReport] %s"),
+			*Report.Detail);
+	}
+	else
+	{
+		UE_LOG(Angelscript, Error,
+			TEXT("[CacheV2][ProcessReport] Error=%u Detail=%s"),
+			static_cast<uint32>(Report.Error),
+			*Report.Detail);
+	}
+}
+
 void FAngelscriptEngine::Shutdown()
 {
 	const bool bHadInitializedEngine = Engine != nullptr;
+
+	if (bPackagedRuntimeReloadQueued)
+	{
+		bPackagedRuntimeReloadQueued = false;
+		FAngelscriptRuntimeReloadResult Cancelled;
+		Cancelled.Outcome = EAngelscriptRuntimeReloadOutcome::Cancelled;
+		Cancelled.Diagnostics =
+			TEXT("The queued Runtime reload was cancelled by Engine shutdown.");
+		CompletedPackagedRuntimeReloadResult.Emplace(MoveTemp(Cancelled));
+	}
+
+	if (CacheService.IsValid())
+	{
+		if (!bCacheV2ShutdownFlushAttempted)
+		{
+			bCacheV2ShutdownFlushAttempted = true;
+			const UAngelscriptCacheSettings* CacheSettings =
+				GetDefault<UAngelscriptCacheSettings>();
+			if (bHadInitializedEngine
+				&& CacheSettings != nullptr
+				&& CacheSettings->bEnableCacheV2
+				&& !RuntimeConfig.bDisableCacheV2Persistence)
+			{
+				FString RequestedBaseRoot;
+				const FAngelscriptCacheStoreResult RootSelection =
+					ResolveAngelscriptCacheRequestedBaseRootForEngine(
+						*this, RequestedBaseRoot);
+				if (RootSelection.IsSuccess())
+				{
+					const FAngelscriptCacheLifecycleFlushResult Flush =
+						CacheService->BeginEngineShutdownAndFlushToStore(
+							RequestedBaseRoot,
+							CacheSettings->ShutdownFlushTimeoutSeconds);
+					if (Flush.IsSuccess())
+					{
+						UE_LOG(Angelscript, Display,
+							TEXT("[CacheV2] Engine shutdown flush: Error=%u CurrentCommit=%u PendingCommit=%u Detail=%s"),
+							static_cast<uint32>(Flush.Error),
+							static_cast<uint32>(
+								Flush.Current.Publication.CommitState),
+							static_cast<uint32>(
+								Flush.PendingColdStart.Publication.CommitState),
+							*Flush.Detail);
+					}
+					else
+					{
+						UE_LOG(Angelscript, Warning,
+							TEXT("[CacheV2] Engine shutdown flush: Error=%u CurrentCommit=%u PendingCommit=%u Detail=%s"),
+							static_cast<uint32>(Flush.Error),
+							static_cast<uint32>(
+								Flush.Current.Publication.CommitState),
+							static_cast<uint32>(
+								Flush.PendingColdStart.Publication.CommitState),
+							*Flush.Detail);
+					}
+				}
+				else
+				{
+					CacheService->BeginEngineShutdown();
+					UE_LOG(Angelscript, Warning,
+						TEXT("[CacheV2] Engine shutdown cache root selection failed: Error=%u Stage=%u PathCategory=%u"),
+						static_cast<uint32>(RootSelection.Error),
+						static_cast<uint32>(RootSelection.Stage),
+						static_cast<uint32>(RootSelection.PathCategory));
+				}
+			}
+			else
+			{
+				CacheService->BeginEngineShutdown();
+			}
+
+			if (bHadInitializedEngine)
+			{
+				WriteRequestedCacheV2ProcessReport();
+			}
+		}
+		else
+		{
+			CacheService->BeginEngineShutdown();
+		}
+	}
 	const bool bShouldReleaseOwnedEngine = Engine != nullptr;
 
 	UE_LOG(Angelscript, Verbose, TEXT("[EngineLifecycle] Shutdown engine=%p hadEngine=%s willRelease=%s"),
@@ -1667,6 +1954,7 @@ void FAngelscriptEngine::Shutdown()
 	AssetsPackage = nullptr;
 	LifetimeToken.Reset();
 	WorldContextObject = nullptr;
+	CacheService.Reset();
 }
 
 FInterfaceMethodSignature* FAngelscriptEngine::RegisterInterfaceMethodSignature(FName FunctionName)
@@ -1903,10 +2191,10 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	Engine->SetMessageCallback(asFUNCTION(LogAngelscriptError), 0, asCALL_CDECL);
 	Engine->SetContextCallbacks(&AngelscriptRequestContext, &AngelscriptReturnContext, nullptr);
 
-	bGeneratePrecompiledData = RuntimeConfig.bGeneratePrecompiledData;
+	bCollectStaticJITCompatibilityBinds =
+		RuntimeConfig.bCollectStaticJITCompatibilityBinds;
 	bScriptDevelopmentMode = RuntimeConfig.bIsEditor || RuntimeConfig.bDevelopmentMode;
-	bUsePrecompiledData = !bGeneratePrecompiledData && !RuntimeConfig.bIgnorePrecompiledData
-		&& !RuntimeConfig.bRunningCommandlet && !WITH_EDITOR && !bScriptDevelopmentMode;
+	bUseStaticJITCompatibilityData = false;
 
 	// Wait with the plugin script roots until we know we need them
 	AllScriptRoots = DiscoverScriptRootDescriptors(/*bOnlyProjectRoot =*/ true);
@@ -1916,33 +2204,11 @@ void FAngelscriptEngine::Initialize_AnyThread()
 		AllRootPaths.Add(ScriptRoot.AbsolutePath);
 	}
 
-	if (bGeneratePrecompiledData)
-	{
-		PrecompiledData = new FAngelscriptPrecompiledData(Engine);
-	}
-
-	// StaticJIT is only wired up when we actually want the C++ transpilation pass.
-	// With bSkipStaticJITCodeGen we still produce the PrecompiledScript.Cache bytecode
-	// archive, but never install the JIT compiler (whose CompileFunction asserts unless
-	// it is in generate-output mode), so scripts compile to plain bytecode.
-	if (bGeneratePrecompiledData && !RuntimeConfig.bSkipStaticJITCodeGen)
-	{
-		StaticJIT = new FAngelscriptStaticJIT();
-		StaticJIT->PrecompiledData = PrecompiledData;
-
-#if AS_CAN_GENERATE_JIT
-		StaticJIT->bGenerateOutputCode = bGeneratePrecompiledData;
-#endif
-
-		Engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, 1);
-		Engine->SetJITCompiler(StaticJIT);
-	}
-
 	/*
 	Start the debug server that external tools can connect to.
 	*/
 #if WITH_AS_DEBUGSERVER
-	if ((!bUsePrecompiledData || bScriptDevelopmentMode) && FApp::HasProjectName())
+	if (FApp::HasProjectName())
 	{
 		DebugServer = new FAngelscriptDebugServer(this, RuntimeConfig.DebugServerPort);
 	}
@@ -1969,7 +2235,9 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	{
 		AS_PERF_SCOPE_STARTUP_BIND_DATABASE();
 		FAngelscriptScopeTimer Timer(TEXT("load bind database"));
-		FAngelscriptBindDatabase::Get().Load(GetScriptRootDirectory() / TEXT("Binds.Cache"), bGeneratePrecompiledData);
+		FAngelscriptBindDatabase::Get().Load(
+			GetScriptRootDirectory() / TEXT("Binds.Cache"),
+			bCollectStaticJITCompatibilityBinds);
 	}
 #endif	
 	//WILL-EDIT
@@ -2034,104 +2302,15 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	FAngelscriptBindDatabase::Get().Clear();
 #endif
 
-	// Load precompiled data if it is available and we can use it
-	if (bUsePrecompiledData)
-	{
-		FAngelscriptScopeTimer Timer(TEXT("load precompiled data"));
-
-		FString Filename;
-			
-		// Try configuration-specific precompiled script files for easier debugging
-#if UE_BUILD_SHIPPING
-		Filename = GetScriptRootDirectory() / TEXT("PrecompiledScript_Shipping.Cache");
-#elif UE_BUILD_TEST
-		Filename = GetScriptRootDirectory() / TEXT("PrecompiledScript_Test.Cache");
-#elif UE_BUILD_DEVELOPMENT
-		Filename = GetScriptRootDirectory() / TEXT("PrecompiledScript_Development.Cache");
-#endif
-
-		if (!IFileManager::Get().FileExists(*Filename))
-			Filename = GetScriptRootDirectory() / TEXT("PrecompiledScript.Cache");
-
-		if (IFileManager::Get().FileExists(*Filename))
-		{
-			PrecompiledData = new FAngelscriptPrecompiledData(Engine);
-			PrecompiledData->Load(Filename);
-
-			if (!PrecompiledData->IsValidForCurrentBuild())
-			{
-				delete PrecompiledData;
-				PrecompiledData = nullptr;
-
-				UE_LOG(Angelscript, Warning, TEXT("Loaded angelscript precompiled data was for a different build configuration. Discarding all precompiled data."));
-			}
-			else
-			{
-				if (StaticJIT != nullptr)
-					StaticJIT->PrecompiledData = PrecompiledData;
-				if (!bScriptDevelopmentMode)
-					PrecompiledData->bMinimizeMemoryUsage = true;
-
-				// If we have compiled in JIT code, we can only use it if it matches the precompiled data
-				const FStaticJITCompiledInfo* CompiledInfo = FStaticJITCompiledInfo::Get();
-				if (CompiledInfo != nullptr && CompiledInfo->PrecompiledDataGuid != PrecompiledData->DataGuid)
-				{
-					UE_LOG(Angelscript, Warning, TEXT("Loaded angelscript precompiled data does not match the transpiled C++ in the game binary. Transpiled code will not be used!"));
-					FJITDatabase::Get().Clear();
-				}
-			}
-		}
-	}
-	else
-	{
-		ReserveStaticNames(7000);
-	}
+	// Cache V2 always starts from authoritative source or a validated Cache V2
+	// generation. Legacy PrecompiledScript*.Cache files are never opened here.
+	ReserveStaticNames(7000);
 
 	// Setup thread local data
 	GameThreadTLD->primaryContext = CreateContext();
 
 	// Perform the initial compile of all script files
 	InitialCompile();
-
-	bool bForcedExit = false;
-
-#if AS_CAN_GENERATE_JIT
-	// If we're in static jit generate mode, write it to the output files
-	if (StaticJIT != nullptr && StaticJIT->bGenerateOutputCode)
-	{
-		StaticJIT->WriteOutputCode();
-		bForcedExit = true;
-	}
-#endif
-
-	// Save out precompiled data if we indicated we should
-	if (bGeneratePrecompiledData)
-	{
-		FString Filename = GetScriptRootDirectory() / TEXT("PrecompiledScript.Cache");
-		PrecompiledData->InitFromActiveScript();
-		PrecompiledData->Save(Filename);
-		bForcedExit = true;
-	}
-
-	if (PrecompiledData != nullptr)
-	{
-		// See if we actually loaded and are going to use any transpiled code.
-		bStaticJITTranspiledCodeLoaded = FJITDatabase::Get().Functions.Num() > 0;
-
-		// Delete any precompiled data we used during initial compile
-		if (!bScriptDevelopmentMode && !bGeneratePrecompiledData)
-			PrecompiledData->ClearUnneededRuntimeData();
-
-		delete PrecompiledData;
-		PrecompiledData = nullptr;
-		FJITDatabase::Clear();
-	}
-
-	// We may have requested an exit due to compilation
-	if (bForcedExit)
-	{
-		FPlatformMisc::RequestExitWithStatus(false, 0);
-	}
 
 #if AS_CAN_HOTRELOAD
 	ScriptTestHotReloadRunner =
@@ -2141,14 +2320,12 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	// Use the checker thread if we want to detect hot reloads,
 	// but we don't have access to the editor. In editor, the AngelscriptEditor
 	// module will use the directory watcher system to detect reloads instead.
-	bUseHotReloadCheckerThread = bScriptDevelopmentMode && !RuntimeConfig.bIsEditor;
+	bUseHotReloadCheckerThread = bScriptDevelopmentMode
+		&& !RuntimeConfig.bIsEditor
+		&& PackagedRuntimeReloadMode ==
+			EAngelscriptPackagedRuntimeReloadMode::Disabled;
 	if (bUseHotReloadCheckerThread)
 		StartHotReloadThread();
-
-#if AS_PRINT_STATS && AS_PRECOMPILED_STATS
-	if (bUsePrecompiledData)
-		FAngelscriptPrecompiledData::OutputTimingData();
-#endif
 
 #if !UE_BUILD_SHIPPING
 	FCoreDelegates::OnGetOnScreenMessages.AddRaw(this, &FAngelscriptEngine::GetOnScreenMessages);
@@ -2156,11 +2333,11 @@ void FAngelscriptEngine::Initialize_AnyThread()
 	UpdateLineCallbackState();
 }
 
-bool FAngelscriptEngine::IsGeneratingPrecompiledData()
+bool FAngelscriptEngine::IsCollectingStaticJITCompatibilityBinds()
 {
 	if (FAngelscriptEngine* CurrentEngine = TryGetCurrentEngine())
 	{
-		return CurrentEngine->bGeneratePrecompiledData;
+		return CurrentEngine->bCollectStaticJITCompatibilityBinds;
 	}
 
 	return false;
@@ -2168,13 +2345,24 @@ bool FAngelscriptEngine::IsGeneratingPrecompiledData()
 
 void FAngelscriptEngine::PostInitialize_GameThread()
 {
+	check(CacheService.IsValid());
+	CacheService->TransitionToRuntimeGameThread();
+	PrimePackagedRuntimeReloadState();
 	GetOnInitialCompileFinished().Broadcast();
+
+	if (ShouldRequestAngelscriptCachePackageSmokeExit(
+		RuntimeConfig, bDidInitialCompileSucceed))
+	{
+		UE_LOG(Angelscript, Display,
+			TEXT("[CacheV2][PackageSmoke] Startup completed; requesting normal Engine shutdown so production Cache flush/report can run."));
+		FPlatformMisc::RequestExit(
+			false,
+			TEXT("AngelScript Cache package smoke startup completed."));
+	}
 }
 
 void FAngelscriptEngine::StartHotReloadThread()
 {
-	if (bUsedPrecompiledDataForPreprocessor)
-		return;
 	if (!bUseHotReloadCheckerThread)
 		return;
 	if (bHotReloadThreadStarted)
@@ -2608,6 +2796,283 @@ void FAngelscriptEngine::ReplaceScriptAssetContent(FString AssetName, TArray<FSt
 #endif
 }
 
+namespace AngelscriptEngineExactStartup_Private
+{
+	enum class EAttemptResult : uint8
+	{
+		Miss = 0,
+		Restored = 1,
+		FatalPartialRestore = 2,
+	};
+
+	static void RecordSelection(
+		FAngelscriptEngine& Engine,
+		const EAngelscriptCacheDecisionOutcome Outcome,
+		const EAngelscriptCacheDecisionReasonDomain ReasonDomain,
+		const uint32 ReasonCode,
+		const FAngelscriptArtifactProfileKey& Profile,
+		const FAngelscriptHash256* GenerationId,
+		const uint64 ElapsedMicroseconds)
+	{
+		FAngelscriptCacheService* Service = Engine.GetCacheService();
+		if (Service == nullptr)
+		{
+			return;
+		}
+		FAngelscriptCacheDecisionEvent Event;
+		Event.Stage = EAngelscriptCacheDecisionStage::StartupSelection;
+		Event.Outcome = Outcome;
+		Event.ReasonDomain = ReasonDomain;
+		Event.ReasonCode = ReasonCode;
+		Event.Profile = Profile;
+		if (GenerationId != nullptr)
+		{
+			Event.ExpectedCoordinate = *GenerationId;
+		}
+		Event.ElapsedMicroseconds = ElapsedMicroseconds;
+		Service->RecordDecisionEvent(MoveTemp(Event));
+	}
+
+	static EAttemptResult TryRestore(
+		FAngelscriptEngine& Engine,
+		const FAngelscriptPreprocessorContext& PreprocessorContext,
+		const TConstArrayView<FAngelscriptSourceRoot> ScriptRoots,
+		const bool bSkipDevelopmentScripts,
+		const bool bSkipEditorScripts,
+		TUniquePtr<FAngelscriptCacheCompileReuseContext>& OutReuseContext)
+	{
+		OutReuseContext.Reset();
+		const UAngelscriptCacheSettings* Settings =
+			GetDefault<UAngelscriptCacheSettings>();
+		if (Settings == nullptr || !Settings->bEnableCacheV2
+			|| Engine.GetRuntimeConfig().bDisableCacheV2Persistence)
+		{
+			return EAttemptResult::Miss;
+		}
+
+		const double StartedSeconds = FPlatformTime::Seconds();
+		FAngelscriptCacheEnvironmentProfile Environment;
+		const FAngelscriptCacheEnvironmentProfileResult EnvironmentResult =
+			BuildAngelscriptCacheEnvironmentProfile(
+				Engine, PreprocessorContext, ScriptRoots, Environment);
+		if (!EnvironmentResult.IsSuccess())
+		{
+			RecordSelection(
+				Engine,
+				EAngelscriptCacheDecisionOutcome::Rejected,
+				EAngelscriptCacheDecisionReasonDomain::Validation,
+				static_cast<uint32>(EnvironmentResult.Error),
+				{}, nullptr,
+				static_cast<uint64>((FPlatformTime::Seconds()
+					- StartedSeconds) * 1000000.0));
+			return EAttemptResult::Miss;
+		}
+
+		IAngelscriptSourceProvider* SourceProvider = Engine.GetSourceProvider();
+		if (SourceProvider == nullptr)
+		{
+			RecordSelection(
+				Engine,
+				EAngelscriptCacheDecisionOutcome::Rejected,
+				EAngelscriptCacheDecisionReasonDomain::Validation,
+				static_cast<uint32>(
+					EAngelscriptCacheSourceDiscoveryError::InvalidRequest),
+				Environment.CaptureOptions.Profile,
+				nullptr,
+				static_cast<uint64>((FPlatformTime::Seconds()
+					- StartedSeconds) * 1000000.0));
+			return EAttemptResult::Miss;
+		}
+		FAngelscriptCacheProductionSourceDiscoveryResult Discovery;
+		const FAngelscriptCacheSourceDiscoveryStatus DiscoveryStatus =
+			FAngelscriptCacheSourceDiscovery::DiscoverProductionSources(
+				*SourceProvider,
+				ScriptRoots,
+				bSkipDevelopmentScripts,
+				bSkipEditorScripts,
+				Environment.DiscoveryConfig,
+				{},
+				Discovery);
+		if (!DiscoveryStatus.IsSuccess())
+		{
+			RecordSelection(
+				Engine,
+				EAngelscriptCacheDecisionOutcome::Rejected,
+				EAngelscriptCacheDecisionReasonDomain::Validation,
+				static_cast<uint32>(DiscoveryStatus.Error),
+				Environment.CaptureOptions.Profile,
+				nullptr,
+				static_cast<uint64>((FPlatformTime::Seconds()
+					- StartedSeconds) * 1000000.0));
+			return EAttemptResult::Miss;
+		}
+
+		FString RequestedBaseRoot;
+		const FAngelscriptCacheStoreResult RootResult =
+			ResolveAngelscriptCacheRequestedBaseRootForEngine(
+				Engine, RequestedBaseRoot);
+		TUniquePtr<IAngelscriptCacheAtomicFileOps> FileOps =
+			CreateAngelscriptCacheAtomicFileOps();
+		TUniquePtr<IAngelscriptCacheNamespaceLockOps> LockOps =
+			CreateAngelscriptCacheNamespaceLockOps();
+		FAngelscriptCacheStorePaths Paths;
+		FAngelscriptCacheStoreResult PathsResult;
+		if (RootResult.IsSuccess() && FileOps.IsValid()
+			&& LockOps.IsValid())
+		{
+			PathsResult = BuildAngelscriptCacheStorePaths(
+				RequestedBaseRoot,
+				Environment.CaptureOptions.Compatibility,
+				Environment.CaptureOptions.Context,
+				*FileOps,
+				Paths);
+		}
+		else
+		{
+			PathsResult = RootResult.IsSuccess()
+				? FAngelscriptCacheStoreResult::Failure(
+					EAngelscriptCacheStoreError::UnsupportedPlatformAtomicity,
+					EAngelscriptCacheStoreStage::RootValidation)
+				: RootResult;
+		}
+		if (!PathsResult.IsSuccess())
+		{
+			RecordSelection(
+				Engine,
+				EAngelscriptCacheDecisionOutcome::Rejected,
+				EAngelscriptCacheDecisionReasonDomain::Store,
+				static_cast<uint32>(PathsResult.Error),
+				Environment.CaptureOptions.Profile,
+				nullptr,
+				static_cast<uint64>((FPlatformTime::Seconds()
+					- StartedSeconds) * 1000000.0));
+			return EAttemptResult::Miss;
+		}
+
+		FAngelscriptCacheReadSelection Selection;
+		Selection.Compatibility = Environment.CaptureOptions.Compatibility;
+		Selection.Context = Environment.CaptureOptions.Context;
+		Selection.Profile = Environment.CaptureOptions.Profile;
+		Selection.bRequireSourceSnapshotMatch = false;
+		Selection.bAllowPendingColdStart = false;
+		FAngelscriptUnrealZlibCacheStorageCodec Codec;
+		TUniquePtr<FAngelscriptCacheReadSession> Session;
+		const FAngelscriptCacheStoreResult Open =
+			OpenBestAngelscriptCacheReadSession(
+				Paths,
+				Selection,
+				{},
+				FPlatformTime::Seconds()
+					+ FMath::Max(0.1, static_cast<double>(
+						Settings->ShutdownFlushTimeoutSeconds)),
+				[]() { return false; },
+				Codec,
+				*LockOps,
+				*FileOps,
+				Session);
+		if (!Open.IsSuccess() || !Session.IsValid())
+		{
+			RecordSelection(
+				Engine,
+				Open.IsSuccess()
+					? EAngelscriptCacheDecisionOutcome::Miss
+					: EAngelscriptCacheDecisionOutcome::Rejected,
+				EAngelscriptCacheDecisionReasonDomain::Store,
+				static_cast<uint32>(Open.Error),
+				Environment.CaptureOptions.Profile,
+				nullptr,
+				static_cast<uint64>((FPlatformTime::Seconds()
+					- StartedSeconds) * 1000000.0));
+			return EAttemptResult::Miss;
+		}
+
+		const FAngelscriptHash256 GenerationId = Session->GetGenerationId();
+		RecordSelection(
+			Engine,
+			EAngelscriptCacheDecisionOutcome::Reused,
+			EAngelscriptCacheDecisionReasonDomain::Store,
+			static_cast<uint32>(EAngelscriptCacheStoreError::None),
+			Environment.CaptureOptions.Profile,
+			&GenerationId,
+			static_cast<uint64>((FPlatformTime::Seconds()
+				- StartedSeconds) * 1000000.0));
+
+		const double RestoreStartedSeconds = FPlatformTime::Seconds();
+		const FAngelscriptCacheExactStartupResult Restore =
+			RestoreAngelscriptCacheExactStartup(
+				Engine,
+				Session->GetGeneration(),
+				Environment.CaptureOptions.Profile,
+				Discovery,
+				{},
+				{},
+				&GenerationId
+#if WITH_ANGELSCRIPT_UNITTESTS
+				, Engine.GetCacheRestoreFaultInjectorForTests()
+#endif
+				);
+		FAngelscriptCacheDecisionEvent RestoreEvent;
+		RestoreEvent.Stage = EAngelscriptCacheDecisionStage::StartupRestore;
+		RestoreEvent.Outcome = Restore.IsRestored()
+			? EAngelscriptCacheDecisionOutcome::Restored
+			: Restore.Disposition ==
+				EAngelscriptCacheExactStartupDisposition::Miss
+					? EAngelscriptCacheDecisionOutcome::Miss
+					: EAngelscriptCacheDecisionOutcome::Rejected;
+		RestoreEvent.ReasonDomain =
+			EAngelscriptCacheDecisionReasonDomain::ExactStartup;
+		RestoreEvent.ReasonCode = static_cast<uint32>(Restore.Reason);
+		RestoreEvent.Validation = Restore.Validation;
+		RestoreEvent.Detail = Restore.Detail;
+		RestoreEvent.Profile = Environment.CaptureOptions.Profile;
+		RestoreEvent.SourceSnapshot =
+			Session->GetGeneration().Manifest.SourceSnapshot;
+		RestoreEvent.ExpectedCoordinate = GenerationId;
+		RestoreEvent.PrimaryCount = Restore.RestoredModuleCount;
+		RestoreEvent.SecondaryCount = Restore.RestoredFunctionCount;
+		RestoreEvent.ElapsedMicroseconds = static_cast<uint64>(
+			(FPlatformTime::Seconds() - RestoreStartedSeconds) * 1000000.0);
+		for (const FAngelscriptCacheModuleSnapshotLink& Link
+			: Session->GetGeneration().Manifest.ModuleSnapshots)
+		{
+			RestoreEvent.ModuleKeys.Add(Link.ModuleKey);
+		}
+		if (FAngelscriptCacheService* Service = Engine.GetCacheService())
+		{
+			Service->RecordDecisionEvent(MoveTemp(RestoreEvent));
+		}
+
+		if (Restore.IsRestored())
+		{
+			UE_LOG(Angelscript, Display,
+				TEXT("[CacheV2][ExactStartup] Restored Generation=%s Modules=%u Functions=%u Detail=%s"),
+				*GenerationId.ToHexString(),
+				Restore.RestoredModuleCount,
+				Restore.RestoredFunctionCount,
+				*Restore.Detail);
+			return EAttemptResult::Restored;
+		}
+
+		UE_LOG(Angelscript, Verbose,
+			TEXT("[CacheV2][ExactStartup] Candidate miss Generation=%s Disposition=%u Reason=%u Restored=%u Detail=%s"),
+			*GenerationId.ToHexString(),
+			static_cast<uint32>(Restore.Disposition),
+			static_cast<uint32>(Restore.Reason),
+			Restore.RestoredModuleCount,
+			*Restore.Detail);
+		if (Restore.Disposition
+				== EAngelscriptCacheExactStartupDisposition::Miss
+			&& Restore.RestoredModuleCount == 0)
+		{
+			OutReuseContext = FAngelscriptCacheCompileReuseContext::Create(
+				MoveTemp(Session), GenerationId, Environment.CaptureOptions);
+		}
+		return Restore.RestoredModuleCount == 0
+			? EAttemptResult::Miss
+			: EAttemptResult::FatalPartialRestore;
+	}
+}
+
 void FAngelscriptEngine::InitialCompile()
 {
 	AS_PERF_SCOPE_COMPILE_INITIAL();
@@ -2616,25 +3081,19 @@ void FAngelscriptEngine::InitialCompile()
 	TArray<TSharedRef<FAngelscriptModuleDesc>> ModulesToCompile;
 	TArray<FFilenamePair> Filenames;
 	TArray<FAngelscriptSource> Sources;
+	TOptional<FAngelscriptCacheCompileCaptureContext> CacheCaptureContext;
+	TUniquePtr<FAngelscriptCacheCompileReuseContext> CacheReuseContext;
+	bool bRestoredExactStartup = false;
 
 	ResetDiagnostics();
-
-	if (PrecompiledData != nullptr && bUsePrecompiledData && !bScriptDevelopmentMode)
+	if (CacheService.IsValid())
 	{
-		FAngelscriptScopeTimer Timer(TEXT("instantiating precompiled descriptors"));
-
-		// Use precompiled data instead of the preprocessor
-		bUsedPrecompiledDataForPreprocessor = true;
-		ModulesToCompile = PrecompiledData->GetModulesToCompile();
-		
-#if AS_CAN_HOTRELOAD
-		UE_LOG(Angelscript, Warning, TEXT("Using fully precompiled scripts. Hot reloading is disabled for this run."));
-		UE_LOG(Angelscript, Warning, TEXT("Delete PrecompiledScript.Cache or run with -as-development-mode flag to enable hot reload."));
-#endif
+		CacheService->ClearFunctionReuseSummary();
 	}
-	else
-	{
-		// Make sure we scan all plugins for script roots as well, now that we know we need them.
+
+	// Make sure we scan all plugins for script roots as well. Cache V2 either
+	// restores a validated generation through its own coordinator or compiles these
+	// authoritative sources; the legacy archive is never a module source.
 		AllScriptRoots = DiscoverScriptRootDescriptors();
 		AllRootPaths.Reset(AllScriptRoots.Num());
 		for (const FAngelscriptSourceRoot& ScriptRoot : AllScriptRoots)
@@ -2645,53 +3104,159 @@ void FAngelscriptEngine::InitialCompile()
 		{
 			UE_LOG(Angelscript, Display, TEXT("Angelscript root path: %s"), *Path);
 		}
-
-		// Use preprocessor to read script files from disk
-		FAngelscriptPreprocessor Preprocessor;
-		Preprocessor.SetSourceProvider(Dependencies.SourceProvider.Get());
-
+		const FAngelscriptLegacyCacheInspection LegacyInspection =
+			InspectAngelscriptLegacyCacheArtifactsFromDisk(AllRootPaths);
+		if (LegacyInspection.HasRejectedLegacyScriptCache())
 		{
-			FAngelscriptScopeTimer Timer(TEXT("load script files from disk"));
+			UE_LOG(Angelscript, Warning,
+				TEXT("[CacheV2][LegacyRejected] %s"),
+				*LegacyInspection.FormatDiagnostic());
+		}
 
-			/* Add all files from the script root recursively.*/
-			FindAllScriptSources(Sources);
+		const FAngelscriptPreprocessorContext PreprocessorContext =
+			FAngelscriptPreprocessorContext::CreateFromCurrentEngineContext();
+		const bool bSkipDevelopmentScripts = !ShouldUseEditorScripts();
+		const AngelscriptEngineExactStartup_Private::EAttemptResult
+			ExactStartup = AngelscriptEngineExactStartup_Private::TryRestore(
+				*this,
+				PreprocessorContext,
+				GetEffectiveScriptRootDescriptors(),
+				bSkipDevelopmentScripts,
+				bSkipDevelopmentScripts,
+				CacheReuseContext);
+		bRestoredExactStartup = ExactStartup ==
+			AngelscriptEngineExactStartup_Private::EAttemptResult::Restored;
+		if (ExactStartup == AngelscriptEngineExactStartup_Private::
+			EAttemptResult::FatalPartialRestore)
+		{
+			bSuccess = false;
+			UE_LOG(Angelscript, Error,
+				TEXT("[CacheV2][ExactStartup] A candidate partially mutated the fresh Engine; refusing unsafe compile fallback"));
+		}
+		else if (!bRestoredExactStartup)
+		{
+			// Use preprocessor to read authoritative script files on a safe miss.
+			FAngelscriptPreprocessor Preprocessor(PreprocessorContext);
+			Preprocessor.SetSourceProvider(Dependencies.SourceProvider.Get());
 
-			for (const FAngelscriptSource& Source : Sources)
 			{
-				Filenames.Add(FFilenamePair{
-					Source.AbsoluteFilename,
-					Source.RelativeFilename,
-					Source.VirtualPath.ToString()
-				});
-				Preprocessor.AddSource(Source);
+				FAngelscriptScopeTimer Timer(TEXT("load script files from disk"));
+
+				/* Add all files from the script root recursively.*/
+				FindAllScriptSources(Sources);
+
+				for (const FAngelscriptSource& Source : Sources)
+				{
+					Filenames.Add(FFilenamePair{
+						Source.AbsoluteFilename,
+						Source.RelativeFilename,
+						Source.VirtualPath.ToString()
+					});
+					Preprocessor.AddSource(Source);
+				}
+			}
+
+			bSuccess = Preprocessor.Preprocess();
+			ModulesToCompile = Preprocessor.GetModulesToCompile();
+			if (bSuccess && !ModulesToCompile.IsEmpty())
+			{
+				FAngelscriptCacheCompileCaptureContext PreparedContext;
+				const FAngelscriptCacheCompileCapturePreparationResult Preparation =
+					PrepareAngelscriptCacheCompileCaptureContext(
+						*this,
+						PreprocessorContext,
+						*Dependencies.SourceProvider,
+						GetEffectiveScriptRootDescriptors(),
+						bSkipDevelopmentScripts,
+						bSkipDevelopmentScripts,
+						PreparedContext);
+				if (Preparation.IsSuccess())
+				{
+					CacheCaptureContext.Emplace(MoveTemp(PreparedContext));
+				}
+				else
+				{
+					UE_LOG(Angelscript, Warning,
+						TEXT("[CacheV2] Initial compile capture preparation skipped: Error=%u Environment=%u Discovery=%u Validation=%u Detail=%s"),
+						static_cast<uint32>(Preparation.Error),
+						static_cast<uint32>(Preparation.EnvironmentError),
+						static_cast<uint32>(Preparation.SourceDiscoveryError),
+						static_cast<uint32>(Preparation.Validation.Error),
+						*Preparation.Detail);
+				}
 			}
 		}
 
-		bSuccess = Preprocessor.Preprocess();
-		ModulesToCompile = Preprocessor.GetModulesToCompile();
-	}
-
-	if (bSuccess)
+	if (bSuccess && !bRestoredExactStartup)
 	{
 		TArray<TSharedRef<FAngelscriptModuleDesc>> CompiledModules;
-		ECompileResult Result = CompileModules(ECompileType::Initial, ModulesToCompile, CompiledModules);
+		ECompileResult Result = CompileModules(
+			ECompileType::Initial,
+			ModulesToCompile,
+			CompiledModules,
+			{},
+			CacheCaptureContext.IsSet() ? &CacheCaptureContext.GetValue() : nullptr,
+			CacheReuseContext.Get());
 		if (Result == ECompileResult::Error)
 		{
 			bSuccess = false;
 		}
+		if (CacheReuseContext.IsValid() && CacheService.IsValid())
+		{
+			CacheService->PublishFunctionReuseSummary(
+				CacheReuseContext->CaptureSummary());
+		}
 	}
-	else
+	else if (!bSuccess)
 	{
 		UE_LOG(Angelscript, Error, TEXT("Angelscript preprocessing failed!"));
 	}
 
-	// Don't allow commandlets to run if angelscript is not there
-	if (!bSuccess && (RuntimeConfig.bRunningCommandlet || RuntimeConfig.bExitOnError))
+	bool bInteractiveStartupRetryAvailable = false;
+#if PLATFORM_DESKTOP
+	bInteractiveStartupRetryAvailable = FSlateApplication::IsInitialized();
+#endif
+
+	const EAngelscriptStartupCompileFailureResponse StartupFailureResponse =
+		ResolveAngelscriptStartupCompileFailureResponse(
+			RuntimeConfig,
+			bInteractiveStartupRetryAvailable);
+
+	// Noninteractive hosts must never wait on a Slate modal. UE's Windows launch
+	// loop does not propagate a graceful RequestExitWithStatus code through
+	// GuardedMain, so close the Cache service lifecycle and emit the explicitly
+	// requested report synchronously before a deterministic forced failure exit.
+	// BeginEngineShutdown only changes the mutation phase; it does not flush or
+	// publish. The previously persisted Store remains authoritative because a
+	// failed startup never publishes a replacement Generation.
+	if (!bSuccess
+		&& StartupFailureResponse
+			== EAngelscriptStartupCompileFailureResponse::RequestExit)
 	{
-		UE_LOG(Angelscript, Error, TEXT("Cannot run when angelscript has failed to compile. Requesting exit."));
+		const FAngelscriptStartupCompileFailureExitRequest ExitRequest =
+			ResolveAngelscriptStartupCompileFailureExitRequest(RuntimeConfig);
+		if (ExitRequest.bBeginCacheShutdownBeforeDiagnosticReport
+			&& CacheService.IsValid())
+		{
+			CacheService->BeginEngineShutdown();
+		}
+		if (ExitRequest.bWriteRequestedDiagnosticReportBeforeExit)
+		{
+			WriteRequestedCacheV2ProcessReport();
+		}
+		UE_LOG(Angelscript, Error,
+			TEXT("[StartupCompileFailure] Cannot run after startup compile failure. Requesting %s exit with status %u (commandlet=%s exitOnError=%s unattended=%s interactiveRetryAvailable=%s)."),
+			ExitRequest.bForce ? TEXT("immediate") : TEXT("graceful"),
+			static_cast<uint32>(ExitRequest.Status),
+			RuntimeConfig.bRunningCommandlet ? TEXT("true") : TEXT("false"),
+			RuntimeConfig.bExitOnError ? TEXT("true") : TEXT("false"),
+			RuntimeConfig.bIsUnattended ? TEXT("true") : TEXT("false"),
+			bInteractiveStartupRetryAvailable ? TEXT("true") : TEXT("false"));
 
 		GIsCriticalError = true;
-		FPlatformMisc::RequestExit(true);
+		FPlatformMisc::RequestExitWithStatus(
+			ExitRequest.bForce,
+			ExitRequest.Status);
 	}
 	else if (!bSuccess)
 	{
@@ -2923,9 +3488,17 @@ void FAngelscriptEngine::DiscoverTests()
 	}
 }
 
-bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray<FFilenamePair>& InReloadFiles)
+bool FAngelscriptEngine::PerformHotReload(
+	ECompileType CompileType,
+	const TArray<FFilenamePair>& InReloadFiles,
+	ECompileResult* OutCompileResult,
+	const bool bRejectStructuralChanges)
 {
 	AS_PERF_SCOPE_RELOAD_HOT_RELOAD();
+	if (OutCompileResult != nullptr)
+	{
+		*OutCompileResult = ECompileResult::Error;
+	}
 
 	TGuardValue<bool> ScopeHotReloading(bIsHotReloading, true);
 	FAngelscriptScopeTimer Timer(TEXT("==script reload total =="));
@@ -2936,7 +3509,9 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 		SlowTask.MakeDialogDelayed(0.5f);
 	SlowTask.EnterProgressFrame(0.5f);
 
-	FAngelscriptPreprocessor Preprocessor;
+	const FAngelscriptPreprocessorContext PreprocessorContext =
+		FAngelscriptPreprocessorContext::CreateFromCurrentEngineContext();
+	FAngelscriptPreprocessor Preprocessor(PreprocessorContext);
 	Preprocessor.SetSourceProvider(Dependencies.SourceProvider.Get());
 
 	TSet<FFilenamePair> AlreadyDeletedFiles;
@@ -3173,8 +3748,50 @@ bool FAngelscriptEngine::PerformHotReload(ECompileType CompileType, const TArray
 	}
 
 	TArray<TSharedRef<FAngelscriptModuleDesc>> CompiledModules;
+	FAngelscriptCompileOptions CompileOptions;
+	CompileOptions.CachePolicy =
+		EAngelscriptCompileCachePolicy::ForceClean;
+	CompileOptions.bRejectStructuralChanges = bRejectStructuralChanges;
+	TOptional<FAngelscriptCacheCompileCaptureContext> CacheCaptureContext;
+	if (!ModulesToCompile.IsEmpty())
+	{
+		FAngelscriptCacheCompileCaptureContext PreparedContext;
+		const bool bSkipDevelopmentScripts = !ShouldUseEditorScripts();
+		const FAngelscriptCacheCompileCapturePreparationResult Preparation =
+			PrepareAngelscriptCacheCompileCaptureContext(
+				*this,
+				PreprocessorContext,
+				*Dependencies.SourceProvider,
+				GetEffectiveScriptRootDescriptors(),
+				bSkipDevelopmentScripts,
+				bSkipDevelopmentScripts,
+				PreparedContext);
+		if (Preparation.IsSuccess())
+		{
+			CacheCaptureContext.Emplace(MoveTemp(PreparedContext));
+		}
+		else
+		{
+			UE_LOG(Angelscript, Warning,
+				TEXT("[CacheV2] Hot reload capture preparation skipped: Error=%u Environment=%u Discovery=%u Validation=%u Detail=%s"),
+				static_cast<uint32>(Preparation.Error),
+				static_cast<uint32>(Preparation.EnvironmentError),
+				static_cast<uint32>(Preparation.SourceDiscoveryError),
+				static_cast<uint32>(Preparation.Validation.Error),
+				*Preparation.Detail);
+		}
+	}
 	ECompileResult Result =
-		CompileModules(CompileType, ModulesToCompile, CompiledModules);
+		CompileModules(
+			CompileType,
+			ModulesToCompile,
+			CompiledModules,
+			CompileOptions,
+			CacheCaptureContext.IsSet() ? &CacheCaptureContext.GetValue() : nullptr);
+	if (OutCompileResult != nullptr)
+	{
+		*OutCompileResult = Result;
+	}
 	if (Result == ECompileResult::ErrorNeedFullReload)
 	{
 		return false;
@@ -3445,22 +4062,90 @@ bool FAngelscriptEngine::VerifyBlueprintGetFunc(FString* FuncName,
 
 void FAngelscriptEngine::CheckForHotReload(ECompileType CompileType)
 {
-	// If we used precompiled data we can't hot reload at all
-	if (bUsedPrecompiledDataForPreprocessor)
-		return;
+	ProcessQueuedHotReload(CompileType, nullptr, nullptr);
+}
 
+bool FAngelscriptEngine::ForceCleanCacheModules(
+	const TConstArrayView<FString> CanonicalModuleNames,
+	ECompileResult& OutCompileResult)
+{
+	OutCompileResult = ECompileResult::Error;
+#if !AS_CAN_HOTRELOAD
+	return false;
+#else
+	if (bIsHotReloading)
+	{
+		return false;
+	}
+
+	TArray<TSharedRef<FAngelscriptModuleDesc>> SelectedModules;
+	if (CanonicalModuleNames.IsEmpty())
+	{
+		SelectedModules = GetActiveModules();
+	}
+	else
+	{
+		for (const FString& ModuleName : CanonicalModuleNames)
+		{
+			const TSharedPtr<FAngelscriptModuleDesc> Module =
+				GetModuleByModuleName(ModuleName);
+			if (Module.IsValid())
+			{
+				SelectedModules.AddUnique(Module.ToSharedRef());
+			}
+		}
+	}
+	SelectedModules.Sort([](
+		const TSharedRef<FAngelscriptModuleDesc>& Left,
+		const TSharedRef<FAngelscriptModuleDesc>& Right)
+	{
+		return Left->ModuleName < Right->ModuleName;
+	});
+
+	TArray<FFilenamePair> Files;
+	for (const TSharedRef<FAngelscriptModuleDesc>& Module : SelectedModules)
+	{
+		for (const FAngelscriptModuleDesc::FCodeSection& Section : Module->Code)
+		{
+			Files.AddUnique(FFilenamePair{
+				Section.AbsoluteFilename,
+				Section.RelativeFilename,
+				Section.VirtualPath});
+		}
+	}
+	if (Files.IsEmpty())
+	{
+		return false;
+	}
+	for (const FFilenamePair& File : Files)
+	{
+		FileChangesDetectedForReload.AddUnique(File);
+	}
+	return ProcessQueuedHotReload(
+		ECompileType::FullReload,
+		&OutCompileResult,
+		nullptr);
+#endif
+}
+
+bool FAngelscriptEngine::ProcessQueuedHotReload(
+	ECompileType CompileType,
+	ECompileResult* OutCompileResult,
+	TArray<FFilenamePair>* OutConsumedFiles,
+	const bool bRejectStructuralChanges)
+{
 	// A test callback can itself modify a script file (for example through a
 	// helper command). Never consume the queued changes while script code is
 	// still on the stack; the next engine tick will process the same queue.
 	if (FAngelscriptScriptTestRunner::IsExecutingScriptCallback())
-		return;
+		return false;
 
 	if (bUseHotReloadCheckerThread)
 	{
 		// Still waiting for hot reload results to come back,
 		// so don't do anything for now.
 		if (bWaitingForHotReloadResults)
-			return;
+			return false;
 	}
 
 	// Check if anything is queued for hot reload
@@ -3489,16 +4174,327 @@ void FAngelscriptEngine::CheckForHotReload(ECompileType CompileType)
 	{
 		UE_LOG(Angelscript, Log, TEXT("Primary engine consuming %d queued script file change(s) for hot reload."), FileList.Num());
 
-		// Background task gave us stuff to reload, so do it now
-		PerformHotReload(CompileType, FileList);
+		if (OutConsumedFiles != nullptr)
+		{
+			*OutConsumedFiles = FileList;
+		}
+
+		// The background scanner or explicit packaged request gave us work;
+		// compilation and activation still happen on this game-thread safe point.
+		PerformHotReload(
+			CompileType,
+			FileList,
+			OutCompileResult,
+			bRejectStructuralChanges);
+		if (bUseHotReloadCheckerThread)
+		{
+			bWaitingForHotReloadResults = true;
+		}
+		return true;
 	}
 
-	// Kick off a new check cycle if we are using the checker thread
+	if (OutConsumedFiles != nullptr)
+	{
+		OutConsumedFiles->Reset();
+	}
 	if (bUseHotReloadCheckerThread)
 	{
-		// Spawn new background task to check for reloads
 		bWaitingForHotReloadResults = true;
 	}
+	return false;
+}
+
+EAngelscriptRuntimeReloadRequestStatus
+FAngelscriptEngine::RequestPackagedRuntimeReload()
+{
+#if !AS_CAN_HOTRELOAD
+	return EAngelscriptRuntimeReloadRequestStatus::Disabled;
+#else
+	if (RuntimeConfig.bIsEditor
+		|| PackagedRuntimeReloadMode ==
+			EAngelscriptPackagedRuntimeReloadMode::Disabled)
+	{
+		return EAngelscriptRuntimeReloadRequestStatus::Disabled;
+	}
+
+	if (Engine == nullptr
+		|| (CacheService.IsValid()
+			&& CacheService->GetMutationPhase() ==
+				EAngelscriptCacheMutationPhase::ShuttingDown))
+	{
+		return EAngelscriptRuntimeReloadRequestStatus::ShuttingDown;
+	}
+
+	if (bPackagedRuntimeReloadQueued
+		|| bIsHotReloading
+		|| CompletedPackagedRuntimeReloadResult.IsSet())
+	{
+		return EAngelscriptRuntimeReloadRequestStatus::Busy;
+	}
+
+	bPackagedRuntimeReloadQueued = true;
+	return EAngelscriptRuntimeReloadRequestStatus::Queued;
+#endif
+}
+
+bool FAngelscriptEngine::ConsumePackagedRuntimeReloadResult(
+	FAngelscriptRuntimeReloadResult& OutResult)
+{
+	if (!CompletedPackagedRuntimeReloadResult.IsSet())
+	{
+		return false;
+	}
+
+	OutResult = MoveTemp(CompletedPackagedRuntimeReloadResult.GetValue());
+	CompletedPackagedRuntimeReloadResult.Reset();
+	return true;
+}
+
+void FAngelscriptEngine::PrimePackagedRuntimeReloadState()
+{
+#if AS_CAN_HOTRELOAD
+	if (RuntimeConfig.bIsEditor
+		|| PackagedRuntimeReloadMode ==
+			EAngelscriptPackagedRuntimeReloadMode::Disabled
+		|| bPackagedRuntimeReloadPrimed)
+	{
+		return;
+	}
+
+	// The first content scan establishes the baseline and must never present
+	// every startup source as a post-startup edit.
+	CheckForFileChanges();
+	FileChangesDetectedForReload.Reset();
+	FileDeletionsDetectedForReload.Reset();
+	bPackagedRuntimeReloadPrimed = true;
+	NextPackagedRuntimeReloadScan =
+		FPlatformTime::Seconds() + PackagedRuntimeReloadScanIntervalSeconds;
+#endif
+}
+
+void FAngelscriptEngine::CollectChangedModuleNames(
+	const TArray<FFilenamePair>& Files,
+	TArray<FString>& OutModuleNames) const
+{
+	OutModuleNames.Reset();
+	for (const FFilenamePair& File : Files)
+	{
+		bool bMatchedActiveModule = false;
+		for (const TPair<FString, TSharedRef<FAngelscriptModuleDesc>>& Pair :
+			ActiveModules)
+		{
+			for (const auto& Section : Pair.Value->Code)
+			{
+				if (Section.RelativeFilename == File.RelativePath
+					|| Section.AbsoluteFilename == File.AbsolutePath)
+				{
+					OutModuleNames.AddUnique(Pair.Value->ModuleName);
+					bMatchedActiveModule = true;
+					break;
+				}
+			}
+		}
+
+		// New files have no active descriptor yet. Their established module
+		// convention is the relative filename without the .as suffix.
+		if (!bMatchedActiveModule)
+		{
+			OutModuleNames.AddUnique(
+				FPaths::GetBaseFilename(File.RelativePath));
+		}
+	}
+	OutModuleNames.Sort();
+}
+
+void FAngelscriptEngine::TickPackagedRuntimeReload()
+{
+#if AS_CAN_HOTRELOAD
+	if (RuntimeConfig.bIsEditor
+		|| PackagedRuntimeReloadMode ==
+			EAngelscriptPackagedRuntimeReloadMode::Disabled)
+	{
+		return;
+	}
+
+	PrimePackagedRuntimeReloadState();
+	const double CurrentTime = FPlatformTime::Seconds();
+	if (PackagedRuntimeReloadMode ==
+			EAngelscriptPackagedRuntimeReloadMode::Automatic
+		&& !bPackagedRuntimeReloadQueued
+		&& !CompletedPackagedRuntimeReloadResult.IsSet()
+		&& CurrentTime >= NextPackagedRuntimeReloadScan)
+	{
+		bPackagedRuntimeReloadQueued = true;
+	}
+
+	if (!bPackagedRuntimeReloadQueued
+		|| bIsHotReloading
+		|| FAngelscriptScriptTestRunner::IsExecutingScriptCallback())
+	{
+		return;
+	}
+
+	bPackagedRuntimeReloadQueued = false;
+	NextPackagedRuntimeReloadScan =
+		CurrentTime + PackagedRuntimeReloadScanIntervalSeconds;
+	const double ReloadStartTime = FPlatformTime::Seconds();
+	CheckForFileChanges();
+
+	ECompileResult CompileResult = ECompileResult::Error;
+	TArray<FFilenamePair> ConsumedFiles;
+	bool bAttempted = false;
+	if (!FileDeletionsDetectedForReload.IsEmpty())
+	{
+		// Removing a live module is structural by definition. Packaged Runtime
+		// rejects the whole observed transaction without asking the preprocessor
+		// to synthesize an unload against live UObject/class state.
+		ConsumedFiles = FileChangesDetectedForReload;
+		for (const FFilenamePair& Deleted : FileDeletionsDetectedForReload)
+		{
+			ConsumedFiles.AddUnique(Deleted);
+		}
+		FileChangesDetectedForReload.Reset();
+		FileDeletionsDetectedForReload.Reset();
+		CompileResult = ECompileResult::ErrorNeedFullReload;
+		bAttempted = true;
+	}
+	else
+	{
+		bAttempted = ProcessQueuedHotReload(
+			ECompileType::SoftReloadOnly,
+			&CompileResult,
+			&ConsumedFiles,
+			true);
+	}
+
+	FAngelscriptRuntimeReloadResult Result;
+	CollectChangedModuleNames(ConsumedFiles, Result.ChangedModuleNames);
+	Result.RecompiledModuleCount = Result.ChangedModuleNames.Num();
+	Result.CacheMissCount = bAttempted
+		? Result.RecompiledModuleCount
+		: 0;
+	if (!bAttempted)
+	{
+		Result.Outcome = EAngelscriptRuntimeReloadOutcome::NoChanges;
+		Result.Diagnostics = TEXT("No loose AngelScript source changes were detected.");
+	}
+	else if (CompileResult == ECompileResult::FullyHandled
+		|| CompileResult == ECompileResult::PartiallyHandled)
+	{
+		Result.Outcome = EAngelscriptRuntimeReloadOutcome::AppliedCodeOnly;
+		Result.Diagnostics = TEXT("The code-only generation was activated at the game-thread safe point.");
+	}
+	else if (CompileResult == ECompileResult::ErrorNeedFullReload)
+	{
+		Result.Outcome = EAngelscriptRuntimeReloadOutcome::RequiresRestart;
+		Result.Diagnostics = TEXT("A structural change requires restart; the last good active generation was retained.");
+	}
+	else
+	{
+		Result.Outcome = EAngelscriptRuntimeReloadOutcome::CompileFailed;
+		Result.Diagnostics = TEXT("Compilation failed; the last good active generation was retained.");
+	}
+
+	TSharedPtr<const FAngelscriptCacheSuccessfulPublicationDto,
+		ESPMode::ThreadSafe> CoordinatePublication;
+	TSharedPtr<const FAngelscriptCacheSuccessfulPublicationDto,
+		ESPMode::ThreadSafe> IdentityPublication;
+	if (CacheService.IsValid())
+	{
+		const FAngelscriptCacheLifecyclePublications Publications =
+			CacheService->GetLifecyclePublications();
+		if (Result.Outcome ==
+			EAngelscriptRuntimeReloadOutcome::AppliedCodeOnly)
+		{
+			CoordinatePublication = Publications.Current;
+		}
+		else if (Result.Outcome ==
+			EAngelscriptRuntimeReloadOutcome::RequiresRestart)
+		{
+			CoordinatePublication = Publications.PendingColdStart;
+		}
+		IdentityPublication = CoordinatePublication.IsValid()
+			? CoordinatePublication
+			: Publications.Current;
+	}
+
+	if (IdentityPublication.IsValid())
+	{
+		for (const FAngelscriptCacheCleanModuleArtifacts& Module :
+			IdentityPublication->Modules)
+		{
+			if (Result.ChangedModuleNames.Contains(
+				Module.CanonicalModuleName))
+			{
+				Result.ChangedModuleKeys.AddUnique(
+					Module.ModuleKey.Hash.ToHexString());
+			}
+		}
+		Result.ChangedModuleKeys.Sort();
+	}
+
+	if (CacheService.IsValid())
+	{
+		FAngelscriptCacheDecisionEvent Event;
+		Event.Stage = EAngelscriptCacheDecisionStage::RuntimeReload;
+		Event.ReasonDomain =
+			EAngelscriptCacheDecisionReasonDomain::RuntimeReload;
+		Event.ReasonCode = static_cast<uint32>(Result.Outcome);
+		switch (Result.Outcome)
+		{
+		case EAngelscriptRuntimeReloadOutcome::AppliedCodeOnly:
+		case EAngelscriptRuntimeReloadOutcome::NoChanges:
+			Event.Outcome = EAngelscriptCacheDecisionOutcome::Completed;
+			break;
+		case EAngelscriptRuntimeReloadOutcome::RequiresRestart:
+			Event.Outcome = EAngelscriptCacheDecisionOutcome::Deferred;
+			break;
+		case EAngelscriptRuntimeReloadOutcome::CompileFailed:
+			Event.Outcome = EAngelscriptCacheDecisionOutcome::Rejected;
+			break;
+		case EAngelscriptRuntimeReloadOutcome::Cancelled:
+			Event.Outcome = EAngelscriptCacheDecisionOutcome::RolledBack;
+			break;
+		default:
+			Event.Outcome = EAngelscriptCacheDecisionOutcome::Invalid;
+			break;
+		}
+		if (IdentityPublication.IsValid())
+		{
+			for (const FAngelscriptCacheCleanModuleArtifacts& Module :
+				IdentityPublication->Modules)
+			{
+				if (Result.ChangedModuleNames.Contains(
+					Module.CanonicalModuleName))
+				{
+					Event.ModuleKeys.AddUnique(Module.ModuleKey);
+				}
+			}
+		}
+		if (CoordinatePublication.IsValid())
+		{
+			Event.TransactionOrdinal =
+				CoordinatePublication->TransactionOrdinal;
+			Event.Profile = CoordinatePublication->Profile;
+			Event.SourceSnapshot = CoordinatePublication->SourceSnapshot;
+			Event.CurrentCoordinate = CoordinatePublication->SourceSnapshot;
+		}
+		Event.PrimaryCount = Result.ChangedModuleNames.Num();
+		Event.SecondaryCount = Result.RecompiledModuleCount;
+		Event.ElapsedMicroseconds = static_cast<uint64>(FMath::Max(
+			0.0,
+			(FPlatformTime::Seconds() - ReloadStartTime) * 1000000.0));
+		CacheService->RecordDecisionEvent(MoveTemp(Event));
+	}
+
+	UE_LOG(Angelscript, Display,
+		TEXT("[RuntimeReload] Outcome=%u ChangedModules=%s ChangedKeys=%s Detail=%s"),
+		static_cast<uint32>(Result.Outcome),
+		*FString::Join(Result.ChangedModuleNames, TEXT(",")),
+		*FString::Join(Result.ChangedModuleKeys, TEXT(",")),
+		*Result.Diagnostics);
+	CompletedPackagedRuntimeReloadResult.Emplace(MoveTemp(Result));
+#endif
 }
 
 static bool HasGameWorld()
@@ -3516,6 +4512,8 @@ static bool HasGameWorld()
 
 void FAngelscriptEngine::Tick(float DeltaTime)
 {
+	TickPackagedRuntimeReload();
+
 #if AS_CAN_HOTRELOAD
 	if (bScriptDevelopmentMode)
 	{
@@ -3572,7 +4570,9 @@ bool FAngelscriptEngine::ShouldTick() const
 
 void FAngelscriptEngine::CheckForFileChanges()
 {
-	ensure(bUseHotReloadCheckerThread);
+	ensure(bUseHotReloadCheckerThread
+		|| PackagedRuntimeReloadMode !=
+			EAngelscriptPackagedRuntimeReloadMode::Disabled);
 
 #if AS_PRINT_STATS
 	double StartCompute = FPlatformTime::Seconds();
@@ -3586,6 +4586,8 @@ void FAngelscriptEngine::CheckForFileChanges()
 
 	TArray<FFilenamePair> Filenames;
 	FindAllScriptFilenames(Filenames);
+	TSet<FString> SeenSourceStateKeys;
+	SeenSourceStateKeys.Reserve(Filenames.Num());
 
 	for (FFilenamePair& Filename : Filenames)
 	{
@@ -3595,6 +4597,7 @@ void FAngelscriptEngine::CheckForFileChanges()
 		const bool bHasSourceState = Dependencies.SourceProvider.IsValid()
 			&& Dependencies.SourceProvider->QuerySourceState(Source, SourceState);
 		const FString SourceStateKey = MakeSourceStateKey(Filename);
+		SeenSourceStateKeys.Add(SourceStateKey);
 
 		FHotReloadState* FileState = FileHotReloadState.Find(SourceStateKey);
 		if (FileState == nullptr)
@@ -3613,6 +4616,7 @@ void FAngelscriptEngine::CheckForFileChanges()
 			{
 				NewState.LastChange = FileManager.GetTimeStamp(*Filename.AbsolutePath);
 			}
+			NewState.Filename = Filename;
 			FileHotReloadState.Add(SourceStateKey, NewState);
 		}
 		else if (bHasSourceState)
@@ -3629,6 +4633,7 @@ void FAngelscriptEngine::CheckForFileChanges()
 			FileState->LastChange = SourceState.Timestamp;
 			FileState->ContentHash = SourceState.ContentHash;
 			FileState->bHasContentHash = SourceState.bHasContentHash;
+			FileState->Filename = Filename;
 		}
 		else
 		{
@@ -3639,12 +4644,34 @@ void FAngelscriptEngine::CheckForFileChanges()
 				FileChangesDetectedForReload.Add(Filename);
 				FileState->LastChange = FileTime;
 			}
+			FileState->Filename = Filename;
 		}
+	}
+
+	TArray<FString> MissingSourceStateKeys;
+	for (const TPair<FString, FHotReloadState>& Pair : FileHotReloadState)
+	{
+		if (!SeenSourceStateKeys.Contains(Pair.Key))
+		{
+			FileDeletionsDetectedForReload.AddUnique(Pair.Value.Filename);
+			MissingSourceStateKeys.Add(Pair.Key);
+		}
+	}
+	for (const FString& MissingKey : MissingSourceStateKeys)
+	{
+		FileHotReloadState.Remove(MissingKey);
+	}
+
+	if (!FileChangesDetectedForReload.IsEmpty()
+		|| !FileDeletionsDetectedForReload.IsEmpty())
+	{
+		LastFileChangeDetectedTime = FPlatformTime::Seconds();
 	}
 
 #if AS_PRINT_STATS
 	double EndCompute = FPlatformTime::Seconds();
-	if (FileChangesDetectedForReload.Num() != 0)
+	if (FileChangesDetectedForReload.Num() != 0
+		|| FileDeletionsDetectedForReload.Num() != 0)
 	{
 		UE_LOG(Angelscript, Log, TEXT("scanning for changed files took %.3f ms"), (EndCompute - StartCompute) * 1000);
 	}
@@ -3805,11 +4832,95 @@ TSharedPtr<struct FAngelscriptModuleDesc> FAngelscriptEngine::GetModuleByFilenam
 	return TSharedPtr<struct FAngelscriptModuleDesc>();
 }
 
-ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& InModules, TArray<TSharedRef<FAngelscriptModuleDesc>>& OutCompiledModules)
+namespace AngelscriptEngineCacheCapture_Private
+{
+	static TOptional<FAngelscriptStableModuleKey> FindModuleKey(
+		const FAngelscriptModuleDesc& Module,
+		const FAngelscriptCachedSourceIndex& SourceIndex)
+	{
+		TOptional<FAngelscriptStableModuleKey> Result;
+		for (const FAngelscriptModuleDesc::FCodeSection& Section : Module.Code)
+		{
+			for (const FAngelscriptCachedSourceFile& SourceFile
+				: SourceIndex.Files)
+			{
+				const FAngelscriptCachedSourceMount* SourceMount = nullptr;
+				for (const FAngelscriptCachedSourceMount& CandidateMount
+					: SourceIndex.Mounts)
+				{
+					if (CandidateMount.MountKey.Hash
+						== SourceFile.MountKey.Hash)
+					{
+						SourceMount = &CandidateMount;
+						break;
+					}
+				}
+				if (SourceMount == nullptr)
+				{
+					continue;
+				}
+
+				FString ExpectedVirtualPath = SourceMount->LogicalMount;
+				if (!ExpectedVirtualPath.EndsWith(TEXT("/")))
+				{
+					ExpectedVirtualPath += TEXT("/");
+				}
+				ExpectedVirtualPath += SourceFile.RelativeLogicalPath;
+				if (!ExpectedVirtualPath.Equals(
+					Section.VirtualPath, ESearchCase::CaseSensitive))
+				{
+					continue;
+				}
+
+				if (Result.IsSet()
+					&& Result.GetValue() != SourceFile.ModuleKey)
+				{
+					return {};
+				}
+				Result = SourceFile.ModuleKey;
+				break;
+			}
+		}
+		return Result;
+	}
+}
+
+ECompileResult FAngelscriptEngine::CompileModules(
+	ECompileType CompileType,
+	const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& InModules,
+	TArray<TSharedRef<FAngelscriptModuleDesc>>& OutCompiledModules,
+	FAngelscriptCompileOptions CompileOptions,
+	const FAngelscriptCacheCompileCaptureContext* CacheCaptureContext,
+	FAngelscriptCacheCompileReuseContext* CacheReuseContext)
 {
 	AS_PERF_SCOPE_COMPILE_MODULES();
 	LLM_SCOPE_BYTAG(Angelscript);
-	FAngelscriptCompilationContext CompilationContext(CompileType, InModules);
+	FAngelscriptCacheMutationGuard CacheMutationGuard;
+	if (CacheCaptureContext != nullptr && CacheService.IsValid())
+	{
+		CacheMutationGuard = CacheService->EnterMutation(
+			CompileType == ECompileType::Initial
+				? EAngelscriptCacheMutationKind::InitialCompile
+				: EAngelscriptCacheMutationKind::RuntimeReload);
+		if (!CacheMutationGuard.IsEntered())
+		{
+			UE_LOG(Angelscript, Warning,
+				TEXT("[CacheV2] Compile capture skipped because the per-Engine mutation gate was unavailable"));
+		}
+	}
+	if (CompileOptions.IsForcedClean())
+	{
+		for (const TSharedRef<FAngelscriptModuleDesc>& Module : InModules)
+		{
+			Module->PrecompiledData = nullptr;
+			Module->bLoadedPrecompiledCode = false;
+			Module->bLoadedIncrementalCache = false;
+		}
+	}
+	FAngelscriptCompilationContext CompilationContext(
+		CompileType,
+		CompileOptions,
+		InModules);
 
 	if (FAngelscriptCompilationEvents::HasListeners())
 	{
@@ -3967,7 +5078,11 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 					}
 					else
 					{
-						CompileModule_Types_Stage1(CompileType, Module, ImportedModules);
+						CompileModule_Types_Stage1(
+							CompileType,
+							Module,
+							ImportedModules,
+							CompileOptions);
 					}
 
 					AngelscriptEngineCompilationEvents_Private::BroadcastModuleEvent(
@@ -3975,6 +5090,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 						TEXT("Compile.ModuleAssembly"),
 						CompilationContext.GetRunId(),
 						CompileType,
+						CompilationContext.GetCachePolicy(),
 						Module,
 						!Module->bCompileError);
 				}
@@ -4021,6 +5137,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 						TEXT("Compile.ModuleParse"),
 						CompilationContext.GetRunId(),
 						CompileType,
+						CompilationContext.GetCachePolicy(),
 						Module,
 						!Module->bCompileError);
 				}
@@ -4049,6 +5166,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 						TEXT("Compile.ModuleGenerateTypes"),
 						CompilationContext.GetRunId(),
 						CompileType,
+						CompilationContext.GetCachePolicy(),
 						Module,
 						!Module->bCompileError);
 				}
@@ -4080,6 +5198,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 						TEXT("Compile.ModuleGenerateFunctions"),
 						CompilationContext.GetRunId(),
 						CompileType,
+						CompilationContext.GetCachePolicy(),
 						Module,
 						!Module->bCompileError);
 
@@ -4234,6 +5353,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 								NewModule->PrecompiledData = nullptr;
 								NewModule->bCompileError = false;
 								NewModule->bLoadedPrecompiledCode = false;
+								NewModule->bLoadedIncrementalCache = false;
 								NewModule->Classes.Reset();
 								for (int ClassIndex = 0, ClassCount = OldModule->Classes.Num(); ClassIndex < ClassCount; ++ClassIndex)
 								{
@@ -4575,6 +5695,54 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 					Module->bCompileError = true;
 			}
 
+			if (CacheReuseContext != nullptr
+				&& CacheReuseContext->IsValid()
+				&& CacheCaptureContext != nullptr
+				&& !CompileOptions.IsForcedClean())
+			{
+				for (const TSharedRef<FAngelscriptModuleDesc>& Module
+					: CompiledModules)
+				{
+					if (Module->bCompileError || Module->bLoadedPrecompiledCode
+						|| Module->ScriptModule == nullptr
+						|| Module->ScriptModule->builder == nullptr)
+					{
+						continue;
+					}
+					const TOptional<FAngelscriptStableModuleKey> ModuleKey =
+						AngelscriptEngineCacheCapture_Private::FindModuleKey(
+							*Module,
+							CacheCaptureContext->AuthoritativeSourceIndex);
+					if (!ModuleKey.IsSet())
+					{
+						continue;
+					}
+					const FAngelscriptCacheCompileReusePrepareResult Prepare =
+						CacheReuseContext->PrepareModule(
+							Module,
+							ModuleKey.GetValue(),
+							CacheCaptureContext->AuthoritativeSourceIndex.
+								SourceSnapshot,
+							CacheService.Get());
+					if (Prepare.IsSuccess())
+					{
+						UE_LOG(Angelscript, Verbose,
+							TEXT("[CacheV2][FunctionReuse] %s"),
+							*Prepare.Detail);
+					}
+					else if (Prepare.Error
+						!= EAngelscriptCacheCompileReusePrepareError::
+							CandidateModuleMissing)
+					{
+						UE_LOG(Angelscript, Warning,
+							TEXT("[CacheV2][FunctionReuse] Module=%s Error=%u Detail=%s"),
+							*Module->ModuleName,
+							static_cast<uint32>(Prepare.Error),
+							*Prepare.Detail);
+					}
+				}
+			}
+
 			for (auto Module : CompiledModules)
 			{
 				asCModule* ScriptModule = Module->ScriptModule;
@@ -4588,6 +5756,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 					TEXT("Compile.ModuleLayout"),
 					CompilationContext.GetRunId(),
 					CompileType,
+					CompilationContext.GetCachePolicy(),
 					Module,
 					!Module->bCompileError);
 			}
@@ -4635,6 +5804,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 					TEXT("Compile.ModuleCompileCode"),
 					CompilationContext.GetRunId(),
 					CompileType,
+					CompilationContext.GetCachePolicy(),
 					Module,
 					!Module->bCompileError,
 					bJitAvailable,
@@ -4648,7 +5818,9 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 		}
 
 		// If we added any precompiled modules, finalize them now
-		if (PrecompiledData != nullptr && bUsePrecompiledData)
+		if (!CompileOptions.IsForcedClean()
+			&& PrecompiledData != nullptr
+			&& bUseStaticJITCompatibilityData)
 		{
 			PrecompiledData->PrepareToFinalizePrecompiledModules();
 		}
@@ -4685,6 +5857,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 						TEXT("Compile.ModuleGlobals"),
 						CompilationContext.GetRunId(),
 						CompileType,
+						CompilationContext.GetCachePolicy(),
 						Module,
 						!Module->bCompileError);
 
@@ -4739,6 +5912,7 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 			TEXT("Compile.ClassGenerationHandoff"),
 			CompilationContext.GetRunId(),
 			CompileType,
+			CompilationContext.GetCachePolicy(),
 			CompiledModules);
 		GetPreGenerateClasses().Broadcast(CompiledModules);
 
@@ -4786,6 +5960,30 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 				case FAngelscriptClassGenerator::EReloadRequirement::FullReloadSuggested:
 					if (CompileType == ECompileType::SoftReloadOnly)
 					{
+						if (CompileOptions.bRejectStructuralChanges)
+						{
+							const FString Msg =
+								TEXT("Packaged Runtime reload rejected a structural UPROPERTY/UFUNCTION change. ")
+								TEXT("Keeping the last good AngelScript module active until restart.");
+							UE_LOG(Angelscript, Warning, TEXT("%s"), *Msg);
+							for (const TSharedRef<FAngelscriptModuleDesc>& Module :
+								CompiledModules)
+							{
+								if (ClassGenerator.WantsFullReload(Module))
+								{
+									TArray<int32> Lines;
+									ClassGenerator.GetFullReloadLines(Module, Lines);
+									for (const int32 ReloadLine : Lines)
+									{
+										ScriptCompileError(
+											Module, ReloadLine, Msg, false);
+									}
+								}
+							}
+							bShouldSwapInModules = false;
+							bFullReloadRequired = true;
+							break;
+						}
 #if WITH_EDITOR
 						FString Msg =
 							TEXT("Performing a Soft Reload during PIE. New UPROPERTY()s and UFUNCTION()s won't show up")
@@ -4851,6 +6049,179 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 		}
 	}
 
+	TArray<FAngelscriptFunctionArtifactIdentity>
+		ValidatedCompileFunctionIdentities;
+
+	// Freeze only after the final ClassGenerator/reinstancing decision, while
+	// every compiled candidate still owns its complete VM state. This is a
+	// fail-soft observer: no capture failure changes the established compile,
+	// activation or last-good behavior.
+	if (CacheCaptureContext != nullptr
+		&& CacheMutationGuard.IsEntered()
+		&& !bHadCompileErrors)
+	{
+		const bool bPendingColdStart =
+			CompileType == ECompileType::SoftReloadOnly
+			&& (!bWasFullyHandled || bFullReloadRequired);
+		const bool bCanFreezeCurrent = bShouldSwapInModules;
+		const bool bCanFreezePending = bPendingColdStart
+			&& (bShouldSwapInModules || bFullReloadRequired);
+		if (bCanFreezeCurrent || bCanFreezePending)
+		{
+			TMap<FString, TSharedRef<FAngelscriptModuleDesc>> CandidateByName;
+			for (const TSharedRef<FAngelscriptModuleDesc>& Active :
+				GetActiveModules())
+			{
+				CandidateByName.Add(Active->ModuleName, Active);
+			}
+			if (!bShouldSwapInModules)
+			{
+				for (const TSharedRef<FAngelscriptModuleDesc>& Candidate :
+					CompiledModules)
+				{
+					CandidateByName.Add(Candidate->ModuleName, Candidate);
+				}
+			}
+
+			TArray<TSharedRef<FAngelscriptModuleDesc>> CaptureModules;
+			CandidateByName.GenerateValueArray(CaptureModules);
+			CaptureModules.Sort([](
+				const TSharedRef<FAngelscriptModuleDesc>& Left,
+				const TSharedRef<FAngelscriptModuleDesc>& Right)
+			{
+				return FAngelscriptArtifactCanonicalWriter::
+					CompareCanonicalUtf8Strings(
+						Left->ModuleName, Right->ModuleName) < 0;
+			});
+
+			FAngelscriptCacheSuccessfulPublicationInput PublicationInput;
+			PublicationInput.Kind = CompileType == ECompileType::Initial
+				? EAngelscriptCacheSuccessfulCompileKind::Initial
+				: CompileType == ECompileType::FullReload
+					? EAngelscriptCacheSuccessfulCompileKind::FullReload
+					: EAngelscriptCacheSuccessfulCompileKind::SoftReload;
+			PublicationInput.Disposition = bPendingColdStart
+				? EAngelscriptCachePublicationDisposition::PendingColdStart
+				: EAngelscriptCachePublicationDisposition::Current;
+			PublicationInput.Compatibility = CacheCaptureContext->
+				Environment.CaptureOptions.Compatibility;
+			PublicationInput.Context = CacheCaptureContext->
+				Environment.CaptureOptions.Context;
+			PublicationInput.Profile = CacheCaptureContext->
+				Environment.CaptureOptions.Profile;
+
+			int32 SkippedCaptureCount = 0;
+			uint32 GraphCarriedDependencyFunctionCount = 0;
+			for (const TSharedRef<FAngelscriptModuleDesc>& Candidate :
+				CaptureModules)
+			{
+				FAngelscriptCacheCleanModuleArtifacts Artifacts;
+				const FAngelscriptCacheCleanCaptureResult CaptureResult =
+					CaptureAngelscriptCleanCompiledModule(
+					Candidate,
+					CacheCaptureContext->Environment.CaptureOptions,
+					CacheCaptureContext->AuthoritativeSourceIndex,
+					CacheReuseContext,
+					Artifacts);
+				if (!CaptureResult.IsSuccess())
+				{
+					++SkippedCaptureCount;
+					FAngelscriptCacheDecisionEvent Decision;
+					Decision.Stage = CompileType == ECompileType::Initial
+						? EAngelscriptCacheDecisionStage::SuccessfulPublication
+						: EAngelscriptCacheDecisionStage::RuntimeReload;
+					Decision.Outcome = CaptureResult.Error
+						== EAngelscriptCacheCleanCaptureError::NotCacheable
+						? EAngelscriptCacheDecisionOutcome::NotCacheable
+						: EAngelscriptCacheDecisionOutcome::Rejected;
+					Decision.ReasonDomain =
+						EAngelscriptCacheDecisionReasonDomain::CleanCapture;
+					Decision.ReasonCode =
+						static_cast<uint32>(CaptureResult.Error);
+					Decision.Profile = CacheCaptureContext->
+						Environment.CaptureOptions.Profile;
+					Decision.SourceSnapshot = CacheCaptureContext->
+						AuthoritativeSourceIndex.SourceSnapshot;
+					Decision.PrimaryCount = CaptureResult.ValidatedGraphRecordCount;
+					Decision.Detail = CaptureResult.Detail;
+					const TOptional<FAngelscriptStableModuleKey> ModuleKey =
+						AngelscriptEngineCacheCapture_Private::FindModuleKey(
+							*Candidate,
+							CacheCaptureContext->AuthoritativeSourceIndex);
+					if (ModuleKey.IsSet())
+					{
+						Decision.ModuleKeys.Add(ModuleKey.GetValue());
+					}
+					CacheService->RecordDecisionEvent(MoveTemp(Decision));
+					const FString ModuleKeyText = ModuleKey.IsSet()
+						? ModuleKey->Hash.ToHexString() : TEXT("unknown");
+					if (CaptureResult.Error
+						== EAngelscriptCacheCleanCaptureError::NotCacheable)
+					{
+						UE_LOG(Angelscript, Verbose,
+							TEXT("[CacheV2] Compile capture skipped module: Module=%s ModuleKey=%s Error=%u GraphRecords=%u CapturedSoFar=%d SkippedSoFar=%d Detail=%s"),
+							*Candidate->ModuleName, *ModuleKeyText,
+							static_cast<uint32>(CaptureResult.Error),
+							CaptureResult.ValidatedGraphRecordCount,
+							PublicationInput.Modules.Num(),
+							SkippedCaptureCount,
+							*CaptureResult.Detail);
+					}
+					else
+					{
+						UE_LOG(Angelscript, Warning,
+							TEXT("[CacheV2] Compile capture rejected module: Module=%s ModuleKey=%s Error=%u GraphRecords=%u CapturedSoFar=%d SkippedSoFar=%d Detail=%s"),
+							*Candidate->ModuleName, *ModuleKeyText,
+							static_cast<uint32>(CaptureResult.Error),
+							CaptureResult.ValidatedGraphRecordCount,
+							PublicationInput.Modules.Num(),
+							SkippedCaptureCount,
+							*CaptureResult.Detail);
+					}
+					continue;
+				}
+				GraphCarriedDependencyFunctionCount +=
+					CaptureResult.GraphCarriedDependencyFunctionCount;
+				PublicationInput.Modules.Add(MoveTemp(Artifacts));
+			}
+
+			UE_LOG(Angelscript, Display,
+				TEXT("[CacheV2] Compile capture batch: Candidates=%d Captured=%d Skipped=%d GraphCarriedDependencyFunctions=%u"),
+				CaptureModules.Num(), PublicationInput.Modules.Num(),
+				SkippedCaptureCount,
+				GraphCarriedDependencyFunctionCount);
+			if (!PublicationInput.Modules.IsEmpty())
+			{
+				for (const FAngelscriptCacheCleanModuleArtifacts& Module
+					: PublicationInput.Modules)
+				{
+					ValidatedCompileFunctionIdentities.Append(
+						Module.ValidatedFunctionArtifactIdentities);
+				}
+				const FAngelscriptCacheFreezePublicationResult Freeze =
+					CacheService->FreezeSuccessfulCompileArtifacts(
+						CacheMutationGuard.GetToken(),
+						MoveTemp(PublicationInput));
+				if (Freeze.IsSuccess())
+				{
+					UE_LOG(Angelscript, Display,
+						TEXT("[CacheV2] Published compile transaction: Tx=%llu Kind=%u Disposition=%u Modules=%d SourceSnapshot=%s"),
+						Freeze.Publication->TransactionOrdinal,
+						static_cast<uint32>(Freeze.Publication->Kind),
+						static_cast<uint32>(Freeze.Publication->Disposition),
+						Freeze.Publication->Modules.Num(),
+						*Freeze.Publication->SourceSnapshot.ToHexString());
+				}
+				else
+				{
+					UE_LOG(Angelscript, Warning,
+						TEXT("[CacheV2] Compile capture freeze rejected: Error=%u"),
+						static_cast<uint32>(Freeze.Error));
+				}
+			}
+		}
+	}
+
 	if (bShouldSwapInModules)
 	{
 		// Actually delete old modules
@@ -4897,6 +6268,35 @@ ECompileResult FAngelscriptEngine::CompileModules(ECompileType CompileType, cons
 				}
 			}
 		}
+
+		// Publish one immutable current-Engine StableFunctionKey route snapshot
+		// only after the accepted modules and reverse module index agree.
+		TArray<asIScriptModule*> RebuiltRouteModules;
+		RebuiltRouteModules.Reserve(CompiledModules.Num());
+		for (const TSharedRef<FAngelscriptModuleDesc>& Module : CompiledModules)
+		{
+			if (Module->ScriptModule != nullptr)
+			{
+				RebuiltRouteModules.AddUnique(Module->ScriptModule);
+			}
+		}
+		TArray<asIScriptModule*> ArtifactInvalidatedRouteModules;
+		ArtifactInvalidatedRouteModules.Reserve(
+			ModulesToUpdateReferences.Num());
+		for (const TSharedRef<FAngelscriptModuleDesc>& Module
+			: ModulesToUpdateReferences)
+		{
+			if (Module->ScriptModule != nullptr)
+			{
+				ArtifactInvalidatedRouteModules.AddUnique(
+					Module->ScriptModule);
+			}
+		}
+		RebuildFunctionRouteSnapshot(
+			TConstArrayView<FAngelscriptCacheLiveFunctionRoute>(),
+			ValidatedCompileFunctionIdentities,
+			RebuiltRouteModules,
+			ArtifactInvalidatedRouteModules);
 
 		// We changed some modules, so we should re-resolve all declared imports in all modules
 		//  Technically we could store dependencies for these as well and only re-resolve as needed,
@@ -5088,7 +6488,11 @@ void FAngelscriptEngine::UpdateScriptReferencesInUnrealData(struct asModuleRefer
 	}
 }
 
-void FAngelscriptEngine::CompileModule_Types_Stage1(ECompileType CompileType, TSharedRef<struct FAngelscriptModuleDesc> Module, const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& ImportedModules)
+void FAngelscriptEngine::CompileModule_Types_Stage1(
+	ECompileType CompileType,
+	TSharedRef<struct FAngelscriptModuleDesc> Module,
+	const TArray<TSharedRef<struct FAngelscriptModuleDesc>>& ImportedModules,
+	const FAngelscriptCompileOptions& CompileOptions)
 {
 	// Modules always compile with a temporary name, the code
 	// then later decides whether to use them and rename them.
@@ -5125,7 +6529,10 @@ void FAngelscriptEngine::CompileModule_Types_Stage1(ECompileType CompileType, TS
 	}
 
 	// Check if we have precompiled data for this module and use it if we can
-	if (PrecompiledData != nullptr && bAllImportsPreCompiled && bUsePrecompiledData)
+	if (!CompileOptions.IsForcedClean()
+		&& PrecompiledData != nullptr
+		&& bAllImportsPreCompiled
+		&& bUseStaticJITCompatibilityData)
 	{
 		const FAngelscriptPrecompiledModule* CompiledModule = PrecompiledData->Modules.Find(Module->ModuleName);
 		if (CompiledModule != nullptr)

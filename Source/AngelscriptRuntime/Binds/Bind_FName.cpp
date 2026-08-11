@@ -204,5 +204,7 @@ AS_FORCE_LINK const FAngelscriptBinds::FBind Bind_FName((int32)FAngelscriptBinds
 		return Name == *Str;
 	});
 
-	FAngelscriptBinds::BindGlobalFunction("const FName& __STATIC_NAME(int Id) no_discard", FUNC_TRIVIAL(FAngelscriptEngine::GetStaticName));
+	FAngelscriptBinds::BindGlobalFunction(
+		"FName __STATIC_NAME(int Id, const FString& CanonicalName) no_discard",
+		FUNC_TRIVIAL(FAngelscriptEngine::ResolveStaticName));
 });

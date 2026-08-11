@@ -57,11 +57,47 @@ asCModule::asCModule(const char *name, asCScriptEngine *engine)
 
 	userData = 0;
 	builder = 0;
+	buildArtifactInvocationCallback = 0;
+	buildArtifactInvocationUserData = 0;
+	buildArtifactRestoreCallback = 0;
+	buildArtifactRestoreUserData = 0;
+	buildArtifactCompileResultCallback = 0;
+	buildArtifactCompileResultUserData = 0;
 	isGlobalVarInitialized = false;
 
 	accessMask = 1;
 
 	defaultNamespace = engine->nameSpaces[0];
+}
+
+void asCModule::SetBuildArtifactCompileResultCallback(
+	asBUILDARTIFACTCOMPILERESULTCALLBACK_t callback,
+	void *callbackUserData)
+{
+	buildArtifactCompileResultCallback = callback;
+	buildArtifactCompileResultUserData = callbackUserData;
+	if( builder )
+		builder->SetBuildArtifactCompileResultCallback(callback, callbackUserData);
+}
+
+void asCModule::SetBuildArtifactInvocationCallback(
+	asBUILDARTIFACTINVOCATIONCALLBACK_t callback,
+	void *callbackUserData)
+{
+	buildArtifactInvocationCallback = callback;
+	buildArtifactInvocationUserData = callbackUserData;
+	if( builder )
+		builder->SetBuildArtifactInvocationCallback(callback, callbackUserData);
+}
+
+void asCModule::SetBuildArtifactRestoreCallback(
+	asBUILDARTIFACTRESTORECALLBACK_t callback,
+	void *callbackUserData)
+{
+	buildArtifactRestoreCallback = callback;
+	buildArtifactRestoreUserData = callbackUserData;
+	if( builder )
+		builder->SetBuildArtifactRestoreCallback(callback, callbackUserData);
 }
 
 // internal
@@ -1821,6 +1857,15 @@ int asCModule::CompileFunction(const char *sectionName, const char *code, int li
 
 	// Compile the single function
 	asCBuilder funcBuilder(engine, this);
+	funcBuilder.SetBuildArtifactInvocationCallback(
+		buildArtifactInvocationCallback,
+		buildArtifactInvocationUserData);
+	funcBuilder.SetBuildArtifactRestoreCallback(
+		buildArtifactRestoreCallback,
+		buildArtifactRestoreUserData);
+	funcBuilder.SetBuildArtifactCompileResultCallback(
+		buildArtifactCompileResultCallback,
+		buildArtifactCompileResultUserData);
 	asCString str = code;
 	asCScriptFunction *func = 0;
 	r = funcBuilder.CompileFunction(sectionName, str.AddressOf(), lineOffset, compileFlags, &func);

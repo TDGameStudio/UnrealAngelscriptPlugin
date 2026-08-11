@@ -302,6 +302,11 @@ int asCCompiler::CompileDefaultConstructor(asCBuilder *in_builder, asCScriptCode
 			Error(TEXT_BASE_DOESNT_HAVE_DEF_CONSTR, in_node);
 
 		// Call the base class' default constructor
+		builder->MarkDependency(
+			engine->scriptFunctions[
+				outFunc->objectType->derivedFrom->beh.construct],
+			in_node,
+			in_script);
 		byteCode.InstrSHORT(asBC_PSF, 0);
 		byteCode.Instr(asBC_RDSPtr);
 		byteCode.Call(asBC_CALL, outFunc->objectType->derivedFrom->beh.construct, AS_PTR_SIZE);
@@ -369,6 +374,11 @@ int asCCompiler::CompileDefaultDestructor(asCBuilder *in_builder, asCScriptCode 
 		if (prop->byteOffset < ParentOffset)
 			continue;
 
+		builder->MarkPropertyDependency(outFunc->objectType, prop);
+		if (prop->type.GetTypeInfo() != 0)
+			builder->MarkDependency(
+				prop->type.GetTypeInfo(), in_node, in_script);
+
 		// A direct handle member owns one reference independently of the
 		// enclosing value object's storage. Release it and clear the slot
 		// before the value object's memory is reclaimed.
@@ -412,6 +422,11 @@ int asCCompiler::CompileDefaultDestructor(asCBuilder *in_builder, asCScriptCode 
 	if( outFunc->objectType->derivedFrom != nullptr && outFunc->objectType->derivedFrom->beh.destruct != 0 )
 	{
 		// Call base class' destructor
+		builder->MarkDependency(
+			engine->scriptFunctions[
+				outFunc->objectType->derivedFrom->beh.destruct],
+			in_node,
+			in_script);
 		asCByteCode tmpBC(builder);
 		tmpBC.InstrSHORT(asBC_PshVPtr, 0);
 		tmpBC.Call(asBC_CALL, outFunc->objectType->derivedFrom->beh.destruct, AS_PTR_SIZE);
@@ -460,6 +475,11 @@ int asCCompiler::CompileFactory(asCBuilder *in_builder, asCScriptCode *in_script
 			break;
 		}
 	}
+	builder->MarkDependency(dt.GetTypeInfo(), 0, in_script);
+	if( constructor >= 0
+		&& static_cast<asUINT>(constructor) < engine->scriptFunctions.GetLength())
+		builder->MarkDependency(
+			engine->scriptFunctions[constructor], 0, in_script);
 
 	// Allocate the class and instantiate it with the constructor
 	int varOffset = AllocateVariable(dt, true);
@@ -1054,6 +1074,11 @@ void asCCompiler::CompileMemberInitialization(asCByteCode *bc, bool onlyDefaults
 				if( !onlyDefaults )
 					continue;
 			}
+
+			builder->MarkPropertyDependency(outFunc->objectType, prop);
+			if (prop->type.GetTypeInfo() != 0)
+				builder->MarkDependency(
+					prop->type.GetTypeInfo(), declNode, initScript);
 
 #ifdef AS_NO_MEMBER_INIT
 			// The initialization will be done in the asCScriptObject constructor, so
@@ -11340,6 +11365,7 @@ int asCCompiler::CompileVariableAccess(const asCString &name, const asCString &s
 			asCObjectProperty *prop = builder->GetObjectProperty(dt, name.AddressOf());
 			if( prop )
 			{
+				builder->MarkPropertyDependency(inType, prop);
 				// If we're compiling member initializers, don't allow access to members after the current member
 				if (compilingMemberInitializationOffset != -1 && prop->byteOffset >= compilingMemberInitializationOffset)
 				{
@@ -15171,6 +15197,8 @@ int asCCompiler::CompileExpressionPostOp(asCScriptNode *node, asCExprContext *ct
 				// If found, the context stores information on the get/set accessors
 				// until it is known which is to be used.
 				asCObjectProperty *prop = builder->GetObjectProperty(ctx->type.dataType, name.AddressOf());
+				if (prop != nullptr)
+					builder->MarkPropertyDependency(inType, prop);
 				int r = 0;
 
 				if (prop == nullptr)

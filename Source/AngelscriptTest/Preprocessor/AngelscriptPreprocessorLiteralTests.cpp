@@ -69,6 +69,12 @@ int Entry()
 			ASSERT_THAT(IsFalse(Code.Contains(TEXT("n\"Alpha\"")), TEXT("Should remove n\"Alpha\" text")));
 			ASSERT_THAT(IsFalse(Code.Contains(TEXT("n\"Beta\"")), TEXT("Should remove n\"Beta\" text")));
 			ASSERT_THAT(IsTrue(Code.Contains(TEXT("__STATIC_NAME(")), TEXT("Should contain __STATIC_NAME references")));
+			ASSERT_THAT(IsTrue(
+				Code.Contains(TEXT(", \"Alpha\")")),
+				TEXT("Static-name lowering should carry canonical Alpha text")));
+			ASSERT_THAT(IsTrue(
+				Code.Contains(TEXT(", \"Beta\")")),
+				TEXT("Static-name lowering should carry canonical Beta text")));
 
 			// Count __STATIC_NAME occurrences
 			TArray<int32> Indices = ExtractStaticNameIndices(Code);

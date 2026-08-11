@@ -112,11 +112,26 @@ bool FAngelscriptDebuggerTestSession::Initialize(const FAngelscriptDebuggerSessi
 	}
 	else
 	{
-		FAngelscriptEngineConfig EngineConfig;
-		EngineConfig.DebugServerPort = Config.DebugServerPort > 0 ? Config.DebugServerPort : MakeUniqueDebugServerPort();
-		FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
-		OwnedEngine = CreateScriptScanFreeFullEngineForTesting(EngineConfig, Dependencies);
-		Engine = OwnedEngine.Get();
+		const bool bExplicitPort = Config.DebugServerPort > 0;
+		constexpr int32 MaxAutomaticPortAttempts = 32;
+		const int32 AttemptCount = bExplicitPort ? 1 : MaxAutomaticPortAttempts;
+
+		for (int32 Attempt = 0; Attempt < AttemptCount; ++Attempt)
+		{
+			FAngelscriptEngineConfig EngineConfig;
+			EngineConfig.DebugServerPort = bExplicitPort ? Config.DebugServerPort : MakeUniqueDebugServerPort();
+			FAngelscriptEngineDependencies Dependencies = FAngelscriptEngineDependencies::CreateDefault();
+			TUniquePtr<FAngelscriptEngine> CandidateEngine = CreateScriptScanFreeFullEngineForTesting(EngineConfig, Dependencies);
+
+			if (CandidateEngine.IsValid()
+				&& CandidateEngine->DebugServer != nullptr
+				&& CandidateEngine->DebugServer->IsListening())
+			{
+				OwnedEngine = MoveTemp(CandidateEngine);
+				Engine = OwnedEngine.Get();
+				break;
+			}
+		}
 	}
 
 	if (Engine == nullptr)
@@ -129,7 +144,7 @@ bool FAngelscriptDebuggerTestSession::Initialize(const FAngelscriptDebuggerSessi
 	DebugServer = Engine->DebugServer;
 	Port = Engine->GetRuntimeConfig().DebugServerPort;
 
-	if (DebugServer == nullptr)
+	if (DebugServer == nullptr || !DebugServer->IsListening())
 	{
 		Shutdown();
 		return false;
