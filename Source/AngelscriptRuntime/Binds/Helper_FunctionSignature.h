@@ -7,6 +7,7 @@
 #include "AngelscriptType.h"
 #include "AngelscriptDocs.h"
 #include "AngelscriptBindDatabase.h"
+#include "AngelscriptBinds.h"
 #include "Binds/BlueprintCallableReflectiveFallback.h"
 
 #include "StartAngelscriptHeaders.h"
@@ -175,8 +176,7 @@ struct FAngelscriptFunctionSignature
 		UFunction* InFunction,
 		const TCHAR* OverrideName = nullptr)
 	{
-		(void)TypeDatabase;
-		InitFromFunction(InType, InFunction, OverrideName);
+		InitFromFunctionImpl(&TypeDatabase, InType, InFunction, OverrideName);
 	}
 
 	static FString GetScriptNamespaceForClass(TSharedRef<FAngelscriptType> InType, UFunction* InFunction)
@@ -196,6 +196,15 @@ struct FAngelscriptFunctionSignature
 	}
 
 	void InitFromFunction(TSharedRef<FAngelscriptType> InType, UFunction* InFunction, const TCHAR* OverrideName = nullptr)
+	{
+		InitFromFunctionImpl(nullptr, InType, InFunction, OverrideName);
+	}
+
+	void InitFromFunctionImpl(
+		FAngelscriptTypeDatabase* TypeDatabase,
+		TSharedRef<FAngelscriptType> InType,
+		UFunction* InFunction,
+		const TCHAR* OverrideName)
 	{
 		Function = InFunction;
 
@@ -229,7 +238,9 @@ struct FAngelscriptFunctionSignature
 		for( TFieldIterator<FProperty> It(Function); It && (It->PropertyFlags & CPF_Parm); ++It )
 		{
 			FProperty* Property = *It;
-			FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromProperty(Property);
+			FAngelscriptTypeUsage Type = TypeDatabase != nullptr
+				? FAngelscriptTypeUsage::FromProperty(*TypeDatabase, Property)
+				: FAngelscriptTypeUsage::FromProperty(Property);
 
 			if (!Type.IsValid())
 			{
@@ -374,8 +385,11 @@ struct FAngelscriptFunctionSignature
 				const bool bHasReceiverShape = bHasReceiverParameter;
 				for (const FString& Mixin : MixinList)
 				{
+					const bool bKnownMixinType = TypeDatabase != nullptr
+						? FAngelscriptType::GetByAngelscriptTypeName(*TypeDatabase, Mixin).IsValid()
+						: FAngelscriptType::GetByAngelscriptTypeName(Mixin).IsValid();
 					if (bHasReceiverShape
-						&& FAngelscriptType::GetByAngelscriptTypeName(Mixin).IsValid()
+						&& bKnownMixinType
 						&& (MixinFirstParameterType == Mixin || UnresolvedObjectMixinType == Mixin))
 					{
 						if (ArgumentTypes[0].bIsConst)
@@ -454,6 +468,16 @@ struct FAngelscriptFunctionSignature
 
 	void InitFromDB(TSharedRef<FAngelscriptType> InType, UFunction* InFunction, const FAngelscriptMethodBind& DBBind, bool bInitTypes)
 	{
+		InitFromDBImpl(nullptr, InType, InFunction, DBBind, bInitTypes);
+	}
+
+	void InitFromDBImpl(
+		FAngelscriptTypeDatabase* TypeDatabase,
+		TSharedRef<FAngelscriptType> InType,
+		UFunction* InFunction,
+		const FAngelscriptMethodBind& DBBind,
+		bool bInitTypes)
+	{
 		Function = InFunction;
 		Declaration = DBBind.Declaration;
 		WorldContextArgument = DBBind.WorldContextArgument;
@@ -473,7 +497,9 @@ struct FAngelscriptFunctionSignature
 			for (TFieldIterator<FProperty> It(Function); It && (It->PropertyFlags & CPF_Parm); ++It)
 			{
 				FProperty* Property = *It;
-				FAngelscriptTypeUsage Type = FAngelscriptTypeUsage::FromProperty(Property);
+				FAngelscriptTypeUsage Type = TypeDatabase != nullptr
+					? FAngelscriptTypeUsage::FromProperty(*TypeDatabase, Property)
+					: FAngelscriptTypeUsage::FromProperty(Property);
 
 				if (!Type.IsValid())
 				{
@@ -502,8 +528,7 @@ struct FAngelscriptFunctionSignature
 		const FAngelscriptMethodBind& DBBind,
 		bool bInitTypes)
 	{
-		(void)TypeDatabase;
-		InitFromDB(InType, InFunction, DBBind, bInitTypes);
+		InitFromDBImpl(&TypeDatabase, InType, InFunction, DBBind, bInitTypes);
 	}
 
 	void WriteToDB(FAngelscriptMethodBind& DBBind)
@@ -524,15 +549,18 @@ struct FAngelscriptFunctionSignature
 	}
 
 #if WITH_EDITOR
-	bool IsFunctionEditorOnly() const
+	bool IsFunctionEditorOnly(FAngelscriptEngine& TargetEngine) const
 	{
 		if (Function->HasAnyFunctionFlags(FUNC_EditorOnly))
 			return true;
 
 		if (Function->HasAnyFunctionFlags(FUNC_Static))
 		{
+			extern ANGELSCRIPTRUNTIME_API bool IsEditorOnlyClassForTarget(
+				FAngelscriptEngine& Engine,
+				UClass* Class);
 			UClass* Class = Function->GetOuterUClass();
-			if (Class != nullptr && IsEditorOnlyObject(Class))
+			if (Class != nullptr && IsEditorOnlyClassForTarget(TargetEngine, Class))
 				return true;
 		}
 
@@ -540,13 +568,20 @@ struct FAngelscriptFunctionSignature
 	}
 #endif
 
-	void ModifyScriptFunction(int FunctionId)
+	void ModifyScriptFunction(FAngelscriptBoundFunction& BoundFunction)
 	{
+		if (!BoundFunction.IsValid())
+		{
+			return;
+		}
+
+		FAngelscriptEngine& TargetEngine = BoundFunction.GetTargetEngine();
+		const int32 FunctionId = BoundFunction.GetFunctionId();
 #if !WITH_EDITOR
 		if (WorldContextArgument != -1 || bNotAngelscriptProperty || bBlueprintProtected || DeterminesOutputTypeArgument != -1)
 #endif
 		{
-			auto* ScriptFunction = (asCScriptFunction*)FAngelscriptEngine::Get().GetScriptEngine()->GetFunctionById(FunctionId);
+			auto* ScriptFunction = static_cast<asCScriptFunction*>(BoundFunction.GetFunction());
 			if (ScriptFunction != nullptr)
 			{
 				if (WorldContextArgument != -1)
@@ -581,7 +616,7 @@ struct FAngelscriptFunctionSignature
 					ScriptFunction->deprecationMessage = TCHAR_TO_UTF8(*DeprecationMessage);
 				}
 
-				if (IsFunctionEditorOnly())
+				if (IsFunctionEditorOnly(TargetEngine))
 				{
 					ScriptFunction->traits.SetTrait(asTRAIT_EDITOR_ONLY, true);
 				}
@@ -597,6 +632,7 @@ struct FAngelscriptFunctionSignature
 
 #if WITH_EDITOR
 		FAngelscriptDocs::AddUnrealDocumentation(
+			TargetEngine,
 			FunctionId,
 			Function->GetMetaData(NAME_Signature_ToolTip),
 			Function->GetMetaData(NAME_Signature_Category),

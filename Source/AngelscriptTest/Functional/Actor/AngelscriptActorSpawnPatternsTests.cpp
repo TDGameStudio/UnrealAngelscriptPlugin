@@ -126,6 +126,9 @@ class AFunctionalSpawnSourceActor : AActor
 UCLASS()
 class ASpawnParametersTargetActor : AActor
 {
+	UPROPERTY(DefaultComponent, RootComponent)
+	USceneComponent Root;
+
 	UPROPERTY()
 	int32 TargetTag = 0;
 }
@@ -158,14 +161,13 @@ class ASpawnParametersSourceActor : AActor
 			SpawnParametersResult = 20;
 			return;
 		}
+		Spawned.TargetTag = 42;
+		FinishSpawningActor(Spawned, SpawnTransform);
 		if (!Spawned.GetActorLocation().Equals(FVector(125.0, 250.0, 375.0)))
 		{
 			SpawnParametersResult = 30;
 			return;
 		}
-
-		Spawned.TargetTag = 42;
-		FinishSpawningActor(Spawned);
 		if (Spawned.TargetTag != 42)
 		{
 			SpawnParametersResult = 40;
@@ -213,6 +215,9 @@ class ASpawnParametersSourceActor : AActor
 
 		int32 SpawnParametersResult = INDEX_NONE;
 		ReadPropertyValue<FIntProperty>(*TestRunner, SourceActor, TEXT("SpawnParametersResult"), SpawnParametersResult);
+		TestRunner->AddInfo(FString::Printf(
+			TEXT("Spawn-parameter API result code: %d (1=success, 10/20/30/40/50/60/70 identify the failed stage)"),
+			SpawnParametersResult));
 		ASSERT_THAT(AreEqual(
 			1,
 			SpawnParametersResult,

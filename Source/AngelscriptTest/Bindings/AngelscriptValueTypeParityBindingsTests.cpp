@@ -135,9 +135,9 @@ public:
 			int MatrixValues()
 			{
 				FMatrix Matrix = FMatrix::Identity();
-				FVector Position = Matrix.TransformPosition(FVector(1.0, 2.0, 3.0));
+				FVector4 Position = Matrix.TransformPosition(FVector(1.0, 2.0, 3.0));
 				FMatrix Inverse = Matrix.Inverse();
-				return Position == FVector(1.0, 2.0, 3.0) && Inverse == Matrix && Matrix.ToQuat() == FQuat::Identity ? 1 : 10;
+				return Position == FVector4(1.0, 2.0, 3.0, 1.0) && Inverse == Matrix && Matrix.ToQuat() == FQuat::Identity ? 1 : 10;
 			}
 			)AS"));
 		if (!ModuleScope.IsValid())

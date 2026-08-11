@@ -76,7 +76,7 @@ namespace
 	bool IsEquivalentScriptSignatureAlreadyBound(
 		FAngelscriptBinds& Binds,
 		TSharedRef<FAngelscriptType> InType,
-		const FAngelscriptFunctionSignature& Signature)
+		FAngelscriptFunctionSignature& Signature)
 	{
 		if (!Signature.bAllTypesValid || Signature.ScriptName.IsEmpty() || Signature.ScriptName == TEXT("-"))
 		{
@@ -84,6 +84,19 @@ namespace
 		}
 
 		asIScriptEngine* ScriptEngine = &Binds.GetTargetScriptEngine();
+		auto ApplyExistingMetadata = [&Binds, &Signature](asIScriptFunction* ExistingFunction) -> bool
+		{
+			if (!DoesFunctionMatchSignatureShape(ExistingFunction, Signature))
+			{
+				return false;
+			}
+
+			FAngelscriptBoundFunction ExistingBinding(
+				&Binds.GetTargetEngine(),
+				ExistingFunction->GetId());
+			Signature.ModifyScriptFunction(ExistingBinding);
+			return true;
+		};
 
 		if (Signature.bStaticInScript)
 		{
@@ -93,7 +106,7 @@ namespace
 				{
 					asIScriptFunction* ExistingFunction = ScriptEngine->GetGlobalFunctionByIndex(FunctionIndex);
 					if (DoesGlobalFunctionMatchNamespace(ExistingFunction, Namespace)
-						&& DoesFunctionMatchSignatureShape(ExistingFunction, Signature))
+						&& ApplyExistingMetadata(ExistingFunction))
 					{
 						return true;
 					}
@@ -117,7 +130,7 @@ namespace
 		for (asUINT MethodIndex = 0, MethodCount = TypeInfo->GetMethodCount(); MethodIndex < MethodCount; ++MethodIndex)
 		{
 			asIScriptFunction* ExistingMethod = TypeInfo->GetMethodByIndex(MethodIndex);
-			if (DoesFunctionMatchSignatureShape(ExistingMethod, Signature))
+			if (ApplyExistingMetadata(ExistingMethod))
 			{
 				return true;
 			}

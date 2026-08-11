@@ -1313,6 +1313,15 @@ void FAngelscriptPreprocessor::AnalyzeClasses(FFile& File, FChunk& Chunk)
 				*ClassDesc->ClassName,
 				*ClassDesc->StaticClassGlobalVariableName
 			);
+			GeneratedStatics += FString::Printf(
+				TEXT("\n %s Spawn(const FTransform& SpawnTransform,")
+				TEXT(" const FActorSpawnParameters& SpawnParameters) __generated {")
+				TEXT("return Cast<%s>(SpawnActor(%s.Get(), SpawnTransform, SpawnParameters));")
+				TEXT("}"),
+				*ClassDesc->ClassName,
+				*ClassDesc->ClassName,
+				*ClassDesc->StaticClassGlobalVariableName
+			);
 
 			bHasStatics = true;
 		}

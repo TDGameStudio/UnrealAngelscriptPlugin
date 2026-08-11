@@ -23,6 +23,8 @@
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  * | void USceneComponent.SetRelativeLocation(FVector NewLocation);                             | Sets location relative to the attachment parent, in Unreal units.                                                    |
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+ * | void USceneComponent.SetRelativeRotation(FRotator NewRotation);                            | Sets rotation relative to the attachment parent, in degrees.                                                        |
+ * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  * | void USceneComponent.SetComponentVelocity(const FVector& Velocity);                        | Sets world-space component velocity in Unreal units per second.                                                      |
  * +--------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
  * | FVector USceneComponent.GetComponentVelocity() const;                                      | Returns world-space component velocity in Unreal units per second.                                                   |
@@ -56,6 +58,9 @@ AS_FORCE_LINK const FAngelscriptBind Bind_USceneComponent(
 		USceneComponent_.Method(
 			"void SetRelativeLocation(FVector NewLocation)",
 			&FAngelscriptUSceneComponentBinds::SetRelativeLocation);
+		USceneComponent_.Method(
+			"void SetRelativeRotation(FRotator NewRotation)",
+			&FAngelscriptUSceneComponentBinds::SetRelativeRotation);
 		USceneComponent_.Method(
 			"void SetComponentVelocity(const FVector& Velocity)",
 			&FAngelscriptUSceneComponentBinds::SetComponentVelocity);

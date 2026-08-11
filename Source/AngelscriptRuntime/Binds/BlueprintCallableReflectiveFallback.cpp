@@ -839,39 +839,88 @@ namespace
 		return OutPrimaryBinding.IsValid();
 	}
 
+	bool DoesFunctionMatchExactScriptShape(
+		asIScriptFunction* ExistingFunction,
+		const FAngelscriptFunctionSignature& Signature)
+	{
+		if (ExistingFunction == nullptr)
+		{
+			return false;
+		}
+
+		const FTCHARToUTF8 ScriptNameUtf8(*Signature.ScriptName);
+		if (FCStringAnsi::Strcmp(ExistingFunction->GetName(), ScriptNameUtf8.Get()) != 0)
+		{
+			return false;
+		}
+
+		if (!Signature.bStaticInScript
+			&& ExistingFunction->IsReadOnly() != Signature.Declaration.Contains(TEXT(") const")))
+		{
+			return false;
+		}
+
+		const FAngelscriptTypeUsage ExistingReturn = FAngelscriptTypeUsage::FromReturn(ExistingFunction);
+		if (ExistingReturn.IsValid() != Signature.ReturnType.IsValid()
+			|| (ExistingReturn.IsValid() && !ExistingReturn.EqualsUnqualified(Signature.ReturnType)))
+		{
+			return false;
+		}
+
+		if (ExistingFunction->GetParamCount() != static_cast<asUINT>(Signature.ArgumentTypes.Num()))
+		{
+			return false;
+		}
+
+		for (int32 ArgumentIndex = 0; ArgumentIndex < Signature.ArgumentTypes.Num(); ++ArgumentIndex)
+		{
+			const FAngelscriptTypeUsage ExistingArgument =
+				FAngelscriptTypeUsage::FromParam(ExistingFunction, ArgumentIndex);
+			if (!ExistingArgument.IsValid()
+				|| !ExistingArgument.EqualsUnqualified(Signature.ArgumentTypes[ArgumentIndex]))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	bool IsScriptDeclarationAlreadyBoundImpl(
 		FAngelscriptBinds& Binds,
 		TSharedRef<FAngelscriptType> InType,
-		const FAngelscriptFunctionSignature& Signature)
+		FAngelscriptFunctionSignature& Signature)
 	{
 		asIScriptEngine* ScriptEngine = &Binds.GetTargetScriptEngine();
-
-		auto HasGlobalDeclaration = [&](const FString& Namespace) -> bool
+		auto ApplyExistingMetadata = [&](asIScriptFunction* ExistingFunction) -> bool
 		{
-			// Opt 1 fast path: consult TLS cache populated during Phase 2.
-			if (GBindCachesTLS != nullptr && GBindCachesTLS->bGlobalDeclsActive)
+			if (!DoesFunctionMatchExactScriptShape(ExistingFunction, Signature))
 			{
-				SyncGlobalDeclCacheFromEngine(ScriptEngine);
-				if (const FGlobalDeclCacheEntry* Entry = GBindCachesTLS->GlobalDecls.Find(Namespace))
-				{
-					if (Entry->Names.Contains(Signature.ScriptName))
-					{
-						return true;
-					}
-					if (Entry->Declarations.Contains(Signature.Declaration))
-					{
-						return true;
-					}
-				}
 				return false;
 			}
 
-			const FTCHARToUTF8 Utf8Declaration(*Signature.Declaration);
-			const FTCHARToUTF8 Utf8ScriptName(*Signature.ScriptName);
+			FAngelscriptBoundFunction ExistingBinding(
+				&Binds.GetTargetEngine(),
+				ExistingFunction->GetId());
+			Signature.ModifyScriptFunction(ExistingBinding);
+			return true;
+		};
+
+		auto HasGlobalDeclaration = [&](const FString& Namespace) -> bool
+		{
+			// Opt 1 remains a negative fast path. A same-name cache hit must still
+			// compare the complete semantic shape so valid overloads are not hidden.
+			if (GBindCachesTLS != nullptr && GBindCachesTLS->bGlobalDeclsActive)
+			{
+				SyncGlobalDeclCacheFromEngine(ScriptEngine);
+				const FGlobalDeclCacheEntry* Entry = GBindCachesTLS->GlobalDecls.Find(Namespace);
+				if (Entry == nullptr || !Entry->Names.Contains(Signature.ScriptName))
+				{
+					return false;
+				}
+			}
+
 			const FTCHARToUTF8 Utf8Namespace(*Namespace);
-			const char* PreviousNamespace = ScriptEngine->GetDefaultNamespace();
-			ScriptEngine->SetDefaultNamespace(Utf8Namespace.Get());
-			asIScriptFunction* ExistingFunction = nullptr;
 			for (asUINT FunctionIndex = 0, FunctionCount = ScriptEngine->GetGlobalFunctionCount(); FunctionIndex < FunctionCount; ++FunctionIndex)
 			{
 				asIScriptFunction* CandidateFunction = ScriptEngine->GetGlobalFunctionByIndex(FunctionIndex);
@@ -889,20 +938,12 @@ namespace
 					continue;
 				}
 
-				if (FCStringAnsi::Strcmp(CandidateFunction->GetName(), Utf8ScriptName.Get()) == 0)
+				if (ApplyExistingMetadata(CandidateFunction))
 				{
-					ExistingFunction = CandidateFunction;
-					break;
-				}
-
-				if (FCStringAnsi::Strcmp(CandidateFunction->GetDeclaration(false, true, false, true), Utf8Declaration.Get()) == 0)
-				{
-					ExistingFunction = CandidateFunction;
-					break;
+					return true;
 				}
 			}
-			ScriptEngine->SetDefaultNamespace(PreviousNamespace != nullptr ? PreviousNamespace : "");
-			return ExistingFunction != nullptr;
+			return false;
 		};
 
 		if (Signature.bStaticInScript)
@@ -912,7 +953,7 @@ namespace
 				return true;
 			}
 
-			if (HasGlobalDeclaration(FString()))
+			if (Signature.bGlobalScope && HasGlobalDeclaration(FString()))
 			{
 				return true;
 			}
@@ -922,27 +963,28 @@ namespace
 
 		const FString& ScriptTypeName = Signature.bStaticInUnreal ? Signature.ClassName : InType->GetAngelscriptTypeName();
 		const FTCHARToUTF8 Utf8TypeName(*ScriptTypeName);
-		const FTCHARToUTF8 Utf8ScriptName(*Signature.ScriptName);
-		const FTCHARToUTF8 Utf8Declaration(*Signature.Declaration);
 		asITypeInfo* TypeInfo = ScriptEngine->GetTypeInfoByName(Utf8TypeName.Get());
 		if (TypeInfo == nullptr)
 		{
 			return false;
 		}
 
-		if (TypeInfo->GetMethodByName(Utf8ScriptName.Get()) != nullptr)
+		for (asUINT MethodIndex = 0; MethodIndex < TypeInfo->GetMethodCount(); ++MethodIndex)
 		{
-			return true;
+			if (ApplyExistingMetadata(TypeInfo->GetMethodByIndex(MethodIndex)))
+			{
+				return true;
+			}
 		}
 
-		return TypeInfo->GetMethodByDecl(Utf8Declaration.Get()) != nullptr;
+		return false;
 	}
 }
 
 bool IsScriptDeclarationAlreadyBound(
 	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
-	const FAngelscriptFunctionSignature& Signature)
+	FAngelscriptFunctionSignature& Signature)
 {
 	return IsScriptDeclarationAlreadyBoundImpl(Binds, InType, Signature);
 }

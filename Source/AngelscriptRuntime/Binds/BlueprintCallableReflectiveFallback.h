@@ -38,7 +38,7 @@ ANGELSCRIPTRUNTIME_API bool InvokeReflectionFallbackFromGenericCall(
 bool IsScriptDeclarationAlreadyBound(
 	FAngelscriptBinds& Binds,
 	TSharedRef<FAngelscriptType> InType,
-	const FAngelscriptFunctionSignature& Signature);
+	FAngelscriptFunctionSignature& Signature);
 
 // RAII guard that enables TLS caches used by BlueprintType ReflectionBindings:
 //   - global declaration cache for IsScriptDeclarationAlreadyBound (Opt 1)

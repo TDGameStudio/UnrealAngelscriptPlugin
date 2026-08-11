@@ -323,7 +323,7 @@ TEST_CLASS_WITH_FLAGS(FAngelscriptStateDumpTest,
 		const TMap<FString, int32> PhaseRanks = {
 			{ TEXT("TypeDeclarations"), 0 },
 			{ TEXT("TypeInfrastructure"), 1 },
-			{ TEXT("ManualBindings"), 2 },
+			{ TEXT("ExplicitBindings"), 2 },
 			{ TEXT("GeneratedBindings"), 3 },
 			{ TEXT("ReflectionBindings"), 4 },
 			{ TEXT("PostReflectionBindings"), 5 },

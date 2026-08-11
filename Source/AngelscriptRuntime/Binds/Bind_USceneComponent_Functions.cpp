@@ -126,6 +126,14 @@ void FAngelscriptUSceneComponentBinds::SetRelativeLocation(
 	Component->UpdateComponentToWorld();
 }
 
+void FAngelscriptUSceneComponentBinds::SetRelativeRotation(
+	USceneComponent* Component,
+	const FRotator NewRotation)
+{
+	Component->SetRelativeRotation(NewRotation);
+	Component->UpdateComponentToWorld();
+}
+
 void FAngelscriptUSceneComponentBinds::SetComponentVelocity(
 	USceneComponent* Component,
 	const FVector& Velocity)

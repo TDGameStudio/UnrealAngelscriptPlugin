@@ -244,9 +244,6 @@ struct ANGELSCRIPTRUNTIME_API FAngelscriptEngineConfig
 	UPROPERTY()
 	float PackagedRuntimeReloadScanIntervalSeconds = 1.0f;
 
-	UPROPERTY()
-	TSet<FName> DisabledBindNames;
-
 	static FAngelscriptEngineConfig FromCurrentProcess();
 };
 
